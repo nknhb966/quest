@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <title>越前国府 発掘図鑑クエスト</title>
 <style>
     *, *::before, *::after { box-sizing:border-box; }
@@ -102,6 +103,10 @@
     .dexclose{ position:absolute; top:12px; right:16px; background:none; border:none; color:rgba(230,210,160,.7);
         font-size:26px; cursor:pointer; line-height:1; }
     .dexclose:hover{ color:#fff; }
+    .dexreset{ align-self:center; margin-top:4px; border:1px solid rgba(226,59,87,.5); background:rgba(60,20,30,.5);
+        color:#f3b0bc; border-radius:10px; padding:9px 18px; font-weight:700; font-size:13px; letter-spacing:1px;
+        cursor:pointer; touch-action:manipulation; }
+    .dexreset:hover{ background:rgba(120,30,45,.75); color:#fff; }
 
     /* ── デスクトップ用 HUD ── */
     #dhud{ position:fixed; left:0; right:0; bottom:0; z-index:15; display:none; pointer-events:none;
@@ -131,6 +136,7 @@
 
     /* タッチ操作（スマホ） */
     canvas{ touch-action:none; }
+    button, .desktop-btn, .seg button, .ghost, .dexclose{ touch-action:manipulation; }  /* 連続タップでの拡大を抑止 */
     #joystick{ position:fixed; width:120px; height:120px; border-radius:50%; z-index:16; display:none;
         border:2px solid rgba(180,140,255,.55); background:rgba(20,14,44,.32); pointer-events:none; }
     #joystick > i{ position:absolute; left:32px; top:32px; width:56px; height:56px; border-radius:50%;
@@ -210,6 +216,7 @@
     <div class="dexbar"><i id="dexFill"></i></div>
     <div class="dexbar-lbl" id="dexCount">0 / 8 発掘</div>
     <div class="dexgrid" id="dexGrid"></div>
+    <button class="dexreset" id="dexReset">図鑑をリセット</button>
   </div>
 </div>
 
@@ -260,9 +267,9 @@ const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(
 const ARTIFACT_POP_Y= 0.35;              // 出土品が落ち着く高さ（掘った地面のすぐ上）
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
-const DOG_SIDE      = 2.8;               // 犬の定位置：横オフセット（m）
-const DOG_FWD       = 2.2;               // 犬の定位置：前方オフセット（m）
-const SITE_Y_OFFSET = -2;                // サイトモデルの高さ補正（m。発掘点/出土品はそのまま）
+const DOG_SIDE      = 1.8;               // 犬の定位置：横オフセット（m）
+const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
+const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
 const ART_ORIG = [[-2.7,-0.5],[4.0,2.4],[3.8,-0.7],[3.0,-2.2],[0,-1.5],[3.2,2.2],[-2,-1],[-1.8,1.2]];
 
@@ -421,13 +428,24 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     box = new THREE.Box3().setFromObject(siteRoot);
     const center = box.getCenter(new THREE.Vector3());
     world.position.x -= center.x; world.position.z -= center.z; world.position.y -= box.min.y;
-    // サイトだけ下げる（発掘スポットのプレースホルダは動かさない＝発掘点/出土品は元の高さ）
-    siteRoot.position.y += SITE_Y_OFFSET / fit;   // ワールドで約 SITE_Y_OFFSET m
     world.updateMatrixWorld(true);
-    // 確定した発掘スポットを取得
+    // 確定した発掘スポットを取得（サイトを下げる前に取る＝発掘点/出土品は元の高さのまま）
     let maxR = 0;
     phs.forEach((o,i)=>{ const wp=o.getWorldPosition(new THREE.Vector3()); ARTPOS[i]=new THREE.Vector3(wp.x,GROUND_Y,wp.z); maxR=Math.max(maxR, Math.hypot(wp.x,wp.z)); });
     FIELD_R = Math.max(FIELD_R, maxR+3);   // 発掘場所を含むよう歩行範囲を確保
+    // 実際の地面の高さを真下レイキャストで測り、足元(y=0)へ合わせる（視点が埋まらないように）
+    const rc=new THREE.Raycaster(); const down=new THREE.Vector3(0,-1,0);
+    const samples=[[0,0]].concat(ARTPOS.map(p=>[p.x,p.z]));
+    const hitYs=[];
+    for(const [sx,sz] of samples){
+        rc.set(new THREE.Vector3(sx,500,sz), down);
+        const hit=rc.intersectObject(siteRoot,true)[0];
+        if(hit) hitYs.push(hit.point.y);
+    }
+    if(hitYs.length){ hitYs.sort((a,b)=>a-b); const surfaceY=hitYs[Math.floor(hitYs.length/2)]; // 中央値の地面
+        siteRoot.position.y -= surfaceY / fit; }     // 地面を y≈0 へ
+    siteRoot.position.y += SITE_Y_OFFSET / fit;      // 追加の微調整（既定0）
+    world.updateMatrixWorld(true);
     siteReady=true;
 }, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; });
 function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if(siteReady){ clearInterval(iv); cb(); } }, 100); } }
@@ -783,6 +801,12 @@ document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document
 document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
+document.getElementById("dexReset").onclick=()=>{
+    if(!confirm("発掘図鑑をリセットします。すべての発掘記録が消えます。よろしいですか？")) return;
+    dexData={}; saveDex(dexData); refreshDexHTML();
+    if(typeof dexPanel!=="undefined") dexPanel.draw();
+    showToast("発掘図鑑をリセットしました");
+};
 document.getElementById("openHelp").onclick=()=>{ showToast("探す=振る / 掘る=トリガー / 相棒=ワンちゃん。図鑑を8種コンプしよう！",3800); };
 
 function startGame(desktop){
