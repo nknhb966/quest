@@ -264,10 +264,11 @@ const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
-const ARTIFACT_POP_Y= 1.5;               // 出土品が落ち着く高さ（目線）
+const ARTIFACT_POP_Y= 1.2;               // 出土品が落ち着く高さ（目線より少し下）
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.5;               // 犬の定位置：横オフセット（m）
+const DOG_Y         = -0.2;              // 犬の接地高さ補正（m。少し下げる）
 const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -487,7 +488,14 @@ const dog = new THREE.Group();
     const snout= new THREE.Mesh(new THREE.BoxGeometry(0.32,0.28,0.4), darkMat); snout.position.set(0,0.95,1.3); dog.add(snout);
     const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10), new THREE.MeshStandardMaterial({color:0x221a12})); nose.position.set(0,0.98,1.52); dog.add(nose);
     [[-0.2,1.42,0.85],[0.2,1.42,0.85]].forEach(p=>{ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.35,4),darkMat); ear.position.set(p[0],p[1],p[2]); dog.add(ear); });
-    [[-0.28,0.28,0.5],[0.28,0.28,0.5],[-0.28,0.28,-0.5],[0.28,0.28,-0.5]].forEach(p=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.55,8),darkMat); leg.position.set(p[0],p[1],p[2]); dog.add(leg); });
+    const legs=[];
+    [[-0.28,0.28,0.5],[0.28,0.28,0.5],[-0.28,0.28,-0.5],[0.28,0.28,-0.5]].forEach((p,i)=>{
+        const pivot=new THREE.Group(); pivot.position.set(p[0],0.55,p[2]); dog.add(pivot);   // 股関節ピボット
+        const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.55,8),darkMat); leg.position.set(0,-0.27,0); pivot.add(leg);
+        pivot.userData.phase = (i===0||i===3)?0:Math.PI;   // 対角の足を同位相に
+        legs.push(pivot);
+    });
+    dog.userData.legs=legs;
     const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.11,0.6,8),bodyMat); tail.position.set(0,0.95,-0.85); tail.rotation.x=-0.9; dog.add(tail); dog.userData.tail=tail;
     // 目
     [[-0.16,1.12,1.22],[0.16,1.12,1.22]].forEach(p=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,10), new THREE.MeshStandardMaterial({color:0x1a140c})); eye.position.set(p[0],p[1],p[2]); dog.add(eye); });
@@ -813,9 +821,21 @@ document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex")
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexReset").onclick=()=>{
     if(!confirm("発掘図鑑をリセットします。すべての発掘記録が消えます。よろしいですか？")) return;
+    // 図鑑データ
     dexData={}; saveDex(dexData); refreshDexHTML();
     if(typeof dexPanel!=="undefined") dexPanel.draw();
-    showToast("発掘図鑑をリセットしました");
+    // ワールド上の発掘物・演出を消す
+    artModels.forEach(m=>{ if(m) m.visible=false; });
+    infoPanels.forEach(p=>scene.remove(p)); infoPanels.length=0;
+    popAnims.length=0;
+    // プレイ中なら現在のモードを最初から
+    if(GAME.active){
+        clearTargets();
+        GAME.collectedCount=0; GAME.score=0;
+        afterSite(()=>{ if(GAME.mode==="collect"){ spawnTarget(0,0); } else { spawnTarget(0); spawnTarget(2); spawnTarget(4); } });
+        updateGoal();
+    }
+    showToast("図鑑と発掘記録をリセットしました");
 };
 document.getElementById("openHelp").onclick=()=>{ showToast("探す=振る / 掘る=トリガー / 相棒=ワンちゃん。図鑑を8種コンプしよう！",3800); };
 
@@ -1208,33 +1228,62 @@ function handleVRDig(){
     }
 }
 
-/* 犬：プレイヤーを追従＋ヒント方向へ小走り＋お祝い */
+/* 犬：プレイヤーを追従＋ヒント方向へ小走り＋お祝い（視点回転ではブレず、移動時に歩く） */
+const _dogOffset = new THREE.Vector3(DOG_SIDE, 0, -DOG_FWD); // 定位置オフセット（プレイヤー基準・世界空間）
+let _playerPrev = new THREE.Vector3();
+let _dogWalkPhase = 0;
+let _dogInit = false;
 function updateDog(dt, now){
     const camWorld=camera.getWorldPosition(tmpV);
+    const playerPos=new THREE.Vector3(camWorld.x,0,camWorld.z);
+    if(!_dogInit){ _playerPrev.copy(playerPos); _dogInit=true; }
+    // プレイヤーの移動量（＝場所移動。視点回転では変化しない）
+    const vel=new THREE.Vector3().subVectors(playerPos,_playerPrev); vel.y=0;
+    const speed=vel.length()/Math.max(dt,1e-3);
+    _playerPrev.copy(playerPos);
+
+    // 移動している時だけ、犬を進行方向の“前”へ回り込ませる（見回しでは定位置のまま＝ブレない）
+    if(speed>0.15){
+        const dir=vel.clone().normalize();
+        const targetOffset=new THREE.Vector3(dir.x,0,dir.z).multiplyScalar(DOG_FWD)
+            .add(new THREE.Vector3(-dir.z,0,dir.x).multiplyScalar(DOG_SIDE)); // 進行方向前＋横
+        _dogOffset.lerp(targetOffset, Math.min(1, dt*2.5));
+    }
+
     let goal;
     if(dog.userData.hintUntil && now<dog.userData.hintUntil && dog.userData.hintDir){
-        // ヒント：指し示す方向へ数歩
         goal=new THREE.Vector3().copy(dog.position).addScaledVector(dog.userData.hintDir, 2.0);
     } else {
-        // プレイヤーの斜め後ろ（少し離れた定位置）
-        const q=camQuat();
-        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
-        goal=new THREE.Vector3().copy(camWorld).addScaledVector(side,DOG_SIDE).addScaledVector(fwd,DOG_FWD); goal.y=GROUND_Y;
+        goal=new THREE.Vector3().copy(playerPos).add(_dogOffset);
     }
-    goal.y=GROUND_Y;
+    goal.y=0;
+
     const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
     const dist=to.length();
-    if(dist>0.4){ to.normalize(); dog.position.addScaledVector(to, Math.min(dist, 4.5*dt)); }
-    // 向き（進行方向 or プレイヤー）
-    const faceDir = dist>0.5 ? to : new THREE.Vector3().subVectors(camWorld,dog.position);
-    if(faceDir.lengthSq()>1e-3){ const yaw=Math.atan2(faceDir.x,faceDir.z); dog.rotation.y=THREE.MathUtils.lerp(dog.rotation.y, yaw, 0.2); }
-    // しっぽ振り
+    const prevX=dog.position.x, prevZ=dog.position.z;
+    // なめらか追従（比例）。プレイヤーが速いほど速く追う。見回し時は goal が動かない＝収束して静止
+    if(dist>0.05){
+        const follow = 1 - Math.exp(-dt*(2.2 + speed*0.6));
+        dog.position.x = THREE.MathUtils.lerp(dog.position.x, goal.x, follow);
+        dog.position.z = THREE.MathUtils.lerp(dog.position.z, goal.z, follow);
+    }
+    const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
+    const moving = moved > 0.004;   // 実際に移動している時だけ歩行アニメ
+
+    // 向き：進行方向 or プレイヤー
+    const faceDir = moving ? to : new THREE.Vector3().subVectors(playerPos,dog.position);
+    if(faceDir.lengthSq()>1e-3){ const yaw=Math.atan2(faceDir.x,faceDir.z); dog.rotation.y=THREE.MathUtils.lerp(dog.rotation.y, yaw, 0.15); }
+
+    // 歩行アニメ（脚の振り＋上下バウンド）
+    _dogWalkPhase += (moving?11:0)*dt;
+    if(dog.userData.legs){ dog.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(_dogWalkPhase + p.userData.phase) * (moving?0.6:0.0); }); }
+    const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
     if(dog.userData.tail) dog.userData.tail.rotation.z=Math.sin(now*0.02)*0.5;
-    // お祝いジャンプ
-    if(dogCelebrateT>0){ dogCelebrateT-=dt; dog.position.y=GROUND_Y+Math.abs(Math.sin(dogCelebrateT*12))*0.6; }
-    else dog.position.y=GROUND_Y;
-    // 定期ヒント
+
+    // お祝いジャンプ / 接地高さ
+    if(dogCelebrateT>0){ dogCelebrateT-=dt; dog.position.y=GROUND_Y+DOG_Y+Math.abs(Math.sin(dogCelebrateT*12))*0.6; }
+    else dog.position.y=GROUND_Y+DOG_Y+bob;
+
     dogHintTimer-=dt;
     if(dogHintTimer<=0 && GAME.targets.some(t=>!t.discovered)){ dogHintTimer=HINT_INTERVAL; dogGiveHint(); }
 }
