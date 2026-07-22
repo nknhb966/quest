@@ -232,6 +232,7 @@
       <span class="k">マウス</span> 見回す（クリックで視点固定）
       <span class="k">左クリック</span> 掘る
     </span>
+    <button id="dAsk">🐶 犬に聞く</button>
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dDex">📖 図鑑</button>
     <button id="dQuit">やめる</button>
@@ -748,19 +749,26 @@ function showInfoPanel(idx, pos){
 /* =====================================================
  * 犬のふるまい（常時同行＋ヒント／たまに外す）
  * ===================================================== */
-let dogHintTimer=0, dogCelebrateT=0;
-const HINT_INTERVAL=6.5;
-function dogGiveHint(){
+let dogCelebrateT=0;
+const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
+// 犬に「聞く」＝場所ヒント。信頼度に応じて当たり/はずれ。教えた場所へ行って少し待つ。
+function askDog(){
+    if(!GAME.active) return;
     const t = GAME.targets.find(x=>!x.discovered) || GAME.targets[0];
-    if(!t) return;
+    if(!t){ sfxBark(); bubble.say("ぜんぶ みつけたワン！", 1800); return; }
     const reliable = Math.random() < t.diff.dogRel;
-    let dir;
-    if(reliable){ dir = new THREE.Vector3().subVectors(t.pos, dog.position); dir.y=0; dir.normalize(); }
-    else { const a=Math.random()*Math.PI*2; dir=new THREE.Vector3(Math.cos(a),0,Math.sin(a)); }
-    dog.userData.hintDir = dir;
-    dog.userData.hintUntil = performance.now()+1400;
+    let pos;
+    if(reliable){ pos = t.pos.clone(); }
+    else { // はずれ：フィールド内の別地点
+        const a=Math.random()*Math.PI*2, r=THREE.MathUtils.lerp(3, Math.max(4,FIELD_R-1), Math.random());
+        pos = new THREE.Vector3(Math.cos(a)*r, 0, Math.sin(a)*r);
+    }
+    dog.userData.hintPos = pos;
+    dog.userData.hintReliable = reliable;
+    dog.userData.hintActive = true;
+    dog.userData.hintWaitUntil = 0;   // 到着後に設定
     sfxBark();
-    bubble.say(reliable ? "こっちワン！→" : "…こっちかも？", 1800);
+    bubble.say(reliable ? "こっちワン！ついてきて→" : "たぶん こっちワン？", 2200);
 }
 function dogCelebrate(){ dogCelebrateT=1.2; }
 
@@ -892,6 +900,7 @@ function toggleTool(){ GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToo
     showToast(GAME.tool==="wide"?"🖌 幅広ブラシ：広く探せる/掘り多め":"⛏ 細ピック：狭いが/掘り少なめ");
 }
 document.getElementById("dTool").onclick=toggleTool;
+document.getElementById("dAsk").onclick=()=>{ askDog(); };
 document.getElementById("dDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dQuit").onclick=()=> endGame(true);
 
@@ -905,6 +914,7 @@ const keys={};
 addEventListener("keydown",e=>{ keys[e.code]=true;
     if(!GAME.active) return;
     if(e.code==="KeyT"){ toggleTool(); }
+    if(e.code==="KeyQ"){ askDog(); }
     if(e.code==="Tab"){ e.preventDefault(); const d=document.getElementById("dex"); d.classList.toggle("open"); if(d.classList.contains("open"))refreshDexHTML(); }
     // Escape はブラウザがポインタロックを解除（ゲームは継続。終了は「やめる」ボタン）
 });
@@ -1219,6 +1229,9 @@ function handleVRDig(){
             const b=src.gamepad.buttons[5]?.pressed ?? false;
             if(b && !GAME._prevB){ toggleTool(); }
             GAME._prevB=b;
+            const a=src.gamepad.buttons[4]?.pressed ?? false;   // Aボタンで犬に聞く
+            if(a && !GAME._prevA){ askDog(); }
+            GAME._prevA=a;
         }
         if(src.handedness==="left" && src.gamepad){
             const y=src.gamepad.buttons[5]?.pressed ?? false;
@@ -1228,8 +1241,7 @@ function handleVRDig(){
     }
 }
 
-/* 犬：プレイヤーを追従＋ヒント方向へ小走り＋お祝い（視点回転ではブレず、移動時に歩く） */
-const _dogOffset = new THREE.Vector3(DOG_SIDE, 0, -DOG_FWD); // 定位置オフセット（プレイヤー基準・世界空間）
+/* 犬：常に視界の前方（画面内）に付く。聞かれたらヒント地点へ行って少し待つ。 */
 let _playerPrev = new THREE.Vector3();
 let _dogWalkPhase = 0;
 let _dogInit = false;
@@ -1237,42 +1249,44 @@ function updateDog(dt, now){
     const camWorld=camera.getWorldPosition(tmpV);
     const playerPos=new THREE.Vector3(camWorld.x,0,camWorld.z);
     if(!_dogInit){ _playerPrev.copy(playerPos); _dogInit=true; }
-    // プレイヤーの移動量（＝場所移動。視点回転では変化しない）
     const vel=new THREE.Vector3().subVectors(playerPos,_playerPrev); vel.y=0;
     const speed=vel.length()/Math.max(dt,1e-3);
     _playerPrev.copy(playerPos);
 
-    // 移動している時だけ、犬を進行方向の“前”へ回り込ませる（見回しでは定位置のまま＝ブレない）
-    if(speed>0.15){
-        const dir=vel.clone().normalize();
-        const targetOffset=new THREE.Vector3(dir.x,0,dir.z).multiplyScalar(DOG_FWD)
-            .add(new THREE.Vector3(-dir.z,0,dir.x).multiplyScalar(DOG_SIDE)); // 進行方向前＋横
-        _dogOffset.lerp(targetOffset, Math.min(1, dt*2.5));
-    }
-
-    let goal;
-    if(dog.userData.hintUntil && now<dog.userData.hintUntil && dog.userData.hintDir){
-        goal=new THREE.Vector3().copy(dog.position).addScaledVector(dog.userData.hintDir, 2.0);
+    let goal, waitingAtHint=false;
+    if(dog.userData.hintActive && dog.userData.hintPos){
+        goal=dog.userData.hintPos.clone(); goal.y=0;
+        const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
+        if(d2<0.8){   // ヒント地点に到着 → 少し待つ
+            if(!dog.userData.hintWaitUntil){ dog.userData.hintWaitUntil=now+HINT_WAIT_MS;
+                bubble.say(dog.userData.hintReliable?"ここ ほって ワン！":"…あれ、ちがうかも？", 2400); }
+            waitingAtHint=true;
+            if(now>dog.userData.hintWaitUntil){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
+        }
     } else {
-        goal=new THREE.Vector3().copy(playerPos).add(_dogOffset);
+        // 定位置＝視線の前方（＋少し横）。後ろ向きに動いても画面内の前方に居続ける。
+        const q=camQuat();
+        const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
+        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        goal=new THREE.Vector3().copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
     }
-    goal.y=0;
 
     const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
     const dist=to.length();
     const prevX=dog.position.x, prevZ=dog.position.z;
-    // なめらか追従（比例）。プレイヤーが速いほど速く追う。見回し時は goal が動かない＝収束して静止
+    // なめらか追従（比例）。向きを変えると前方へトコトコ回り込む。到着待機中は静止して収束。
     if(dist>0.05){
-        const follow = 1 - Math.exp(-dt*(2.2 + speed*0.6));
+        const rate = waitingAtHint ? 3.0 : (3.0 + speed*0.6);
+        const follow = 1 - Math.exp(-dt*rate);
         dog.position.x = THREE.MathUtils.lerp(dog.position.x, goal.x, follow);
         dog.position.z = THREE.MathUtils.lerp(dog.position.z, goal.z, follow);
     }
     const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
-    const moving = moved > 0.004;   // 実際に移動している時だけ歩行アニメ
+    const moving = moved > 0.004;
 
     // 向き：進行方向 or プレイヤー
     const faceDir = moving ? to : new THREE.Vector3().subVectors(playerPos,dog.position);
-    if(faceDir.lengthSq()>1e-3){ const yaw=Math.atan2(faceDir.x,faceDir.z); dog.rotation.y=THREE.MathUtils.lerp(dog.rotation.y, yaw, 0.15); }
+    if(faceDir.lengthSq()>1e-3){ const yaw=Math.atan2(faceDir.x,faceDir.z); dog.rotation.y=THREE.MathUtils.lerp(dog.rotation.y, yaw, 0.18); }
 
     // 歩行アニメ（脚の振り＋上下バウンド）
     _dogWalkPhase += (moving?11:0)*dt;
@@ -1283,9 +1297,6 @@ function updateDog(dt, now){
     // お祝いジャンプ / 接地高さ
     if(dogCelebrateT>0){ dogCelebrateT-=dt; dog.position.y=GROUND_Y+DOG_Y+Math.abs(Math.sin(dogCelebrateT*12))*0.6; }
     else dog.position.y=GROUND_Y+DOG_Y+bob;
-
-    dogHintTimer-=dt;
-    if(dogHintTimer<=0 && GAME.targets.some(t=>!t.discovered)){ dogHintTimer=HINT_INTERVAL; dogGiveHint(); }
 }
 
 /* =====================================================
