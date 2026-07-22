@@ -516,7 +516,7 @@ const dog = new THREE.Group();
     const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.11,0.6,8),bodyMat); tail.position.set(0,0.95,-0.85); tail.rotation.x=-0.9; dog.add(tail); dog.userData.tail=tail;
     // 目
     [[-0.16,1.12,1.22],[0.16,1.12,1.22]].forEach(p=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,10), new THREE.MeshStandardMaterial({color:0x1a140c})); eye.position.set(p[0],p[1],p[2]); dog.add(eye); });
-    dog.scale.setScalar(0.7);
+    dog.scale.setScalar(0.35);   // 犬（＋子要素の吹き出し）を半分サイズに
 })();
 scene.add(dog);
 dog.position.set(2,GROUND_Y,2);
@@ -783,6 +783,7 @@ function askDog(){
     dog.userData.hintReliable = reliable;
     dog.userData.hintActive = true;
     dog.userData.hintWaitUntil = 0;   // 到着後に設定
+    dog.userData.hintStart = performance.now();   // 動き出しを緩やかにするための起点
     sfxBark();
     bubble.say(reliable ? "こっちワン！ついてきて→" : "たぶん こっちワン？", 2200);
 }
@@ -1224,6 +1225,7 @@ function updateScan(dt, isVR, now){
 /* VR：トリガーで掘る（発見済みターゲットの上にコントローラーがある時） */
 function handleVRDig(){
     const s=renderer.xr.getSession(); if(!s) return;
+    unlockAudio();
     let idx=0;
     for(const src of s.inputSources){
         const gp=src.gamepad; if(!gp) continue;
@@ -1289,12 +1291,20 @@ function updateDog(dt, now){
     const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
     const dist=to.length();
     const prevX=dog.position.x, prevZ=dog.position.z;
-    // なめらか追従（比例）。向きを変えると前方へトコトコ回り込む。到着待機中は静止して収束。
     if(dist>0.05){
-        const rate = waitingAtHint ? 3.0 : (3.0 + speed*0.6);
-        const follow = 1 - Math.exp(-dt*rate);
-        dog.position.x = THREE.MathUtils.lerp(dog.position.x, goal.x, follow);
-        dog.position.z = THREE.MathUtils.lerp(dog.position.z, goal.z, follow);
+        let rate=3.0+speed*0.6, maxSpeed=6.0;
+        if(dog.userData.hintActive){
+            // ヒント移動は、ゆっくり動き出す（0.8秒かけて加速）＋最高速を抑える
+            const ramp=Math.min(1,(now-(dog.userData.hintStart||now))/800);
+            rate=2.0*ramp;
+            maxSpeed=2.2*ramp+0.2;
+        }
+        const follow=1-Math.exp(-dt*rate);
+        let nx=THREE.MathUtils.lerp(dog.position.x, goal.x, follow);
+        let nz=THREE.MathUtils.lerp(dog.position.z, goal.z, follow);
+        const mvx=nx-dog.position.x, mvz=nz-dog.position.z, mv=Math.hypot(mvx,mvz), cap=maxSpeed*dt;
+        if(mv>cap){ nx=dog.position.x+mvx*cap/mv; nz=dog.position.z+mvz*cap/mv; }
+        dog.position.x=nx; dog.position.z=nz;
     }
     const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
     const moving = moved > 0.004;
