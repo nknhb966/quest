@@ -243,7 +243,8 @@ const ARTIFACT_POP_Y= 0.35;              // 出土品が落ち着く高さ（掘
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 2.8;               // 犬の定位置：横オフセット（m）
-const DOG_BACK      = 1.2;               // 犬の定位置：後方オフセット（m）
+const DOG_FWD       = 2.2;               // 犬の定位置：前方オフセット（m）
+const SITE_Y_OFFSET = -2;                // サイトモデルの高さ補正（m。発掘点/出土品はそのまま）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
 const ART_ORIG = [[-2.7,-0.5],[4.0,2.4],[3.8,-0.7],[3.0,-2.2],[0,-1.5],[3.2,2.2],[-2,-1],[-1.8,1.2]];
 
@@ -402,6 +403,8 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     box = new THREE.Box3().setFromObject(siteRoot);
     const center = box.getCenter(new THREE.Vector3());
     world.position.x -= center.x; world.position.z -= center.z; world.position.y -= box.min.y;
+    // サイトだけ下げる（発掘スポットのプレースホルダは動かさない＝発掘点/出土品は元の高さ）
+    siteRoot.position.y += SITE_Y_OFFSET / fit;   // ワールドで約 SITE_Y_OFFSET m
     world.updateMatrixWorld(true);
     // 確定した発掘スポットを取得
     let maxR = 0;
@@ -503,9 +506,9 @@ const dexPanel=(function(){
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, depthTest:false});
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.17,0.212), mat);
-    // 手の甲の上に水平に寝かせ、面を上（+Y）へ→手のひらを返すと顔を向く
-    mesh.rotation.x=-Math.PI/2; mesh.rotation.z=Math.PI; mesh.position.set(0,0.03,-0.02); mesh.renderOrder=999;
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.375), mat);
+    // 位置は左手の少し上。向きは毎フレーム カメラを向く（updateDexPanelでビルボード）
+    mesh.position.set(0,0.10,-0.06); mesh.renderOrder=999;
     dexHolder.add(mesh);
     const imgs=ART_IMGS.map(src=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>draw(); im.src=src; return im; });
     function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -534,13 +537,13 @@ const dexPanel=(function(){
     draw();
     return { mesh, draw };
 })();
-// 左手のひらが顔を向いたら図鑑を表示（Yボタンで固定表示のトグルも可）
+// 左手のひらが顔を向いたら図鑑を表示（Yボタンで固定表示）。向きは常にカメラ向き。
 function updateDexPanel(){
     if(!renderer.xr.isPresenting || !leftCtrl){ dexHolder.visible=false; return; }
-    if(dexPinned){ dexHolder.visible=true; return; }
     const up=new THREE.Vector3(0,1,0).applyQuaternion(leftCtrl.getWorldQuaternion(new THREE.Quaternion()));
     const toHead=new THREE.Vector3().subVectors(camera.getWorldPosition(new THREE.Vector3()), leftCtrl.getWorldPosition(new THREE.Vector3())).normalize();
-    dexHolder.visible = up.dot(toHead) > 0.25;
+    dexHolder.visible = dexPinned || up.dot(toHead) > 0.15;
+    if(dexHolder.visible){ dexPanel.mesh.lookAt(camera.getWorldPosition(new THREE.Vector3())); }
 }
 
 /* =====================================================
@@ -1111,7 +1114,7 @@ function updateDog(dt, now){
         const q=camQuat();
         const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
         const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
-        goal=new THREE.Vector3().copy(camWorld).addScaledVector(side,DOG_SIDE).addScaledVector(fwd,-DOG_BACK); goal.y=GROUND_Y;
+        goal=new THREE.Vector3().copy(camWorld).addScaledVector(side,DOG_SIDE).addScaledVector(fwd,DOG_FWD); goal.y=GROUND_Y;
     }
     goal.y=GROUND_Y;
     const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
