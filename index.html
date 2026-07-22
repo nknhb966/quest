@@ -264,10 +264,10 @@ const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
-const ARTIFACT_POP_Y= 0.35;              // 出土品が落ち着く高さ（掘った地面のすぐ上）
+const ARTIFACT_POP_Y= 1.5;               // 出土品が落ち着く高さ（目線）
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
-const DOG_SIDE      = 1.8;               // 犬の定位置：横オフセット（m）
+const DOG_SIDE      = 0.5;               // 犬の定位置：横オフセット（m）
 const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -436,14 +436,24 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     // 実際の地面の高さを真下レイキャストで測り、足元(y=0)へ合わせる（視点が埋まらないように）
     const rc=new THREE.Raycaster(); const down=new THREE.Vector3(0,-1,0);
     const samples=[[0,0]].concat(ARTPOS.map(p=>[p.x,p.z]));
+    // フィールド全体に格子状のサンプルを追加（地面の代表高さを確実に拾う）
+    const gridR=Math.min(FIELD_R-1, maxR+1);
+    for(let gx=-gridR; gx<=gridR; gx+=gridR/2){ for(let gz=-gridR; gz<=gridR; gz+=gridR/2){ samples.push([gx,gz]); } }
     const hitYs=[];
     for(const [sx,sz] of samples){
-        rc.set(new THREE.Vector3(sx,500,sz), down);
+        rc.set(new THREE.Vector3(sx,1000,sz), down);
         const hit=rc.intersectObject(siteRoot,true)[0];
         if(hit) hitYs.push(hit.point.y);
     }
-    if(hitYs.length){ hitYs.sort((a,b)=>a-b); const surfaceY=hitYs[Math.floor(hitYs.length/2)]; // 中央値の地面
-        siteRoot.position.y -= surfaceY / fit; }     // 地面を y≈0 へ
+    if(hitYs.length){
+        hitYs.sort((a,b)=>a-b);
+        // 高め（80パーセンタイル）の地面を足元へ→広い範囲で埋まらない
+        const surfaceY=hitYs[Math.min(hitYs.length-1, Math.floor(hitYs.length*0.8))];
+        siteRoot.position.y -= (surfaceY + 0.2) / fit;   // 地面上端を足元のわずか下へ
+    } else {
+        // レイが当たらない場合はバウンディングボックス上端を基準に大きく下げる
+        siteRoot.position.y -= (box.max.y - 0.2) / fit;
+    }
     siteRoot.position.y += SITE_Y_OFFSET / fit;      // 追加の微調整（既定0）
     world.updateMatrixWorld(true);
     siteReady=true;
@@ -684,9 +694,9 @@ function excavate(t){
     const model = artModels[t.idx];
     if(model){
         model.visible=true;
-        model.position.set(t.pos.x, GROUND_Y-0.5, t.pos.z);
+        model.position.set(t.pos.x, GROUND_Y, t.pos.z);
         model.rotation.set(0,Math.random()*Math.PI*2,0);
-        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y-0.4, peakY:ARTIFACT_POP_Y+0.9, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
+        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
     }
     // 情報パネルをその場に立てる
     showInfoPanel(t.idx, t.pos);
@@ -722,7 +732,7 @@ function showInfoPanel(idx, pos){
         tex.colorSpace=THREE.SRGBColorSpace;
         const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
         const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.16), mat);
-        mesh.position.set(pos.x, 1.5, pos.z);   // 目線の高さに立てる
+        mesh.position.set(pos.x, 2.5, pos.z);   // 少し見上げる高さに立てる
         mesh.userData.face=true; scene.add(mesh); infoPanels.push(mesh);
     });
 }
