@@ -179,7 +179,8 @@
 
     <p class="hint" id="menuHint">
       <b>探す</b>：歩いてコントローラーを左右に振る（＝金属探知）。近いほど振動と音が速くなる。<br>
-      <b>掘る</b>：反応が最大になった地面でトリガーを引く。<br>
+      <b>掘る</b>：反応が最大の地面でトリガー（ハンドトラッキングは、その場で手を振るorつまむ）。<br>
+      <b>道具</b>：右手に持った道具。Bボタンで持ち替え。<b>図鑑</b>：左の手のひらを返すと表示（Yで固定）。<br>
       <b>相棒</b>：ワンちゃんが近い方向を教えてくれる…ときどき間違えるけど。
     </p>
   </div>
@@ -235,12 +236,16 @@ import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFact
  * ===================================================== */
 // ワールド単位＝メートル（XR local-floor基準）。プレイヤーは等身大なので全て実寸で扱う。
 const GROUND_Y      = 0;
-const FIELD_R       = 15;                 // 発掘フィールド半径（m）
+let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
-const ARTIFACT_POP_Y= 1.15;              // 出土品が飛び出して落ち着く高さ（胸元）
+const ARTIFACT_POP_Y= 0.35;              // 出土品が落ち着く高さ（掘った地面のすぐ上）
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
+const DOG_SIDE      = 2.8;               // 犬の定位置：横オフセット（m）
+const DOG_BACK      = 1.2;               // 犬の定位置：後方オフセット（m）
+// 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
+const ART_ORIG = [[-2.7,-0.5],[4.0,2.4],[3.8,-0.7],[3.0,-2.2],[0,-1.5],[3.2,2.2],[-2,-1],[-1.8,1.2]];
 
 const SITE_GLB   = "https://www.city.echizen.lg.jp/office/030/021/open-data-echizen_d/fil/00101_kokufuhakkutsu3.glb";
 const ART_BASE   = "https://raw.githubusercontent.com/echizencity/opendata/main/kokufuhakkutsu3/";
@@ -341,7 +346,30 @@ for(let i=0;i<2;i++){
     line.scale.z = 5; c.add(line); c.userData.line = line;
     c.userData.prevPos = new THREE.Vector3();
     c.userData.shakeSpeed = 0;
+    c.userData.index = i;
 }
+// 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
+let leftCtrl = controllers[1], rightCtrl = controllers[0]; // 既定（0=右, 1=左）
+const dexHolder  = new THREE.Group();  // 左手のひら側：発掘図鑑
+const toolHolder = new THREE.Group();  // 右手：発掘道具モデル
+function attachAccessories(){
+    if(leftCtrl  && dexHolder.parent  !== leftCtrl)  leftCtrl.add(dexHolder);
+    if(rightCtrl && toolHolder.parent !== rightCtrl) rightCtrl.add(toolHolder);
+}
+controllers.forEach(c=>{
+    c.addEventListener("connected", e=>{
+        const h = e.data && e.data.handedness;
+        c.userData.handedness = h;
+        c.userData.isHand = !!(e.data && e.data.hand);
+        if(h==="left")  leftCtrl  = c;
+        if(h==="right") rightCtrl = c;
+        attachAccessories();
+    });
+    c.addEventListener("disconnected", ()=>{ c.userData.handedness=null; c.userData.isHand=false; });
+    // ハンドトラッキングのつまみ動作＝発掘
+    c.addEventListener("selectstart", ()=>{ if(GAME.active && c.userData.isHand) handDigAt(c); });
+});
+attachAccessories();
 // 手（ハンドトラッキング）— コントローラー非装着時のフォールバック（音のみ）
 let hands=[];
 try{
@@ -350,27 +378,38 @@ try{
 }catch(e){ console.warn("hand tracking unavailable", e); hands=[]; }
 
 /* =====================================================
- * サイトモデル読み込み（レールなし・地面を y=0 付近へ補正）
+ * サイトモデル読み込み
+ *   - サイト＋発掘スポットを world グループに入れ、丸ごとリスケール
+ *   - こうすると「最初のHTMLの発掘場所」を相対関係そのままで縮小できる
  * ===================================================== */
 const gltfLoader = new GLTFLoader();
 let siteReady=false;
+const world = new THREE.Group(); scene.add(world);
+const ARTPOS = new Array(8).fill(null);   // 各出土品の確定ワールド座標（地面）
 gltfLoader.load(SITE_GLB, (gltf)=>{
-    const root = gltf.scene;
-    root.rotation.y = THREE.MathUtils.degToRad(-90);
-    scene.add(root);
-    // ネイティブ寸法を実測 → 歩けるフットプリントへ自動フィット
-    let box = new THREE.Box3().setFromObject(root);
+    const siteRoot = gltf.scene;
+    siteRoot.rotation.y = THREE.MathUtils.degToRad(-90);   // 元と同じ向き
+    world.add(siteRoot);
+    // 発掘スポットのプレースホルダ（元HTMLと同じ相対配置＝サイトのネイティブ座標）
+    const phs = ART_ORIG.map(([x,z])=>{ const o=new THREE.Object3D(); o.position.set(x,0,z); world.add(o); return o; });
+    // サイトのフットプリントで world 全体を歩ける大きさへフィット
+    let box = new THREE.Box3().setFromObject(siteRoot);
     const size = box.getSize(new THREE.Vector3());
     const fit = SITE_FIT_DIAM / Math.max(size.x, size.z, 0.001);
-    root.scale.setScalar(fit);
-    // スケール後に再計測して地面を y=0、中心を原点へ
-    box = new THREE.Box3().setFromObject(root);
+    world.scale.setScalar(fit);
+    world.updateMatrixWorld(true);
+    // 地面を y=0、中心を原点へ
+    box = new THREE.Box3().setFromObject(siteRoot);
     const center = box.getCenter(new THREE.Vector3());
-    root.position.x -= center.x;
-    root.position.z -= center.z;
-    root.position.y -= box.min.y;
+    world.position.x -= center.x; world.position.z -= center.z; world.position.y -= box.min.y;
+    world.updateMatrixWorld(true);
+    // 確定した発掘スポットを取得
+    let maxR = 0;
+    phs.forEach((o,i)=>{ const wp=o.getWorldPosition(new THREE.Vector3()); ARTPOS[i]=new THREE.Vector3(wp.x,GROUND_Y,wp.z); maxR=Math.max(maxR, Math.hypot(wp.x,wp.z)); });
+    FIELD_R = Math.max(FIELD_R, maxR+3);   // 発掘場所を含むよう歩行範囲を確保
     siteReady=true;
 }, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; });
+function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if(siteReady){ clearInterval(iv); cb(); } }, 100); } }
 
 /* ── アーティファクトGLB（8種）を事前ロード（非表示で保持） ── */
 const artModels = new Array(8).fill(null);
@@ -434,6 +473,77 @@ const bubble = (function(){
 })();
 
 /* =====================================================
+ * 右手の発掘道具モデル（持ち替えで見た目が変わる）
+ * ===================================================== */
+function buildToolModel(kind){
+    const g=new THREE.Group();
+    const handleMat=new THREE.MeshStandardMaterial({color:0x6b4a2b, roughness:0.7});
+    const metalMat =new THREE.MeshStandardMaterial({color:0xb9c2cc, roughness:0.35, metalness:0.6});
+    const handle=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.022,0.22,10), handleMat);
+    handle.rotation.x=Math.PI/2; handle.position.set(0,0,-0.11); g.add(handle); // 前方へ伸びる柄
+    if(kind==="wide"){ // ブラシ
+        const ferrule=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.04,10), metalMat); ferrule.rotation.x=Math.PI/2; ferrule.position.set(0,0,-0.225); g.add(ferrule);
+        const bristles=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.02,0.06), new THREE.MeshStandardMaterial({color:0xe8d9a0, roughness:0.95})); bristles.position.set(0,0,-0.275); g.add(bristles);
+    } else { // ピック
+        const tip=new THREE.Mesh(new THREE.ConeGeometry(0.02,0.16,10), metalMat); tip.rotation.x=-Math.PI/2; tip.position.set(0,0,-0.30); g.add(tip);
+        const cross=new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.13,8), metalMat); cross.position.set(0,0,-0.225); g.add(cross);
+    }
+    return g;
+}
+const toolWide=buildToolModel("wide"), toolNarrow=buildToolModel("narrow");
+toolNarrow.visible=false; toolHolder.add(toolWide); toolHolder.add(toolNarrow);
+function refreshToolModel(){ const w=(GAME.tool==="wide"); toolWide.visible=w; toolNarrow.visible=!w; }
+
+/* =====================================================
+ * 左手のひら側の発掘図鑑パネル（VRセッション中に確認できる）
+ * ===================================================== */
+let dexPinned=false;
+const dexPanel=(function(){
+    const cv=document.createElement("canvas"); cv.width=512; cv.height=640;
+    const ctx=cv.getContext("2d");
+    const tex=new THREE.CanvasTexture(cv);
+    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, depthTest:false});
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.17,0.212), mat);
+    // 手の甲の上に水平に寝かせ、面を上（+Y）へ→手のひらを返すと顔を向く
+    mesh.rotation.x=-Math.PI/2; mesh.rotation.z=Math.PI; mesh.position.set(0,0.03,-0.02); mesh.renderOrder=999;
+    dexHolder.add(mesh);
+    const imgs=ART_IMGS.map(src=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>draw(); im.src=src; return im; });
+    function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+    function draw(){
+        ctx.clearRect(0,0,512,640);
+        ctx.fillStyle="rgba(18,12,32,0.94)"; roundRect(ctx,8,8,496,624,26); ctx.fill();
+        ctx.strokeStyle="#d8b46a"; ctx.lineWidth=5; ctx.stroke();
+        let found=0; for(let i=0;i<8;i++) if(dexData[i]&&dexData[i].found) found++;
+        ctx.fillStyle="#f0d98a"; ctx.font="bold 42px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText("発掘図鑑  "+found+" / 8", 256, 54);
+        const cols=2, pad=18, gx=28, gy=96, cw=(496-gx-28-pad)/cols, chh=(624-96-20-pad*3)/4;
+        for(let i=0;i<8;i++){
+            const r=(i/cols)|0, c=i%cols, x=gx+c*(cw+pad), y=gy+r*(chh+pad), e=dexData[i];
+            if(e&&e.found){
+                ctx.fillStyle="#efe2c4"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
+                const im=imgs[i];
+                if(im&&im.complete&&im.naturalWidth){ const s=Math.min(cw/im.naturalWidth,(chh-16)/im.naturalHeight), iw=im.naturalWidth*s, ih=im.naturalHeight*s;
+                    try{ ctx.drawImage(im, x+(cw-iw)/2, y+10+(chh-16-ih)/2, iw, ih); }catch(_){}}
+            } else { ctx.fillStyle="rgba(42,32,60,0.92)"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
+                ctx.fillStyle="rgba(185,165,225,0.55)"; ctx.font="bold 64px sans-serif"; ctx.fillText("？", x+cw/2, y+chh/2); }
+            ctx.fillStyle=(e&&e.found)?"#7a6532":"rgba(185,165,225,0.75)"; ctx.font="bold 22px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
+            ctx.fillText("No."+String(i+1).padStart(2,"0"), x+8, y+7); ctx.textAlign="center"; ctx.textBaseline="middle";
+        }
+        tex.needsUpdate=true;
+    }
+    draw();
+    return { mesh, draw };
+})();
+// 左手のひらが顔を向いたら図鑑を表示（Yボタンで固定表示のトグルも可）
+function updateDexPanel(){
+    if(!renderer.xr.isPresenting || !leftCtrl){ dexHolder.visible=false; return; }
+    if(dexPinned){ dexHolder.visible=true; return; }
+    const up=new THREE.Vector3(0,1,0).applyQuaternion(leftCtrl.getWorldQuaternion(new THREE.Quaternion()));
+    const toHead=new THREE.Vector3().subVectors(camera.getWorldPosition(new THREE.Vector3()), leftCtrl.getWorldPosition(new THREE.Vector3())).normalize();
+    dexHolder.visible = up.dot(toHead) > 0.25;
+}
+
+/* =====================================================
  * ゲーム状態
  * ===================================================== */
 const GAME = {
@@ -492,17 +602,19 @@ function drawProgress(pg, frac, digNeed, done){
     pg.tex.needsUpdate=true;
 }
 
-/* ターゲット生成（未発掘のidxからランダムに1つ隠す） */
+/* ターゲット生成（最初のHTMLと同じ確定スポットに隠す） */
 const raycaster = new THREE.Raycaster();
 function spawnTarget(tier, forcedIdx=null){
-    // 未発掘のindexを候補に
-    const remaining = [...Array(8).keys()].filter(i=>!dexData[i]?.found && !GAME.targets.some(t=>t.idx===i));
-    let idx = forcedIdx!=null ? forcedIdx : (remaining.length? remaining[(Math.random()*remaining.length)|0] : (Math.random()*8|0));
+    // idx決定：forced優先。無ければアクティブでないスポットから
+    let idx;
+    if(forcedIdx!=null){ idx = ((forcedIdx%8)+8)%8; }
+    else {
+        const avail=[...Array(8).keys()].filter(i=>!GAME.targets.some(t=>t.idx===i));
+        idx = avail.length ? avail[(Math.random()*avail.length)|0] : (Math.random()*8|0);
+    }
     const d = difficulty(tier);
-    // フィールド内のランダム位置（中心から minDist〜FIELD_R）
-    const ang = Math.random()*Math.PI*2;
-    const rad = THREE.MathUtils.lerp(d.minDist, FIELD_R-1, Math.random());
-    const pos = new THREE.Vector3(Math.cos(ang)*rad, GROUND_Y, Math.sin(ang)*rad);
+    const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*3, GROUND_Y, ART_ORIG[idx][1]*3)).clone();
+    pos.y = GROUND_Y;
     const marker = makeMarker(); marker.position.copy(pos);
     const pg = makeProgress(); pg.spr.position.set(pos.x, GROUND_Y+1.2, pos.z);
     const t = { idx, tier, pos, diff:d, marker, pg, discovered:false, progress:0,
@@ -535,7 +647,7 @@ function excavate(t){
         model.visible=true;
         model.position.set(t.pos.x, GROUND_Y-0.5, t.pos.z);
         model.rotation.set(0,Math.random()*Math.PI*2,0);
-        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y-0.5, peakY:ARTIFACT_POP_Y+1.4, endY:ARTIFACT_POP_Y, t:0, dur:1.1 });
+        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y-0.4, peakY:ARTIFACT_POP_Y+0.9, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
     }
     // 情報パネルをその場に立てる
     showInfoPanel(t.idx, t.pos);
@@ -552,8 +664,8 @@ function excavate(t){
             sfxComplete(); showToast("🏆 全8種コンプリート！");
             bubble.say("ぜんぶ みつけたワン！", 4000);
         } else {
-            // 次の（1つ難しい）ターゲットを出す
-            setTimeout(()=> spawnTarget(GAME.collectedCount), 900);
+            // 次の（1つ難しい）出土品を次のスポットへ
+            setTimeout(()=> spawnTarget(GAME.collectedCount, GAME.collectedCount), 900);
         }
     } else { // タイムアタック
         GAME.score += 100 + t.tier*40;
@@ -571,7 +683,7 @@ function showInfoPanel(idx, pos){
         tex.colorSpace=THREE.SRGBColorSpace;
         const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
         const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.16), mat);
-        mesh.position.set(pos.x, ARTIFACT_POP_Y+1.9, pos.z);
+        mesh.position.set(pos.x, 1.5, pos.z);   // 目線の高さに立てる
         mesh.userData.face=true; scene.add(mesh); infoPanels.push(mesh);
     });
 }
@@ -636,6 +748,7 @@ function refreshDexHTML(){
     }
     document.getElementById("dexCount").textContent=`${found} / 8 発掘`;
     document.getElementById("dexFill").style.width=(found/8*100)+"%";
+    if(typeof dexPanel!=="undefined") dexPanel.draw();
 }
 refreshDexHTML();
 function clearNewStamps(){ let ch=false; for(const k in dexData){ if(dexData[k].isNew){ dexData[k].isNew=false; ch=true; } } if(ch){ saveDex(dexData); } }
@@ -658,13 +771,16 @@ function startGame(desktop){
     // 出土品モデルを一旦隠す
     artModels.forEach(m=>{ if(m) m.visible=false; });
     infoPanels.forEach(p=>scene.remove(p)); infoPanels.length=0;
-    // 初期ターゲット
-    if(GAME.mode==="collect"){ spawnTarget(0); }
-    else { spawnTarget(0); spawnTarget(2); spawnTarget(4); }
+    // 初期ターゲット（サイト読込・発掘スポット確定後に配置）
+    afterSite(()=>{
+        clearTargets();
+        if(GAME.mode==="collect"){ spawnTarget(0, 0); }
+        else { spawnTarget(0); spawnTarget(2); spawnTarget(4); }
+    });
     document.body.classList.add("playing");
     if(desktop) document.body.classList.add("desktop");
     menu.style.display="none";
-    updateGoal(); updateToolLabel();
+    updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw();
     bubble.say("いっしょに さがすワン！", 2600);
     unlockAudio();
 }
@@ -694,7 +810,7 @@ function updateGoal(){
     else { el.textContent=`タイムアタック：${GAME.score}pt ／ 残り${Math.ceil(GAME.timeLeft)}秒`; }
 }
 function updateToolLabel(){ document.getElementById("dTool").textContent = "道具："+(GAME.tool==="wide"?"🖌 幅広":"⛏ 細ピック"); }
-function toggleTool(){ GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToolLabel();
+function toggleTool(){ GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToolLabel(); refreshToolModel();
     // 既存ターゲットのdigNeedを再計算
     GAME.targets.forEach(t=>{ t.digNeed=Math.max(2, Math.round(t.diff.digNeed*toolMods().digMul)); t.progress=Math.min(t.progress,t.digNeed); });
     showToast(GAME.tool==="wide"?"🖌 幅広ブラシ：広く探せる/掘り多め":"⛏ 細ピック：狭いが/掘り少なめ");
@@ -754,6 +870,17 @@ function doDig(t){
     drawProgress(t.pg, t.progress/t.digNeed, t.digNeed, t.progress);
     if(t.progress>=t.digNeed){ excavate(t); }
 }
+// 指定オブジェクト（コントローラ/手）の位置で、発見済みターゲットの上なら掘る
+function handDigAt(obj){
+    if(!GAME.active) return;
+    const cpos=obj.getWorldPosition(new THREE.Vector3());
+    let best=null,bd=1e9;
+    for(const t of GAME.targets){ if(!t.discovered) continue;
+        const d=Math.hypot(cpos.x-t.pos.x,cpos.z-t.pos.z);
+        if(d<toolMods().digR && d<bd){ bd=d; best=t; } }
+    if(best) doDig(best); else sfxDig();
+}
+let handDigCooldown=0;
 
 /* =====================================================
  * メインループ
@@ -814,6 +941,9 @@ renderer.setAnimationLoop(()=>{
             if(GAME.timeLeft<=0){ sfxTimeUp(); showToast(`⏱ 終了！ ${GAME.score}pt`,4000); endGame(!isVR); }
         }
     }
+
+    // 左手のひらの発掘図鑑パネル
+    updateDexPanel();
 
     // デスクトップのカメラ向き適用
     if(GAME.desktop && !isVR){
@@ -876,16 +1006,16 @@ function updateScan(dt, isVR, now){
             const handed = i===0?"right":"left"; // getController順は環境依存だが実害小
             probes.push({pos:p, shaking:sp>1.2, haptic:true, handedness:handed});
         });
-        // ハンドトラッキング（コントローラ無し時・音のみ）
+        // ハンドトラッキング（コントローラ無し時）
         hands.forEach(h=>{
             const joint=h.joints?.["index-finger-tip"]||h.joints?.["wrist"];
             if(joint){ const p=joint.getWorldPosition(new THREE.Vector3());
                 const sp=p.distanceTo(h.userData.prevPos)/Math.max(dt,1e-3); h.userData.prevPos.copy(p);
-                probes.push({pos:p, shaking:sp>1.0, haptic:false}); }
+                probes.push({pos:p, shaking:sp>1.0, haptic:false, isHand:true}); }
         });
     } else if(GAME.desktop){
         const moving = keys["KeyW"]||keys["KeyA"]||keys["KeyS"]||keys["KeyD"];
-        probes.push({pos:desktopProbe().clone(), shaking:true, haptic:false}); // デスクトップは常時探査
+        probes.push({pos:desktopProbe().clone(), shaking:true, haptic:false, isHand:false}); // デスクトップは常時探査
     }
 
     // 各ターゲットについて最大信号を求める
@@ -914,6 +1044,15 @@ function updateScan(dt, isVR, now){
             }
         }
     }
+    // ハンドトラッキング：発見済みスポットの上で手を振っても発掘（つまみ動作＝selectstartでも発掘）
+    if(handDigCooldown>0) handDigCooldown-=dt;
+    for(const pr of probes){
+        if(!pr.isHand || !pr.shaking) continue;
+        for(const t of GAME.targets){ if(!t.discovered) continue;
+            const d=Math.hypot(pr.pos.x-t.pos.x, pr.pos.z-t.pos.z);
+            if(d<toolMods().digR && handDigCooldown<=0){ doDig(t); handDigCooldown=0.4; break; }
+        }
+    }
     // デスクトップの「アツさ」表示
     if(GAME.desktop){
         const el=document.getElementById("heat");
@@ -932,8 +1071,9 @@ function handleVRDig(){
         const trig = gp.buttons[0]?.pressed ?? false;
         const which = src.handedness==="left"?1:0;
         if(trig && !prevTriggers[which]){
-            // このコントローラーのワールド位置を取得（対応するthreeコントローラーから）
-            const cpos = controllers[which]?.getWorldPosition(new THREE.Vector3()) || player.position;
+            // 掘る手のワールド位置（解決済みの左右コントローラを使用）
+            const srcCtrl = (src.handedness==="left"?leftCtrl:rightCtrl) || controllers[which];
+            const cpos = srcCtrl?.getWorldPosition(new THREE.Vector3()) || player.position;
             let best=null,bd=1e9;
             for(const t of GAME.targets){ if(!t.discovered) continue;
                 const d=Math.hypot(cpos.x-t.pos.x,cpos.z-t.pos.z);
@@ -944,15 +1084,18 @@ function handleVRDig(){
         prevTriggers[which]=trig;
         idx++;
     }
-    // Bボタンで道具切替（右手）
+    // Bボタンで道具切替（右手）／ Yボタンで図鑑の固定表示（左手）
     for(const src of s.inputSources){
-        if(src.handedness!=="right"||!src.gamepad) continue;
-        const b=src.gamepad.buttons[5]?.pressed ?? false;
-        if(b && !GAME._prevB){ toggleTool(); }
-        GAME._prevB=b;
-        const a=src.gamepad.buttons[4]?.pressed ?? false; // Aで図鑑
-        if(a && !GAME._prevA){ document.getElementById("dex").classList.toggle("open"); if(document.getElementById("dex").classList.contains("open"))refreshDexHTML(); }
-        GAME._prevA=a;
+        if(src.handedness==="right" && src.gamepad){
+            const b=src.gamepad.buttons[5]?.pressed ?? false;
+            if(b && !GAME._prevB){ toggleTool(); }
+            GAME._prevB=b;
+        }
+        if(src.handedness==="left" && src.gamepad){
+            const y=src.gamepad.buttons[5]?.pressed ?? false;
+            if(y && !GAME._prevY){ dexPinned=!dexPinned; showToast(dexPinned?"📖 図鑑を固定表示":"📖 図鑑：手のひらを返すと表示"); }
+            GAME._prevY=y;
+        }
     }
 }
 
@@ -964,9 +1107,11 @@ function updateDog(dt, now){
         // ヒント：指し示す方向へ数歩
         goal=new THREE.Vector3().copy(dog.position).addScaledVector(dog.userData.hintDir, 2.0);
     } else {
-        // プレイヤーの少し前・横に付く
-        const side=new THREE.Vector3(1,0,0).applyQuaternion(camQuat()); side.y=0; side.normalize();
-        goal=new THREE.Vector3().copy(camWorld).addScaledVector(side,1.6); goal.y=GROUND_Y;
+        // プレイヤーの斜め後ろ（少し離れた定位置）
+        const q=camQuat();
+        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
+        goal=new THREE.Vector3().copy(camWorld).addScaledVector(side,DOG_SIDE).addScaledVector(fwd,-DOG_BACK); goal.y=GROUND_Y;
     }
     goal.y=GROUND_Y;
     const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
