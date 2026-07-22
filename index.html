@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>越前国府 発掘図鑑クエスト</title>
+<style>
+    *, *::before, *::after { box-sizing:border-box; }
+    :root{
+        --night:#0a0716; --night2:#120a2a; --violet:#a78bfa; --violet2:#7c3aed;
+        --blue:#38bdf8; --gold:#f7c948; --parch:#efe2c4; --parch-line:#c9b487;
+        --ink:#3a2d16; --dim:#8a7fb5;
+    }
+    body { margin:0; overflow:hidden; background:#000; color:#fff;
+        font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',system-ui,sans-serif; }
+
+    /* ── タイトル / メニュー オーバーレイ ── */
+    #menu{
+        position:fixed; inset:0; z-index:20; overflow-y:auto;
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        padding:24px 16px;
+        background:
+            radial-gradient(ellipse at 28% 18%, rgba(120,60,240,0.28) 0%, transparent 60%),
+            radial-gradient(ellipse at 74% 82%, rgba(30,90,220,0.22) 0%, transparent 60%),
+            linear-gradient(160deg,#05040f 0%,#0c0724 55%,#070a1c 100%);
+    }
+    .menu-inner{ width:min(620px,94vw); display:flex; flex-direction:column; align-items:center; }
+    .kicker{ letter-spacing:6px; font-size:12px; color:var(--dim); margin:0 0 10px; }
+    .title{
+        margin:0; font-size:clamp(30px,6vw,56px); font-weight:900; letter-spacing:2px; text-align:center;
+        background:linear-gradient(90deg,#e6c26a,#f0e0b6 45%,#e6c26a);
+        -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+        filter:drop-shadow(0 0 20px rgba(210,170,90,0.45));
+    }
+    .subtitle{ margin:8px 0 22px; color:rgba(214,200,255,.78); font-size:clamp(13px,2.2vw,17px); letter-spacing:1px; text-align:center; }
+
+    #vrbtnwrap{ width:100%; margin-bottom:14px; }
+    #vrbtnwrap button, #vrbtnwrap a{
+        display:block!important; position:static!important; width:100%!important;
+        padding:17px 0!important; font-size:clamp(16px,2.6vw,21px)!important; font-weight:800!important;
+        letter-spacing:1px!important; border:none!important; border-radius:12px!important; cursor:pointer!important;
+        text-decoration:none!important; color:#fff!important; text-align:center!important;
+        background:linear-gradient(135deg,#7c3aed,#1d4ed8)!important;
+        box-shadow:0 0 30px rgba(120,80,255,.6), inset 0 1px 0 rgba(255,255,255,.15)!important;
+    }
+    #vrbtnwrap button:disabled, #vrbtnwrap a.vr-disabled{
+        background:linear-gradient(135deg,#33334f,#26263c)!important; color:rgba(255,255,255,.4)!important;
+        box-shadow:none!important; cursor:not-allowed!important; pointer-events:none!important;
+    }
+    .desktop-btn{
+        width:100%; padding:13px 0; margin-bottom:18px; border:1px solid rgba(180,140,255,.4);
+        border-radius:11px; background:rgba(20,14,44,.6); color:#c9bcff; font-size:15px; font-weight:700;
+        letter-spacing:1px; cursor:pointer; transition:.15s;
+    }
+    .desktop-btn:hover{ background:rgba(40,26,80,.8); color:#fff; }
+
+    .cardgrid{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+    .opt{ background:rgba(12,9,32,.62); border:1px solid rgba(180,140,255,.24); border-radius:12px; padding:12px 14px; }
+    .opt .lbl{ font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:9px; }
+    .seg{ display:flex; width:100%; }
+    .seg button{ flex:1; border:none; padding:11px 4px; background:rgba(80,70,130,.6); color:rgba(255,255,255,.66);
+        font-size:13px; font-weight:700; cursor:pointer; transition:.15s; }
+    .seg button:first-child{ border-radius:8px 0 0 8px; } .seg button:last-child{ border-radius:0 8px 8px 0; }
+    .seg button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
+    .opt.wide{ grid-column:1/-1; }
+
+    .row{ width:100%; display:flex; gap:10px; }
+    .ghost{ flex:1; padding:13px 0; border:1px solid rgba(180,140,255,.35); border-radius:11px;
+        background:rgba(18,12,40,.5); color:#c9bcff; font-weight:700; font-size:15px; cursor:pointer; transition:.15s; }
+    .ghost:hover{ background:rgba(40,26,80,.8); color:#fff; }
+
+    .hint{ margin-top:16px; font-size:12px; line-height:1.7; color:rgba(190,178,225,.62); text-align:center; }
+    .hint b{ color:#c9bcff; }
+
+    /* ── 発掘図鑑（HTML版） ── */
+    #dex{ position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
+        background:rgba(3,2,10,.92); padding:18px; }
+    #dex.open{ display:flex; }
+    .dexbox{ width:min(880px,96vw); max-height:92vh; overflow:hidden; display:flex; flex-direction:column; gap:12px;
+        background:linear-gradient(150deg,#160f0a,#0c1024); border:1px solid rgba(210,180,120,.35);
+        border-radius:16px; padding:18px 20px; position:relative; }
+    .dexbox h2{ margin:0; text-align:center; font-size:clamp(17px,2.4vw,23px); color:var(--gold); letter-spacing:3px; }
+    .dexbar{ height:8px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; }
+    .dexbar > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,#e6c26a,#f7e6a8);
+        transition:width .5s ease; }
+    .dexbar-lbl{ text-align:center; font-size:13px; color:rgba(230,210,160,.85); letter-spacing:1px; }
+    .dexgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; overflow-y:auto; padding:2px; }
+    @media(max-width:560px){ .dexgrid{ grid-template-columns:repeat(2,1fr);} }
+    .dexcard{ position:relative; border-radius:12px; overflow:hidden; aspect-ratio:3/4;
+        background:linear-gradient(160deg,#efe2c4,#dcc9a0); border:2px solid var(--parch-line);
+        display:flex; align-items:center; justify-content:center; }
+    .dexcard .no{ position:absolute; top:6px; left:8px; font-size:12px; font-weight:800; color:#7a6532;
+        letter-spacing:1px; z-index:2; }
+    .dexcard img{ width:100%; height:100%; object-fit:contain; padding:14px 8px 8px; }
+    .dexcard.locked{ background:linear-gradient(160deg,#20182e,#161022); border-color:rgba(150,130,190,.35); }
+    .dexcard.locked .q{ font-size:44px; color:rgba(180,160,220,.4); font-weight:900; }
+    .dexcard.locked .no{ color:rgba(180,160,220,.5); }
+    .dexcard .newstamp{ position:absolute; top:8px; right:6px; transform:rotate(11deg);
+        background:#e23b57; color:#fff; font-size:10px; font-weight:900; letter-spacing:1px;
+        padding:3px 7px; border-radius:5px; box-shadow:0 2px 8px rgba(0,0,0,.35); z-index:3; }
+    .dexcard .date{ position:absolute; bottom:5px; right:7px; font-size:9px; color:#7a6532; z-index:2; }
+    .dexclose{ position:absolute; top:12px; right:16px; background:none; border:none; color:rgba(230,210,160,.7);
+        font-size:26px; cursor:pointer; line-height:1; }
+    .dexclose:hover{ color:#fff; }
+
+    /* ── デスクトップ用 HUD ── */
+    #dhud{ position:fixed; left:0; right:0; bottom:0; z-index:15; display:none; pointer-events:none;
+        padding:14px; flex-direction:column; align-items:center; gap:8px; }
+    body.desktop #dhud{ display:flex; }
+    #dhud .bar{ pointer-events:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
+        background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3); border-radius:12px; padding:9px 14px;
+        font-size:13px; color:#d7ccff; backdrop-filter:blur(6px); }
+    #dhud .bar b{ color:#fff; } #dhud .k{ background:rgba(120,90,220,.35); border:1px solid rgba(180,140,255,.4);
+        border-radius:5px; padding:1px 6px; font-weight:700; font-size:12px; }
+    #dhud .pill{ pointer-events:auto; background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3);
+        border-radius:99px; padding:6px 14px; font-size:13px; color:#d7ccff; }
+    #dhud .mini{ display:flex; gap:8px; }
+    #dhud button{ pointer-events:auto; border:1px solid rgba(180,140,255,.4); background:rgba(30,20,60,.7);
+        color:#c9bcff; border-radius:8px; padding:6px 12px; font-weight:700; cursor:pointer; font-size:13px; }
+    #dhud button:hover{ background:rgba(50,32,100,.9); color:#fff; }
+
+    /* 「アツい！」インジケータ（デスクトップ） */
+    #heat{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:14; pointer-events:none;
+        width:70px; height:70px; border-radius:50%; border:3px solid rgba(255,255,255,0); display:none;
+        box-shadow:0 0 0 0 rgba(255,120,60,0); }
+    body.desktop #heat{ display:block; }
+    #crosshair{ position:fixed; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px; z-index:13;
+        border-radius:50%; background:rgba(255,255,255,.7); display:none; pointer-events:none; }
+    body.desktop #crosshair{ display:block; }
+
+    /* トースト */
+    #toast{ position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-20px); z-index:60;
+        background:rgba(10,7,26,.92); border:1px solid rgba(210,180,120,.5); color:#f2e6c4;
+        padding:12px 22px; border-radius:12px; font-weight:800; letter-spacing:1px; opacity:0;
+        transition:opacity .3s, transform .3s; pointer-events:none; text-align:center; }
+    #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* 図鑑ボタン（常設・右上） */
+    #dexBtn{ position:fixed; top:12px; right:14px; z-index:18; display:none;
+        border:1px solid rgba(210,180,120,.45); background:rgba(14,9,30,.72); color:#e6c26a;
+        border-radius:9px; padding:7px 13px; font-weight:800; letter-spacing:1px; cursor:pointer; }
+    body.playing #dexBtn{ display:block; }
+    #dexBtn:hover{ background:rgba(40,26,60,.9); color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- ═══ タイトル / メニュー ═══ -->
+<div id="menu">
+  <div class="menu-inner">
+    <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
+    <h1 class="title">越前国府 発掘図鑑クエスト</h1>
+    <p class="subtitle">遺跡を歩いて探して、出土品を掘り当てよう。相棒の犬と一緒に。</p>
+
+    <div id="vrbtnwrap"></div>
+    <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC操作）</button>
+
+    <div class="cardgrid">
+      <div class="opt wide">
+        <div class="lbl">モード</div>
+        <div class="seg" id="segMode">
+          <button data-v="collect" class="on">🗺 じっくりコレクション</button>
+          <button data-v="time">⏱ タイムアタック</button>
+        </div>
+      </div>
+      <div class="opt wide">
+        <div class="lbl">最初の発掘道具（あとで切替可）</div>
+        <div class="seg" id="segTool">
+          <button data-v="wide" class="on">🖌 幅広ブラシ（広く探せる/掘り多め）</button>
+          <button data-v="narrow">⛏ 細ピック（狭いが/掘り少なめ）</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="ghost" id="openDex">📖 発掘図鑑</button>
+      <button class="ghost" id="openHelp">❓ あそび方</button>
+    </div>
+
+    <p class="hint" id="menuHint">
+      <b>探す</b>：歩いてコントローラーを左右に振る（＝金属探知）。近いほど振動と音が速くなる。<br>
+      <b>掘る</b>：反応が最大になった地面でトリガーを引く。<br>
+      <b>相棒</b>：ワンちゃんが近い方向を教えてくれる…ときどき間違えるけど。
+    </p>
+  </div>
+</div>
+
+<!-- ═══ 発掘図鑑（HTML） ═══ -->
+<div id="dex">
+  <div class="dexbox">
+    <button class="dexclose" id="dexClose">×</button>
+    <h2>📖 発掘図鑑</h2>
+    <div class="dexbar"><i id="dexFill"></i></div>
+    <div class="dexbar-lbl" id="dexCount">0 / 8 発掘</div>
+    <div class="dexgrid" id="dexGrid"></div>
+  </div>
+</div>
+
+<!-- 図鑑ボタン（プレイ中/右上） -->
+<button id="dexBtn">📖 図鑑</button>
+
+<!-- デスクトップ HUD -->
+<div id="dhud">
+  <div class="pill" id="dGoal">出土品をさがそう</div>
+  <div class="bar">
+    <span class="mini">
+      <span class="k">W A S D</span> 歩く
+      <span class="k">マウス</span> 見回す（クリックで視点固定）
+      <span class="k">左クリック</span> 掘る
+    </span>
+    <button id="dTool">道具：🖌 幅広</button>
+    <button id="dDex">📖 図鑑</button>
+    <button id="dQuit">やめる</button>
+  </div>
+</div>
+<div id="heat"></div>
+<div id="crosshair"></div>
+<div id="toast"></div>
+
+<script type="importmap">
+{ "imports":{
+  "three":"https://code4fukui.github.io/three.js/build/three.module.js",
+  "three/addons/":"https://code4fukui.github.io/three.js/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {VRButton} from "three/addons/webxr/VRButton.js";
+import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
+
+/* =====================================================
+ * 定数
+ * ===================================================== */
+// ワールド単位＝メートル（XR local-floor基準）。プレイヤーは等身大なので全て実寸で扱う。
+const GROUND_Y      = 0;
+const FIELD_R       = 15;                 // 発掘フィールド半径（m）
+const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
+const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
+const ARTIFACT_POP_Y= 1.15;              // 出土品が飛び出して落ち着く高さ（胸元）
+const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
+const SNAP_DEG      = 30;                 // スナップ回転
+
+const SITE_GLB   = "https://www.city.echizen.lg.jp/office/030/021/open-data-echizen_d/fil/00101_kokufuhakkutsu3.glb";
+const ART_BASE   = "https://raw.githubusercontent.com/echizencity/opendata/main/kokufuhakkutsu3/";
+const IMG_BASE   = "https://echizencity.github.io/opendata/kokufuhakkutsu3/";
+const ART_FILES  = ["model01_small.glb","model02_small.glb","model03_small.glb","model04_small.glb",
+                    "model05_small.glb","model06_small.glb","model07_small.glb","model08_small.glb"];
+const ART_IMGS   = ["40100","40200","40300","40400","40500","40600","40700","40800"]
+                    .map(n=>IMG_BASE+n+"_kokufuhakkutsu3.png");
+const TIME_LIMIT = 100; // タイムアタック秒数
+
+/* =====================================================
+ * 図鑑データ（localStorage 永続化）
+ *   dex[idx] = {found:true, date:"YYYY/MM/DD"} または未定義
+ * ===================================================== */
+const DEX_KEY = "echizen_dex_v1";
+const TA_KEY  = "echizen_timeattack_top5_v1";
+function loadDex(){ try{ return JSON.parse(localStorage.getItem(DEX_KEY)||"{}"); }catch(e){ return {}; } }
+function saveDex(d){ localStorage.setItem(DEX_KEY, JSON.stringify(d)); }
+function loadTA(){ try{ return JSON.parse(localStorage.getItem(TA_KEY)||"[]"); }catch(e){ return []; } }
+function saveTA(a){ localStorage.setItem(TA_KEY, JSON.stringify(a)); }
+let dexData = loadDex();
+
+/* =====================================================
+ * Web Audio（合成SFX）— 既存アプリの手法を踏襲
+ * ===================================================== */
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+function unlockAudio(){ if(audioCtx.state==="suspended") audioCtx.resume(); }
+["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:true}));
+
+function beep(freq, dur=0.09, vol=0.3, type="sine"){
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination); o.type=type;
+    o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+dur);
+    o.start(); o.stop(audioCtx.currentTime+dur);
+}
+function chord(freqs, step=0.06, type="triangle", vol=0.4){
+    freqs.forEach((f,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination); o.type=type;
+        o.frequency.setValueAtTime(f, audioCtx.currentTime+i*step);
+        g.gain.setValueAtTime(vol, audioCtx.currentTime+i*step);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+i*step+0.5);
+        o.start(audioCtx.currentTime+i*step); o.stop(audioCtx.currentTime+i*step+0.55); });
+}
+const sfxScan     = (signal)=> beep(300+900*signal, 0.06, 0.22+0.2*signal, "sine");
+const sfxDig      = ()=> beep(180+Math.random()*40, 0.07, 0.28, "square");
+const sfxLocate   = ()=> chord([440,660,880],0.05,"triangle",0.35);   // ホットスポット発見
+const sfxExcavate = ()=> chord([523,659,784,1047],0.09,"triangle",0.5);// 出土！
+const sfxBark     = ()=>{ beep(520,0.08,0.3,"square"); setTimeout(()=>beep(430,0.1,0.28,"square"),90); };
+const sfxComplete = ()=> chord([523,659,784,1047,1319],0.11,"triangle",0.55);
+const sfxTimeUp   = ()=> chord([880,660,440,330],0.15,"sawtooth",0.4);
+
+/* =====================================================
+ * シーン / レンダラ / カメラ / プレイヤーリグ
+ * ===================================================== */
+const scene    = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a16);
+scene.fog = new THREE.FogExp2(0x0a0a16, 0.006);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.05, 2000);
+camera.position.set(0, 1.6, 0);
+
+// プレイヤーリグ（移動はこのグループを動かす。VRではカメラ＝頭の位置がこの中で動く）
+const player = new THREE.Group();
+player.add(camera);
+scene.add(player);
+
+// ライト（レール版はaddCoaster側で処理していたので、歩行版では自前で用意）
+scene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
+const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
+sun.position.set(30, 60, 20); scene.add(sun);
+scene.add(new THREE.AmbientLight(0x404060, 0.5));
+
+// VRButton
+document.getElementById("vrbtnwrap").appendChild(VRButton.createButton(renderer));
+
+/* ── コントローラ ── */
+const ctrlFactory = new XRControllerModelFactory();
+const controllers = [];
+for(let i=0;i<2;i++){
+    const c = renderer.xr.getController(i);
+    player.add(c); controllers.push(c);
+    const grip = renderer.xr.getControllerGrip(i);
+    grip.add(ctrlFactory.createControllerModel(grip));
+    player.add(grip);
+    // レーザー（掘る照準用）
+    const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-1)]),
+        new THREE.LineBasicMaterial({color:0x88ccff, transparent:true, opacity:0.5}));
+    line.scale.z = 5; c.add(line); c.userData.line = line;
+    c.userData.prevPos = new THREE.Vector3();
+    c.userData.shakeSpeed = 0;
+}
+// 手（ハンドトラッキング）— コントローラー非装着時のフォールバック（音のみ）
+let hands=[];
+try{
+    hands = [renderer.xr.getHand(0), renderer.xr.getHand(1)];
+    hands.forEach(h=>{ player.add(h); h.userData.prevPos=new THREE.Vector3(); h.userData.shakeSpeed=0; });
+}catch(e){ console.warn("hand tracking unavailable", e); hands=[]; }
+
+/* =====================================================
+ * サイトモデル読み込み（レールなし・地面を y=0 付近へ補正）
+ * ===================================================== */
+const gltfLoader = new GLTFLoader();
+let siteReady=false;
+gltfLoader.load(SITE_GLB, (gltf)=>{
+    const root = gltf.scene;
+    root.rotation.y = THREE.MathUtils.degToRad(-90);
+    scene.add(root);
+    // ネイティブ寸法を実測 → 歩けるフットプリントへ自動フィット
+    let box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const fit = SITE_FIT_DIAM / Math.max(size.x, size.z, 0.001);
+    root.scale.setScalar(fit);
+    // スケール後に再計測して地面を y=0、中心を原点へ
+    box = new THREE.Box3().setFromObject(root);
+    const center = box.getCenter(new THREE.Vector3());
+    root.position.x -= center.x;
+    root.position.z -= center.z;
+    root.position.y -= box.min.y;
+    siteReady=true;
+}, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; });
+
+/* ── アーティファクトGLB（8種）を事前ロード（非表示で保持） ── */
+const artModels = new Array(8).fill(null);
+ART_FILES.forEach((f,idx)=>{
+    gltfLoader.load(ART_BASE+f, (gltf)=>{
+        const o=gltf.scene;
+        const box=new THREE.Box3().setFromObject(o);
+        const size=box.getSize(new THREE.Vector3());
+        const fit=ART_TARGET_H/Math.max(size.x,size.y,size.z,0.001);
+        o.scale.setScalar(fit);
+        o.visible=false; scene.add(o); artModels[idx]=o;
+    }, undefined, ()=>{ /* 失敗しても続行 */ });
+});
+// 図鑑カード用の画像テクスチャ（発掘演出パネル）
+const texLoader = new THREE.TextureLoader();
+
+/* =====================================================
+ * 相棒の犬（プリミティブ製）＋ 吹き出し
+ * ===================================================== */
+const dog = new THREE.Group();
+(function buildDog(){
+    const bodyMat = new THREE.MeshStandardMaterial({color:0xc99a5b, roughness:0.8});
+    const darkMat = new THREE.MeshStandardMaterial({color:0x8a6636, roughness:0.8});
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.55,1.5), bodyMat); body.position.y=0.75; dog.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.55,0.6), bodyMat); head.position.set(0,1.05,0.95); dog.add(head);
+    const snout= new THREE.Mesh(new THREE.BoxGeometry(0.32,0.28,0.4), darkMat); snout.position.set(0,0.95,1.3); dog.add(snout);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10), new THREE.MeshStandardMaterial({color:0x221a12})); nose.position.set(0,0.98,1.52); dog.add(nose);
+    [[-0.2,1.42,0.85],[0.2,1.42,0.85]].forEach(p=>{ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.35,4),darkMat); ear.position.set(p[0],p[1],p[2]); dog.add(ear); });
+    [[-0.28,0.28,0.5],[0.28,0.28,0.5],[-0.28,0.28,-0.5],[0.28,0.28,-0.5]].forEach(p=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.55,8),darkMat); leg.position.set(p[0],p[1],p[2]); dog.add(leg); });
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.11,0.6,8),bodyMat); tail.position.set(0,0.95,-0.85); tail.rotation.x=-0.9; dog.add(tail); dog.userData.tail=tail;
+    // 目
+    [[-0.16,1.12,1.22],[0.16,1.12,1.22]].forEach(p=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,10), new THREE.MeshStandardMaterial({color:0x1a140c})); eye.position.set(p[0],p[1],p[2]); dog.add(eye); });
+    dog.scale.setScalar(1.05);
+})();
+scene.add(dog);
+dog.position.set(2,GROUND_Y,2);
+
+// 吹き出しスプライト
+const bubble = (function(){
+    const cv=document.createElement("canvas"); cv.width=512; cv.height=256;
+    const ctx=cv.getContext("2d");
+    const tex=new THREE.CanvasTexture(cv);
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
+    spr.scale.set(3.2,1.6,1); spr.position.set(0,2.6,0); spr.visible=false;
+    dog.add(spr);
+    function draw(text){
+        ctx.clearRect(0,0,512,256);
+        ctx.fillStyle="rgba(255,252,244,0.96)";
+        const r=28; ctx.beginPath();
+        ctx.moveTo(r,20); ctx.lineTo(512-r,20); ctx.quadraticCurveTo(512-8,20,512-8,20+r);
+        ctx.lineTo(512-8,180-r); ctx.quadraticCurveTo(512-8,180,512-r,180);
+        ctx.lineTo(280,180); ctx.lineTo(256,230); ctx.lineTo(232,180);
+        ctx.lineTo(r,180); ctx.quadraticCurveTo(8,180,8,180-r);
+        ctx.lineTo(8,20+r); ctx.quadraticCurveTo(8,20,r,20); ctx.closePath();
+        ctx.fill(); ctx.strokeStyle="#d8b46a"; ctx.lineWidth=4; ctx.stroke();
+        ctx.fillStyle="#3a2d16"; ctx.font="bold 48px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText(text,256,100); tex.needsUpdate=true;
+    }
+    let hideT=null;
+    return { say(text,ms=2200){ draw(text); spr.visible=true; if(hideT)clearTimeout(hideT); hideT=setTimeout(()=>spr.visible=false, ms); } };
+})();
+
+/* =====================================================
+ * ゲーム状態
+ * ===================================================== */
+const GAME = {
+    active:false, mode:"collect", tool:"wide", desktop:false,
+    collectedCount:0,          // コレクション：発掘済み数（＝難易度ティア）
+    targets:[],                // アクティブな埋蔵ターゲット
+    timeLeft:TIME_LIMIT, score:0, endT:0,
+};
+let chosenMode="collect", chosenTool="wide";
+
+/* 難易度：ティア0(易)→7(難)。探知半径↓ / 必要掘り回数↑ / 犬の信頼度↓ / 遠く */
+function difficulty(tier){
+    const t = tier/7;
+    return {
+        detectR : THREE.MathUtils.lerp(7.0, 2.4, t),   // 探知が反応する半径
+        digNeed : Math.round(THREE.MathUtils.lerp(3, 10, t)),
+        dogRel  : THREE.MathUtils.lerp(0.95, 0.4, t),  // 犬ヒント信頼度
+        minDist : THREE.MathUtils.lerp(4, 9, t),       // 中心からの最低距離
+    };
+}
+// 道具補正
+function toolMods(){
+    return GAME.tool==="wide"
+        ? { detectMul:1.4, digMul:1.7, digR:1.3 }   // 広く探せる/掘り多い（m）
+        : { detectMul:0.7, digMul:0.55, digR:0.6 }; // 狭いが/掘り少ない（m）
+}
+
+// ホットスポット・マーカー（発見後に地面へ出す光る目印）
+function makeMarker(){
+    const g=new THREE.Group();
+    const ring=new THREE.Mesh(new THREE.RingGeometry(0.55,0.8,32),
+        new THREE.MeshBasicMaterial({color:0xffdd66, transparent:true, opacity:0.85, side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2; ring.position.y=0.03; g.add(ring);
+    const pillar=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,3,16,1,true),
+        new THREE.MeshBasicMaterial({color:0xffe08a, transparent:true, opacity:0.28, side:THREE.DoubleSide, depthWrite:false}));
+    pillar.position.y=1.5; g.add(pillar);
+    g.userData.ring=ring; g.userData.pillar=pillar; g.visible=false;
+    scene.add(g); return g;
+}
+
+// 進捗リング（掘り進捗）
+function makeProgress(){
+    const cv=document.createElement("canvas"); cv.width=256; cv.height=256;
+    const tex=new THREE.CanvasTexture(cv);
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
+    spr.scale.set(1.0,1.0,1); spr.visible=false; scene.add(spr);
+    return { spr, tex, cv, ctx:cv.getContext("2d") };
+}
+function drawProgress(pg, frac, digNeed, done){
+    const {ctx}=pg; ctx.clearRect(0,0,256,256);
+    ctx.lineWidth=22; ctx.lineCap="round";
+    ctx.strokeStyle="rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.arc(128,128,92,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle="#ffd34d"; ctx.beginPath(); ctx.arc(128,128,92,-Math.PI/2,-Math.PI/2+Math.PI*2*frac); ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.font="bold 62px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(done+"/"+digNeed, 128,132);
+    pg.tex.needsUpdate=true;
+}
+
+/* ターゲット生成（未発掘のidxからランダムに1つ隠す） */
+const raycaster = new THREE.Raycaster();
+function spawnTarget(tier, forcedIdx=null){
+    // 未発掘のindexを候補に
+    const remaining = [...Array(8).keys()].filter(i=>!dexData[i]?.found && !GAME.targets.some(t=>t.idx===i));
+    let idx = forcedIdx!=null ? forcedIdx : (remaining.length? remaining[(Math.random()*remaining.length)|0] : (Math.random()*8|0));
+    const d = difficulty(tier);
+    // フィールド内のランダム位置（中心から minDist〜FIELD_R）
+    const ang = Math.random()*Math.PI*2;
+    const rad = THREE.MathUtils.lerp(d.minDist, FIELD_R-1, Math.random());
+    const pos = new THREE.Vector3(Math.cos(ang)*rad, GROUND_Y, Math.sin(ang)*rad);
+    const marker = makeMarker(); marker.position.copy(pos);
+    const pg = makeProgress(); pg.spr.position.set(pos.x, GROUND_Y+1.2, pos.z);
+    const t = { idx, tier, pos, diff:d, marker, pg, discovered:false, progress:0,
+                digNeed: Math.max(2, Math.round(d.digNeed * toolMods().digMul)) };
+    GAME.targets.push(t);
+    return t;
+}
+function clearTargets(){
+    GAME.targets.forEach(t=>{ scene.remove(t.marker); scene.remove(t.pg.spr); });
+    GAME.targets.length=0;
+}
+
+/* =====================================================
+ * 発掘演出（出土品ポップアウト）
+ * ===================================================== */
+const popAnims=[];
+function excavate(t){
+    // 図鑑登録
+    const firstTime = !dexData[t.idx]?.found;
+    const now=new Date();
+    dexData[t.idx] = { found:true, date:`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")}`, isNew:true };
+    saveDex(dexData); refreshDexHTML();
+    sfxExcavate(); vibrate(400,1.0);
+    bubble.say("みつけたワン！🎉", 2600);
+    dogCelebrate();
+
+    // モデルをポップアウト
+    const model = artModels[t.idx];
+    if(model){
+        model.visible=true;
+        model.position.set(t.pos.x, GROUND_Y-0.5, t.pos.z);
+        model.rotation.set(0,Math.random()*Math.PI*2,0);
+        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y-0.5, peakY:ARTIFACT_POP_Y+1.4, endY:ARTIFACT_POP_Y, t:0, dur:1.1 });
+    }
+    // 情報パネルをその場に立てる
+    showInfoPanel(t.idx, t.pos);
+
+    // ターゲット除去
+    scene.remove(t.marker); scene.remove(t.pg.spr);
+    GAME.targets = GAME.targets.filter(x=>x!==t);
+
+    // モード進行
+    if(GAME.mode==="collect"){
+        GAME.collectedCount++;
+        updateGoal();
+        if(GAME.collectedCount>=8){
+            sfxComplete(); showToast("🏆 全8種コンプリート！");
+            bubble.say("ぜんぶ みつけたワン！", 4000);
+        } else {
+            // 次の（1つ難しい）ターゲットを出す
+            setTimeout(()=> spawnTarget(GAME.collectedCount), 900);
+        }
+    } else { // タイムアタック
+        GAME.score += 100 + t.tier*40;
+        updateGoal();
+        // 常に3体キープ
+        setTimeout(()=> spawnTarget(Math.min(7, (Math.random()*8|0))), 600);
+    }
+    return firstTime;
+}
+
+// 情報パネル（発掘済みの解説画像を現地に表示）
+const infoPanels=[];
+function showInfoPanel(idx, pos){
+    texLoader.load(ART_IMGS[idx], tex=>{
+        tex.colorSpace=THREE.SRGBColorSpace;
+        const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
+        const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.16), mat);
+        mesh.position.set(pos.x, ARTIFACT_POP_Y+1.9, pos.z);
+        mesh.userData.face=true; scene.add(mesh); infoPanels.push(mesh);
+    });
+}
+
+/* =====================================================
+ * 犬のふるまい（常時同行＋ヒント／たまに外す）
+ * ===================================================== */
+let dogHintTimer=0, dogCelebrateT=0;
+const HINT_INTERVAL=6.5;
+function dogGiveHint(){
+    const t = GAME.targets.find(x=>!x.discovered) || GAME.targets[0];
+    if(!t) return;
+    const reliable = Math.random() < t.diff.dogRel;
+    let dir;
+    if(reliable){ dir = new THREE.Vector3().subVectors(t.pos, dog.position); dir.y=0; dir.normalize(); }
+    else { const a=Math.random()*Math.PI*2; dir=new THREE.Vector3(Math.cos(a),0,Math.sin(a)); }
+    dog.userData.hintDir = dir;
+    dog.userData.hintUntil = performance.now()+1400;
+    sfxBark();
+    bubble.say(reliable ? "こっちワン！→" : "…こっちかも？", 1800);
+}
+function dogCelebrate(){ dogCelebrateT=1.2; }
+
+/* =====================================================
+ * ハプティクス
+ * ===================================================== */
+function vibrate(dur, intensity){
+    const s=renderer.xr.getSession(); if(!s) return;
+    for(const src of s.inputSources){
+        const a=src.gamepad?.hapticActuators;
+        if(a&&a.length>0){ try{ a[0].pulse(intensity, dur); }catch(e){} }
+    }
+}
+function vibrateHand(handedness, dur, intensity){
+    const s=renderer.xr.getSession(); if(!s) return;
+    for(const src of s.inputSources){
+        if(src.handedness===handedness){ const a=src.gamepad?.hapticActuators; if(a&&a.length>0){ try{a[0].pulse(intensity,dur);}catch(e){} } }
+    }
+}
+
+/* =====================================================
+ * 図鑑（HTML）描画
+ * ===================================================== */
+const dexGrid=document.getElementById("dexGrid");
+function refreshDexHTML(){
+    dexGrid.innerHTML="";
+    let found=0;
+    for(let i=0;i<8;i++){
+        const e=dexData[i];
+        const card=document.createElement("div");
+        card.className="dexcard"+(e?.found?"":" locked");
+        const no=document.createElement("span"); no.className="no"; no.textContent="No."+String(i+1).padStart(2,"0"); card.appendChild(no);
+        if(e?.found){
+            found++;
+            const img=document.createElement("img"); img.src=ART_IMGS[i]; img.alt="出土品"+(i+1); card.appendChild(img);
+            if(e.isNew){ const st=document.createElement("span"); st.className="newstamp"; st.textContent="NEW!"; card.appendChild(st); }
+            if(e.date){ const dt=document.createElement("span"); dt.className="date"; dt.textContent=e.date; card.appendChild(dt); }
+        } else {
+            const q=document.createElement("span"); q.className="q"; q.textContent="？"; card.appendChild(q);
+        }
+        dexGrid.appendChild(card);
+    }
+    document.getElementById("dexCount").textContent=`${found} / 8 発掘`;
+    document.getElementById("dexFill").style.width=(found/8*100)+"%";
+}
+refreshDexHTML();
+function clearNewStamps(){ let ch=false; for(const k in dexData){ if(dexData[k].isNew){ dexData[k].isNew=false; ch=true; } } if(ch){ saveDex(dexData); } }
+
+/* =====================================================
+ * UI 配線（メニュー）
+ * ===================================================== */
+const menu=document.getElementById("menu");
+document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; });
+document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segTool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenTool=b.dataset.v; });
+document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
+document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
+document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
+document.getElementById("openHelp").onclick=()=>{ showToast("探す=振る / 掘る=トリガー / 相棒=ワンちゃん。図鑑を8種コンプしよう！",3800); };
+
+function startGame(desktop){
+    GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
+    GAME.collectedCount=0; GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.endT=performance.now()+TIME_LIMIT*1000;
+    clearTargets();
+    // 出土品モデルを一旦隠す
+    artModels.forEach(m=>{ if(m) m.visible=false; });
+    infoPanels.forEach(p=>scene.remove(p)); infoPanels.length=0;
+    // 初期ターゲット
+    if(GAME.mode==="collect"){ spawnTarget(0); }
+    else { spawnTarget(0); spawnTarget(2); spawnTarget(4); }
+    document.body.classList.add("playing");
+    if(desktop) document.body.classList.add("desktop");
+    menu.style.display="none";
+    updateGoal(); updateToolLabel();
+    bubble.say("いっしょに さがすワン！", 2600);
+    unlockAudio();
+}
+document.getElementById("startDesktop").onclick=()=> startGame(true);
+
+// VR開始/終了
+renderer.xr.addEventListener("sessionstart", ()=>{ if(!GAME.active) startGame(false); });
+renderer.xr.addEventListener("sessionend", ()=>{ /* メニューへ戻す */ endGame(true); });
+
+function endGame(toMenu){
+    if(GAME.mode==="time" && GAME.active && GAME.score>0){ recordTimeAttack(GAME.score); }
+    GAME.active=false;
+    document.body.classList.remove("playing"); document.body.classList.remove("desktop");
+    if(toMenu){ menu.style.display="flex"; refreshDexHTML(); }
+    if(document.pointerLockElement) document.exitPointerLock();
+}
+function recordTimeAttack(score){
+    const arr=loadTA(); const now=new Date();
+    arr.push({score, date:`${now.getMonth()+1}/${now.getDate()}`, id:Date.now()});
+    arr.sort((a,b)=>b.score-a.score); saveTA(arr.slice(0,5));
+}
+
+/* HUD更新 */
+function updateGoal(){
+    const el=document.getElementById("dGoal");
+    if(GAME.mode==="collect"){ el.textContent=`コレクション：${GAME.collectedCount} / 8 発掘（残り${8-GAME.collectedCount}）`; }
+    else { el.textContent=`タイムアタック：${GAME.score}pt ／ 残り${Math.ceil(GAME.timeLeft)}秒`; }
+}
+function updateToolLabel(){ document.getElementById("dTool").textContent = "道具："+(GAME.tool==="wide"?"🖌 幅広":"⛏ 細ピック"); }
+function toggleTool(){ GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToolLabel();
+    // 既存ターゲットのdigNeedを再計算
+    GAME.targets.forEach(t=>{ t.digNeed=Math.max(2, Math.round(t.diff.digNeed*toolMods().digMul)); t.progress=Math.min(t.progress,t.digNeed); });
+    showToast(GAME.tool==="wide"?"🖌 幅広ブラシ：広く探せる/掘り多め":"⛏ 細ピック：狭いが/掘り少なめ");
+}
+document.getElementById("dTool").onclick=toggleTool;
+document.getElementById("dDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
+document.getElementById("dQuit").onclick=()=> endGame(true);
+
+let toastT=null;
+function showToast(msg, ms=2400){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); if(toastT)clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),ms); }
+
+/* =====================================================
+ * デスクトップ操作（WASD＋ポインタロック＋クリック掘り）
+ * ===================================================== */
+const keys={};
+addEventListener("keydown",e=>{ keys[e.code]=true;
+    if(!GAME.active) return;
+    if(e.code==="KeyT"){ toggleTool(); }
+    if(e.code==="Tab"){ e.preventDefault(); const d=document.getElementById("dex"); d.classList.toggle("open"); if(d.classList.contains("open"))refreshDexHTML(); }
+    // Escape はブラウザがポインタロックを解除（ゲームは継続。終了は「やめる」ボタン）
+});
+addEventListener("keyup",e=>{ keys[e.code]=false; });
+renderer.domElement.addEventListener("click", ()=>{
+    if(!GAME.active || !GAME.desktop) return;
+    if(!document.pointerLockElement){ renderer.domElement.requestPointerLock(); return; }
+    desktopDig();
+});
+let yaw=0, pitch=0;
+addEventListener("mousemove",e=>{
+    if(!GAME.desktop || !document.pointerLockElement) return;
+    yaw   -= e.movementX*0.0022;
+    pitch -= e.movementY*0.0022;
+    pitch = Math.max(-1.2, Math.min(1.2, pitch));
+});
+
+// デスクトップの「探査プローブ」＝カメラ前方の地面点
+const probePoint = new THREE.Vector3();
+function desktopProbe(){
+    // カメラ前方 ~ 数m 先の地面
+    const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camQuat()); dir.y=0;
+    if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
+    probePoint.copy(camera.getWorldPosition(new THREE.Vector3())).addScaledVector(dir, 3.5); probePoint.y=GROUND_Y;
+    return probePoint;
+}
+function desktopDig(){
+    // 一番近い「発見済み」ターゲットの上にプローブがあれば掘る
+    const p=desktopProbe();
+    let best=null,bd=1e9;
+    for(const t of GAME.targets){ const d=Math.hypot(p.x-t.pos.x,p.z-t.pos.z); if(t.discovered && d<toolMods().digR && d<bd){ bd=d; best=t; } }
+    if(best){ doDig(best); } else { sfxDig(); showToast("反応が最大の地点で掘ろう（マーカーの上）"); }
+}
+
+/* 掘る処理（共通） */
+function doDig(t){
+    t.progress++;
+    sfxDig();
+    drawProgress(t.pg, t.progress/t.digNeed, t.digNeed, t.progress);
+    if(t.progress>=t.digNeed){ excavate(t); }
+}
+
+/* =====================================================
+ * メインループ
+ * ===================================================== */
+const tmpV=new THREE.Vector3(), tmpV2=new THREE.Vector3();
+const _cq=new THREE.Quaternion();
+function camQuat(){ return camera.getWorldQuaternion(_cq); } // カメラのワールド回転（スナップ回転込み）
+let lastTime=performance.now();
+let scanPulseAccum=0;
+let prevTriggers=[false,false];
+
+renderer.setAnimationLoop(()=>{
+    const now=performance.now();
+    const dt=Math.min(0.05,(now-lastTime)/1000); lastTime=now;
+    const isVR=renderer.xr.isPresenting;
+
+    // ── 出土品ポップアニメ ──
+    for(let i=popAnims.length-1;i>=0;i--){
+        const a=popAnims[i]; a.t+=dt; const r=Math.min(a.t/a.dur,1);
+        // 上昇→頂点→着地（イージング）
+        const y = r<0.5 ? THREE.MathUtils.lerp(a.startY,a.peakY, r*2)
+                        : THREE.MathUtils.lerp(a.peakY,a.endY,(r-0.5)*2);
+        a.obj.position.set(a.x, y, a.z); a.obj.rotation.y+=0.12;
+        if(r>=1){ popAnims.splice(i,1); }
+    }
+    // 発掘済みモデルを回転
+    artModels.forEach(m=>{ if(m&&m.visible) m.rotation.y+=0.005; });
+    // 情報パネルをカメラへ向ける
+    const camPos=camera.getWorldPosition(tmpV2);
+    infoPanels.forEach(p=>{ p.lookAt(camPos.x,p.position.y,camPos.z); });
+
+    // ── マーカー演出 ──
+    GAME.targets.forEach(t=>{
+        if(t.discovered){ t.marker.visible=true; t.pg.spr.visible=true;
+            t.marker.userData.ring.rotation.z+=0.02;
+            t.marker.userData.pillar.material.opacity=0.2+0.12*Math.sin(now*0.005);
+        }
+    });
+
+    if(GAME.active){
+        // ── 移動（VR：左スティック / デスクトップ：WASD） ──
+        if(isVR){ handleVRLocomotion(dt); }
+        else if(GAME.desktop){ handleDesktopMove(dt); }
+
+        // ── 探査（プローブ位置と最寄りターゲットの信号） ──
+        updateScan(dt, isVR, now);
+
+        // ── 掘る入力（VRトリガー） ──
+        if(isVR){ handleVRDig(); }
+
+        // ── 犬 ──
+        updateDog(dt, now);
+
+        // ── タイムアタックのタイマー ──
+        if(GAME.mode==="time"){
+            GAME.timeLeft=Math.max(0,(GAME.endT-now)/1000);
+            updateGoal();
+            if(GAME.timeLeft<=0){ sfxTimeUp(); showToast(`⏱ 終了！ ${GAME.score}pt`,4000); endGame(!isVR); }
+        }
+    }
+
+    // デスクトップのカメラ向き適用
+    if(GAME.desktop && !isVR){
+        camera.rotation.set(0,0,0);
+        camera.rotateY(yaw); camera.rotateX(pitch);
+    }
+
+    renderer.render(scene,camera);
+});
+
+/* VR移動：左スティックで前後左右、右スティックXでスナップ回転 */
+let snapCooldown=0;
+function handleVRLocomotion(dt){
+    const s=renderer.xr.getSession(); if(!s) return;
+    let moveX=0,moveY=0,turn=0;
+    for(const src of s.inputSources){
+        const gp=src.gamepad; if(!gp) continue;
+        const ax=gp.axes||[];
+        if(src.handedness==="left"){ moveX=ax[2]||0; moveY=ax[3]||0; }
+        else if(src.handedness==="right"){ turn=ax[2]||0; }
+    }
+    // 移動（頭の向き基準）
+    if(Math.abs(moveX)>0.15||Math.abs(moveY)>0.15){
+        const q=camQuat();
+        const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
+        const right=new THREE.Vector3(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
+        player.position.addScaledVector(fwd, -moveY*WALK_SPEED*dt);
+        player.position.addScaledVector(right, moveX*WALK_SPEED*dt);
+        // フィールド外に出ない
+        const d=Math.hypot(player.position.x,player.position.z);
+        if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; }
+    }
+    // スナップ回転
+    snapCooldown-=dt;
+    if(Math.abs(turn)>0.7 && snapCooldown<=0){
+        player.rotateY(THREE.MathUtils.degToRad(turn>0?-SNAP_DEG:SNAP_DEG));
+        snapCooldown=0.28;
+    }
+}
+
+function handleDesktopMove(dt){
+    const q=camQuat();
+    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
+    const right=new THREE.Vector3(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
+    let mx=0,mz=0;
+    if(keys["KeyW"])mz+=1; if(keys["KeyS"])mz-=1; if(keys["KeyA"])mx-=1; if(keys["KeyD"])mx+=1;
+    if(mx||mz){ player.position.addScaledVector(fwd, mz*WALK_SPEED*dt); player.position.addScaledVector(right, mx*WALK_SPEED*dt);
+        const d=Math.hypot(player.position.x,player.position.z); if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; } }
+}
+
+/* 探査：プローブ位置→最寄りターゲット信号→振動＋音（近いほど速い） */
+function updateScan(dt, isVR, now){
+    // プローブ位置と「振っているか」を決める
+    let probes=[]; // {pos, shaking, haptic, handedness}
+    if(isVR){
+        controllers.forEach((c,i)=>{
+            const p=c.getWorldPosition(new THREE.Vector3());
+            const sp=p.distanceTo(c.userData.prevPos)/Math.max(dt,1e-3);
+            c.userData.prevPos.copy(p); c.userData.shakeSpeed=sp;
+            const handed = i===0?"right":"left"; // getController順は環境依存だが実害小
+            probes.push({pos:p, shaking:sp>1.2, haptic:true, handedness:handed});
+        });
+        // ハンドトラッキング（コントローラ無し時・音のみ）
+        hands.forEach(h=>{
+            const joint=h.joints?.["index-finger-tip"]||h.joints?.["wrist"];
+            if(joint){ const p=joint.getWorldPosition(new THREE.Vector3());
+                const sp=p.distanceTo(h.userData.prevPos)/Math.max(dt,1e-3); h.userData.prevPos.copy(p);
+                probes.push({pos:p, shaking:sp>1.0, haptic:false}); }
+        });
+    } else if(GAME.desktop){
+        const moving = keys["KeyW"]||keys["KeyA"]||keys["KeyS"]||keys["KeyD"];
+        probes.push({pos:desktopProbe().clone(), shaking:true, haptic:false}); // デスクトップは常時探査
+    }
+
+    // 各ターゲットについて最大信号を求める
+    let heat=0;
+    for(const t of GAME.targets){
+        const dmods=toolMods();
+        const detectR = t.diff.detectR * dmods.detectMul;
+        let bestSig=0, bestProbe=null;
+        for(const pr of probes){
+            const dist=Math.hypot(pr.pos.x-t.pos.x, pr.pos.z-t.pos.z);
+            const sig=Math.max(0, 1-dist/detectR);
+            if(sig>bestSig){ bestSig=sig; bestProbe=pr; }
+        }
+        heat=Math.max(heat,bestSig);
+        // 発見（信号が閾値超え）→マーカー表示
+        if(!t.discovered && bestSig>0.82){ t.discovered=true; t.marker.visible=true; sfxLocate(); vibrate(120,0.7);
+            drawProgress(t.pg,0,t.digNeed,0); t.pg.spr.visible=true; showToast("反応MAX！ここを掘ろう"); bubble.say("ここ ほって ワン！",2000); }
+        // 振っている＆信号あり→パルス（近いほど速い＝リズム）
+        if(bestProbe && bestProbe.shaking && bestSig>0.05){
+            const interval = THREE.MathUtils.lerp(0.6, 0.09, bestSig); // 秒
+            t._pulse = (t._pulse||0) - dt;
+            if(t._pulse<=0){
+                t._pulse=interval;
+                sfxScan(bestSig);
+                if(bestProbe.haptic){ if(bestProbe.handedness) vibrateHand(bestProbe.handedness, 26, 0.25+0.7*bestSig); else vibrate(26,0.25+0.7*bestSig); }
+            }
+        }
+    }
+    // デスクトップの「アツさ」表示
+    if(GAME.desktop){
+        const el=document.getElementById("heat");
+        const c = heat>0.82? "255,90,50" : heat>0.4? "255,180,60" : "120,180,255";
+        el.style.borderColor=`rgba(${c},${0.15+heat*0.8})`;
+        el.style.boxShadow=`0 0 ${heat*40}px ${heat*6}px rgba(${c},${heat*0.5})`;
+    }
+}
+
+/* VR：トリガーで掘る（発見済みターゲットの上にコントローラーがある時） */
+function handleVRDig(){
+    const s=renderer.xr.getSession(); if(!s) return;
+    let idx=0;
+    for(const src of s.inputSources){
+        const gp=src.gamepad; if(!gp) continue;
+        const trig = gp.buttons[0]?.pressed ?? false;
+        const which = src.handedness==="left"?1:0;
+        if(trig && !prevTriggers[which]){
+            // このコントローラーのワールド位置を取得（対応するthreeコントローラーから）
+            const cpos = controllers[which]?.getWorldPosition(new THREE.Vector3()) || player.position;
+            let best=null,bd=1e9;
+            for(const t of GAME.targets){ if(!t.discovered) continue;
+                const d=Math.hypot(cpos.x-t.pos.x,cpos.z-t.pos.z);
+                if(d<toolMods().digR && d<bd){ bd=d; best=t; } }
+            if(best) doDig(best);
+            else { sfxDig(); }
+        }
+        prevTriggers[which]=trig;
+        idx++;
+    }
+    // Bボタンで道具切替（右手）
+    for(const src of s.inputSources){
+        if(src.handedness!=="right"||!src.gamepad) continue;
+        const b=src.gamepad.buttons[5]?.pressed ?? false;
+        if(b && !GAME._prevB){ toggleTool(); }
+        GAME._prevB=b;
+        const a=src.gamepad.buttons[4]?.pressed ?? false; // Aで図鑑
+        if(a && !GAME._prevA){ document.getElementById("dex").classList.toggle("open"); if(document.getElementById("dex").classList.contains("open"))refreshDexHTML(); }
+        GAME._prevA=a;
+    }
+}
+
+/* 犬：プレイヤーを追従＋ヒント方向へ小走り＋お祝い */
+function updateDog(dt, now){
+    const camWorld=camera.getWorldPosition(tmpV);
+    let goal;
+    if(dog.userData.hintUntil && now<dog.userData.hintUntil && dog.userData.hintDir){
+        // ヒント：指し示す方向へ数歩
+        goal=new THREE.Vector3().copy(dog.position).addScaledVector(dog.userData.hintDir, 2.0);
+    } else {
+        // プレイヤーの少し前・横に付く
+        const side=new THREE.Vector3(1,0,0).applyQuaternion(camQuat()); side.y=0; side.normalize();
+        goal=new THREE.Vector3().copy(camWorld).addScaledVector(side,1.6); goal.y=GROUND_Y;
+    }
+    goal.y=GROUND_Y;
+    const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
+    const dist=to.length();
+    if(dist>0.4){ to.normalize(); dog.position.addScaledVector(to, Math.min(dist, 4.5*dt)); }
+    // 向き（進行方向 or プレイヤー）
+    const faceDir = dist>0.5 ? to : new THREE.Vector3().subVectors(camWorld,dog.position);
+    if(faceDir.lengthSq()>1e-3){ const yaw=Math.atan2(faceDir.x,faceDir.z); dog.rotation.y=THREE.MathUtils.lerp(dog.rotation.y, yaw, 0.2); }
+    // しっぽ振り
+    if(dog.userData.tail) dog.userData.tail.rotation.z=Math.sin(now*0.02)*0.5;
+    // お祝いジャンプ
+    if(dogCelebrateT>0){ dogCelebrateT-=dt; dog.position.y=GROUND_Y+Math.abs(Math.sin(dogCelebrateT*12))*0.6; }
+    else dog.position.y=GROUND_Y;
+    // 定期ヒント
+    dogHintTimer-=dt;
+    if(dogHintTimer<=0 && GAME.targets.some(t=>!t.discovered)){ dogHintTimer=HINT_INTERVAL; dogGiveHint(); }
+}
+
+/* =====================================================
+ * リサイズ
+ * ===================================================== */
+addEventListener("resize",()=>{
+    camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
