@@ -203,7 +203,7 @@
       <b>探す</b>：歩いてコントローラーを左右に振る（＝金属探知）。近いほど振動と音が速くなる。<br>
       <b>掘る</b>：反応が最大の地面でトリガー（ハンドトラッキングは、その場で手を振るorつまむ）。<br>
       <b>道具</b>：右手に持った道具。Bボタンで持ち替え。<b>図鑑</b>：左の手のひらを返すと表示（Yで固定）。<br>
-      <b>相棒</b>：ワンちゃんが近い方向を教えてくれる…ときどき間違えるけど。
+      <b>相棒</b>：ワンちゃんは常に視界の前に。「犬に聞く」（VR=Aボタン / PC=Qキー / 画面ボタン）で場所ヒント…ときどき間違えて、その場で少し待ちます。
     </p>
   </div>
 </div>
@@ -300,8 +300,8 @@ let dexData = loadDex();
  * Web Audio（合成SFX）— 既存アプリの手法を踏襲
  * ===================================================== */
 const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-function unlockAudio(){ if(audioCtx.state==="suspended") audioCtx.resume(); }
-["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:true}));
+function unlockAudio(){ if(audioCtx.state!=="running"){ audioCtx.resume().catch(()=>{}); } }
+["pointerdown","touchstart","touchend","click","keydown"].forEach(ev=>addEventListener(ev,unlockAudio,{passive:true}));
 
 function beep(freq, dur=0.09, vol=0.3, type="sine"){
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -320,7 +320,23 @@ function chord(freqs, step=0.06, type="triangle", vol=0.4){
         o.start(audioCtx.currentTime+i*step); o.stop(audioCtx.currentTime+i*step+0.55); });
 }
 const sfxScan     = (signal)=> beep(300+900*signal, 0.06, 0.22+0.2*signal, "sine");
-const sfxDig      = ()=> beep(180+Math.random()*40, 0.07, 0.28, "square");
+function sfxDig(){
+    unlockAudio();
+    const t0=audioCtx.currentTime, dur=0.18;
+    // 砂利を掻くノイズ（バンドパス）
+    const buf=audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate*dur), audioCtx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++){ const env=Math.pow(1-i/d.length,1.6); d[i]=(Math.random()*2-1)*env; }
+    const src=audioCtx.createBufferSource(); src.buffer=buf;
+    const bp=audioCtx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=900+Math.random()*500; bp.Q.value=0.7;
+    const ng=audioCtx.createGain(); ng.gain.setValueAtTime(0.55,t0); ng.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+    src.connect(bp); bp.connect(ng); ng.connect(audioCtx.destination); src.start(t0);
+    // 低い「ドッ」という掘り込み
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type="triangle"; o.frequency.setValueAtTime(150,t0); o.frequency.exponentialRampToValueAtTime(70,t0+0.12);
+    g.gain.setValueAtTime(0.35,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+0.14);
+    o.connect(g); g.connect(audioCtx.destination); o.start(t0); o.stop(t0+0.16);
+}
 const sfxLocate   = ()=> chord([440,660,880],0.05,"triangle",0.35);   // ホットスポット発見
 const sfxExcavate = ()=> chord([523,659,784,1047],0.09,"triangle",0.5);// 出土！
 const sfxBark     = ()=>{ beep(520,0.08,0.3,"square"); setTimeout(()=>beep(430,0.1,0.28,"square"),90); };
@@ -500,7 +516,7 @@ const dog = new THREE.Group();
     const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.11,0.6,8),bodyMat); tail.position.set(0,0.95,-0.85); tail.rotation.x=-0.9; dog.add(tail); dog.userData.tail=tail;
     // 目
     [[-0.16,1.12,1.22],[0.16,1.12,1.22]].forEach(p=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,10), new THREE.MeshStandardMaterial({color:0x1a140c})); eye.position.set(p[0],p[1],p[2]); dog.add(eye); });
-    dog.scale.setScalar(1.05);
+    dog.scale.setScalar(0.7);
 })();
 scene.add(dog);
 dog.position.set(2,GROUND_Y,2);
@@ -871,7 +887,7 @@ function startGame(desktop){
 document.getElementById("startDesktop").onclick=()=> startGame(true);
 
 // VR開始/終了
-renderer.xr.addEventListener("sessionstart", ()=>{ if(!GAME.active) startGame(false); });
+renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); if(!GAME.active) startGame(false); });
 renderer.xr.addEventListener("sessionend", ()=>{ /* メニューへ戻す */ endGame(true); });
 
 function endGame(toMenu){
@@ -993,11 +1009,8 @@ function desktopProbe(){
     return probePoint;
 }
 function desktopDig(){
-    // 一番近い「発見済み」ターゲットの上にプローブがあれば掘る
     const p=desktopProbe();
-    let best=null,bd=1e9;
-    for(const t of GAME.targets){ const d=Math.hypot(p.x-t.pos.x,p.z-t.pos.z); if(t.discovered && d<toolMods().digR && d<bd){ bd=d; best=t; } }
-    if(best){ doDig(best); } else { sfxDig(); showToast("反応が最大の地点で掘ろう（マーカーの上）"); }
+    if(!digAtPos(p)){ sfxDig(); showToast("発掘ポイントの上で掘ろう（近づくと反応します）"); }
 }
 
 /* 掘る処理（共通） */
@@ -1007,15 +1020,26 @@ function doDig(t){
     drawProgress(t.pg, t.progress/t.digNeed, t.digNeed, t.progress);
     if(t.progress>=t.digNeed){ excavate(t); }
 }
-// 指定オブジェクト（コントローラ/手）の位置で、発見済みターゲットの上なら掘る
+// 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
+function discoverTarget(t){
+    if(t.discovered) return;
+    t.discovered=true; t.marker.visible=true; t.pg.spr.visible=true;
+    drawProgress(t.pg,0,t.digNeed,0);
+    sfxLocate(); vibrate(120,0.7);
+    showToast("発掘ポイント発見！ここを掘ろう");
+}
+// 指定位置の発掘ポイントを掘る（未発見でも範囲内なら発見して掘れる＝犬に頼らなくてOK）
+function digAtPos(pos){
+    let best=null,bd=1e9;
+    for(const t of GAME.targets){ const d=Math.hypot(pos.x-t.pos.x,pos.z-t.pos.z); if(d<toolMods().digR && d<bd){ bd=d; best=t; } }
+    if(best){ if(!best.discovered) discoverTarget(best); doDig(best); return true; }
+    return false;
+}
+// 指定オブジェクト（コントローラ/手）の位置で掘る（未発見でも範囲内なら発見して掘る）
 function handDigAt(obj){
     if(!GAME.active) return;
     const cpos=obj.getWorldPosition(new THREE.Vector3());
-    let best=null,bd=1e9;
-    for(const t of GAME.targets){ if(!t.discovered) continue;
-        const d=Math.hypot(cpos.x-t.pos.x,cpos.z-t.pos.z);
-        if(d<toolMods().digR && d<bd){ bd=d; best=t; } }
-    if(best) doDig(best); else sfxDig();
+    if(!digAtPos(cpos)) sfxDig();
 }
 let handDigCooldown=0;
 
@@ -1169,9 +1193,8 @@ function updateScan(dt, isVR, now){
             if(sig>bestSig){ bestSig=sig; bestProbe=pr; }
         }
         heat=Math.max(heat,bestSig);
-        // 発見（信号が閾値超え）→マーカー表示
-        if(!t.discovered && bestSig>0.82){ t.discovered=true; t.marker.visible=true; sfxLocate(); vibrate(120,0.7);
-            drawProgress(t.pg,0,t.digNeed,0); t.pg.spr.visible=true; showToast("反応MAX！ここを掘ろう"); bubble.say("ここ ほって ワン！",2000); }
+        // 発見（信号が閾値超え）→マーカー表示（自力で探せる）
+        if(!t.discovered && bestSig>0.72){ discoverTarget(t); }
         // 振っている＆信号あり→パルス（近いほど速い＝リズム）
         if(bestProbe && bestProbe.shaking && bestSig>0.05){
             const interval = THREE.MathUtils.lerp(0.6, 0.09, bestSig); // 秒
@@ -1183,14 +1206,11 @@ function updateScan(dt, isVR, now){
             }
         }
     }
-    // ハンドトラッキング：発見済みスポットの上で手を振っても発掘（つまみ動作＝selectstartでも発掘）
+    // ハンドトラッキング：スポットの上で手を振っても発掘（未発見でも範囲内なら発見して掘る）
     if(handDigCooldown>0) handDigCooldown-=dt;
     for(const pr of probes){
-        if(!pr.isHand || !pr.shaking) continue;
-        for(const t of GAME.targets){ if(!t.discovered) continue;
-            const d=Math.hypot(pr.pos.x-t.pos.x, pr.pos.z-t.pos.z);
-            if(d<toolMods().digR && handDigCooldown<=0){ doDig(t); handDigCooldown=0.4; break; }
-        }
+        if(!pr.isHand || !pr.shaking || handDigCooldown>0) continue;
+        if(digAtPos(pr.pos)){ handDigCooldown=0.4; }
     }
     // デスクトップの「アツさ」表示
     if(GAME.desktop){
@@ -1213,12 +1233,7 @@ function handleVRDig(){
             // 掘る手のワールド位置（解決済みの左右コントローラを使用）
             const srcCtrl = (src.handedness==="left"?leftCtrl:rightCtrl) || controllers[which];
             const cpos = srcCtrl?.getWorldPosition(new THREE.Vector3()) || player.position;
-            let best=null,bd=1e9;
-            for(const t of GAME.targets){ if(!t.discovered) continue;
-                const d=Math.hypot(cpos.x-t.pos.x,cpos.z-t.pos.z);
-                if(d<toolMods().digR && d<bd){ bd=d; best=t; } }
-            if(best) doDig(best);
-            else { sfxDig(); }
+            if(!digAtPos(cpos)) sfxDig();
         }
         prevTriggers[which]=trig;
         idx++;
