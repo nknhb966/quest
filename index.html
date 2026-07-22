@@ -127,6 +127,22 @@
     #crosshair{ position:fixed; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px; z-index:13;
         border-radius:50%; background:rgba(255,255,255,.7); display:none; pointer-events:none; }
     body.desktop #crosshair{ display:block; }
+    body.touch #crosshair{ display:none; }
+
+    /* タッチ操作（スマホ） */
+    canvas{ touch-action:none; }
+    #joystick{ position:fixed; width:120px; height:120px; border-radius:50%; z-index:16; display:none;
+        border:2px solid rgba(180,140,255,.55); background:rgba(20,14,44,.32); pointer-events:none; }
+    #joystick > i{ position:absolute; left:32px; top:32px; width:56px; height:56px; border-radius:50%;
+        background:rgba(150,118,235,.75); box-shadow:0 2px 8px rgba(0,0,0,.4); }
+    #digBtn{ position:fixed; right:22px; bottom:104px; z-index:17; width:104px; height:104px; border-radius:50%;
+        border:none; color:#3a2d16; font-weight:900; font-size:19px; letter-spacing:1px; display:none;
+        background:radial-gradient(circle at 50% 38%, #ffe08a, #d99a26); box-shadow:0 6px 20px rgba(0,0,0,.45);
+        -webkit-tap-highlight-color:transparent; }
+    #digBtn:active{ transform:scale(.94); }
+    body.touch.desktop #digBtn{ display:block; }
+    body.touch #dhud .mini{ display:none; }        /* キーボード説明はスマホで隠す */
+    body.touch #dhud{ padding-bottom:0; }
 
     /* トースト */
     #toast{ position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-20px); z-index:60;
@@ -153,7 +169,7 @@
     <p class="subtitle">遺跡を歩いて探して、出土品を掘り当てよう。相棒の犬と一緒に。</p>
 
     <div id="vrbtnwrap"></div>
-    <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC操作）</button>
+    <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
 
     <div class="cardgrid">
       <div class="opt wide">
@@ -216,6 +232,8 @@
 </div>
 <div id="heat"></div>
 <div id="crosshair"></div>
+<div id="joystick"><i></i></div>
+<button id="digBtn">掘る</button>
 <div id="toast"></div>
 
 <script type="importmap">
@@ -785,6 +803,7 @@ function startGame(desktop){
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw();
     bubble.say("いっしょに さがすワン！", 2600);
+    if(IS_TOUCH && desktop){ showToast("左スティックで移動／右をなぞって見回す／「掘る」で発掘", 4200); }
     unlockAudio();
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
@@ -838,6 +857,7 @@ addEventListener("keydown",e=>{ keys[e.code]=true;
 addEventListener("keyup",e=>{ keys[e.code]=false; });
 renderer.domElement.addEventListener("click", ()=>{
     if(!GAME.active || !GAME.desktop) return;
+    if(document.body.classList.contains("touch")) return;  // スマホはタッチ操作を使う
     if(!document.pointerLockElement){ renderer.domElement.requestPointerLock(); return; }
     desktopDig();
 });
@@ -848,6 +868,56 @@ addEventListener("mousemove",e=>{
     pitch -= e.movementY*0.0022;
     pitch = Math.max(-1.2, Math.min(1.2, pitch));
 });
+
+/* =====================================================
+ * タッチ操作（スマホ）
+ *   左半分＝バーチャルスティックで移動 / 右半分ドラッグ＝見回す / 「掘る」ボタン＝発掘
+ * ===================================================== */
+const IS_TOUCH = (matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
+if(IS_TOUCH) document.body.classList.add("touch");
+const touchJoy  = { id:null, cx:0, cy:0, x:0, z:0 };
+const touchLook = { id:null, lx:0, ly:0 };
+const joyEl  = document.getElementById("joystick");
+const joyKnob= joyEl.firstElementChild;
+function tStart(e){
+    if(!GAME.active || !GAME.desktop) return;
+    for(const t of e.changedTouches){
+        if(touchJoy.id===null && t.clientX < innerWidth*0.5){
+            touchJoy.id=t.identifier; touchJoy.cx=t.clientX; touchJoy.cy=t.clientY; touchJoy.x=0; touchJoy.z=0;
+            joyEl.style.left=(t.clientX-60)+"px"; joyEl.style.top=(t.clientY-60)+"px"; joyEl.style.display="block";
+            joyKnob.style.transform="translate(0px,0px)";
+        } else if(touchLook.id===null){
+            touchLook.id=t.identifier; touchLook.lx=t.clientX; touchLook.ly=t.clientY;
+        }
+    }
+    e.preventDefault();
+}
+function tMove(e){
+    for(const t of e.changedTouches){
+        if(t.identifier===touchJoy.id){
+            let dx=t.clientX-touchJoy.cx, dy=t.clientY-touchJoy.cy;
+            const r=Math.hypot(dx,dy), max=52; if(r>max){ dx*=max/r; dy*=max/r; }
+            touchJoy.x=dx/max; touchJoy.z=-dy/max;   // 上方向＝前進
+            joyKnob.style.transform=`translate(${dx}px,${dy}px)`;
+        } else if(t.identifier===touchLook.id){
+            yaw   -= (t.clientX-touchLook.lx)*0.005;
+            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-1.2,Math.min(1.2,pitch));
+            touchLook.lx=t.clientX; touchLook.ly=t.clientY;
+        }
+    }
+    e.preventDefault();
+}
+function tEnd(e){
+    for(const t of e.changedTouches){
+        if(t.identifier===touchJoy.id){ touchJoy.id=null; touchJoy.x=0; touchJoy.z=0; joyEl.style.display="none"; }
+        if(t.identifier===touchLook.id){ touchLook.id=null; }
+    }
+}
+renderer.domElement.addEventListener("touchstart", tStart, {passive:false});
+renderer.domElement.addEventListener("touchmove",  tMove,  {passive:false});
+renderer.domElement.addEventListener("touchend",   tEnd);
+renderer.domElement.addEventListener("touchcancel",tEnd);
+document.getElementById("digBtn").addEventListener("click", ()=>{ if(GAME.active&&GAME.desktop) desktopDig(); });
 
 // デスクトップの「探査プローブ」＝カメラ前方の地面点
 const probePoint = new THREE.Vector3();
@@ -993,6 +1063,8 @@ function handleDesktopMove(dt){
     const right=new THREE.Vector3(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
     let mx=0,mz=0;
     if(keys["KeyW"])mz+=1; if(keys["KeyS"])mz-=1; if(keys["KeyA"])mx-=1; if(keys["KeyD"])mx+=1;
+    if(touchJoy.id!==null){ mx+=touchJoy.x; mz+=touchJoy.z; }   // スマホのスティック
+    mx=Math.max(-1,Math.min(1,mx)); mz=Math.max(-1,Math.min(1,mz));
     if(mx||mz){ player.position.addScaledVector(fwd, mz*WALK_SPEED*dt); player.position.addScaledVector(right, mx*WALK_SPEED*dt);
         const d=Math.hypot(player.position.x,player.position.z); if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; } }
 }
