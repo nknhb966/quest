@@ -98,22 +98,27 @@
         padding:2px; min-height:0; flex:1 1 auto; align-content:start; }
     @media(max-width:640px){ .dexgrid{ grid-template-columns:repeat(2,1fr); gap:10px; } }
     @media(max-width:380px){ .dexgrid{ grid-template-columns:1fr; } }
-    /* カードの高さは中身（カード画像）が決める＝aspect-ratio非対応端末でも重ならない */
-    .dexcard{ position:relative; border-radius:12px; overflow:hidden; display:block;
-        background:linear-gradient(160deg,#efe2c4,#dcc9a0); border:2px solid var(--parch-line); }
-    .dexcard .no{ position:absolute; top:6px; left:8px; font-size:12px; font-weight:800; color:#7a6532;
-        letter-spacing:1px; z-index:2; }
-    .dexcard img{ display:block; width:100%; height:auto; }
-    /* 未発掘カードは画像と同じ縦横比（3:4）の箱で場所取り */
-    .dexcard .ph{ position:relative; width:100%; padding-top:133%; }
-    .dexcard .ph .q{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    /* カード形式：中の画像は1:1。上下に余白を取り、そこにNo.と発掘日時を置く */
+    .dexcard{ position:relative; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;
+        background:linear-gradient(160deg,#efe2c4,#dcc9a0); border:2px solid var(--parch-line);
+        padding:26px 8px 30px; }
+    .dexcard .no{ position:absolute; top:7px; left:0; right:0; text-align:center;
+        font-size:12px; font-weight:800; color:#7a6532; letter-spacing:2px; z-index:2; }
+    .dexcard .art{ position:relative; width:100%; padding-top:100%;   /* 1:1の画像枠 */
+        border-radius:6px; overflow:hidden; background:rgba(255,255,255,.35); }
+    .dexcard .art img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+    .dexcard .art .q{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
         font-size:44px; color:rgba(180,160,220,.4); font-weight:900; }
+    .dexcard .stamp{ position:absolute; left:0; right:0; bottom:6px; text-align:center; z-index:2;
+        font-size:10px; line-height:1.35; color:#7a6532; letter-spacing:.5px; }
+    .dexcard .stamp .t{ opacity:.75; }
     .dexcard.locked{ background:linear-gradient(160deg,#20182e,#161022); border-color:rgba(150,130,190,.35); }
     .dexcard.locked .no{ color:rgba(180,160,220,.5); }
+    .dexcard.locked .art{ background:rgba(255,255,255,.04); }
+    .dexcard.locked .stamp{ color:rgba(180,160,220,.45); }
     .dexcard .newstamp{ position:absolute; top:8px; right:6px; transform:rotate(11deg);
         background:#e23b57; color:#fff; font-size:10px; font-weight:900; letter-spacing:1px;
         padding:3px 7px; border-radius:5px; box-shadow:0 2px 8px rgba(0,0,0,.35); z-index:3; }
-    .dexcard .date{ position:absolute; bottom:5px; right:7px; font-size:9px; color:#7a6532; z-index:2; }
     .dexclose{ position:absolute; top:12px; right:16px; background:none; border:none; color:rgba(230,210,160,.7);
         font-size:26px; cursor:pointer; line-height:1; }
     .dexclose:hover{ color:#fff; }
@@ -688,7 +693,12 @@ const dexPanel=(function(){
             } else { ctx.fillStyle="rgba(42,32,60,0.92)"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
                 ctx.fillStyle="rgba(185,165,225,0.55)"; ctx.font="bold 64px sans-serif"; ctx.fillText("？", x+cw/2, y+chh/2); }
             ctx.fillStyle=(e&&e.found)?"#7a6532":"rgba(185,165,225,0.75)"; ctx.font="bold 22px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
-            ctx.fillText("No."+String(i+1).padStart(2,"0"), x+8, y+7); ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.fillText("No."+String(i+1).padStart(2,"0"), x+8, y+7);
+            if(e&&e.found&&(e.date||e.time)){
+                ctx.textAlign="right"; ctx.font="bold 18px sans-serif";
+                ctx.fillText((e.date||"")+(e.time?" "+e.time:""), x+cw-8, y+9);
+            }
+            ctx.textAlign="center"; ctx.textBaseline="middle";
         }
         tex.needsUpdate=true;
     }
@@ -797,7 +807,11 @@ function excavate(t){
     // 図鑑登録
     const firstTime = !dexData[t.idx]?.found;
     const now=new Date();
-    dexData[t.idx] = { found:true, date:`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")}`, isNew:true };
+    const pad=n=>String(n).padStart(2,"0");
+    dexData[t.idx] = { found:true,
+        date:`${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}`,
+        time:`${pad(now.getHours())}:${pad(now.getMinutes())}`,
+        isNew:true };
     saveDex(dexData); refreshDexHTML();
     sfxExcavate(); vibrate(400,1.0);
     bubble.say("みつけたワン！🎉", 2600);
@@ -926,7 +940,7 @@ function makeLabelSprite(text, color, width, y){
 // 表示環境に応じてパネルの大きさを調整（高さは常に出土品のすぐ上）
 function updatePanelScale(){
     const isVR=renderer.xr.isPresenting;
-    const s = isVR ? 1.9 : (document.body.classList.contains("touch") ? 0.8 : 1.0);
+    const s = isVR ? 1.9 : (document.body.classList.contains("touch") ? 0.8 : 1.5);
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
         const h=(p.userData.height||PANEL_BASE_H)*s;
@@ -990,16 +1004,19 @@ function refreshDexHTML(){
         const card=document.createElement("div");
         card.className="dexcard"+(e?.found?"":" locked");
         const no=document.createElement("span"); no.className="no"; no.textContent="No."+String(i+1).padStart(2,"0"); card.appendChild(no);
+        // 1:1の画像枠
+        const art=document.createElement("div"); art.className="art";
+        const stamp=document.createElement("span"); stamp.className="stamp";
         if(e?.found){
             found++;
-            const img=document.createElement("img"); img.src=ART_IMGS[i]; img.alt="出土品"+(i+1); card.appendChild(img);
+            const img=document.createElement("img"); img.src=ART_IMGS[i]; img.alt="出土品"+(i+1); art.appendChild(img);
             if(e.isNew){ const st=document.createElement("span"); st.className="newstamp"; st.textContent="NEW!"; card.appendChild(st); }
-            if(e.date){ const dt=document.createElement("span"); dt.className="date"; dt.textContent=e.date; card.appendChild(dt); }
+            stamp.innerHTML = (e.date||"") + (e.time? '<br><span class="t">'+e.time+'</span>' : "");
         } else {
-            const ph=document.createElement("span"); ph.className="ph";
-            const q=document.createElement("span"); q.className="q"; q.textContent="？";
-            ph.appendChild(q); card.appendChild(ph);
+            const q=document.createElement("span"); q.className="q"; q.textContent="？"; art.appendChild(q);
+            stamp.textContent="未発掘";
         }
+        card.appendChild(art); card.appendChild(stamp);
         dexGrid.appendChild(card);
     }
     document.getElementById("dexCount").textContent=`${found} / 8 発掘`;
