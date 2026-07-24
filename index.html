@@ -175,12 +175,6 @@
         border:2px solid rgba(180,140,255,.55); background:rgba(20,14,44,.32); pointer-events:none; }
     #joystick > i{ position:absolute; left:32px; top:32px; width:56px; height:56px; border-radius:50%;
         background:rgba(150,118,235,.75); box-shadow:0 2px 8px rgba(0,0,0,.4); }
-    #digBtn{ position:fixed; right:22px; bottom:calc(168px + env(safe-area-inset-bottom)); z-index:17; width:104px; height:104px; border-radius:50%;
-        border:none; color:#3a2d16; font-weight:900; font-size:19px; letter-spacing:1px; display:none;
-        background:radial-gradient(circle at 50% 38%, #ffe08a, #d99a26); box-shadow:0 6px 20px rgba(0,0,0,.45);
-        -webkit-tap-highlight-color:transparent; }
-    #digBtn:active{ transform:scale(.94); }
-    body.touch.desktop #digBtn{ display:block; }
     body.touch #dhud .mini{ display:none; }        /* キーボード説明はスマホで隠す */
     body.touch #dhud{ padding-bottom:0; }
 
@@ -278,9 +272,14 @@
       </section>
       <section>
         <h3>⛏ 掘る</h3>
-        <p>反応が強い場所まで来ると<b>光るマーカー</b>が出ます。マイクラのように<b>掘れるブロックを狙う</b>と黒い枠が出るので、その状態で掘ると土が飛び散り、必要回数で出土します（届く距離は約4m）。</p>
-        <p class="k">VR：枠を狙ってコントローラー（または手）を振る／PC：左クリック・スマホ：「掘る」ボタン、または<b>ブロックを直接タップ</b></p>
-        <p>犬に聞かなくても、自分で反応をたどって見つければ発掘できます。相棒に近づいて手を動かす（PC・スマホは相棒をクリック）と<b>なでられます</b>。</p>
+        <p>反応が強い場所まで来ると<b>土のブロック</b>が現れます。マイクラのようにブロックを狙う（タップする）と掘れて、土が飛び散り、掘るほどブロックが削れていきます。出土すればブロックは消えます（届く距離は約4m）。</p>
+        <p class="k">スマホ：<b>ブロックをタップ</b>／PC：画面中央で狙って左クリック／VR：枠を狙ってコントローラー（または手）を振る</p>
+        <p>犬に聞かなくても、自分で反応をたどって見つければ発掘できます。</p>
+      </section>
+      <section>
+        <h3>🐾 相棒をなでる</h3>
+        <p>相棒をなでると喜んでハートが舞います。</p>
+        <p class="k">スマホ：<b>相棒をタップ</b>／PC：相棒に照準を合わせて左クリック／VR：相棒の頭に手を近づけて動かす</p>
       </section>
       <section>
         <h3>🖌 道具</h3>
@@ -333,7 +332,6 @@
 <div id="heat"></div>
 <div id="crosshair"></div>
 <div id="joystick"><i></i></div>
-<button id="digBtn">掘る</button>
 <div id="toast"></div>
 
 <script type="importmap">
@@ -363,6 +361,7 @@ const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.85;              // 掘れるブロックの一辺（m）※マイクラ風の当たり判定
 const DIG_REACH     = 4.0;               // 掘れる距離（m）
+const PET_REACH     = 3.0;               // 相棒をなでられる距離（m）
 const DOG_Y         = -0.2;              // 犬の接地高さ補正（m。少し下げる）
 const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
@@ -941,6 +940,9 @@ function excavate(t){
 
     // ターゲット除去
     scene.remove(t.marker); scene.remove(t.pg.spr);
+    if(t.block) scene.remove(t.block);
+    if(t.outline) scene.remove(t.outline);
+    if(aimedTarget===t) aimedTarget=null;
     GAME.targets = GAME.targets.filter(x=>x!==t);
 
     // モード進行
@@ -1198,7 +1200,7 @@ function startGame(desktop){
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw(); updateTAButton();
     bubble.say(line("start"), 2600);
-    if(IS_TOUCH && desktop){ showToast("左で移動／右をなぞって見回す／「掘る」ボタン・画面タップで発掘・相棒をなでる", 4600); }
+    if(IS_TOUCH && desktop){ showToast("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
     unlockAudio();
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
@@ -1461,7 +1463,6 @@ renderer.domElement.addEventListener("touchstart", tStart, {passive:false});
 renderer.domElement.addEventListener("touchmove",  tMove,  {passive:false});
 renderer.domElement.addEventListener("touchend",   tEnd);
 renderer.domElement.addEventListener("touchcancel",tEnd);
-document.getElementById("digBtn").addEventListener("click", ()=>{ if(GAME.active&&GAME.desktop) desktopDig(); });
 
 // デスクトップの「探査プローブ」＝カメラ前方の地面点
 const probePoint = new THREE.Vector3();
@@ -1472,8 +1473,13 @@ function desktopProbe(){
     probePoint.copy(camera.getWorldPosition(new THREE.Vector3())).addScaledVector(dir, 3.5); probePoint.y=GROUND_Y;
     return probePoint;
 }
+// クリック（PC）：照準が相棒なら なでる、そうでなければ掘る
 function desktopDig(){
     if(tryPetDesktop()) return;
+    digOnly();
+}
+// 「掘る」ボタン専用：掘るだけ（相棒はなでない）
+function digOnly(){
     if(!digAimed()){ sfxDig(); showToast("発掘ポイントの枠を狙って掘ろう（近づくと反応します）"); }
 }
 
@@ -1491,7 +1497,7 @@ function aimAt(origin, dir){
     if(!hits.length) return null;
     return GAME.targets.find(t=>t.block===hits[0].object) || null;
 }
-// 今フレームの照準対象を決める（VR＝手/コントローラーの向き、PC・スマホ＝視線中央）
+// 今フレームの照準対象を決める（VR＝手/コントローラーの向き、PC＝画面中央）
 function updateAim(isVR){
     let hit=null;
     if(isVR){
@@ -1502,39 +1508,14 @@ function updateAim(isVR){
             hit=aimAt(o,d); if(hit) break;
         }
     } else if(GAME.desktop){
-        // PC・スマホは厳密なレイだと足元を狙いにくいので、視線との角度で緩く判定
-        hit=aimLoose(35, DIG_REACH+2);
-        if(!hit) hit=nearestTargetWithin(1.8);   // 真上に立っていれば掘れる
+        // 画面中央から厳密に判定（甘くしない）
+        const o=camera.getWorldPosition(new THREE.Vector3());
+        const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+        hit=aimAt(o,d);
     }
     if(GAME.mode==="time" && TA.state!=="run") hit=null;
     aimedTarget=hit;
     GAME.targets.forEach(t=>{ if(t.outline) t.outline.visible=(t===hit && t.discovered); });
-}
-// 視線方向との角度がしきい値内で最も正面に近いターゲット
-function aimLoose(maxDeg, maxDist){
-    if(!GAME.targets.length) return null;
-    const o=camera.getWorldPosition(new THREE.Vector3());
-    const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).normalize();
-    const cosMax=Math.cos(THREE.MathUtils.degToRad(maxDeg));
-    let best=null, bestDot=cosMax;
-    for(const t of GAME.targets){
-        const c=t.block.getWorldPosition(new THREE.Vector3());
-        const to=c.sub(o); const dist=to.length();
-        if(dist>maxDist) continue;
-        const dot=to.normalize().dot(d);
-        if(dot>bestDot){ bestDot=dot; best=t; }
-    }
-    return best;
-}
-// 足元にあるターゲット
-function nearestTargetWithin(r){
-    const o=camera.getWorldPosition(new THREE.Vector3());
-    let best=null,bd=r;
-    for(const t of GAME.targets){
-        const dist=Math.hypot(o.x-t.pos.x, o.z-t.pos.z);
-        if(dist<bd){ bd=dist; best=t; }
-    }
-    return best;
 }
 
 // 土しぶき（掘るたびに少し飛び出る）
@@ -1572,6 +1553,14 @@ function doDig(t){
     t.progress++;
     sfxDig();
     spawnDirt(t.pos, 8);
+    // 掘るほどブロックが削れていく
+    if(t.block){
+        const left=Math.max(0, 1 - t.progress/t.digNeed);
+        const s=0.45+0.55*left;
+        t.block.scale.set(s, Math.max(0.25, left), s);
+        t.block.position.y = GROUND_Y + DIG_BLOCK*0.35*Math.max(0.25, left);
+        if(t.outline){ t.outline.scale.copy(t.block.scale); t.outline.position.copy(t.block.position); }
+    }
     drawProgress(t.pg, t.progress/t.digNeed, t.digNeed, t.progress);
     if(t.progress>=t.digNeed){ excavate(t); }
 }
@@ -1579,9 +1568,11 @@ function doDig(t){
 function discoverTarget(t){
     if(t.discovered) return;
     t.discovered=true; t.marker.visible=true; t.pg.spr.visible=true;
+    // 掘れるブロックを実体として見せる（タップ/照準の目標になる）
+    if(t.block){ t.block.material.opacity=0.95; t.block.material.transparent=false; }
     drawProgress(t.pg,0,t.digNeed,0);
     sfxLocate(); vibrate(120,0.7);
-    showToast("発掘ポイント発見！狙って掘ろう");
+    showToast("発掘ポイント発見！ブロックを狙って掘ろう");
 }
 // 照準しているブロックを掘る（マイクラ風：狙っていないと掘れない）
 function digAimed(){
@@ -1617,24 +1608,24 @@ function checkPetVR(){
         if(p.distanceTo(head) < 0.45 && (c.userData.shakeSpeed||0) > 0.5){ petDog(); return; }
     }
 }
-// PC/スマホ：相棒を狙って/タップしてなでる（角度判定で緩めに）
+// PC：画面中央が相棒に当たっていればなでる（厳密判定）
 function tryPetDesktop(){
     const o=camera.getWorldPosition(new THREE.Vector3());
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).normalize();
-    const c=dog.getWorldPosition(new THREE.Vector3()); c.y+=0.2;
-    const to=c.sub(o); const dist=to.length();
-    if(dist>5) return false;
-    if(to.normalize().dot(d) < Math.cos(THREE.MathUtils.degToRad(28))) return false;
-    petDog(); return true;
+    _aimRay.set(o,d); _aimRay.far=PET_REACH;
+    if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
+    return false;
 }
-// 画面の座標（NDC）で直接タップしたものを判定
+// 画面の座標（NDC）で直接タップしたものを判定（厳密判定）
 function tapAt(ndcX, ndcY){
     if(!GAME.active) return false;
     _aimRay.setFromCamera({x:ndcX, y:ndcY}, camera);
-    _aimRay.far=12;
-    // 相棒が優先
+    // 相棒が優先（届く距離まで）
+    _aimRay.far=PET_REACH;
     if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
     if(GAME.mode==="time" && TA.state!=="run") return false;
+    // 発掘ブロック
+    _aimRay.far=DIG_REACH;
     const blocks=GAME.targets.map(t=>t.block);
     const hits=blocks.length ? _aimRay.intersectObjects(blocks, false) : [];
     if(hits.length){
