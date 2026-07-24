@@ -385,58 +385,31 @@ const TIME_LIMIT = 100; // タイムアタック秒数
  * ===================================================== */
 const DEX_KEY = "echizen_dex_v1";
 const TA_KEY  = "echizen_timeattack_top5_v1";
-function loadDex(){ try{ return JSON.parse(localStorage.getItem(DEX_KEY)||"{}"); }catch(e){ return {}; } }
-function saveDex(d){ localStorage.setItem(DEX_KEY, JSON.stringify(d)); }
 function loadTA(){ try{ return JSON.parse(localStorage.getItem(TA_KEY)||"[]"); }catch(e){ return []; } }
 function saveTA(a){ localStorage.setItem(TA_KEY, JSON.stringify(a)); }
-let dexData = loadDex();
+// 発掘図鑑は「その回のプレイ」だけの記録。保存はせず、リロードで必ず空になる。
+try{ localStorage.removeItem(DEX_KEY); }catch(e){}
+let dexData = {};
+function saveDex(){ /* 保存しない（リロードでリセットするため） */ }
 
 /* =====================================================
  * Web Audio（合成SFX）— 既存アプリの手法を踏襲
  * ===================================================== */
 const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-const masterGain = audioCtx.createGain();
-masterGain.gain.value = 1.0;
-masterGain.connect(audioCtx.destination);
-const AOUT = masterGain;   // 全SFXの出力先
-
-// iOSのマナーモード対策：無音ループを<audio>で再生してメディア音声セッションを開く
-const silentEl = document.createElement("audio");
-silentEl.setAttribute("playsinline","");
-silentEl.loop = true; silentEl.volume = 0.01;
-// 極小の無音WAV
-silentEl.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgLsAAAB3AQACABAAZGF0YQAAAAA=";
-
-let audioUnlocked=false;
-function unlockAudio(){
-    try{
-        if(audioCtx.state!=="running") audioCtx.resume().catch(()=>{});
-        if(!audioUnlocked){
-            const b=audioCtx.createBuffer(1,1,22050);
-            const s=audioCtx.createBufferSource(); s.buffer=b;
-            s.connect(AOUT); s.start(0);
-            silentEl.play().catch(()=>{});
-            audioUnlocked=true;
-        }
-    }catch(e){}
-}
-["pointerdown","pointerup","touchstart","touchend","mousedown","click","keydown"]
-    .forEach(ev=>addEventListener(ev,unlockAudio,{passive:true, capture:true}));
-document.addEventListener("visibilitychange",()=>{ if(!document.hidden) unlockAudio(); });
+function unlockAudio(){ if(audioCtx.state==="suspended") audioCtx.resume(); }
+["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio));
 
 function beep(freq, dur=0.09, vol=0.3, type="sine"){
-    if(audioCtx.state!=="running") unlockAudio();
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.connect(g); g.connect(AOUT); o.type=type;
+    o.connect(g); g.connect(audioCtx.destination); o.type=type;
     o.frequency.setValueAtTime(freq, audioCtx.currentTime);
     g.gain.setValueAtTime(vol, audioCtx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+dur);
     o.start(); o.stop(audioCtx.currentTime+dur);
 }
 function chord(freqs, step=0.06, type="triangle", vol=0.4){
-    if(audioCtx.state!=="running") unlockAudio();
     freqs.forEach((f,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-        o.connect(g); g.connect(AOUT); o.type=type;
+        o.connect(g); g.connect(audioCtx.destination); o.type=type;
         o.frequency.setValueAtTime(f, audioCtx.currentTime+i*step);
         g.gain.setValueAtTime(vol, audioCtx.currentTime+i*step);
         g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+i*step+0.5);
@@ -444,7 +417,6 @@ function chord(freqs, step=0.06, type="triangle", vol=0.4){
 }
 const sfxScan     = (signal)=> beep(300+900*signal, 0.06, 0.22+0.2*signal, "sine");
 function sfxDig(){
-    unlockAudio();
     const t0=audioCtx.currentTime, dur=0.18;
     // 砂利を掻くノイズ（バンドパス）
     const buf=audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate*dur), audioCtx.sampleRate);
@@ -453,12 +425,12 @@ function sfxDig(){
     const src=audioCtx.createBufferSource(); src.buffer=buf;
     const bp=audioCtx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=900+Math.random()*500; bp.Q.value=0.7;
     const ng=audioCtx.createGain(); ng.gain.setValueAtTime(0.55,t0); ng.gain.exponentialRampToValueAtTime(0.001,t0+dur);
-    src.connect(bp); bp.connect(ng); ng.connect(AOUT); src.start(t0);
+    src.connect(bp); bp.connect(ng); ng.connect(audioCtx.destination); src.start(t0);
     // 低い「ドッ」という掘り込み
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
     o.type="triangle"; o.frequency.setValueAtTime(150,t0); o.frequency.exponentialRampToValueAtTime(70,t0+0.12);
     g.gain.setValueAtTime(0.35,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+0.14);
-    o.connect(g); g.connect(AOUT); o.start(t0); o.stop(t0+0.16);
+    o.connect(g); g.connect(audioCtx.destination); o.start(t0); o.stop(t0+0.16);
 }
 const sfxLocate   = ()=> chord([440,660,880],0.05,"triangle",0.35);   // ホットスポット発見
 const sfxExcavate = ()=> chord([523,659,784,1047],0.09,"triangle",0.5);// 出土！
@@ -1228,8 +1200,6 @@ function startGame(desktop){
     bubble.say(line("start"), 2600);
     if(IS_TOUCH && desktop){ showToast("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
     unlockAudio();
-    // 音が出せない状態なら知らせる（iPhoneは本体のマナーモード／サイレントスイッチにも注意）
-    setTimeout(()=>{ if(audioCtx.state!=="running"){ showToast("🔇 音がブロックされています。画面を一度タップしてください", 4200); } }, 900);
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
 
@@ -1870,10 +1840,7 @@ renderer.setAnimationLoop(()=>{
     updateDirt(dt);
     updateHearts(dt);
     if(petCooldown>0) petCooldown-=dt;
-    if(GAME.active){
-        if(audioCtx.state!=="running") unlockAudio();
-        updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR();
-    }
+    if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
     // 左手のひらの発掘図鑑パネル
     updateDexPanel();
