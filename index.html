@@ -1477,14 +1477,15 @@ function desktopProbe(){
     probePoint.copy(camera.getWorldPosition(new THREE.Vector3())).addScaledVector(dir, 3.5); probePoint.y=GROUND_Y;
     return probePoint;
 }
-// クリック（PC）：照準が相棒なら なでる、そうでなければ掘る
+// クリック（PC）：掘れる状態のブロックがあれば発掘優先、無ければ相棒をなでる
 function desktopDig(){
+    if(anyDigReady){ digOnly(); return; }
     if(tryPetDesktop()) return;
     digOnly();
 }
-// 「掘る」ボタン専用：掘るだけ（相棒はなでない）
+// 掘るだけ（相棒はなでない）
 function digOnly(){
-    if(!digAimed()){ sfxDig(); showToast("発掘ポイントの枠を狙って掘ろう（近づくと反応します）"); }
+    if(!digAimed()){ sfxDig(); showToast("光っているブロックを狙って掘ろう（近づくと光ります）"); }
 }
 
 /* =====================================================
@@ -1552,7 +1553,45 @@ function updateDirt(dt){
     }
 }
 
-/* 掘る処理（共通） */
+/* 掘れる条件（距離＋向き）が整ったブロックを判定。整っている間は脈動発光する。 */
+let anyDigReady=false;
+const DIG_VIEW_DEG=42;                 // 画面内とみなす視野角
+const _dv1=new THREE.Vector3(), _dv2=new THREE.Vector3();
+function updateDigReady(){
+    anyDigReady=false;
+    const allow = !(GAME.mode==="time" && TA.state!=="run");
+    const o=camera.getWorldPosition(_dv1);
+    const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    const cosMax=Math.cos(THREE.MathUtils.degToRad(DIG_VIEW_DEG));
+    for(const t of GAME.targets){
+        let ready=false;
+        if(allow && t.discovered && t.block){
+            const c=t.block.getWorldPosition(_dv2);
+            const to=c.clone().sub(o);
+            const dist=to.length();
+            if(dist<=DIG_REACH && to.normalize().dot(d)>=cosMax) ready=true;
+        }
+        t.digReady=ready;
+        if(ready) anyDigReady=true;
+    }
+}
+// 脈動発光（掘れるサイン）
+function updateBlockGlow(now){
+    for(const t of GAME.targets){
+        if(!t.block) continue;
+        const m=t.block.material;
+        if(t.digReady){
+            const p=0.5+0.5*Math.sin(now*0.006);
+            m.emissive.setHex(0xffcc55);
+            m.emissiveIntensity=0.25+0.55*p;
+            const s=1+0.05*p;
+            t.block.scale.x=t.block.scale.z=(t.block.userData.baseS||1)*s;
+        } else {
+            m.emissiveIntensity=0;
+            t.block.scale.x=t.block.scale.z=(t.block.userData.baseS||1);
+        }
+    }
+}
 function doDig(t){
     t.progress++;
     sfxDig();
@@ -1561,6 +1600,7 @@ function doDig(t){
     if(t.block){
         const left=Math.max(0, 1 - t.progress/t.digNeed);
         const s=0.45+0.55*left;
+        t.block.userData.baseS=s;
         t.block.scale.set(s, Math.max(0.25, left), s);
         t.block.position.y = GROUND_Y + DIG_BLOCK*0.35*Math.max(0.25, left);
         if(t.outline){ t.outline.scale.copy(t.block.scale); t.outline.position.copy(t.block.position); }
@@ -1578,12 +1618,10 @@ function discoverTarget(t){
     sfxLocate(); vibrate(120,0.7);
     showToast("発掘ポイント発見！ブロックを狙って掘ろう");
 }
-// 照準しているブロックを掘る（マイクラ風：狙っていないと掘れない）
+// 照準しているブロックを掘る（脈動発光＝掘れる状態のときだけ）
 function digAimed(){
-    if(GAME.mode==="time" && TA.state!=="run") return false;
     const t=aimedTarget;
-    if(!t) return false;
-    if(!t.discovered) discoverTarget(t);
+    if(!t || !t.digReady) return false;
     doDig(t);
     return true;
 }
@@ -1605,6 +1643,7 @@ function petDog(){
 }
 // VR：手/コントローラーが相棒の頭に近づいたらなでる
 function checkPetVR(){
+    if(anyDigReady) return;   // 掘れる状態のときは発掘を優先
     const head=dog.getWorldPosition(new THREE.Vector3()); head.y += 0.55;   // 頭のあたり
     const devices=[rightCtrl,leftCtrl].filter(c=>c && c.userData.handedness);
     for(const c of devices){
@@ -1626,24 +1665,27 @@ function tapAt(ndcX, ndcY){
     if(!GAME.active) return false;
     camera.updateMatrixWorld();
     const offsets=[[0,0],[TAP_SPREAD,0],[-TAP_SPREAD,0],[0,TAP_SPREAD],[0,-TAP_SPREAD]];
-    // 相棒が優先（届く距離まで）
+
+    // 掘れる状態（脈動発光中）のブロックがあれば、発掘が最優先。相棒の判定はしない。
+    if(anyDigReady){
+        const blocks=GAME.targets.filter(t=>t.digReady).map(t=>t.block);
+        for(const [ox,oy] of offsets){
+            _aimRay.setFromCamera({x:ndcX+ox, y:ndcY+oy}, camera);
+            _aimRay.far=DIG_REACH;
+            const hits=_aimRay.intersectObjects(blocks, false);
+            if(hits.length){
+                const t=GAME.targets.find(x=>x.block===hits[0].object);
+                if(t){ doDig(t); return true; }
+            }
+        }
+        return false;   // 発光中は相棒をなでない
+    }
+
+    // 発光しているブロックが無いときだけ、相棒をなでられる
     for(const [ox,oy] of offsets){
         _aimRay.setFromCamera({x:ndcX+ox, y:ndcY+oy}, camera);
         _aimRay.far=PET_REACH;
         if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
-    }
-    if(GAME.mode==="time" && TA.state!=="run") return false;
-    // 発掘ブロック
-    const blocks=GAME.targets.map(t=>t.block);
-    if(!blocks.length) return false;
-    for(const [ox,oy] of offsets){
-        _aimRay.setFromCamera({x:ndcX+ox, y:ndcY+oy}, camera);
-        _aimRay.far=DIG_REACH;
-        const hits=_aimRay.intersectObjects(blocks, false);
-        if(hits.length){
-            const t=GAME.targets.find(x=>x.block===hits[0].object);
-            if(t){ if(!t.discovered) discoverTarget(t); doDig(t); return true; }
-        }
     }
     return false;
 }
@@ -1766,7 +1808,7 @@ renderer.setAnimationLoop(()=>{
     updateDirt(dt);
     updateHearts(dt);
     if(petCooldown>0) petCooldown-=dt;
-    if(GAME.active){ updateAim(isVR); if(isVR) checkPetVR(); }
+    if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); if(isVR) checkPetVR(); }
 
     // 左手のひらの発掘図鑑パネル
     updateDexPanel();
