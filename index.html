@@ -273,13 +273,13 @@
       </section>
       <section>
         <h3>⛏ 掘る</h3>
-        <p>反応が強い場所まで来ると<b>土のブロック</b>が現れます。マイクラのようにブロックを狙う（タップする）と掘れて、土が飛び散り、掘るほどブロックが削れていきます。出土すればブロックは消えます（届く距離は約4m）。</p>
-        <p class="k">スマホ：<b>ブロックをタップ</b>／PC：画面中央で狙って左クリック／VR：枠を狙ってコントローラー（または手）を振る</p>
+        <p>反応が強い場所まで来ると<b>土のブロック</b>が現れます。掘れる距離と向きが整うとブロックが<b>脈打つように光ります</b>。光っている間にブロックをタップ（PCはクリック／VRは狙って振る）すると発掘が進み、土が飛び散ってブロックが削れていきます。出土するとブロックは消えます。</p>
+        <p class="k">スマホ：<b>光っているブロックをタップ</b>／PC：狙って左クリック／VR：狙ってコントローラー（または手）を振る</p>
         <p>犬に聞かなくても、自分で反応をたどって見つければ発掘できます。</p>
       </section>
       <section>
         <h3>🐾 相棒をなでる</h3>
-        <p>相棒をなでると喜んでハートが舞います。</p>
+        <p>相棒をなでると喜んでハートが舞います。<b>ブロックが光っている間は発掘が優先</b>されるので、相棒がブロックと重なっていても誤って撫でることはありません。光っていないときにタップすると喜びます。</p>
         <p class="k">スマホ：<b>相棒をタップ</b>／PC：相棒に照準を合わせて左クリック／VR：相棒の頭に手を近づけて動かす</p>
       </section>
       <section>
@@ -679,7 +679,8 @@ registerCompanion("dog", {
     label:"🐶 いぬ", askLabel:"🐶 犬に聞く", body:dogBody,
     lines:{ start:"いっしょに さがすワン！", found:"みつけたワン！🎉", here:"ここ ほって ワン！",
             hintOk:"こっちワン！ついてきて→", hintNg:"たぶん こっちワン？", wrong:"…あれ、ちがうかも？ワン",
-            done:"ぜんぶ みつけたワン！", again:"おしい！ もう一回するワン？", pet:"うれしいワン！" }
+            done:"ぜんぶ みつけたワン！", again:"おしい！ もう一回するワン？", pet:"うれしいワン！",
+            closer:"もっと 近くに寄るワン！", digNow:"ここ 掘れるワン！" }
 });
 
 // 吹き出しスプライト
@@ -1625,6 +1626,34 @@ function digAimed(){
     doDig(t);
     return true;
 }
+/* 相棒のコーチング：発見済みだけどまだ掘れない時は「近くに寄って」と促す */
+let coachTimer=0, wasDigReady=false;
+function focusTarget(){
+    const ready=GAME.targets.find(t=>t.digReady);
+    if(ready) return ready;
+    let best=null,bd=1e9;
+    const o=camera.getWorldPosition(new THREE.Vector3());
+    for(const t of GAME.targets){
+        if(!t.discovered) continue;
+        const d=Math.hypot(o.x-t.pos.x, o.z-t.pos.z);
+        if(d<bd){ bd=d; best=t; }
+    }
+    return best;
+}
+function updateCoach(dt){
+    const focus=focusTarget();
+    // 掘れる状態になった瞬間に一言
+    if(anyDigReady && !wasDigReady){ bubble.say(line("digNow"), 2000); sfxBark(); coachTimer=4; }
+    wasDigReady=anyDigReady;
+    // 発見済みだが遠い／向いていない時は、定期的に「近くに寄って」
+    coachTimer-=dt;
+    if(!anyDigReady && focus && coachTimer<=0){
+        coachTimer=6.5;
+        bubble.say(line("closer"), 2200);
+        sfxBark();
+    }
+}
+
 let handDigCooldown=0;
 
 /* =====================================================
@@ -1808,7 +1837,7 @@ renderer.setAnimationLoop(()=>{
     updateDirt(dt);
     updateHearts(dt);
     if(petCooldown>0) petCooldown-=dt;
-    if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); if(isVR) checkPetVR(); }
+    if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
     // 左手のひらの発掘図鑑パネル
     updateDexPanel();
@@ -1985,6 +2014,7 @@ function updateDog(dt, now){
     _playerPrev.copy(playerPos);
 
     let goal, waitingAtHint=false;
+    const focus=(typeof focusTarget==="function") ? focusTarget() : null;
     if(dog.userData.hintActive && dog.userData.hintPos){
         goal=dog.userData.hintPos.clone(); goal.y=0;
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
@@ -1994,6 +2024,11 @@ function updateDog(dt, now){
             waitingAtHint=true;
             if(now>dog.userData.hintWaitUntil){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         }
+    } else if(focus){
+        // 発掘ブロックの「右どなり」に立つ（ブロックに重ならないように）
+        const q=camQuat();
+        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        goal=new THREE.Vector3(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 1.0);
     } else {
         // 定位置＝視線の前方（＋少し横）。後ろ向きに動いても画面内の前方に居続ける。
         const q=camQuat();
