@@ -83,11 +83,12 @@
 
     /* ── 発掘図鑑（HTML版） ── */
     #dex{ position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
-        background:rgba(3,2,10,.92); padding:18px; }
+        background:rgba(3,2,10,.92); padding:12px; }
     #dex.open{ display:flex; }
-    .dexbox{ width:min(880px,96vw); max-height:92vh; overflow:hidden; display:flex; flex-direction:column; gap:12px;
+    .dexbox{ width:min(880px,96vw); max-height:94vh; max-height:94dvh; overflow:hidden;
+        display:flex; flex-direction:column; gap:10px;
         background:linear-gradient(150deg,#160f0a,#0c1024); border:1px solid rgba(210,180,120,.35);
-        border-radius:16px; padding:18px 20px; position:relative; }
+        border-radius:16px; padding:16px 16px 14px; position:relative; }
     .dexbox h2, .dexbar, .dexbar-lbl, .dexreset{ flex:0 0 auto; }
     .dexbox h2{ margin:0; text-align:center; font-size:clamp(17px,2.4vw,23px); color:var(--gold); letter-spacing:3px; }
     .dexbar{ height:8px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; }
@@ -95,7 +96,7 @@
         transition:width .5s ease; }
     .dexbar-lbl{ text-align:center; font-size:13px; color:rgba(230,210,160,.85); letter-spacing:1px; }
     .dexgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; overflow-y:auto; -webkit-overflow-scrolling:touch;
-        padding:2px; min-height:0; flex:1 1 auto; align-content:start; }
+        overscroll-behavior:contain; padding:2px 2px 8px; min-height:0; flex:1 1 auto; align-content:start; }
     @media(max-width:640px){ .dexgrid{ grid-template-columns:repeat(2,1fr); gap:10px; } }
     @media(max-width:380px){ .dexgrid{ grid-template-columns:1fr; } }
     /* カード形式：中の画像は1:1。上下に余白を取り、そこにNo.と発掘日時を置く */
@@ -131,7 +132,7 @@
     #help{ position:fixed; inset:0; z-index:45; display:none; align-items:center; justify-content:center;
         background:rgba(3,2,10,.92); padding:18px; }
     #help.open{ display:flex; }
-    .helpbox{ width:min(680px,96vw); max-height:90vh; display:flex; flex-direction:column; gap:12px; position:relative;
+    .helpbox{ width:min(680px,96vw); max-height:92vh; max-height:92dvh; display:flex; flex-direction:column; gap:12px; position:relative;
         background:linear-gradient(150deg,#160f0a,#0c1024); border:1px solid rgba(210,180,120,.35);
         border-radius:16px; padding:20px 22px; }
     .helpbox h2{ margin:0; text-align:center; font-size:clamp(17px,2.4vw,22px); color:var(--gold); letter-spacing:3px; }
@@ -361,7 +362,7 @@ const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.85;              // 掘れるブロックの一辺（m）※マイクラ風の当たり判定
 const DIG_REACH     = 4.0;               // 掘れる距離（m）
-const PET_REACH     = 3.0;               // 相棒をなでられる距離（m）
+const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = -0.2;              // 犬の接地高さ補正（m。少し下げる）
 const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
@@ -1619,21 +1620,30 @@ function tryPetDesktop(){
     if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
     return false;
 }
-// 画面の座標（NDC）で直接タップしたものを判定（厳密判定）
+// 画面の座標（NDC）で直接タップしたものを判定（指の太さぶんだけ許容）
+const TAP_SPREAD=0.03;   // 指先ぶんの許容（画面比）
 function tapAt(ndcX, ndcY){
     if(!GAME.active) return false;
-    _aimRay.setFromCamera({x:ndcX, y:ndcY}, camera);
+    camera.updateMatrixWorld();
+    const offsets=[[0,0],[TAP_SPREAD,0],[-TAP_SPREAD,0],[0,TAP_SPREAD],[0,-TAP_SPREAD]];
     // 相棒が優先（届く距離まで）
-    _aimRay.far=PET_REACH;
-    if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
+    for(const [ox,oy] of offsets){
+        _aimRay.setFromCamera({x:ndcX+ox, y:ndcY+oy}, camera);
+        _aimRay.far=PET_REACH;
+        if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
+    }
     if(GAME.mode==="time" && TA.state!=="run") return false;
     // 発掘ブロック
-    _aimRay.far=DIG_REACH;
     const blocks=GAME.targets.map(t=>t.block);
-    const hits=blocks.length ? _aimRay.intersectObjects(blocks, false) : [];
-    if(hits.length){
-        const t=GAME.targets.find(x=>x.block===hits[0].object);
-        if(t){ if(!t.discovered) discoverTarget(t); doDig(t); return true; }
+    if(!blocks.length) return false;
+    for(const [ox,oy] of offsets){
+        _aimRay.setFromCamera({x:ndcX+ox, y:ndcY+oy}, camera);
+        _aimRay.far=DIG_REACH;
+        const hits=_aimRay.intersectObjects(blocks, false);
+        if(hits.length){
+            const t=GAME.targets.find(x=>x.block===hits[0].object);
+            if(t){ if(!t.discovered) discoverTarget(t); doDig(t); return true; }
+        }
     }
     return false;
 }
