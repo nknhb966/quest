@@ -222,6 +222,10 @@
           <button data-v="narrow">⛏ 細ピック（狭いが/掘り少なめ）</button>
         </div>
       </div>
+      <div class="opt wide">
+        <div class="lbl">目線の高さ（VR）　<span id="eyeVal">+0.00m</span></div>
+        <input type="range" id="eyeSlider" min="-2.5" max="1.5" step="0.05" value="0" style="width:100%">
+      </div>
       <div class="opt wide" id="optBuddy" style="display:none">
         <div class="lbl">相棒</div>
         <div class="seg" id="segBuddy"></div>
@@ -362,9 +366,9 @@ const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.85;              // 掘れるブロックの一辺（m）※マイクラ風の当たり判定
 const DIG_REACH     = 4.0;               // 掘れる距離（m）
-const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
+const PET_REACH     = 3.5;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = -0.2;              // 犬の接地高さ補正（m。少し下げる）
-const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
+const DOG_FWD       = 1.7;               // 犬の定位置：前方オフセット（m）※撫でられる距離内に
 const DOG_STAY_R    = 7.0;               // ブロック横で待つ範囲（これ以上離れたらプレイヤーに付いてくる）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -460,6 +464,13 @@ const player = new THREE.Group();
 player.add(camera);
 scene.add(player);
 
+// 視点の高さ調整（VRで地面に沈む/浮くのを補正）。スライダー＋右スティック上下で変更。
+let eyeHeight = 0;                 // m（マイナスで下がる）
+const EYE_MIN=-2.5, EYE_MAX=1.5;
+function applyEyeHeight(){ player.position.y = eyeHeight; const s=document.getElementById("eyeSlider"); if(s && +s.value!==eyeHeight) s.value=eyeHeight;
+    const lbl=document.getElementById("eyeVal"); if(lbl) lbl.textContent=(eyeHeight>=0?"+":"")+eyeHeight.toFixed(2)+"m"; }
+function setEyeHeight(v){ eyeHeight=Math.max(EYE_MIN,Math.min(EYE_MAX, v)); applyEyeHeight(); }
+
 // ライト（レール版はaddCoaster側で処理していたので、歩行版では自前で用意）
 scene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
 const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
@@ -536,14 +547,12 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     world.add(siteRoot);
     // 発掘スポットのプレースホルダ（元HTMLと同じ相対配置＝サイトのネイティブ座標）
     const phs = ART_ORIG.map(([x,z])=>{ const o=new THREE.Object3D(); o.position.set(x,0,z); world.add(o); return o; });
-    // サイトのフットプリントで world 全体を歩ける大きさへフィット
-    let box = new THREE.Box3().setFromObject(siteRoot);
-    const size = box.getSize(new THREE.Vector3());
-    const fit = SITE_FIT_DIAM / Math.max(size.x, size.z, 0.001);
+    // 実寸大（GLBの座標＝メートル）。中心だけ原点へ寄せ、地面はレイキャストで足元へ合わせる。
+    const fit = 1;
     world.scale.setScalar(fit);
     world.updateMatrixWorld(true);
-    // 地面を y=0、中心を原点へ
-    box = new THREE.Box3().setFromObject(siteRoot);
+    let box = new THREE.Box3().setFromObject(siteRoot);
+    const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     world.position.x -= center.x; world.position.z -= center.z; world.position.y -= box.min.y;
     world.updateMatrixWorld(true);
@@ -584,10 +593,13 @@ const artModels = new Array(8).fill(null);
 ART_FILES.forEach((f,idx)=>{
     gltfLoader.load(ART_BASE+f, (gltf)=>{
         const o=gltf.scene;
+        // 実寸大（GLBの座標＝メートル）。ただし極端に大きい/小さい場合だけ緩く補正。
         const box=new THREE.Box3().setFromObject(o);
-        const size=box.getSize(new THREE.Vector3());
-        const fit=ART_TARGET_H/Math.max(size.x,size.y,size.z,0.001);
-        o.scale.setScalar(fit);
+        const h=box.getSize(new THREE.Vector3()).y || 1;
+        let s=1;
+        if(h>1.2) s=1.2/h;          // 1.2mを超える出土品だけ縮める
+        else if(h<0.05) s=0.15/h;   // 極端に小さいものだけ持ち上げる
+        o.scale.setScalar(s);
         o.visible=false; scene.add(o); artModels[idx]=o;
     }, undefined, ()=>{ /* 失敗しても続行 */ });
 });
@@ -623,7 +635,7 @@ const dogBody  = new THREE.Group();     // イヌ
 })();
 
 scene.add(dog);
-dog.scale.setScalar(0.35);
+dog.scale.setScalar(0.7);   // 犬を2倍サイズに（従来0.35→0.7）
 dog.position.set(2,GROUND_Y,2);
 
 /* =====================================================
@@ -1202,6 +1214,8 @@ function startGame(desktop){
     unlockAudio();
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
+document.getElementById("eyeSlider").addEventListener("input", e=>{ setEyeHeight(parseFloat(e.target.value)); });
+applyEyeHeight();
 
 // VR開始/終了
 renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); updatePanelScale(); if(!GAME.active) startGame(false); });
@@ -1858,13 +1872,15 @@ renderer.setAnimationLoop(()=>{
 let snapCooldown=0;
 function handleVRLocomotion(dt){
     const s=renderer.xr.getSession(); if(!s) return;
-    let moveX=0,moveY=0,turn=0;
+    let moveX=0,moveY=0,turn=0,rise=0;
     for(const src of s.inputSources){
         const gp=src.gamepad; if(!gp) continue;
         const ax=gp.axes||[];
         if(src.handedness==="left"){ moveX=ax[2]||0; moveY=ax[3]||0; }
-        else if(src.handedness==="right"){ turn=ax[2]||0; }
+        else if(src.handedness==="right"){ turn=ax[2]||0; rise=ax[3]||0; }
     }
+    // 右スティック上下で視点の高さ調整（上に倒すと高く、下で低く）
+    if(Math.abs(rise)>0.2){ setEyeHeight(eyeHeight - rise*1.2*dt); }
     // 移動（頭の向き基準）
     if(Math.abs(moveX)>0.15||Math.abs(moveY)>0.15){
         const q=camQuat();
@@ -1876,9 +1892,9 @@ function handleVRLocomotion(dt){
         const d=Math.hypot(player.position.x,player.position.z);
         if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; }
     }
-    // スナップ回転
+    // スナップ回転（右スティックX）
     snapCooldown-=dt;
-    if(Math.abs(turn)>0.7 && snapCooldown<=0){
+    if(Math.abs(turn)>0.7 && Math.abs(turn)>Math.abs(rise) && snapCooldown<=0){
         player.rotateY(THREE.MathUtils.degToRad(turn>0?-SNAP_DEG:SNAP_DEG));
         snapCooldown=0.28;
     }
