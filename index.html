@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
-<title>越前国府 発掘図鑑クエスト</title>
+<title>越前国府発掘クエスト</title>
 <style>
     *, *::before, *::after { box-sizing:border-box; }
     :root{
@@ -205,7 +205,7 @@
 <div id="menu">
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
-    <h1 class="title">越前国府 発掘図鑑クエスト</h1>
+    <h1 class="title">越前国府発掘クエスト</h1>
     <p class="subtitle">遺跡を歩いて探して、出土品を掘り当てよう。相棒の犬と一緒に。</p>
 
     <p id="loadingNote"><i></i>遺跡データを読み込み中…（完了すると開始できます）</p>
@@ -226,6 +226,10 @@
           <button data-v="wide" class="on">🖌 幅広ブラシ（広く探せる/掘り多め）</button>
           <button data-v="narrow">⛏ 細ピック（狭いが/掘り少なめ）</button>
         </div>
+      </div>
+      <div class="opt wide" id="optBuddy" style="display:none">
+        <div class="lbl">相棒</div>
+        <div class="seg" id="segBuddy"></div>
       </div>
       <div class="opt wide">
         <div class="lbl">コントローラー使用時の探知音（振動は常にON／素手のときは自動で音が鳴ります）</div>
@@ -318,6 +322,7 @@
       <span class="k">マウス</span> 見回す（クリックで視点固定）
       <span class="k">左クリック</span> 掘る
     </span>
+    <button id="dBuddy" style="display:none">相棒：🐶</button>
     <button id="dAsk">🐶 犬に聞く</button>
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dDex">📖 図鑑</button>
@@ -585,32 +590,93 @@ ART_FILES.forEach((f,idx)=>{
 const texLoader = new THREE.TextureLoader();
 
 /* =====================================================
- * 相棒の犬（プリミティブ製）＋ 吹き出し
+ * 相棒（プリミティブ製）＋ 吹き出し
+ *   dog … 移動を担うルート。実際の見た目は子の「ボディ」グループが持つ（差し替え可能）。
  * ===================================================== */
-const dog = new THREE.Group();
+const dog = new THREE.Group();          // 相棒のルート（位置・向きはこれを動かす）
+const dogBody  = new THREE.Group();     // イヌ
+
 (function buildDog(){
     const bodyMat = new THREE.MeshStandardMaterial({color:0xc99a5b, roughness:0.8});
     const darkMat = new THREE.MeshStandardMaterial({color:0x8a6636, roughness:0.8});
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.55,1.5), bodyMat); body.position.y=0.75; dog.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.55,0.6), bodyMat); head.position.set(0,1.05,0.95); dog.add(head);
-    const snout= new THREE.Mesh(new THREE.BoxGeometry(0.32,0.28,0.4), darkMat); snout.position.set(0,0.95,1.3); dog.add(snout);
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10), new THREE.MeshStandardMaterial({color:0x221a12})); nose.position.set(0,0.98,1.52); dog.add(nose);
-    [[-0.2,1.42,0.85],[0.2,1.42,0.85]].forEach(p=>{ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.35,4),darkMat); ear.position.set(p[0],p[1],p[2]); dog.add(ear); });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.55,1.5), bodyMat); body.position.y=0.75; dogBody.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.55,0.6), bodyMat); head.position.set(0,1.05,0.95); dogBody.add(head);
+    const snout= new THREE.Mesh(new THREE.BoxGeometry(0.32,0.28,0.4), darkMat); snout.position.set(0,0.95,1.3); dogBody.add(snout);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10), new THREE.MeshStandardMaterial({color:0x221a12})); nose.position.set(0,0.98,1.52); dogBody.add(nose);
+    [[-0.2,1.42,0.85],[0.2,1.42,0.85]].forEach(p=>{ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.35,4),darkMat); ear.position.set(p[0],p[1],p[2]); dogBody.add(ear); });
     const legs=[];
     [[-0.28,0.28,0.5],[0.28,0.28,0.5],[-0.28,0.28,-0.5],[0.28,0.28,-0.5]].forEach((p,i)=>{
-        const pivot=new THREE.Group(); pivot.position.set(p[0],0.55,p[2]); dog.add(pivot);   // 股関節ピボット
+        const pivot=new THREE.Group(); pivot.position.set(p[0],0.55,p[2]); dogBody.add(pivot);   // 股関節ピボット
         const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.55,8),darkMat); leg.position.set(0,-0.27,0); pivot.add(leg);
         pivot.userData.phase = (i===0||i===3)?0:Math.PI;   // 対角の足を同位相に
         legs.push(pivot);
     });
-    dog.userData.legs=legs;
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.11,0.6,8),bodyMat); tail.position.set(0,0.95,-0.85); tail.rotation.x=-0.9; dog.add(tail); dog.userData.tail=tail;
+    dogBody.userData.legs=legs;
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.11,0.6,8),bodyMat); tail.position.set(0,0.95,-0.85); tail.rotation.x=-0.9; dogBody.add(tail); dogBody.userData.tail=tail;
     // 目
-    [[-0.16,1.12,1.22],[0.16,1.12,1.22]].forEach(p=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,10), new THREE.MeshStandardMaterial({color:0x1a140c})); eye.position.set(p[0],p[1],p[2]); dog.add(eye); });
-    dog.scale.setScalar(0.35);   // 犬（＋子要素の吹き出し）を半分サイズに
+    [[-0.16,1.12,1.22],[0.16,1.12,1.22]].forEach(p=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,10), new THREE.MeshStandardMaterial({color:0x1a140c})); eye.position.set(p[0],p[1],p[2]); dogBody.add(eye); });
 })();
+
 scene.add(dog);
+dog.scale.setScalar(0.35);
 dog.position.set(2,GROUND_Y,2);
+
+/* =====================================================
+ * 相棒の登録・切り替え（拡張ポイント）
+ *   将来マスコット等を追加する場合は registerCompanion() を呼ぶだけ。
+ *     registerCompanion("xxx", { label:"🌼 なまえ", body:<THREE.Group>, lines:{...} });
+ *   body には userData.legs（脚ピボット配列）、任意で userData.tail / userData.wings を持たせると
+ *   歩行アニメ・尻尾ふり・羽ばたきが自動で適用されます。
+ *   相棒が1種類だけのときは切り替えUIは自動的に隠れます。
+ * ===================================================== */
+const COMPANIONS={};
+let companionKind="dog";
+function registerCompanion(key, def){
+    COMPANIONS[key]=def;
+    if(def.body){ def.body.visible=(key===companionKind); dog.add(def.body); }
+    refreshBuddyUI();
+}
+function activeBody(){ return (COMPANIONS[companionKind]||COMPANIONS.dog).body; }
+function setCompanion(kind){
+    if(!COMPANIONS[kind]) kind="dog";
+    companionKind=kind;
+    for(const k in COMPANIONS){ if(COMPANIONS[k].body) COMPANIONS[k].body.visible=(k===kind); }
+    refreshBuddyUI();
+}
+function line(key){
+    const c=COMPANIONS[companionKind]||COMPANIONS.dog;
+    return (c.lines&&c.lines[key]) || COMPANIONS.dog.lines[key];
+}
+// 切り替えUI（相棒が2種類以上あるときだけ表示）
+function refreshBuddyUI(){
+    const keys=Object.keys(COMPANIONS);
+    const seg=document.getElementById("segBuddy"), wrap=document.getElementById("optBuddy"), btn=document.getElementById("dBuddy");
+    const many=keys.length>1;
+    if(wrap) wrap.style.display = many ? "" : "none";
+    if(btn)  btn.style.display  = many ? "" : "none";
+    if(seg){
+        seg.innerHTML="";
+        keys.forEach(k=>{
+            const b=document.createElement("button");
+            b.dataset.v=k; b.textContent=COMPANIONS[k].label||k;
+            if(k===companionKind) b.classList.add("on");
+            b.onclick=()=>setCompanion(k);
+            seg.appendChild(b);
+        });
+    }
+    const ask=document.getElementById("dAsk");
+    const cur=COMPANIONS[companionKind]||COMPANIONS.dog;
+    if(ask) ask.textContent=(cur.askLabel||"🐶 犬に聞く");
+    if(btn) btn.textContent="相棒："+((cur.label||"").split(" ")[0]||"🐶");
+}
+
+// 既定の相棒：いぬ
+registerCompanion("dog", {
+    label:"🐶 いぬ", askLabel:"🐶 犬に聞く", body:dogBody,
+    lines:{ start:"いっしょに さがすワン！", found:"みつけたワン！🎉", here:"ここ ほって ワン！",
+            hintOk:"こっちワン！ついてきて→", hintNg:"たぶん こっちワン？", wrong:"…あれ、ちがうかも？ワン",
+            done:"ぜんぶ みつけたワン！" }
+});
 
 // 吹き出しスプライト
 const bubble = (function(){
@@ -814,7 +880,7 @@ function excavate(t){
         isNew:true };
     saveDex(dexData); refreshDexHTML();
     sfxExcavate(); vibrate(400,1.0);
-    bubble.say("みつけたワン！🎉", 2600);
+    bubble.say(line("found"), 2600);
     dogCelebrate();
 
     // モデルをポップアウト
@@ -840,7 +906,7 @@ function excavate(t){
         updateGoal();
         if(GAME.collectedCount>=8){
             sfxComplete(); showToast("🏆 全8種コンプリート！");
-            bubble.say("ぜんぶ みつけたワン！", 4000);
+            bubble.say(line("done"), 4000);
         } else {
             // 次の（1つ難しい）出土品を次のスポットへ
             setTimeout(()=> spawnTarget(GAME.collectedCount, GAME.collectedCount), 900);
@@ -957,7 +1023,7 @@ const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
 function askDog(){
     if(!GAME.active) return;
     const t = GAME.targets.find(x=>!x.discovered) || GAME.targets[0];
-    if(!t){ sfxBark(); bubble.say("ぜんぶ みつけたワン！", 1800); return; }
+    if(!t){ sfxBark(); bubble.say(line("done"), 1800); return; }
     const reliable = Math.random() < t.diff.dogRel;
     let pos;
     if(reliable){ pos = t.pos.clone(); }
@@ -971,7 +1037,7 @@ function askDog(){
     dog.userData.hintWaitUntil = 0;   // 到着後に設定
     dog.userData.hintStart = performance.now();   // 動き出しを緩やかにするための起点
     sfxBark();
-    bubble.say(reliable ? "こっちワン！ついてきて→" : "たぶん こっちワン？", 2200);
+    bubble.say(reliable ? line("hintOk") : line("hintNg"), 2200);
 }
 function dogCelebrate(){ dogCelebrateT=2.4; }   // ゆっくり数回ジャンプして喜ぶ
 
@@ -1077,7 +1143,7 @@ function startGame(desktop){
     if(desktop) document.body.classList.add("desktop");
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw();
-    bubble.say("いっしょに さがすワン！", 2600);
+    bubble.say(line("start"), 2600);
     if(IS_TOUCH && desktop){ showToast("左スティックで移動／右をなぞって見回す／「掘る」で発掘", 4200); }
     unlockAudio();
 }
@@ -1114,6 +1180,10 @@ function toggleTool(){ GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToo
 }
 document.getElementById("dTool").onclick=toggleTool;
 document.getElementById("dAsk").onclick=()=>{ askDog(); };
+document.getElementById("dBuddy").onclick=()=>{
+    const keys=Object.keys(COMPANIONS);
+    setCompanion(keys[(keys.indexOf(companionKind)+1)%keys.length]);
+};
 document.getElementById("dDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dQuit").onclick=()=> endGame(true);
 
@@ -1494,7 +1564,7 @@ function updateDog(dt, now){
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.8){   // ヒント地点に到着 → 少し待つ
             if(!dog.userData.hintWaitUntil){ dog.userData.hintWaitUntil=now+HINT_WAIT_MS;
-                bubble.say(dog.userData.hintReliable?"ここ ほって ワン！":"…あれ、ちがうかも？", 2400); }
+                bubble.say(dog.userData.hintReliable?line("here"):line("wrong"), 2400); }
             waitingAtHint=true;
             if(now>dog.userData.hintWaitUntil){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         }
@@ -1533,9 +1603,18 @@ function updateDog(dt, now){
 
     // 歩行アニメ（脚の振り＋上下バウンド）
     _dogWalkPhase += (moving?11:0)*dt;
-    if(dog.userData.legs){ dog.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(_dogWalkPhase + p.userData.phase) * (moving?0.6:0.0); }); }
+    const body=activeBody();
+    if(body.userData.legs){ body.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(_dogWalkPhase + p.userData.phase) * (moving?0.6:0.0); }); }
+    // 羽を持つ相棒（将来のマスコット等）は羽ばたく
+    if(body.userData.wings){
+        const flapSpeed = moving ? 0.028 : 0.010;
+        const amp = moving ? 0.85 : 0.35;
+        const f = Math.sin(now*flapSpeed);
+        body.userData.wings.forEach(w=>{ w.rotation.z = w.userData.sign * (0.25 + f*amp*0.5); w.rotation.y = w.userData.sign * f*0.15; });
+        if(body.userData.petals) body.userData.petals.rotation.y += (moving?0.012:0.004);
+    }
     const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
-    if(dog.userData.tail) dog.userData.tail.rotation.z=Math.sin(now*0.02)*0.5;
+    if(body.userData.tail) body.userData.tail.rotation.z=Math.sin(now*0.02)*0.5;
 
     // お祝いジャンプ / 接地高さ
     if(dogCelebrateT>0){ dogCelebrateT-=dt;
