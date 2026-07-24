@@ -1421,6 +1421,7 @@ function tStart(e){
     for(const t of e.changedTouches){
         if(touchJoy.id===null && t.clientX < innerWidth*0.5){
             touchJoy.id=t.identifier; touchJoy.cx=t.clientX; touchJoy.cy=t.clientY; touchJoy.x=0; touchJoy.z=0;
+            touchJoy.sx=t.clientX; touchJoy.sy=t.clientY; touchJoy.t0=performance.now();
             joyEl.style.left=(t.clientX-60)+"px"; joyEl.style.top=(t.clientY-60)+"px"; joyEl.style.display="block";
             joyKnob.style.transform="translate(0px,0px)";
         } else if(touchLook.id===null){
@@ -1447,15 +1448,17 @@ function tMove(e){
 }
 function tEnd(e){
     for(const t of e.changedTouches){
-        if(t.identifier===touchJoy.id){ touchJoy.id=null; touchJoy.x=0; touchJoy.z=0; joyEl.style.display="none"; }
+        if(t.identifier===touchJoy.id){
+            const moved=Math.hypot(t.clientX-touchJoy.sx, t.clientY-touchJoy.sy);
+            const dur=performance.now()-touchJoy.t0;
+            touchJoy.id=null; touchJoy.x=0; touchJoy.z=0; joyEl.style.display="none";
+            if(moved<16 && dur<350){ tapAt((t.clientX/innerWidth)*2-1, -(t.clientY/innerHeight)*2+1); }
+        }
         if(t.identifier===touchLook.id){
-            // ほとんど動かさない短いタップ＝その場所をタップ操作（相棒をなでる／ブロックを掘る）
             const moved=Math.hypot(t.clientX-touchLook.sx, t.clientY-touchLook.sy);
             const dur=performance.now()-touchLook.t0;
-            if(moved<14 && dur<350){
-                tapAt((t.clientX/innerWidth)*2-1, -(t.clientY/innerHeight)*2+1);
-            }
             touchLook.id=null;
+            if(moved<16 && dur<350){ tapAt((t.clientX/innerWidth)*2-1, -(t.clientY/innerHeight)*2+1); }
         }
     }
 }
