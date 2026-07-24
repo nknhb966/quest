@@ -677,7 +677,7 @@ registerCompanion("dog", {
     label:"🐶 いぬ", askLabel:"🐶 犬に聞く", body:dogBody,
     lines:{ start:"いっしょに さがすワン！", found:"みつけたワン！🎉", here:"ここ ほって ワン！",
             hintOk:"こっちワン！ついてきて→", hintNg:"たぶん こっちワン？", wrong:"…あれ、ちがうかも？ワン",
-            done:"ぜんぶ みつけたワン！" }
+            done:"ぜんぶ みつけたワン！", again:"おしい！ もう一回するワン？" }
 });
 
 // 吹き出しスプライト
@@ -789,6 +789,7 @@ const GAME = {
     active:false, mode:"collect", tool:"wide", desktop:false,
     collectedCount:0,          // コレクション：発掘済み数（＝難易度ティア）
     targets:[],                // アクティブな埋蔵ターゲット
+    usedIdx:new Set(),         // 今回の走行で既に出したスポット（同じ場所の連続出現を防ぐ）
     timeLeft:TIME_LIMIT, score:0, endT:0,
 };
 let chosenMode="collect", chosenTool="wide";
@@ -845,12 +846,15 @@ function drawProgress(pg, frac, digNeed, done){
 /* ターゲット生成（最初のHTMLと同じ確定スポットに隠す） */
 const raycaster = new THREE.Raycaster();
 function spawnTarget(tier, forcedIdx=null){
-    // idx決定：forced優先。無ければアクティブでないスポットから
+    // idx決定：forced優先。無ければ「今回の走行でまだ出していない」スポットから
     let idx;
     if(forcedIdx!=null){ idx = ((forcedIdx%8)+8)%8; }
     else {
-        const avail=[...Array(8).keys()].filter(i=>!GAME.targets.some(t=>t.idx===i));
-        idx = avail.length ? avail[(Math.random()*avail.length)|0] : (Math.random()*8|0);
+        const active=GAME.targets.map(t=>t.idx);
+        let avail=[...Array(8).keys()].filter(i=>!active.includes(i) && !GAME.usedIdx.has(i));
+        if(!avail.length){ GAME.usedIdx.clear(); avail=[...Array(8).keys()].filter(i=>!active.includes(i)); }  // 一巡したら再利用
+        if(!avail.length) return null;
+        idx = avail[(Math.random()*avail.length)|0];
     }
     const d = difficulty(tier);
     const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*3, GROUND_Y, ART_ORIG[idx][1]*3)).clone();
@@ -860,6 +864,7 @@ function spawnTarget(tier, forcedIdx=null){
     const t = { idx, tier, pos, diff:d, marker, pg, discovered:false, progress:0,
                 digNeed: Math.max(2, Math.round(d.digNeed * toolMods().digMul)) };
     GAME.targets.push(t);
+    GAME.usedIdx.add(idx);
     return t;
 }
 function clearTargets(){
@@ -1130,6 +1135,7 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
     GAME.collectedCount=0; GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.endT=performance.now()+TIME_LIMIT*1000;
+    GAME.usedIdx.clear();
     clearTargets();
     // 出土品モデルを一旦隠す
     artModels.forEach(m=>{ if(m) m.visible=false; });
@@ -1181,7 +1187,7 @@ function recordTimeAttack(score){
  *   results  … 記録表示（移動可・右トリガーで閉じる）
  *   free     … 記録非表示・移動可（右トリガーでリセットして再挑戦）
  * ===================================================== */
-const TA={ state:"idle", cdEnd:0, lastScore:0 };
+const TA={ state:"idle", cdEnd:0, lastScore:0, lockUntil:0 };
 const COUNTDOWN_MS=3000;
 
 // ワールド内の大型表示（カメラの正面に追従。移動しながらでも読める）
@@ -1252,6 +1258,7 @@ function resetDexForRun(){
 }
 function taBeginCountdown(){
     resetDexForRun(); clearRunWorld();
+    GAME.usedIdx.clear();
     GAME.score=0; GAME.timeLeft=TIME_LIMIT;
     TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS;
     worldHud.drawCountdown("3","まもなくスタート");
@@ -1271,15 +1278,24 @@ function taFinish(){
     if(GAME.score>0) recordTimeAttack(GAME.score);
     clearTargets();
     TA.state="results";
+    TA.lockUntil=performance.now()+1500;      // ひと呼吸おいてから入力を受け付ける
     sfxTimeUp();
-    worldHud.drawResults(GAME.score, dexFoundCount(), loadTA());
-    updateTAButton();
+    const found=dexFoundCount();
+    worldHud.drawResults(GAME.score, found, loadTA());
+    bubble.say(found>=8 ? line("done") : line("again"), 4000);
+    updateGoal(); updateTAButton();
 }
 // 右トリガー（素手なら右手つまむ）で進行
 function taAdvance(){
     if(GAME.mode!=="time") return false;
-    if(TA.state==="ready" || TA.state==="free"){ taBeginCountdown(); return true; }
-    if(TA.state==="results"){ worldHud.hide(); TA.state="free"; updateTAButton(); showToast("歩き回れます。もう一度で再挑戦！"); return true; }
+    const now=performance.now();
+    if(TA.lockUntil && now<TA.lockUntil) return true;    // 連続入力の取りこぼし防止
+    if(TA.state==="ready" || TA.state==="free"){ TA.lockUntil=now+800; taBeginCountdown(); return true; }
+    if(TA.state==="results"){
+        worldHud.hide(); TA.state="free"; TA.lockUntil=now+800;
+        updateGoal(); updateTAButton(); showToast("歩き回れます。もう一度でリセットして再挑戦！");
+        return true;
+    }
     if(TA.state==="countdown"){ return true; }   // 数えている間は無視
     return false;                                 // run 中は「相棒に聞く」
 }
@@ -1307,7 +1323,7 @@ function toggleTool(){ GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToo
     showToast(GAME.tool==="wide"?"🖌 幅広ブラシ：広く探せる/掘り多め":"⛏ 細ピック：狭いが/掘り少なめ");
 }
 document.getElementById("dTool").onclick=toggleTool;
-document.getElementById("dTA").onclick=()=>{ taAdvance(); };
+document.getElementById("dTA").onclick=(e)=>{ e.currentTarget.blur(); taAdvance(); };
 document.getElementById("dAsk").onclick=()=>{ askDog(); };
 document.getElementById("dBuddy").onclick=()=>{
     const keys=Object.keys(COMPANIONS);
@@ -1326,7 +1342,7 @@ const keys={};
 addEventListener("keydown",e=>{ keys[e.code]=true;
     if(!GAME.active) return;
     if(e.code==="KeyT"){ toggleTool(); }
-    if(e.code==="Space"){ e.preventDefault(); if(!taAdvance()) askDog(); }
+    if(e.code==="Space"){ e.preventDefault(); if(e.repeat) return; if(!taAdvance()) askDog(); }
     if(e.code==="KeyQ"){ askDog(); }
     if(e.code==="Tab"){ e.preventDefault(); const d=document.getElementById("dex"); d.classList.toggle("open"); if(d.classList.contains("open"))refreshDexHTML(); }
     // Escape はブラウザがポインタロックを解除（ゲームは継続。終了は「やめる」ボタン）
@@ -1427,6 +1443,8 @@ function discoverTarget(t){
 }
 // 指定位置の発掘ポイントを掘る（未発見でも範囲内なら発見して掘れる＝犬に頼らなくてOK）
 function digAtPos(pos){
+    // タイムアタックは計測中のみ発掘可（時間切れ後の歩き回りでは掘れない）
+    if(GAME.mode==="time" && TA.state!=="run") return false;
     let best=null,bd=1e9;
     for(const t of GAME.targets){ const d=Math.hypot(pos.x-t.pos.x,pos.z-t.pos.z); if(d<toolMods().digR && d<bd){ bd=d; best=t; } }
     if(best){ if(!best.discovered) discoverTarget(best); doDig(best); return true; }
