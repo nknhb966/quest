@@ -21,10 +21,18 @@
         display:flex; flex-direction:column; align-items:center; justify-content:center;
         padding:24px 16px;
         background:
-            radial-gradient(ellipse at 28% 18%, rgba(120,60,240,0.28) 0%, transparent 60%),
-            radial-gradient(ellipse at 74% 82%, rgba(30,90,220,0.22) 0%, transparent 60%),
-            linear-gradient(160deg,#05040f 0%,#0c0724 55%,#070a1c 100%);
+            radial-gradient(ellipse at 28% 18%, rgba(120,60,240,0.30) 0%, transparent 60%),
+            radial-gradient(ellipse at 74% 82%, rgba(30,90,220,0.24) 0%, transparent 60%),
+            linear-gradient(160deg, rgba(5,4,15,.62) 0%, rgba(12,7,36,.55) 55%, rgba(7,10,28,.62) 100%);
+        backdrop-filter:blur(2px);
     }
+    /* 読み込み中はゲーム開始を無効化（背景のシーンは見える） */
+    body.loading #vrbtnwrap, body.loading #startDesktop{ opacity:.45; pointer-events:none; filter:grayscale(.4); }
+    #loadingNote{ display:none; margin:0 0 14px; font-size:13px; letter-spacing:1px; color:#c9bcff; text-align:center; }
+    body.loading #loadingNote{ display:block; }
+    #loadingNote i{ display:inline-block; width:13px; height:13px; margin-right:8px; vertical-align:-2px;
+        border:2px solid rgba(200,180,255,.35); border-top-color:#c9bcff; border-radius:50%; animation:spin 0.9s linear infinite; }
+    @keyframes spin{ to{ transform:rotate(360deg);} }
     .menu-inner{ width:min(620px,94vw); display:flex; flex-direction:column; align-items:center; }
     .kicker{ letter-spacing:6px; font-size:12px; color:var(--dim); margin:0 0 10px; }
     .title{
@@ -108,6 +116,21 @@
         cursor:pointer; touch-action:manipulation; }
     .dexreset:hover{ background:rgba(120,30,45,.75); color:#fff; }
 
+    /* ── あそび方モーダル ── */
+    #help{ position:fixed; inset:0; z-index:45; display:none; align-items:center; justify-content:center;
+        background:rgba(3,2,10,.92); padding:18px; }
+    #help.open{ display:flex; }
+    .helpbox{ width:min(680px,96vw); max-height:90vh; display:flex; flex-direction:column; gap:12px; position:relative;
+        background:linear-gradient(150deg,#160f0a,#0c1024); border:1px solid rgba(210,180,120,.35);
+        border-radius:16px; padding:20px 22px; }
+    .helpbox h2{ margin:0; text-align:center; font-size:clamp(17px,2.4vw,22px); color:var(--gold); letter-spacing:3px; }
+    .helpscroll{ overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding-right:4px; }
+    .helpbox section h3{ margin:0 0 6px; font-size:15px; color:#e6c26a; letter-spacing:1px; }
+    .helpbox section p{ margin:0 0 6px; font-size:13.5px; line-height:1.75; color:rgba(226,216,255,.86); }
+    .helpbox section p.k{ font-size:12.5px; color:#c9bcff; background:rgba(90,70,180,.16);
+        border-left:3px solid rgba(160,130,240,.5); border-radius:0 8px 8px 0; padding:7px 11px; }
+    .helpbox b{ color:#fff; }
+
     /* ── デスクトップ用 HUD ── */
     #dhud{ position:fixed; left:0; right:0; bottom:0; z-index:15; display:none; pointer-events:none;
         padding:14px; flex-direction:column; align-items:center; gap:8px; }
@@ -174,6 +197,7 @@
     <h1 class="title">越前国府 発掘図鑑クエスト</h1>
     <p class="subtitle">遺跡を歩いて探して、出土品を掘り当てよう。相棒の犬と一緒に。</p>
 
+    <p id="loadingNote"><i></i>遺跡データを読み込み中…（完了すると開始できます）</p>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
 
@@ -192,6 +216,13 @@
           <button data-v="narrow">⛏ 細ピック（狭いが/掘り少なめ）</button>
         </div>
       </div>
+      <div class="opt wide">
+        <div class="lbl">コントローラー使用時の探知音（振動は常にON／素手のときは自動で音が鳴ります）</div>
+        <div class="seg" id="segSound">
+          <button data-v="off" class="on">🔇 鳴らさない</button>
+          <button data-v="on">🔊 音でも知らせる</button>
+        </div>
+      </div>
     </div>
 
     <div class="row">
@@ -200,10 +231,9 @@
     </div>
 
     <p class="hint" id="menuHint">
-      <b>探す</b>：歩いてコントローラーを左右に振る（＝金属探知）。近いほど振動と音が速くなる。<br>
-      <b>掘る</b>：反応が最大の地面でトリガー（ハンドトラッキングは、その場で手を振るorつまむ）。<br>
-      <b>道具</b>：右手に持った道具。Bボタンで持ち替え。<b>図鑑</b>：左の手のひらを返すと表示（Yで固定）。<br>
-      <b>相棒</b>：ワンちゃんは常に視界の前に。「犬に聞く」（VR=Aボタン / PC=Qキー / 画面ボタン）で場所ヒント…ときどき間違えて、その場で少し待ちます。
+      <b>探す</b>：歩いて反応をたどる。<b>掘る</b>：発掘ポイントでコントローラーを振る。<br>
+      <b>犬に聞く</b>：右手トリガー（素手なら右手でつまむ）。ヒントは外れることも。<br>
+      くわしくは「あそび方」をどうぞ。
     </p>
   </div>
 </div>
@@ -217,6 +247,51 @@
     <div class="dexbar-lbl" id="dexCount">0 / 8 発掘</div>
     <div class="dexgrid" id="dexGrid"></div>
     <button class="dexreset" id="dexReset">図鑑をリセット</button>
+  </div>
+</div>
+
+<!-- ═══ あそび方モーダル ═══ -->
+<div id="help">
+  <div class="helpbox">
+    <button class="dexclose" id="helpClose">×</button>
+    <h2>❓ あそび方</h2>
+    <div class="helpscroll">
+      <section>
+        <h3>🔎 探す</h3>
+        <p>遺跡を歩いて、地面に埋まった出土品の反応をたどります。発掘ポイントに近いほど、<b>振動と音のパルスが速く</b>なります（金属探知のイメージ）。</p>
+        <p class="k">VR：歩きながらコントローラーを左右に振る／PC・スマホ：歩くと自動で探知</p>
+      </section>
+      <section>
+        <h3>⛏ 掘る</h3>
+        <p>反応が強い場所まで来ると<b>光るマーカー</b>が出ます。その上で掘ると進捗リングが進み、必要回数で出土します。</p>
+        <p class="k">VR：ポイントの上でコントローラー（または手）を振る／PC：左クリック・スマホ：「掘る」ボタン</p>
+        <p>犬に聞かなくても、自分で反応をたどって見つければ発掘できます。</p>
+      </section>
+      <section>
+        <h3>🖌 道具</h3>
+        <p><b>幅広ブラシ</b>＝広く探せるが掘る回数が多い。<b>細ピック</b>＝探せる範囲は狭いが掘る回数が少ない。右手に持った道具の見た目も変わります。</p>
+        <p class="k">VR：Bボタン／PC：Tキー・スマホ：「道具」ボタン</p>
+      </section>
+      <section>
+        <h3>🐶 相棒（犬に聞く）</h3>
+        <p>ワンちゃんは常に視界の前を歩きます。<b>聞くと発掘ポイントのヒント</b>をくれて、その場所まで歩いて<b>少し待って</b>くれます。ただし難しい出土品ほど<b>まちがえます</b>。</p>
+        <p class="k">VR：右手の人差し指トリガー（素手なら右手でつまむ）／PC：Qキー・スマホ：「犬に聞く」ボタン</p>
+      </section>
+      <section>
+        <h3>📖 発掘図鑑</h3>
+        <p>発掘するとシルエットが解除され、NEWスタンプと日付が記録されます（全8種）。記録は端末に保存され、リセットもできます。</p>
+        <p class="k">VR：左の手のひらを返すと表示（Yボタンで固定）／PC・スマホ：「図鑑」ボタン</p>
+      </section>
+      <section>
+        <h3>🗺 モード</h3>
+        <p><b>じっくりコレクション</b>：8種を順番に発掘。後の出土品ほど反応範囲が狭く、掘る回数も増え、犬も外しやすくなります。<br>
+        <b>タイムアタック</b>：制限時間内に何点とれるか。TOP5が残ります。</p>
+      </section>
+      <section>
+        <h3>🎮 移動</h3>
+        <p class="k">VR：左スティックで歩く／右スティックでスナップ回転<br>PC：WASD＋マウス（クリックで視点固定）<br>スマホ：画面左半分でスティック／右半分をなぞって見回す</p>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -410,8 +485,11 @@ controllers.forEach(c=>{
         attachAccessories();
     });
     c.addEventListener("disconnected", ()=>{ c.userData.handedness=null; c.userData.isHand=false; });
-    // ハンドトラッキングのつまみ動作＝発掘
-    c.addEventListener("selectstart", ()=>{ if(GAME.active && c.userData.isHand) handDigAt(c); });
+    // ハンドトラッキング：右手のつまみ＝犬に聞く／左手のつまみ＝発掘
+    c.addEventListener("selectstart", ()=>{
+        if(!GAME.active || !c.userData.isHand) return;
+        if(c.userData.handedness==="right") askDog(); else handDigAt(c);
+    });
 });
 attachAccessories();
 // 手（ハンドトラッキング）— コントローラー非装着時のフォールバック（音のみ）
@@ -428,6 +506,7 @@ try{
  * ===================================================== */
 const gltfLoader = new GLTFLoader();
 let siteReady=false;
+document.body.classList.add("loading");   // 読み込み完了までゲーム開始を無効化
 const world = new THREE.Group(); scene.add(world);
 const ARTPOS = new Array(8).fill(null);   // 各出土品の確定ワールド座標（地面）
 gltfLoader.load(SITE_GLB, (gltf)=>{
@@ -475,7 +554,8 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     siteRoot.position.y += SITE_Y_OFFSET / fit;      // 追加の微調整（既定0）
     world.updateMatrixWorld(true);
     siteReady=true;
-}, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; });
+    document.body.classList.remove("loading");
+}, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; document.body.classList.remove("loading"); });
 function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if(siteReady){ clearInterval(iv); cb(); } }, 100); } }
 
 /* ── アーティファクトGLB（8種）を事前ロード（非表示で保持） ── */
@@ -523,24 +603,25 @@ dog.position.set(2,GROUND_Y,2);
 
 // 吹き出しスプライト
 const bubble = (function(){
-    const cv=document.createElement("canvas"); cv.width=512; cv.height=256;
+    const W=768, H=256;                      // 横幅を1.5倍（文字サイズは据え置き）
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
-    spr.scale.set(3.2,1.6,1); spr.position.set(0,2.6,0); spr.visible=false;
+    spr.scale.set(4.8,1.6,1); spr.position.set(0,2.6,0); spr.visible=false;
     dog.add(spr);
     function draw(text){
-        ctx.clearRect(0,0,512,256);
+        ctx.clearRect(0,0,W,H);
         ctx.fillStyle="rgba(255,252,244,0.96)";
-        const r=28; ctx.beginPath();
-        ctx.moveTo(r,20); ctx.lineTo(512-r,20); ctx.quadraticCurveTo(512-8,20,512-8,20+r);
-        ctx.lineTo(512-8,180-r); ctx.quadraticCurveTo(512-8,180,512-r,180);
-        ctx.lineTo(280,180); ctx.lineTo(256,230); ctx.lineTo(232,180);
+        const r=28, cx=W/2; ctx.beginPath();
+        ctx.moveTo(r,20); ctx.lineTo(W-r,20); ctx.quadraticCurveTo(W-8,20,W-8,20+r);
+        ctx.lineTo(W-8,180-r); ctx.quadraticCurveTo(W-8,180,W-r,180);
+        ctx.lineTo(cx+24,180); ctx.lineTo(cx,230); ctx.lineTo(cx-24,180);
         ctx.lineTo(r,180); ctx.quadraticCurveTo(8,180,8,180-r);
         ctx.lineTo(8,20+r); ctx.quadraticCurveTo(8,20,r,20); ctx.closePath();
         ctx.fill(); ctx.strokeStyle="#d8b46a"; ctx.lineWidth=4; ctx.stroke();
         ctx.fillStyle="#3a2d16"; ctx.font="bold 48px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-        ctx.fillText(text,256,100); tex.needsUpdate=true;
+        ctx.fillText(text,cx,100); tex.needsUpdate=true;
     }
     let hideT=null;
     return { say(text,ms=2200){ draw(text); spr.visible=true; if(hideT)clearTimeout(hideT); hideT=setTimeout(()=>spr.visible=false, ms); } };
@@ -627,6 +708,7 @@ const GAME = {
     timeLeft:TIME_LIMIT, score:0, endT:0,
 };
 let chosenMode="collect", chosenTool="wide";
+let scanSoundOn=false;   // 既定：コントローラー使用時は探知音を鳴らさない
 
 /* 難易度：ティア0(易)→7(難)。探知半径↓ / 必要掘り回数↑ / 犬の信頼度↓ / 遠く */
 function difficulty(tier){
@@ -751,14 +833,31 @@ function excavate(t){
 }
 
 // 情報パネル（発掘済みの解説画像を現地に表示）
+// 画像は1:1。VRでは大きく（文字が読める）、スマホでは重ならないよう高さをずらす。
 const infoPanels=[];
+const PANEL_BASE_W = 2.0;
 function showInfoPanel(idx, pos){
     texLoader.load(ART_IMGS[idx], tex=>{
         tex.colorSpace=THREE.SRGBColorSpace;
+        const img=tex.image, aspect=(img&&img.width&&img.height)? img.height/img.width : 1;  // 1:1想定
         const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
-        const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.16), mat);
-        mesh.position.set(pos.x, 2.5, pos.z);   // 少し見上げる高さに立てる
-        mesh.userData.face=true; scene.add(mesh); infoPanels.push(mesh);
+        const mesh=new THREE.Mesh(new THREE.PlaneGeometry(PANEL_BASE_W, PANEL_BASE_W*aspect), mat);
+        // パネル同士が重ならないように高さを少しずらす
+        const baseY = 2.4 + (infoPanels.length % 3) * 0.55;
+        mesh.position.set(pos.x, baseY, pos.z);
+        mesh.userData.face=true; mesh.userData.baseY=baseY;
+        scene.add(mesh); infoPanels.push(mesh);
+        updatePanelScale();
+    });
+}
+// 表示環境に応じてパネルの大きさ・高さを調整
+function updatePanelScale(){
+    const isVR=renderer.xr.isPresenting;
+    const s = isVR ? 2.4 : (document.body.classList.contains("touch") ? 0.85 : 1.0);
+    infoPanels.forEach(p=>{
+        p.scale.setScalar(s);
+        const h = p.geometry.parameters.height * s;
+        p.position.y = (isVR ? 1.7 : (p.userData.baseY||2.4)) + h*0.5;   // VRは目線やや上・大きく
     });
 }
 
@@ -841,6 +940,7 @@ function clearNewStamps(){ let ch=false; for(const k in dexData){ if(dexData[k].
 const menu=document.getElementById("menu");
 document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; });
 document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segTool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenTool=b.dataset.v; });
+document.querySelectorAll("#segSound button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segSound button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); scanSoundOn=(b.dataset.v==="on"); });
 document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
@@ -862,7 +962,9 @@ document.getElementById("dexReset").onclick=()=>{
     }
     showToast("図鑑と発掘記録をリセットしました");
 };
-document.getElementById("openHelp").onclick=()=>{ showToast("探す=振る / 掘る=トリガー / 相棒=ワンちゃん。図鑑を8種コンプしよう！",3800); };
+document.getElementById("openHelp").onclick=()=>{ document.getElementById("help").classList.add("open"); };
+document.getElementById("helpClose").onclick=()=>{ document.getElementById("help").classList.remove("open"); };
+document.getElementById("help").addEventListener("click", e=>{ if(e.target.id==="help") e.currentTarget.classList.remove("open"); });
 
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
@@ -888,8 +990,8 @@ function startGame(desktop){
 document.getElementById("startDesktop").onclick=()=> startGame(true);
 
 // VR開始/終了
-renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); if(!GAME.active) startGame(false); });
-renderer.xr.addEventListener("sessionend", ()=>{ /* メニューへ戻す */ endGame(true); });
+renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); updatePanelScale(); if(!GAME.active) startGame(false); });
+renderer.xr.addEventListener("sessionend", ()=>{ updatePanelScale(); endGame(true); });
 
 function endGame(toMenu){
     if(GAME.mode==="time" && GAME.active && GAME.score>0){ recordTimeAttack(GAME.score); }
@@ -1158,17 +1260,27 @@ function handleDesktopMove(dt){
         const d=Math.hypot(player.position.x,player.position.z); if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; } }
 }
 
+/* コントローラー（＝ゲームパッド有り、手ではない）が今つながっているか。毎フレーム判定。 */
+function controllersPresent(){
+    const s=renderer.xr.getSession(); if(!s) return false;
+    for(const src of s.inputSources){ if(src.gamepad && !src.hand) return true; }
+    return false;
+}
+
 /* 探査：プローブ位置→最寄りターゲット信号→振動＋音（近いほど速い） */
 function updateScan(dt, isVR, now){
     // プローブ位置と「振っているか」を決める
-    let probes=[]; // {pos, shaking, haptic, handedness}
+    let probes=[]; // {pos, shaking, haptic, handedness, isHand}
+    const hasCtrl = isVR ? controllersPresent() : false;
+    // コントローラーありなら「音で知らせる」はトグル依存。無ければ（＝振動が無いので）必ず鳴らす。
+    const soundAllowed = isVR ? (scanSoundOn || !hasCtrl) : true;
     if(isVR){
-        controllers.forEach((c,i)=>{
+        controllers.forEach((c)=>{
+            if(!c.userData.handedness || c.userData.isHand) return;   // 未接続/手は除外
             const p=c.getWorldPosition(new THREE.Vector3());
             const sp=p.distanceTo(c.userData.prevPos)/Math.max(dt,1e-3);
             c.userData.prevPos.copy(p); c.userData.shakeSpeed=sp;
-            const handed = i===0?"right":"left"; // getController順は環境依存だが実害小
-            probes.push({pos:p, shaking:sp>1.2, haptic:true, handedness:handed});
+            probes.push({pos:p, shaking:sp>1.2, haptic:true, handedness:c.userData.handedness});
         });
         // ハンドトラッキング（コントローラ無し時）
         hands.forEach(h=>{
@@ -1178,7 +1290,6 @@ function updateScan(dt, isVR, now){
                 probes.push({pos:p, shaking:sp>1.0, haptic:false, isHand:true}); }
         });
     } else if(GAME.desktop){
-        const moving = keys["KeyW"]||keys["KeyA"]||keys["KeyS"]||keys["KeyD"];
         probes.push({pos:desktopProbe().clone(), shaking:true, haptic:false, isHand:false}); // デスクトップは常時探査
     }
 
@@ -1202,16 +1313,18 @@ function updateScan(dt, isVR, now){
             t._pulse = (t._pulse||0) - dt;
             if(t._pulse<=0){
                 t._pulse=interval;
-                sfxScan(bestSig);
+                if(soundAllowed) sfxScan(bestSig);
                 if(bestProbe.haptic){ if(bestProbe.handedness) vibrateHand(bestProbe.handedness, 26, 0.25+0.7*bestSig); else vibrate(26,0.25+0.7*bestSig); }
             }
         }
     }
-    // ハンドトラッキング：スポットの上で手を振っても発掘（未発見でも範囲内なら発見して掘る）
+    // 発掘：スポットの上でコントローラー/手を振ると掘れる（VR。PC/スマホは「掘る」ボタン）
     if(handDigCooldown>0) handDigCooldown-=dt;
-    for(const pr of probes){
-        if(!pr.isHand || !pr.shaking || handDigCooldown>0) continue;
-        if(digAtPos(pr.pos)){ handDigCooldown=0.4; }
+    if(isVR){
+        for(const pr of probes){
+            if(!pr.shaking || handDigCooldown>0) continue;
+            if(pr.pos && digAtPos(pr.pos)){ handDigCooldown=0.35; }
+        }
     }
     // デスクトップの「アツさ」表示
     if(GAME.desktop){
@@ -1222,23 +1335,16 @@ function updateScan(dt, isVR, now){
     }
 }
 
-/* VR：トリガーで掘る（発見済みターゲットの上にコントローラーがある時） */
+/* VR：右手トリガー＝犬に聞く（発掘はコントローラーを振る動作） */
 function handleVRDig(){
     const s=renderer.xr.getSession(); if(!s) return;
     unlockAudio();
-    let idx=0;
     for(const src of s.inputSources){
         const gp=src.gamepad; if(!gp) continue;
         const trig = gp.buttons[0]?.pressed ?? false;
         const which = src.handedness==="left"?1:0;
-        if(trig && !prevTriggers[which]){
-            // 掘る手のワールド位置（解決済みの左右コントローラを使用）
-            const srcCtrl = (src.handedness==="left"?leftCtrl:rightCtrl) || controllers[which];
-            const cpos = srcCtrl?.getWorldPosition(new THREE.Vector3()) || player.position;
-            if(!digAtPos(cpos)) sfxDig();
-        }
+        if(trig && !prevTriggers[which] && src.handedness==="right"){ askDog(); }
         prevTriggers[which]=trig;
-        idx++;
     }
     // Bボタンで道具切替（右手）／ Yボタンで図鑑の固定表示（左手）
     for(const src of s.inputSources){
