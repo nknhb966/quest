@@ -227,8 +227,8 @@
         <input type="range" id="eyeSlider" min="-3.0" max="1.0" step="0.05" value="-1.15" style="width:100%">
       </div>
       <div class="opt wide">
-        <div class="lbl">サイトの大きさ（VR）　<span id="wsVal">×1.00</span></div>
-        <input type="range" id="wsSlider" min="1.0" max="5.0" step="0.1" value="1.0" style="width:100%">
+        <div class="lbl">サイトの大きさ（VRのみ・1〜5倍）　<span id="wsVal">×1</span></div>
+        <input type="range" id="wsSlider" min="1" max="5" step="1" value="1" style="width:100%">
       </div>
       <div class="opt wide" id="optBuddy" style="display:none">
         <div class="lbl">相棒</div>
@@ -369,8 +369,10 @@ let   FIELD_R       = 18;                 // 発掘フィールド半径（m）�
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
 const ARTIFACT_POP_Y= 0.32;              // 出土品が落ち着く高さ（地面近く）※worldScale倍される
-const WS = ()=> worldScale;              // 現在のワールド拡大率
-let walkSpeedEff = 3.5;                  // 実効歩行速度（worldScaleで変わる）
+const isVR = ()=> renderer.xr.isPresenting;
+const WS = ()=> isVR() ? worldScale : 1;     // オブジェクトの倍率（非VRは常に実寸=1）
+const effSite = ()=> isVR() ? worldScale : baseFit;  // world 全体の拡大（非VRは34mフィット）
+let walkSpeedEff = 3.5;                  // 実効歩行速度
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
@@ -477,20 +479,19 @@ scene.add(player);
 // 視点の高さ調整（VRで地面に沈む/浮くのを補正）。スライダー＋右スティック上下で変更。
 let eyeHeight = -1.15;             // m（マイナスで下がる）※標準を低めに
 const EYE_MIN=-3.0, EYE_MAX=1.0;
-function applyEyeHeight(){ player.position.y = eyeHeight; const s=document.getElementById("eyeSlider"); if(s && +s.value!==eyeHeight) s.value=eyeHeight;
+function applyEyeHeight(){ player.position.y = isVR() ? eyeHeight : 0; const s=document.getElementById("eyeSlider"); if(s && +s.value!==eyeHeight) s.value=eyeHeight;
     const lbl=document.getElementById("eyeVal"); if(lbl) lbl.textContent=(eyeHeight>=0?"+":"")+eyeHeight.toFixed(2)+"m"; }
 function setEyeHeight(v){ eyeHeight=Math.max(EYE_MIN,Math.min(EYE_MAX, v)); applyEyeHeight(); }
 
 // ワールド（サイト・発掘ポイント・出土品・パネル）の拡大率。スライダー＋右中指グリップ＋上下で変更。
 let worldScale = 1.0;
-const WS_MIN=1.0, WS_MAX=5.0;   // 最小＝実寸、最大5倍
+const WS_MIN=1, WS_MAX=5;   // 1〜5倍の段階（VRのみ有効）
 function applyWorldScale(){
-    if(typeof world!=="undefined"){ world.scale.setScalar(baseFit*worldScale); world.updateMatrixWorld(true); }
     refreshWorldScaleDependents();
     const s=document.getElementById("wsSlider"); if(s && +s.value!==worldScale) s.value=worldScale;
-    const lbl=document.getElementById("wsVal"); if(lbl) lbl.textContent="×"+worldScale.toFixed(2);
+    const lbl=document.getElementById("wsVal"); if(lbl) lbl.textContent="×"+worldScale.toFixed(0);
 }
-function setWorldScale(v){ worldScale=Math.max(WS_MIN,Math.min(WS_MAX, v)); applyWorldScale(); }
+function setWorldScale(v){ worldScale=Math.max(WS_MIN,Math.min(WS_MAX, Math.round(v))); applyWorldScale(); }
 
 // ライト（レール版はaddCoaster側で処理していたので、歩行版では自前で用意）
 scene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
@@ -559,7 +560,8 @@ try{
  * ===================================================== */
 const gltfLoader = new GLTFLoader();
 let siteReady=false;
-let baseFit=1;                 // 実寸(=1)。worldScaleと掛けて world に反映
+let baseFit=1;                 // 非VRの見た目（サイトを34m径にフィット）
+let nativeCenter=new THREE.Vector3();  // サイトのネイティブ中心（scale=1で計測）
 let sitePhs=null, siteRootRef=null;
 document.body.classList.add("loading");   // 読み込み完了までゲーム開始を無効化
 const world = new THREE.Group(); scene.add(world);
@@ -571,23 +573,19 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     // 発掘スポットのプレースホルダ（元HTMLと同じ相対配置＝サイトのネイティブ座標）
     const phs = ART_ORIG.map(([x,z])=>{ const o=new THREE.Object3D(); o.position.set(x,0,z); world.add(o); return o; });
     sitePhs=phs;
-    // 実寸大（GLBの座標＝メートル）。中心を原点へ寄せる。
-    baseFit = 1;
-    world.scale.setScalar(baseFit*worldScale);
-    world.updateMatrixWorld(true);
+    // ネイティブ（scale=1）で中心とフィット率を計測
+    world.scale.setScalar(1); world.position.set(0,0,0); world.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(siteRoot);
-    const center = box.getCenter(new THREE.Vector3());
-    world.position.x = -center.x; world.position.z = -center.z;
-    world.updateMatrixWorld(true);
-    // 地面をレイキャストで測って足元へ
-    levelGround(siteRoot);
-    recomputeArtpos();
+    const size = box.getSize(new THREE.Vector3());
+    nativeCenter.copy(box.getCenter(new THREE.Vector3()));
+    baseFit = SITE_FIT_DIAM / Math.max(size.x, size.z, 0.001);   // 非VR：34m径
+    // 現在の環境（VR/非VR）に応じてスケール・位置・地面を反映
     refreshWorldScaleDependents();
     siteReady=true;
     document.body.classList.remove("loading");
 }, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; document.body.classList.remove("loading"); });
 
-// 地面の高さを測って足元(y=0)へ
+// 地面の高さを測って足元(y=0)へ（現在のscale/位置基準）
 function levelGround(siteRoot){
     world.position.y = 0; world.updateMatrixWorld(true);
     const rc=new THREE.Raycaster(); const down=new THREE.Vector3(0,-1,0);
@@ -621,17 +619,19 @@ const artModels = new Array(8).fill(null);
 ART_FILES.forEach((f,idx)=>{
     gltfLoader.load(ART_BASE+f, (gltf)=>{
         const o=gltf.scene;
-        // 実寸大（GLBの座標＝メートル）。ただし極端に大きい/小さい場合だけ緩く補正。
         const box=new THREE.Box3().setFromObject(o);
-        const h=box.getSize(new THREE.Vector3()).y || 1;
-        let s=1;
-        if(h>1.2) s=1.2/h;          // 1.2mを超える出土品だけ縮める
-        else if(h<0.05) s=0.15/h;   // 極端に小さいものだけ持ち上げる
-        o.userData.baseS=s;
-        o.scale.setScalar(s);
+        const size=box.getSize(new THREE.Vector3());
+        const h=size.y||1, maxd=Math.max(size.x,size.y,size.z,0.001);
+        // 非VR：従来どおり約0.55mへフィット。VR：ほぼ実寸（極端な大小だけ補正）。
+        const fitS = ART_TARGET_H/maxd;
+        let realS=1; if(h>1.2) realS=1.2/h; else if(h<0.05) realS=0.15/h;
+        o.userData.fitS=fitS; o.userData.realS=realS;
+        o.scale.setScalar(fitS);
         o.visible=false; scene.add(o); artModels[idx]=o;
     }, undefined, ()=>{ /* 失敗しても続行 */ });
 });
+// 出土品の基準サイズ（VRは実寸、非VRは0.55mフィット）
+function artBaseS(m){ return isVR() ? (m.userData.realS||1) : (m.userData.fitS||1); }
 // 図鑑カード用の画像テクスチャ（発掘演出パネル）
 const texLoader = new THREE.TextureLoader();
 
@@ -965,7 +965,7 @@ function excavate(t){
     const model = artModels[t.idx];
     if(model){
         model.visible=true;
-        model.scale.setScalar((model.userData.baseS||1)*WS());
+        model.scale.setScalar(artBaseS(model)*WS());
         const popY=ARTIFACT_POP_Y*WS();
         model.position.set(t.pos.x, GROUND_Y, t.pos.z);
         model.rotation.set(0,Math.random()*Math.PI*2,0);
@@ -1045,10 +1045,16 @@ function addAura(idx, pos){
 }
 function clearAuras(){ auras.forEach(a=>scene.remove(a.group)); auras.length=0; }
 
-// worldScale 変更時に、位置・サイズ・速度をまとめて追従
+// スケール変更・VR切替時に、位置・サイズ・速度をまとめて追従
 function refreshWorldScaleDependents(){
-    walkSpeedEff = 3.5 * worldScale;
+    walkSpeedEff = 3.5 * WS();
+    if(typeof dog!=="undefined") dog.scale.setScalar(isVR()?0.7:0.35);   // VRは大きめ（撫でやすい）
     if(!sitePhs || !siteReady) return;
+    const S=effSite();
+    world.scale.setScalar(S);
+    world.position.x = -nativeCenter.x*S;
+    world.position.z = -nativeCenter.z*S;
+    world.updateMatrixWorld(true);
     levelGround(siteRootRef);
     recomputeArtpos();
     // アクティブな発掘ターゲット（ブロック・枠・輪）を新しい位置/サイズへ
@@ -1064,7 +1070,7 @@ function refreshWorldScaleDependents(){
         });
     }
     // 発掘済みの出土品・オーラ・パネルを追従
-    artModels.forEach((m,idx)=>{ if(m&&m.visible&&ARTPOS[idx]){ m.scale.setScalar((m.userData.baseS||1)*WS());
+    artModels.forEach((m,idx)=>{ if(m&&m.visible&&ARTPOS[idx]){ m.scale.setScalar(artBaseS(m)*WS());
         m.position.set(ARTPOS[idx].x, ARTIFACT_POP_Y*WS(), ARTPOS[idx].z); } });
     auras.forEach(a=>{ if(ARTPOS[a.idx]){ a.group.position.set(ARTPOS[a.idx].x, GROUND_Y, ARTPOS[a.idx].z); a.group.scale.setScalar(WS()); } });
     infoPanels.forEach(p=>{ const idx=p.userData.idx; if(ARTPOS[idx]){ p.userData.spot.copy(ARTPOS[idx]); p.position.x=ARTPOS[idx].x; p.position.z=ARTPOS[idx].z; } });
@@ -1275,12 +1281,12 @@ function startGame(desktop){
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
 document.getElementById("eyeSlider").addEventListener("input", e=>{ setEyeHeight(parseFloat(e.target.value)); });
-document.getElementById("wsSlider").addEventListener("input", e=>{ setWorldScale(parseFloat(e.target.value)); });
+document.getElementById("wsSlider").addEventListener("input", e=>{ setWorldScale(parseInt(e.target.value,10)); });
 applyEyeHeight();
 
 // VR開始/終了
-renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); updatePanelScale(); if(!GAME.active) startGame(false); });
-renderer.xr.addEventListener("sessionend", ()=>{ updatePanelScale(); endGame(true); });
+renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); applyWorldScale(); applyEyeHeight(); updatePanelScale(); if(!GAME.active) startGame(false); });
+renderer.xr.addEventListener("sessionend", ()=>{ applyWorldScale(); applyEyeHeight(); updatePanelScale(); endGame(true); });
 
 function endGame(toMenu){
     if(GAME.mode==="time" && GAME.active && TA.state==="run" && GAME.score>0){ recordTimeAttack(GAME.score); }
@@ -1951,10 +1957,13 @@ function handleVRLocomotion(dt){
         if(src.handedness==="left"){ moveX=ax[2]||0; moveY=ax[3]||0; }
         else if(src.handedness==="right"){ turn=ax[2]||0; rise=ax[3]||0; rGrip=(gp.buttons[1]?.pressed)||false; }
     }
-    // 右スティック上下：中指グリップを押していればサイズ変更、押していなければ目線の高さ
-    if(Math.abs(rise)>0.2){
-        if(rGrip) setWorldScale(worldScale - rise*0.8*dt);
-        else       setEyeHeight(eyeHeight - rise*1.2*dt);
+    // 右スティック上下：中指グリップを押していればサイズを1段変更、押していなければ目線の高さ
+    if(rGrip){
+        if(Math.abs(rise)>0.7 && !GAME._wsStep){ setWorldScale(worldScale + (rise<0?1:-1)); GAME._wsStep=true; }
+        if(Math.abs(rise)<0.4) GAME._wsStep=false;
+    } else {
+        GAME._wsStep=false;
+        if(Math.abs(rise)>0.2) setEyeHeight(eyeHeight - rise*1.2*dt);
     }
     // 移動（頭の向き基準）
     if(Math.abs(moveX)>0.15||Math.abs(moveY)>0.15){
