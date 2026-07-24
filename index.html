@@ -1564,20 +1564,26 @@ function updateDigReady(){
         if(ready) anyDigReady=true;
     }
 }
-// 脈動発光（掘れるサイン）— やわらかく穏やかに
+// 脈動発光（掘れるサイン）— やわらかい暖色で、しっかり目立つ
 function updateBlockGlow(now){
     for(const t of GAME.targets){
         if(!t.block) continue;
         const m=t.block.material;
         if(t.digReady){
-            const p=0.5+0.5*Math.sin(now*0.0028);          // ゆっくりした呼吸のような明滅
-            m.emissive.setHex(0xffe7b0);                    // やわらかい暖色
-            m.emissiveIntensity=0.10+0.16*p;
-            const s=1+0.018*p;                              // 拡縮も控えめ
+            const p=0.5+0.5*Math.sin(now*0.0042);           // ゆったりした呼吸のリズム
+            m.emissive.setHex(0xffcf7a);                     // やわらかい琥珀色
+            m.emissiveIntensity=0.45+0.75*p;                 // はっきり分かる明るさ
+            const s=1+0.05*p;
             t.block.scale.x=t.block.scale.z=(t.block.userData.baseS||1)*s;
+            // 足元の輪も一緒に脈動させて視認性を上げる
+            if(t.marker&&t.marker.userData.ring){
+                t.marker.userData.ring.material.opacity=0.55+0.45*p;
+                t.marker.scale.setScalar(1+0.10*p);
+            }
         } else {
             m.emissiveIntensity=0;
             t.block.scale.x=t.block.scale.z=(t.block.userData.baseS||1);
+            if(t.marker&&t.marker.userData.ring){ t.marker.userData.ring.material.opacity=0.85; t.marker.scale.setScalar(1); }
         }
     }
 }
@@ -1628,12 +1634,15 @@ function focusTarget(){
 }
 function updateCoach(dt){
     const focus=focusTarget();
+    const camPos=camera.getWorldPosition(new THREE.Vector3());
+    const near = focus && Math.hypot(camPos.x-focus.pos.x, camPos.z-focus.pos.z) < DOG_STAY_R;
+
     // 掘れる状態になった瞬間に一言（表示しっぱなしのセリフは解除）
     if(anyDigReady && !wasDigReady){ bubble.release(); bubble.say(line("digNow"), 2000); sfxBark(); coachTimer=4; }
     wasDigReady=anyDigReady;
 
-    if(!anyDigReady && focus){
-        // 近くに寄るまでセリフを出し続ける（吠えるのは時々）
+    if(!anyDigReady && near){
+        // 近くに寄るまでセリフを出し続ける（離れたら消える）
         bubble.hold(line("closer"));
         coachTimer-=dt;
         if(coachTimer<=0){ coachTimer=6.5; sfxBark(); }
@@ -2000,7 +2009,14 @@ function updateDog(dt, now){
 
     let goal, waitingAtHint=false;
     const focus=(typeof focusTarget==="function") ? focusTarget() : null;
-    if(dog.userData.hintActive && dog.userData.hintPos){
+    const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < DOG_STAY_R;
+    if(focusNear){
+        // 発見済みブロックが近くにある間は、必ずその「右どなり」に立つ（ヒント移動より優先）
+        if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
+        const q=camQuat();
+        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        goal=new THREE.Vector3(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 1.0);
+    } else if(dog.userData.hintActive && dog.userData.hintPos){
         goal=dog.userData.hintPos.clone(); goal.y=0;
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.8){   // ヒント地点に到着 → 少し待つ
@@ -2009,12 +2025,6 @@ function updateDog(dt, now){
             waitingAtHint=true;
             if(now>dog.userData.hintWaitUntil){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         }
-    } else if(focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < DOG_STAY_R){
-        // 発掘ブロックの「右どなり」に立つ（ブロックに重ならないように）
-        // プレイヤーが離れたら追従に戻る
-        const q=camQuat();
-        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=new THREE.Vector3(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 1.0);
     } else {
         // 定位置＝視線の前方（＋少し横）。後ろ向きに動いても画面内の前方に居続ける。
         const q=camQuat();
