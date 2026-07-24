@@ -842,14 +842,16 @@ function excavate(t){
  * ===================================================== */
 // 出土品ごとの色（パネルの帯・つなぐ線と共通にして対応を分かりやすく）
 const ART_COLORS = [0xffd34d,0x6fe3a5,0x7cc4ff,0xff9ad5,0xffa45c,0xb99cff,0x7ff0e0,0xf5f0a0];
-// 放射グラデーションのオーラ用テクスチャ（使い回し）
+// 放射グラデーションのオーラ用テクスチャ（中心は透明＝出土品がはっきり見える）
 const auraTex = (function(){
     const cv=document.createElement("canvas"); cv.width=cv.height=128;
     const c=cv.getContext("2d");
     const g=c.createRadialGradient(64,64,4,64,64,64);
-    g.addColorStop(0,"rgba(255,255,255,0.95)");
-    g.addColorStop(0.35,"rgba(255,255,255,0.35)");
-    g.addColorStop(1,"rgba(255,255,255,0)");
+    g.addColorStop(0.00,"rgba(255,255,255,0)");
+    g.addColorStop(0.45,"rgba(255,255,255,0)");     // 中心は抜く（出土品を隠さない）
+    g.addColorStop(0.62,"rgba(255,255,255,0.45)");
+    g.addColorStop(0.80,"rgba(255,255,255,0.22)");
+    g.addColorStop(1.00,"rgba(255,255,255,0)");
     c.fillStyle=g; c.fillRect(0,0,128,128);
     return new THREE.CanvasTexture(cv);
 })();
@@ -857,48 +859,44 @@ const auras=[];
 function addAura(idx, pos){
     const color=ART_COLORS[idx % ART_COLORS.length];
     const g=new THREE.Group();
-    // ふんわり光る球状のオーラ
+    // ふんわり光る球状のオーラ（中心は抜けているので出土品がはっきり見える）
     const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:auraTex, color, transparent:true,
-        opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false}));
-    glow.scale.set(1.5,1.5,1); glow.position.y=ARTIFACT_POP_Y; g.add(glow);
+        opacity:0.7, blending:THREE.AdditiveBlending, depthWrite:false, depthTest:true}));
+    glow.scale.set(1.7,1.7,1); glow.position.y=ARTIFACT_POP_Y;
+    glow.renderOrder=-1;                       // 出土品より先に描く＝手前で白飛びさせない
+    g.add(glow);
     // 足元の光の輪
     const ring=new THREE.Mesh(new THREE.RingGeometry(0.35,0.5,32),
         new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false}));
     ring.rotation.x=-Math.PI/2; ring.position.y=0.03; g.add(ring);
-    // 立ちのぼる光の柱
-    const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.26,2.2,16,1,true),
-        new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.14, side:THREE.DoubleSide, depthWrite:false}));
-    beam.position.y=1.1; g.add(beam);
     g.position.set(pos.x, GROUND_Y, pos.z);
     scene.add(g);
-    const a={ group:g, glow, ring, beam, color, idx, phase:Math.random()*Math.PI*2 };
+    const a={ group:g, glow, ring, color, idx, phase:Math.random()*Math.PI*2 };
     auras.push(a); return a;
 }
 function clearAuras(){ auras.forEach(a=>scene.remove(a.group)); auras.length=0; }
 
 // 情報パネル（発掘済みの解説画像を現地に表示）
-// 画像は1:1。VRでは大きく（文字が読める）、スマホでは重ならないよう高さをずらす。
+// 画像はカード形式（縦長）。実際の縦横比で作り、出土品のすぐ上に置く。
 const infoPanels=[];
-const PANEL_BASE_W = 2.0;
+const PANEL_BASE_H = 1.15;      // パネルの高さ（m）※幅は画像の比率から決まる
 function showInfoPanel(idx, pos, color){
     texLoader.load(ART_IMGS[idx], tex=>{
         tex.colorSpace=THREE.SRGBColorSpace;
-        const img=tex.image, aspect=(img&&img.width&&img.height)? img.height/img.width : 1;  // 1:1想定
+        const img=tex.image;
+        const ratio=(img&&img.width&&img.height)? img.width/img.height : 0.75;  // 幅/高さ（カード形式）
+        const h=PANEL_BASE_H, w=h*ratio;
         const grp=new THREE.Group();
         const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
-        const mesh=new THREE.Mesh(new THREE.PlaneGeometry(PANEL_BASE_W, PANEL_BASE_W*aspect), mat);
-        grp.add(mesh);
+        grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat));
         // 出土品と同じ色の枠＋「No.xx」ラベル（どの出土品の説明かを示す）
-        const h=PANEL_BASE_W*aspect;
-        const frame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(PANEL_BASE_W*1.04, h*1.04)),
+        const frame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(w*1.04, h*1.04)),
             new THREE.LineBasicMaterial({color}));
         grp.add(frame);
-        grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, PANEL_BASE_W*0.42, h*0.5+0.18));
-        // パネル同士が重ならないように高さを少しずらす
-        const baseY = 2.4 + (infoPanels.length % 3) * 0.55;
-        grp.position.set(pos.x, baseY, pos.z);
-        grp.userData.face=true; grp.userData.baseY=baseY; grp.userData.idx=idx;
-        grp.userData.height=h; grp.userData.spot=pos.clone();
+        grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, w*0.5, h*0.5+0.12));
+        grp.position.set(pos.x, 0, pos.z);
+        grp.userData.face=true; grp.userData.idx=idx;
+        grp.userData.width=w; grp.userData.height=h; grp.userData.spot=pos.clone();
         scene.add(grp); infoPanels.push(grp);
         // 出土品とパネルを結ぶ線（同色）
         const lineMat=new THREE.LineBasicMaterial({color, transparent:true, opacity:0.5});
@@ -922,14 +920,14 @@ function makeLabelSprite(text, color, width, y){
     spr.scale.set(width, width*96/256, 1); spr.position.set(0, y, 0.02);
     return spr;
 }
-// 表示環境に応じてパネルの大きさ・高さを調整
+// 表示環境に応じてパネルの大きさを調整（高さは常に出土品のすぐ上）
 function updatePanelScale(){
     const isVR=renderer.xr.isPresenting;
-    const s = isVR ? 2.4 : (document.body.classList.contains("touch") ? 0.85 : 1.0);
+    const s = isVR ? 1.9 : (document.body.classList.contains("touch") ? 0.8 : 1.0);
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
-        const h = (p.userData.height||PANEL_BASE_W) * s;
-        p.position.y = (isVR ? 1.7 : (p.userData.baseY||2.4)) + h*0.5;   // VRは目線やや上・大きく
+        const h=(p.userData.height||PANEL_BASE_H)*s;
+        p.position.y = ARTIFACT_POP_Y + 0.22 + h*0.5;   // 出土品のすぐ上に浮かせる
     });
 }
 
@@ -1252,17 +1250,16 @@ renderer.setAnimationLoop(()=>{
     // オーラの脈動（発掘後ずっと光り続ける）
     for(const a of auras){
         const pulse=0.85+Math.sin(now*0.003+a.phase)*0.15;
-        a.glow.scale.set(1.5*pulse,1.5*pulse,1);
-        a.glow.material.opacity=0.55+0.3*pulse;
+        a.glow.scale.set(1.7*pulse,1.7*pulse,1);
+        a.glow.material.opacity=0.45+0.25*pulse;
         a.ring.scale.setScalar(1+0.12*Math.sin(now*0.002+a.phase));
         a.ring.material.opacity=0.35+0.25*pulse;
-        a.beam.material.opacity=0.10+0.08*pulse;
     }
     // 出土品とパネルを結ぶ線を更新（どの説明かが一目で分かる）
     infoPanels.forEach(p=>{
         const link=p.userData.link; if(!link) return;
         const spot=p.userData.spot; if(!spot) return;
-        const h=(p.userData.height||PANEL_BASE_W)*p.scale.y;
+        const h=(p.userData.height||PANEL_BASE_H)*p.scale.y;
         const pos=link.geometry.attributes.position;
         pos.setXYZ(0, spot.x, ARTIFACT_POP_Y+0.15, spot.z);       // 出土品側
         pos.setXYZ(1, p.position.x, p.position.y-h*0.5, p.position.z); // パネル下端
