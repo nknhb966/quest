@@ -98,14 +98,17 @@
         padding:2px; min-height:0; flex:1 1 auto; align-content:start; }
     @media(max-width:640px){ .dexgrid{ grid-template-columns:repeat(2,1fr); gap:10px; } }
     @media(max-width:380px){ .dexgrid{ grid-template-columns:1fr; } }
-    .dexcard{ position:relative; border-radius:12px; overflow:hidden; aspect-ratio:3/4; min-height:150px;
-        background:linear-gradient(160deg,#efe2c4,#dcc9a0); border:2px solid var(--parch-line);
-        display:flex; align-items:center; justify-content:center; }
+    /* カードの高さは中身（カード画像）が決める＝aspect-ratio非対応端末でも重ならない */
+    .dexcard{ position:relative; border-radius:12px; overflow:hidden; display:block;
+        background:linear-gradient(160deg,#efe2c4,#dcc9a0); border:2px solid var(--parch-line); }
     .dexcard .no{ position:absolute; top:6px; left:8px; font-size:12px; font-weight:800; color:#7a6532;
         letter-spacing:1px; z-index:2; }
-    .dexcard img{ width:100%; height:100%; object-fit:contain; padding:14px 8px 8px; }
+    .dexcard img{ display:block; width:100%; height:auto; }
+    /* 未発掘カードは画像と同じ縦横比（3:4）の箱で場所取り */
+    .dexcard .ph{ position:relative; width:100%; padding-top:133%; }
+    .dexcard .ph .q{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+        font-size:44px; color:rgba(180,160,220,.4); font-weight:900; }
     .dexcard.locked{ background:linear-gradient(160deg,#20182e,#161022); border-color:rgba(150,130,190,.35); }
-    .dexcard.locked .q{ font-size:44px; color:rgba(180,160,220,.4); font-weight:900; }
     .dexcard.locked .no{ color:rgba(180,160,220,.5); }
     .dexcard .newstamp{ position:absolute; top:8px; right:6px; transform:rotate(11deg);
         background:#e23b57; color:#fff; font-size:10px; font-weight:900; letter-spacing:1px;
@@ -927,7 +930,7 @@ function updatePanelScale(){
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
         const h=(p.userData.height||PANEL_BASE_H)*s;
-        p.position.y = ARTIFACT_POP_Y + 0.22 + h*0.5;   // 出土品のすぐ上に浮かせる
+        p.position.y = ARTIFACT_POP_Y + 0.7 + h*0.5;   // 出土品のやや上に浮かせる
     });
 }
 
@@ -993,7 +996,9 @@ function refreshDexHTML(){
             if(e.isNew){ const st=document.createElement("span"); st.className="newstamp"; st.textContent="NEW!"; card.appendChild(st); }
             if(e.date){ const dt=document.createElement("span"); dt.className="date"; dt.textContent=e.date; card.appendChild(dt); }
         } else {
-            const q=document.createElement("span"); q.className="q"; q.textContent="？"; card.appendChild(q);
+            const ph=document.createElement("span"); ph.className="ph";
+            const q=document.createElement("span"); q.className="q"; q.textContent="？";
+            ph.appendChild(q); card.appendChild(ph);
         }
         dexGrid.appendChild(card);
     }
