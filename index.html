@@ -72,6 +72,10 @@
     .seg button:first-child{ border-radius:8px 0 0 8px; } .seg button:last-child{ border-radius:0 8px 8px 0; }
     .seg button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
     .opt.wide{ grid-column:1/-1; }
+    /* 相棒（恐竜）選択：8種をグリッドで折り返す */
+    #segBuddy{ display:grid!important; grid-template-columns:repeat(4,1fr); gap:6px; }
+    #segBuddy button{ border-radius:9px!important; padding:11px 2px; font-size:12px; line-height:1.25; }
+    @media(max-width:520px){ #segBuddy{ grid-template-columns:repeat(2,1fr); } }
 
     .row{ width:100%; display:flex; gap:10px; }
     .ghost{ flex:1; padding:13px 0; border:1px solid rgba(180,140,255,.35); border-radius:11px;
@@ -201,7 +205,7 @@
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
     <h1 class="title">越前国府発掘クエスト</h1>
-    <p class="subtitle">遺跡を歩いて探して、出土品を掘り当てよう。相棒の犬と一緒に。</p>
+    <p class="subtitle">遺跡を歩いて探して、出土品を掘り当てよう。相棒の恐竜と一緒に。</p>
 
     <p id="loadingNote"><i></i>遺跡データを読み込み中…（完了すると開始できます）</p>
     <div id="vrbtnwrap"></div>
@@ -221,14 +225,6 @@
           <button data-v="wide" class="on">🖌 幅広ブラシ（広く探せる/掘り多め）</button>
           <button data-v="narrow">⛏ 細ピック（狭いが/掘り少なめ）</button>
         </div>
-      </div>
-      <div class="opt wide">
-        <div class="lbl">目線の高さ（VR）　<span id="eyeVal">+0.00m</span></div>
-        <input type="range" id="eyeSlider" min="-3.0" max="1.0" step="0.05" value="-1.15" style="width:100%">
-      </div>
-      <div class="opt wide">
-        <div class="lbl">サイトの大きさ（VRのみ・1〜5倍）　<span id="wsVal">×1</span></div>
-        <input type="range" id="wsSlider" min="1" max="5" step="1" value="1" style="width:100%">
       </div>
       <div class="opt wide" id="optBuddy" style="display:none">
         <div class="lbl">相棒</div>
@@ -250,7 +246,7 @@
 
     <p class="hint" id="menuHint">
       <b>探す</b>：歩いて反応をたどる。<b>掘る</b>：発掘ポイントでコントローラーを振る。<br>
-      <b>犬に聞く</b>：右手トリガー（素手なら右手でつまむ）。ヒントは外れることも。<br>
+      <b>恐竜に聞く</b>：右手トリガー（素手なら右手でつまむ）。ヒントは外れることも。<br>
       くわしくは「あそび方」をどうぞ。
     </p>
   </div>
@@ -283,16 +279,12 @@
         <h3>⛏ 掘る</h3>
         <p>反応が強い場所まで来ると<b>土のブロック</b>が現れます。掘れる距離と向きが整うとブロックが<b>脈打つように光ります</b>。光っている間にブロックをタップ（PCはクリック／VRは狙って振る）すると発掘が進み、土が飛び散ってブロックが削れていきます。出土するとブロックは消えます。</p>
         <p class="k">スマホ：<b>光っているブロックをタップ</b>／PC：狙って左クリック／VR：狙ってコントローラー（または手）を振る</p>
-        <p>犬に聞かなくても、自分で反応をたどって見つければ発掘できます。</p>
+        <p>相棒に聞かなくても、自分で反応をたどって見つければ発掘できます。</p>
       </section>
       <section>
         <h3>🐾 相棒をなでる</h3>
         <p>相棒をなでると喜んでハートが舞います。<b>ブロックが光っている間は発掘が優先</b>されるので、相棒がブロックと重なっていても誤って撫でることはありません。光っていないときにタップすると喜びます。</p>
-        <p class="k">スマホ：<b>相棒をタップ</b>／PC：相棒に照準を合わせて左クリック／VR：<b>手を下げて相棒に伸ばす</b>と寄ってきてなでられます</p>
-      </section>
-      <section>
-        <h3>🕶 VRの調整</h3>
-        <p><b>目線の高さ</b>：スライダー、または右スティックの上下。<b>サイトの大きさ</b>（実寸〜5倍）：スライダー、または<b>右手の中指グリップを押しながら</b>右スティック上下。大きくすると歩く速さも自動で上がります。</p>
+        <p class="k">スマホ：<b>相棒をタップ</b>／PC：相棒に照準を合わせて左クリック／VR：相棒の頭に手を近づけて動かす</p>
       </section>
       <section>
         <h3>🖌 道具</h3>
@@ -300,13 +292,13 @@
         <p class="k">VR：<b>左手のトリガー</b>（素手なら左手でつまむ）／PC：Tキー・スマホ：「道具」ボタン</p>
       </section>
       <section>
-        <h3>🐶 相棒（犬に聞く）</h3>
-        <p>ワンちゃんは常に視界の前を歩きます。<b>聞くと発掘ポイントのヒント</b>をくれて、その場所まで歩いて<b>少し待って</b>くれます。ただし難しい出土品ほど<b>まちがえます</b>。</p>
-        <p class="k">VR：<b>右手のトリガー</b>（素手なら右手でつまむ）／PC：Qキー・スマホ：「犬に聞く」ボタン</p>
+        <h3>🦖 相棒（恐竜に聞く）</h3>
+        <p>相棒の恐竜は常に視界の前を歩きます。<b>聞くと発掘ポイントのヒント</b>をくれて、その場所まで歩いて<b>少し待って</b>くれます。ただし難しい出土品ほど<b>まちがえます</b>。メニューの「相棒」で8種類から選べます。</p>
+        <p class="k">VR：<b>右手のトリガー</b>（素手なら右手でつまむ）／PC：Qキー・スマホ：「恐竜に聞く」ボタン</p>
       </section>
       <section>
         <h3>🗺 モード</h3>
-        <p><b>じっくりコレクション</b>：8種を順番に発掘。後の出土品ほど反応範囲が狭く、掘る回数も増え、犬も外しやすくなります。</p>
+        <p><b>じっくりコレクション</b>：8種を順番に発掘。後の出土品ほど反応範囲が狭く、掘る回数も増え、相棒も外しやすくなります。</p>
         <p><b>タイムアタック</b>：<b>右トリガー</b>（PC：スペース／スマホ：「スタート」）で図鑑をリセットし、3秒のカウントダウン後にスタート。時間切れになると、その場に<b>結果とTOP5</b>が表示されます（歩き回れます）。もう一度押すと記録を閉じ、さらにもう一度押すとリセットして再挑戦。ワールドから出ずに何度でも挑戦できます。</p>
       </section>
       <section>
@@ -335,8 +327,8 @@
       <span class="k">左クリック</span> 掘る
     </span>
     <button id="dTA" style="display:none">▶ スタート（記録リセット）</button>
-    <button id="dBuddy" style="display:none">相棒：🐶</button>
-    <button id="dAsk">🐶 犬に聞く</button>
+    <button id="dBuddy" style="display:none">相棒：🦖</button>
+    <button id="dAsk">🦖 きいてみる</button>
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dDex">📖 図鑑</button>
     <button id="dQuit">やめる</button>
@@ -368,19 +360,15 @@ const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
-const ARTIFACT_POP_Y= 0.32;              // 出土品が落ち着く高さ（地面近く）※worldScale倍される
-const isVR = ()=> renderer.xr.isPresenting;
-const WS = ()=> isVR() ? worldScale : 1;     // オブジェクトの倍率（非VRは常に実寸=1）
-const effSite = ()=> isVR() ? worldScale : baseFit;  // world 全体の拡大（非VRは34mフィット）
-let walkSpeedEff = 3.5;                  // 実効歩行速度
+const ARTIFACT_POP_Y= 1.2;               // 出土品が落ち着く高さ（目線より少し下）
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.85;              // 掘れるブロックの一辺（m）※マイクラ風の当たり判定
 const DIG_REACH     = 4.0;               // 掘れる距離（m）
-const PET_REACH     = 3.5;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
+const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = -0.2;              // 犬の接地高さ補正（m。少し下げる）
-const DOG_FWD       = 1.7;               // 犬の定位置：前方オフセット（m）※撫でられる距離内に
+const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
 const DOG_STAY_R    = 7.0;               // ブロック横で待つ範囲（これ以上離れたらプレイヤーに付いてくる）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -476,23 +464,6 @@ const player = new THREE.Group();
 player.add(camera);
 scene.add(player);
 
-// 視点の高さ調整（VRで地面に沈む/浮くのを補正）。スライダー＋右スティック上下で変更。
-let eyeHeight = -1.15;             // m（マイナスで下がる）※標準を低めに
-const EYE_MIN=-3.0, EYE_MAX=1.0;
-function applyEyeHeight(){ player.position.y = isVR() ? eyeHeight : 0; const s=document.getElementById("eyeSlider"); if(s && +s.value!==eyeHeight) s.value=eyeHeight;
-    const lbl=document.getElementById("eyeVal"); if(lbl) lbl.textContent=(eyeHeight>=0?"+":"")+eyeHeight.toFixed(2)+"m"; }
-function setEyeHeight(v){ eyeHeight=Math.max(EYE_MIN,Math.min(EYE_MAX, v)); applyEyeHeight(); }
-
-// ワールド（サイト・発掘ポイント・出土品・パネル）の拡大率。スライダー＋右中指グリップ＋上下で変更。
-let worldScale = 1.0;
-const WS_MIN=1, WS_MAX=5;   // 1〜5倍の段階（VRのみ有効）
-function applyWorldScale(){
-    refreshWorldScaleDependents();
-    const s=document.getElementById("wsSlider"); if(s && +s.value!==worldScale) s.value=worldScale;
-    const lbl=document.getElementById("wsVal"); if(lbl) lbl.textContent="×"+worldScale.toFixed(0);
-}
-function setWorldScale(v){ worldScale=Math.max(WS_MIN,Math.min(WS_MAX, Math.round(v))); applyWorldScale(); }
-
 // ライト（レール版はaddCoaster側で処理していたので、歩行版では自前で用意）
 scene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
 const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
@@ -560,58 +531,56 @@ try{
  * ===================================================== */
 const gltfLoader = new GLTFLoader();
 let siteReady=false;
-let baseFit=1;                 // 非VRの見た目（サイトを34m径にフィット）
-let nativeCenter=new THREE.Vector3();  // サイトのネイティブ中心（scale=1で計測）
-let sitePhs=null, siteRootRef=null;
 document.body.classList.add("loading");   // 読み込み完了までゲーム開始を無効化
 const world = new THREE.Group(); scene.add(world);
 const ARTPOS = new Array(8).fill(null);   // 各出土品の確定ワールド座標（地面）
 gltfLoader.load(SITE_GLB, (gltf)=>{
-    const siteRoot = gltf.scene; siteRootRef=siteRoot;
+    const siteRoot = gltf.scene;
     siteRoot.rotation.y = THREE.MathUtils.degToRad(-90);   // 元と同じ向き
     world.add(siteRoot);
     // 発掘スポットのプレースホルダ（元HTMLと同じ相対配置＝サイトのネイティブ座標）
     const phs = ART_ORIG.map(([x,z])=>{ const o=new THREE.Object3D(); o.position.set(x,0,z); world.add(o); return o; });
-    sitePhs=phs;
-    // ネイティブ（scale=1）で中心とフィット率を計測
-    world.scale.setScalar(1); world.position.set(0,0,0); world.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(siteRoot);
+    // サイトのフットプリントで world 全体を歩ける大きさへフィット
+    let box = new THREE.Box3().setFromObject(siteRoot);
     const size = box.getSize(new THREE.Vector3());
-    nativeCenter.copy(box.getCenter(new THREE.Vector3()));
-    baseFit = SITE_FIT_DIAM / Math.max(size.x, size.z, 0.001);   // 非VR：34m径
-    // 現在の環境（VR/非VR）に応じてスケール・位置・地面を反映
-    refreshWorldScaleDependents();
-    siteReady=true;
-    document.body.classList.remove("loading");
-}, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; document.body.classList.remove("loading"); });
-
-// 地面の高さを測って足元(y=0)へ（現在のscale/位置基準）
-function levelGround(siteRoot){
-    world.position.y = 0; world.updateMatrixWorld(true);
+    const fit = SITE_FIT_DIAM / Math.max(size.x, size.z, 0.001);
+    world.scale.setScalar(fit);
+    world.updateMatrixWorld(true);
+    // 地面を y=0、中心を原点へ
+    box = new THREE.Box3().setFromObject(siteRoot);
+    const center = box.getCenter(new THREE.Vector3());
+    world.position.x -= center.x; world.position.z -= center.z; world.position.y -= box.min.y;
+    world.updateMatrixWorld(true);
+    // 確定した発掘スポットを取得（サイトを下げる前に取る＝発掘点/出土品は元の高さのまま）
+    let maxR = 0;
+    phs.forEach((o,i)=>{ const wp=o.getWorldPosition(new THREE.Vector3()); ARTPOS[i]=new THREE.Vector3(wp.x,GROUND_Y,wp.z); maxR=Math.max(maxR, Math.hypot(wp.x,wp.z)); });
+    FIELD_R = Math.max(FIELD_R, maxR+3);   // 発掘場所を含むよう歩行範囲を確保
+    // 実際の地面の高さを真下レイキャストで測り、足元(y=0)へ合わせる（視点が埋まらないように）
     const rc=new THREE.Raycaster(); const down=new THREE.Vector3(0,-1,0);
-    const samples=[[0,0]].concat(sitePhs.map(o=>{ const p=o.getWorldPosition(new THREE.Vector3()); return [p.x,p.z]; }));
+    const samples=[[0,0]].concat(ARTPOS.map(p=>[p.x,p.z]));
+    // フィールド全体に格子状のサンプルを追加（地面の代表高さを確実に拾う）
+    const gridR=Math.min(FIELD_R-1, maxR+1);
+    for(let gx=-gridR; gx<=gridR; gx+=gridR/2){ for(let gz=-gridR; gz<=gridR; gz+=gridR/2){ samples.push([gx,gz]); } }
     const hitYs=[];
     for(const [sx,sz] of samples){
         rc.set(new THREE.Vector3(sx,1000,sz), down);
         const hit=rc.intersectObject(siteRoot,true)[0];
         if(hit) hitYs.push(hit.point.y);
     }
-    if(hitYs.length){ hitYs.sort((a,b)=>a-b);
+    if(hitYs.length){
+        hitYs.sort((a,b)=>a-b);
+        // 高め（80パーセンタイル）の地面を足元へ→広い範囲で埋まらない
         const surfaceY=hitYs[Math.min(hitYs.length-1, Math.floor(hitYs.length*0.8))];
-        world.position.y = -surfaceY;   // 地面を y=0 へ
+        siteRoot.position.y -= (surfaceY + 0.2) / fit;   // 地面上端を足元のわずか下へ
+    } else {
+        // レイが当たらない場合はバウンディングボックス上端を基準に大きく下げる
+        siteRoot.position.y -= (box.max.y - 0.2) / fit;
     }
+    siteRoot.position.y += SITE_Y_OFFSET / fit;      // 追加の微調整（既定0）
     world.updateMatrixWorld(true);
-}
-// 発掘スポットのワールド座標（x,z）を再計算。地面は y=0 に統一。
-function recomputeArtpos(){
-    if(!sitePhs) return;
-    world.updateMatrixWorld(true);
-    let maxR=0;
-    sitePhs.forEach((o,i)=>{ const wp=o.getWorldPosition(new THREE.Vector3());
-        if(!ARTPOS[i]) ARTPOS[i]=new THREE.Vector3();
-        ARTPOS[i].set(wp.x, 0, wp.z); maxR=Math.max(maxR, Math.hypot(wp.x,wp.z)); });
-    FIELD_R = Math.max(12, maxR+3);
-}
+    siteReady=true;
+    document.body.classList.remove("loading");
+}, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; document.body.classList.remove("loading"); });
 function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if(siteReady){ clearInterval(iv); cb(); } }, 100); } }
 
 /* ── アーティファクトGLB（8種）を事前ロード（非表示で保持） ── */
@@ -621,17 +590,11 @@ ART_FILES.forEach((f,idx)=>{
         const o=gltf.scene;
         const box=new THREE.Box3().setFromObject(o);
         const size=box.getSize(new THREE.Vector3());
-        const h=size.y||1, maxd=Math.max(size.x,size.y,size.z,0.001);
-        // 非VR：従来どおり約0.55mへフィット。VR：ほぼ実寸（極端な大小だけ補正）。
-        const fitS = ART_TARGET_H/maxd;
-        let realS=1; if(h>1.2) realS=1.2/h; else if(h<0.05) realS=0.15/h;
-        o.userData.fitS=fitS; o.userData.realS=realS;
-        o.scale.setScalar(fitS);
+        const fit=ART_TARGET_H/Math.max(size.x,size.y,size.z,0.001);
+        o.scale.setScalar(fit);
         o.visible=false; scene.add(o); artModels[idx]=o;
     }, undefined, ()=>{ /* 失敗しても続行 */ });
 });
-// 出土品の基準サイズ（VRは実寸、非VRは0.55mフィット）
-function artBaseS(m){ return isVR() ? (m.userData.realS||1) : (m.userData.fitS||1); }
 // 図鑑カード用の画像テクスチャ（発掘演出パネル）
 const texLoader = new THREE.TextureLoader();
 
@@ -640,31 +603,173 @@ const texLoader = new THREE.TextureLoader();
  *   dog … 移動を担うルート。実際の見た目は子の「ボディ」グループが持つ（差し替え可能）。
  * ===================================================== */
 const dog = new THREE.Group();          // 相棒のルート（位置・向きはこれを動かす）
-const dogBody  = new THREE.Group();     // イヌ
 
-(function buildDog(){
-    const bodyMat = new THREE.MeshStandardMaterial({color:0xc99a5b, roughness:0.8});
-    const darkMat = new THREE.MeshStandardMaterial({color:0x8a6636, roughness:0.8});
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.55,1.5), bodyMat); body.position.y=0.75; dogBody.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.55,0.6), bodyMat); head.position.set(0,1.05,0.95); dogBody.add(head);
-    const snout= new THREE.Mesh(new THREE.BoxGeometry(0.32,0.28,0.4), darkMat); snout.position.set(0,0.95,1.3); dogBody.add(snout);
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10), new THREE.MeshStandardMaterial({color:0x221a12})); nose.position.set(0,0.98,1.52); dogBody.add(nose);
-    [[-0.2,1.42,0.85],[0.2,1.42,0.85]].forEach(p=>{ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.35,4),darkMat); ear.position.set(p[0],p[1],p[2]); dogBody.add(ear); });
-    const legs=[];
-    [[-0.28,0.28,0.5],[0.28,0.28,0.5],[-0.28,0.28,-0.5],[0.28,0.28,-0.5]].forEach((p,i)=>{
-        const pivot=new THREE.Group(); pivot.position.set(p[0],0.55,p[2]); dogBody.add(pivot);   // 股関節ピボット
-        const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.55,8),darkMat); leg.position.set(0,-0.27,0); pivot.add(leg);
-        pivot.userData.phase = (i===0||i===3)?0:Math.PI;   // 対角の足を同位相に
-        legs.push(pivot);
+/* ── 恐竜ビルダー（すべてプリミティブ製）───────────────────────────
+ *  各ビルダーは THREE.Group を返し、userData に
+ *    legs  : 脚ピボット配列（各 userData.phase を持つ）→ 歩行アニメ
+ *    tail  : 尻尾（Mesh/Group）→ ゆれるアニメ
+ *    wings : 翼配列（各 userData.sign ±1）→ 羽ばたき（プテラノドン用）
+ *  を入れると、既存の updateDog がそのままアニメを適用します。       */
+function dmat(c){ return new THREE.MeshStandardMaterial({color:c, roughness:0.85}); }
+function dinoLeg(parent,x,hipY,z,len,r,m,phase){
+    const pivot=new THREE.Group(); pivot.position.set(x,hipY,z); parent.add(pivot);
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(r*0.85,r,len,8),m); leg.position.y=-len/2; pivot.add(leg);
+    const foot=new THREE.Mesh(new THREE.BoxGeometry(r*2.4,r*1.1,r*3.2),m); foot.position.set(0,-len+r*0.25,r*1.1); pivot.add(foot);
+    pivot.userData.phase=phase; return pivot;
+}
+function dinoEyes(parent,x,y,z,r){ [[-x,y,z],[x,y,z]].forEach(p=>{
+    const e=new THREE.Mesh(new THREE.SphereGeometry(r||0.06,10,10), dmat(0x14100a)); e.position.set(p[0],p[1],p[2]); parent.add(e); }); }
+
+// 1) ティラノサウルス（2足・大きな頭・ちび腕）
+function build_trex(){
+    const g=new THREE.Group(); const m=dmat(0x4a7c59), d=dmat(0x35604a), cream=dmat(0xf0ead6);
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.62,16,12),m); torso.scale.set(0.9,1.05,1.35); torso.position.set(0,1.25,0); g.add(torso);
+    const chest=new THREE.Mesh(new THREE.SphereGeometry(0.5,14,10),m); chest.scale.set(0.85,1.0,1.0); chest.position.set(0,1.5,0.5); g.add(chest);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.75),m); head.position.set(0,1.95,0.95); g.add(head);
+    const jaw=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.2,0.66),d); jaw.position.set(0,1.72,1.0); g.add(jaw);
+    for(let i=-1;i<=1;i++){ const t=new THREE.Mesh(new THREE.ConeGeometry(0.04,0.12,4),cream); t.position.set(i*0.13,1.62,1.28); t.rotation.x=Math.PI; g.add(t); }
+    dinoEyes(g,0.17,2.05,1.2,0.07);
+    [[-0.32,1.5,0.6],[0.32,1.5,0.6]].forEach(p=>{ const a=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.32,6),d); a.position.set(p[0],p[1],p[2]); a.rotation.x=0.8; g.add(a); });
+    g.userData.legs=[ dinoLeg(g,-0.3,0.95,-0.05,0.95,0.15,d,0), dinoLeg(g,0.3,0.95,-0.05,0.95,0.15,d,Math.PI) ];
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.32,1.6,8),m); tail.position.set(0,1.1,-1.05); tail.rotation.x=1.35; g.add(tail); g.userData.tail=tail;
+    return g;
+}
+// 2) トリケラトプス（4足・フリル＋3本角）
+function build_tri(){
+    const g=new THREE.Group(); const m=dmat(0xb07a4a), d=dmat(0x8a5c32), cream=dmat(0xe8dcc0);
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.66,16,12),m); torso.scale.set(1.0,0.95,1.5); torso.position.set(0,0.9,-0.1); g.add(torso);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.5,0.6),m); head.position.set(0,0.85,1.0); g.add(head);
+    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.34,6),d); beak.position.set(0,0.78,1.4); beak.rotation.x=Math.PI/2; g.add(beak);
+    const frill=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.5,0.12,18),cream); frill.position.set(0,1.05,0.6); frill.rotation.x=Math.PI*0.42; g.add(frill);
+    const h1=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.4,7),cream); h1.position.set(0,0.95,1.25); h1.rotation.x=-0.5; g.add(h1);
+    [[-0.2,1.05,1.05],[0.2,1.05,1.05]].forEach(p=>{ const h=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.5,7),cream); h.position.set(p[0],p[1],p[2]); h.rotation.x=-0.3; g.add(h); });
+    dinoEyes(g,0.2,0.95,1.15,0.06);
+    g.userData.legs=[ dinoLeg(g,-0.34,0.5,0.45,0.5,0.14,d,0), dinoLeg(g,0.34,0.5,0.45,0.5,0.14,d,Math.PI),
+                      dinoLeg(g,-0.34,0.5,-0.55,0.5,0.14,d,Math.PI), dinoLeg(g,0.34,0.5,-0.55,0.5,0.14,d,0) ];
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.2,0.7,8),m); tail.position.set(0,0.8,-1.0); tail.rotation.x=-1.2; g.add(tail); g.userData.tail=tail;
+    return g;
+}
+// 3) ステゴサウルス（4足・背びれ＋尾トゲ）
+function build_stego(){
+    const g=new THREE.Group(); const m=dmat(0x3f8a8c), d=dmat(0x2c6466), plate=dmat(0xd98c4a), cream=dmat(0xe8dcc0);
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.6,16,12),m); torso.scale.set(0.95,1.1,1.7); torso.position.set(0,0.95,0); g.add(torso);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.32,0.5),m); head.position.set(0,0.6,1.15); g.add(head);
+    dinoEyes(g,0.12,0.66,1.3,0.05);
+    for(let i=0;i<6;i++){ const z=0.75-i*0.32, s=(i===0||i===5)?0.28:0.46;
+        const pl=new THREE.Mesh(new THREE.ConeGeometry(s*0.5,s,3),plate); pl.position.set(0,1.55,z); g.add(pl); }
+    g.userData.legs=[ dinoLeg(g,-0.34,0.55,0.55,0.55,0.14,d,0), dinoLeg(g,0.34,0.55,0.55,0.55,0.14,d,Math.PI),
+                      dinoLeg(g,-0.34,0.6,-0.6,0.6,0.15,d,Math.PI), dinoLeg(g,0.34,0.6,-0.6,0.6,0.15,d,0) ];
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.24,0.9,8),m); tail.position.set(0,1.0,-1.15); tail.rotation.x=-1.35; g.add(tail); g.userData.tail=tail;
+    [[-0.12],[0.12]].forEach(p=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.3,5),cream); sp.position.set(p[0],1.15,-1.5); sp.rotation.x=-2.2; g.add(sp); });
+    return g;
+}
+// 4) ブラキオサウルス（4足・長い首）
+function build_brachi(){
+    const g=new THREE.Group(); const m=dmat(0x8a7bb5), d=dmat(0x6a5c94);
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.7,16,12),m); torso.scale.set(1.0,1.1,1.6); torso.position.set(0,1.05,-0.2); g.add(torso);
+    let ny=1.5, nz=0.5;
+    for(let i=0;i<4;i++){ const seg=new THREE.Mesh(new THREE.CylinderGeometry(0.18-i*0.02,0.2-i*0.02,0.42,8),m); seg.position.set(0,ny,nz); seg.rotation.x=-0.5; g.add(seg); ny+=0.32; nz+=0.18; }
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.26,0.4),m); head.position.set(0,ny+0.05,nz+0.05); g.add(head);
+    dinoEyes(g,0.11,ny+0.1,nz+0.15,0.05);
+    g.userData.legs=[ dinoLeg(g,-0.4,0.7,0.5,0.7,0.16,d,0), dinoLeg(g,0.4,0.7,0.5,0.7,0.16,d,Math.PI),
+                      dinoLeg(g,-0.4,0.7,-0.7,0.7,0.16,d,Math.PI), dinoLeg(g,0.4,0.7,-0.7,0.7,0.16,d,0) ];
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.22,1.3,8),m); tail.position.set(0,0.95,-1.25); tail.rotation.x=-1.25; g.add(tail); g.userData.tail=tail;
+    return g;
+}
+// 5) ヴェロキラプトル（2足・スリム・かぎ爪）
+function build_raptor(){
+    const g=new THREE.Group(); const m=dmat(0xc9a15b), d=dmat(0x7a5a2e), cream=dmat(0xf0ead6);
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.42,14,10),m); torso.scale.set(0.85,0.95,1.4); torso.position.set(0,1.15,0.15); g.add(torso);
+    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.16,0.5,8),m); neck.position.set(0,1.5,0.55); neck.rotation.x=-0.7; g.add(neck);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.5),m); head.position.set(0,1.75,0.9); g.add(head);
+    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.16,0.28),d); snout.position.set(0,1.72,1.2); g.add(snout);
+    dinoEyes(g,0.11,1.82,1.05,0.055);
+    [[-0.26,1.35,0.5],[0.26,1.35,0.5]].forEach(p=>{ const a=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.4,6),d); a.position.set(p[0],p[1],p[2]); a.rotation.x=0.6; g.add(a); });
+    const legs=[ dinoLeg(g,-0.24,0.95,-0.05,0.95,0.12,d,0), dinoLeg(g,0.24,0.95,-0.05,0.95,0.12,d,Math.PI) ];
+    legs.forEach(p=>{ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.18,5),cream); claw.position.set(0,-0.9,0.28); claw.rotation.x=-1.9; p.add(claw); });
+    g.userData.legs=legs;
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.16,1.5,8),m); tail.position.set(0,1.1,-0.95); tail.rotation.x=1.5; g.add(tail); g.userData.tail=tail;
+    return g;
+}
+// 6) パラサウロロフス（4足・後ろへ伸びるトサカ）
+function build_para(){
+    const g=new THREE.Group(); const m=dmat(0x5aa07a), d=dmat(0x3f7a58), crest=dmat(0xd9663f);
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.6,16,12),m); torso.scale.set(0.95,1.05,1.6); torso.position.set(0,1.0,-0.1); g.add(torso);
+    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.2,0.55,8),m); neck.position.set(0,1.4,0.55); neck.rotation.x=-0.6; g.add(neck);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.55),m); head.position.set(0,1.7,0.9); g.add(head);
+    const cr=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.1,0.7,8),crest); cr.position.set(0,1.95,0.55); cr.rotation.x=0.9; g.add(cr);
+    dinoEyes(g,0.13,1.75,1.05,0.055);
+    g.userData.legs=[ dinoLeg(g,-0.34,0.6,0.5,0.6,0.15,d,0), dinoLeg(g,0.34,0.6,0.5,0.6,0.15,d,Math.PI),
+                      dinoLeg(g,-0.34,0.65,-0.65,0.65,0.15,d,Math.PI), dinoLeg(g,0.34,0.65,-0.65,0.65,0.15,d,0) ];
+    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.22,1.1,8),m); tail.position.set(0,0.95,-1.2); tail.rotation.x=-1.3; g.add(tail); g.userData.tail=tail;
+    return g;
+}
+// 7) アンキロサウルス（4足・甲羅＋尾のこん棒）
+function build_anky(){
+    const g=new THREE.Group(); const m=dmat(0x6b7355), d=dmat(0x4a5240), armor=dmat(0x8a8f6e);
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.68,16,12),m); torso.scale.set(1.25,0.8,1.6); torso.position.set(0,0.75,0); g.add(torso);
+    [[-0.3,0.4],[0.3,0.4],[0,0.0],[-0.3,-0.4],[0.3,-0.4]].forEach(p=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(0.14,8,6),armor); b.scale.set(1,0.6,1); b.position.set(p[0],1.05,p[1]); g.add(b); });
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.3,0.4),m); head.position.set(0,0.65,1.0); g.add(head);
+    dinoEyes(g,0.14,0.7,1.15,0.05);
+    g.userData.legs=[ dinoLeg(g,-0.42,0.42,0.5,0.42,0.15,d,0), dinoLeg(g,0.42,0.42,0.5,0.42,0.15,d,Math.PI),
+                      dinoLeg(g,-0.42,0.42,-0.5,0.42,0.15,d,Math.PI), dinoLeg(g,0.42,0.42,-0.5,0.42,0.15,d,0) ];
+    const tailG=new THREE.Group(); tailG.position.set(0,0.6,-0.55); tailG.rotation.x=-1.4; g.add(tailG);
+    const tseg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.14,0.9,8),m); tseg.position.y=-0.45; tailG.add(tseg);
+    const knob=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,8),d); knob.position.y=-0.9; tailG.add(knob);
+    g.userData.tail=tailG;
+    return g;
+}
+// 8) プテラノドン（飛行・翼を羽ばたく）
+function build_ptera(){
+    const g=new THREE.Group(); const m=dmat(0x5b7fa6), d=dmat(0x3f5c7a), crest=dmat(0xd9663f);
+    const memb=new THREE.MeshStandardMaterial({color:0x8fb0cf, roughness:0.7, side:THREE.DoubleSide});
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.32,14,10),m); body.scale.set(0.8,0.9,1.5); body.position.set(0,1.3,0); g.add(body);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.22,0.3),m); head.position.set(0,1.5,0.5); g.add(head);
+    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.6,6),d); beak.position.set(0,1.5,0.95); beak.rotation.x=Math.PI/2; g.add(beak);
+    const cr=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.4,4),crest); cr.position.set(0,1.62,0.28); cr.rotation.x=-1.9; g.add(cr);
+    dinoEyes(g,0.1,1.55,0.6,0.05);
+    const wings=[];
+    [-1,1].forEach(sgn=>{
+        const w=new THREE.Group(); w.position.set(sgn*0.2,1.32,0); g.add(w);
+        const arm=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.06,0.5),memb); arm.position.set(sgn*0.55,0,0); w.add(arm);
+        const tip=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.5,4),m); tip.position.set(sgn*1.15,0,0); tip.rotation.z=sgn*Math.PI/2; w.add(tip);
+        w.userData.sign=sgn; wings.push(w);
     });
-    dogBody.userData.legs=legs;
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.11,0.6,8),bodyMat); tail.position.set(0,0.95,-0.85); tail.rotation.x=-0.9; dogBody.add(tail); dogBody.userData.tail=tail;
-    // 目
-    [[-0.16,1.12,1.22],[0.16,1.12,1.22]].forEach(p=>{ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,10), new THREE.MeshStandardMaterial({color:0x1a140c})); eye.position.set(p[0],p[1],p[2]); dogBody.add(eye); });
-})();
+    g.userData.wings=wings;
+    g.userData.legs=[ dinoLeg(g,-0.12,1.0,-0.1,0.4,0.05,d,0), dinoLeg(g,0.12,1.0,-0.1,0.4,0.05,d,Math.PI) ];
+    return g;
+}
+
+// 恐竜たちの定義（鳴き声からセリフを自動生成）
+const DEFAULT_KIND="trex";
+function dinoLines(cry){
+    return {
+        start :`いっしょに さがすぞ、${cry}！`,
+        found :`みつけた！ ${cry}🎉`,
+        here  :`ここを ほるんだ、${cry}！`,
+        hintOk:`こっちだ！ ついてこい→`,
+        hintNg:`たぶん こっち…？ ${cry}`,
+        wrong :`…あれ、ちがったか ${cry}`,
+        done  :`ぜんぶ みつけたぞ！ ${cry}`,
+        again :`おしい！ もう一回 やるか ${cry}？`,
+        pet   :`うれしいぞ ${cry}！`,
+        closer:`もっと 近くに来い ${cry}！`,
+        digNow:`ここ 掘れるぞ ${cry}！`
+    };
+}
+const DINOS=[
+    {key:"trex",   label:"🦖 ティラノ", cry:"ガオー",     build:build_trex},
+    {key:"tri",    label:"🦕 トリケラ", cry:"ブモォ",     build:build_tri},
+    {key:"stego",  label:"🦕 ステゴ",   cry:"のっしり",   build:build_stego},
+    {key:"brachi", label:"🦕 ブラキオ", cry:"にょろーん", build:build_brachi},
+    {key:"raptor", label:"🦖 ラプトル", cry:"シャアッ",   build:build_raptor},
+    {key:"para",   label:"🎺 パラサ",   cry:"パオーン",   build:build_para},
+    {key:"anky",   label:"🛡 アンキロ", cry:"ゴツン",     build:build_anky},
+    {key:"ptera",  label:"🕊 プテラノ", cry:"ピギャー",   build:build_ptera},
+];
 
 scene.add(dog);
-dog.scale.setScalar(0.7);   // 犬を2倍サイズに（従来0.35→0.7）
+dog.scale.setScalar(0.35);
 dog.position.set(2,GROUND_Y,2);
 
 /* =====================================================
@@ -676,22 +781,22 @@ dog.position.set(2,GROUND_Y,2);
  *   相棒が1種類だけのときは切り替えUIは自動的に隠れます。
  * ===================================================== */
 const COMPANIONS={};
-let companionKind="dog";
+let companionKind=DEFAULT_KIND;
 function registerCompanion(key, def){
     COMPANIONS[key]=def;
     if(def.body){ def.body.visible=(key===companionKind); dog.add(def.body); }
     refreshBuddyUI();
 }
-function activeBody(){ return (COMPANIONS[companionKind]||COMPANIONS.dog).body; }
+function activeBody(){ return (COMPANIONS[companionKind]||COMPANIONS[DEFAULT_KIND]).body; }
 function setCompanion(kind){
-    if(!COMPANIONS[kind]) kind="dog";
+    if(!COMPANIONS[kind]) kind=DEFAULT_KIND;
     companionKind=kind;
     for(const k in COMPANIONS){ if(COMPANIONS[k].body) COMPANIONS[k].body.visible=(k===kind); }
     refreshBuddyUI();
 }
 function line(key){
-    const c=COMPANIONS[companionKind]||COMPANIONS.dog;
-    return (c.lines&&c.lines[key]) || COMPANIONS.dog.lines[key];
+    const c=COMPANIONS[companionKind]||COMPANIONS[DEFAULT_KIND];
+    return (c.lines&&c.lines[key]) || COMPANIONS[DEFAULT_KIND].lines[key];
 }
 // 切り替えUI（相棒が2種類以上あるときだけ表示）
 function refreshBuddyUI(){
@@ -711,19 +816,21 @@ function refreshBuddyUI(){
         });
     }
     const ask=document.getElementById("dAsk");
-    const cur=COMPANIONS[companionKind]||COMPANIONS.dog;
-    if(ask) ask.textContent=(cur.askLabel||"🐶 犬に聞く");
-    if(btn) btn.textContent="相棒："+((cur.label||"").split(" ")[0]||"🐶");
+    const cur=COMPANIONS[companionKind]||COMPANIONS[DEFAULT_KIND];
+    if(ask) ask.textContent=(cur.askLabel||"🦖 きいてみる");
+    if(btn) btn.textContent="相棒："+((cur.label||"").split(" ")[0]||"🦖");
 }
 
-// 既定の相棒：いぬ
-registerCompanion("dog", {
-    label:"🐶 いぬ", askLabel:"🐶 犬に聞く", body:dogBody,
-    lines:{ start:"いっしょに さがすワン！", found:"みつけたワン！🎉", here:"ここ ほって ワン！",
-            hintOk:"こっちワン！ついてきて→", hintNg:"たぶん こっちワン？", wrong:"…あれ、ちがうかも？ワン",
-            done:"ぜんぶ みつけたワン！", again:"おしい！ もう一回するワン？", pet:"うれしいワン！",
-            closer:"もっと 近くに寄るワン！", digNow:"ここ 掘れるワン！" }
+// 相棒＝恐竜8種を登録（メニューの「相棒」で選べる。既定はティラノ）
+DINOS.forEach(dn=>{
+    registerCompanion(dn.key, {
+        label:   dn.label,
+        askLabel:(dn.label.split(" ")[0]||"🦖")+" きいてみる",
+        body:    dn.build(),
+        lines:   dinoLines(dn.cry)
+    });
 });
+setCompanion(DEFAULT_KIND);
 
 // 吹き出しスプライト
 const bubble = (function(){
@@ -921,16 +1028,15 @@ function spawnTarget(tier, forcedIdx=null){
     const d = difficulty(tier);
     const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*3, GROUND_Y, ART_ORIG[idx][1]*3)).clone();
     pos.y = GROUND_Y;
-    const marker = makeMarker(); marker.position.copy(pos); marker.scale.setScalar(WS());
-    // マイクラ風の「掘れるブロック」＋照準時の枠線（worldScaleでサイズも変わる）
+    const marker = makeMarker(); marker.position.copy(pos);
+    // マイクラ風の「掘れるブロック」＋照準時の枠線
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK, DIG_BLOCK*0.7, DIG_BLOCK),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
-    block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.15*WS(), pos.z); block.scale.setScalar(WS());
-    block.userData.baseS=WS(); scene.add(block);
+    block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35, pos.z); scene.add(block);
     const outline=new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02, DIG_BLOCK*0.72, DIG_BLOCK*1.02)),
         new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:false}));
-    outline.position.copy(block.position); outline.scale.copy(block.scale); outline.visible=false; outline.renderOrder=997; scene.add(outline);
+    outline.position.copy(block.position); outline.visible=false; outline.renderOrder=997; scene.add(outline);
     const t = { idx, tier, pos, diff:d, marker, block, outline, discovered:false, progress:0,
                 digNeed: Math.max(2, Math.round(d.digNeed * toolMods().digMul)) };
     GAME.targets.push(t);
@@ -965,11 +1071,9 @@ function excavate(t){
     const model = artModels[t.idx];
     if(model){
         model.visible=true;
-        model.scale.setScalar(artBaseS(model)*WS());
-        const popY=ARTIFACT_POP_Y*WS();
         model.position.set(t.pos.x, GROUND_Y, t.pos.z);
         model.rotation.set(0,Math.random()*Math.PI*2,0);
-        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:popY+0.6*WS(), endY:popY, t:0, dur:1.0 });
+        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
     }
     // オーラを出し続ける（出土品ごとに色を変えてパネルと対応づけ）
     const aura = addAura(t.idx, t.pos);
@@ -1038,49 +1142,16 @@ function addAura(idx, pos){
         new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false}));
     ring.rotation.x=-Math.PI/2; ring.position.y=0.03; g.add(ring);
     g.position.set(pos.x, GROUND_Y, pos.z);
-    g.scale.setScalar(WS());
     scene.add(g);
     const a={ group:g, glow, ring, color, idx, phase:Math.random()*Math.PI*2 };
     auras.push(a); return a;
 }
 function clearAuras(){ auras.forEach(a=>scene.remove(a.group)); auras.length=0; }
 
-// スケール変更・VR切替時に、位置・サイズ・速度をまとめて追従
-function refreshWorldScaleDependents(){
-    walkSpeedEff = 3.5 * WS();
-    if(typeof dog!=="undefined") dog.scale.setScalar(isVR()?0.7:0.35);   // VRは大きめ（撫でやすい）
-    if(!sitePhs || !siteReady) return;
-    const S=effSite();
-    world.scale.setScalar(S);
-    world.position.x = -nativeCenter.x*S;
-    world.position.z = -nativeCenter.z*S;
-    world.updateMatrixWorld(true);
-    levelGround(siteRootRef);
-    recomputeArtpos();
-    // アクティブな発掘ターゲット（ブロック・枠・輪）を新しい位置/サイズへ
-    if(typeof GAME!=="undefined" && GAME.targets){
-        GAME.targets.forEach(t=>{
-            const ap=ARTPOS[t.idx]; if(ap){ t.pos.set(ap.x,0,ap.z); }
-            if(t.marker){ t.marker.position.set(t.pos.x,0,t.pos.z); t.marker.scale.setScalar(WS()); }
-            const left=Math.max(0,1-t.progress/t.digNeed);
-            const s=(0.45+0.55*left)*WS();
-            if(t.block){ t.block.userData.baseS=s; t.block.scale.set(s,Math.max(0.25,left)*WS(),s);
-                t.block.position.set(t.pos.x, GROUND_Y+DIG_BLOCK*0.15*Math.max(0.25,left)*WS(), t.pos.z); }
-            if(t.outline){ t.outline.scale.copy(t.block.scale); t.outline.position.copy(t.block.position); }
-        });
-    }
-    // 発掘済みの出土品・オーラ・パネルを追従
-    artModels.forEach((m,idx)=>{ if(m&&m.visible&&ARTPOS[idx]){ m.scale.setScalar(artBaseS(m)*WS());
-        m.position.set(ARTPOS[idx].x, ARTIFACT_POP_Y*WS(), ARTPOS[idx].z); } });
-    auras.forEach(a=>{ if(ARTPOS[a.idx]){ a.group.position.set(ARTPOS[a.idx].x, GROUND_Y, ARTPOS[a.idx].z); a.group.scale.setScalar(WS()); } });
-    infoPanels.forEach(p=>{ const idx=p.userData.idx; if(ARTPOS[idx]){ p.userData.spot.copy(ARTPOS[idx]); p.position.x=ARTPOS[idx].x; p.position.z=ARTPOS[idx].z; } });
-    updatePanelScale();
-}
-
 // 情報パネル（発掘済みの解説画像を現地に表示）
 // 画像はカード形式（縦長）。実際の縦横比で作り、出土品のすぐ上に置く。
 const infoPanels=[];
-const PANEL_BASE_H = 1.15;      // パネルの高さ（m）※幅は画像の比率から決まる
+const PANEL_BASE_H = 1.725;     // パネルの高さ（m）※幅は画像の比率から決まる（1.15の1.5倍）
 function showInfoPanel(idx, pos, color){
     texLoader.load(ART_IMGS[idx], tex=>{
         tex.colorSpace=THREE.SRGBColorSpace;
@@ -1124,12 +1195,11 @@ function makeLabelSprite(text, color, width, y){
 // 表示環境に応じてパネルの大きさを調整（高さは常に出土品のすぐ上）
 function updatePanelScale(){
     const isVR=renderer.xr.isPresenting;
-    const base = isVR ? 1.9 : (document.body.classList.contains("touch") ? 0.8 : 1.5);
-    const s = base * WS();
+    const s = isVR ? 1.9 : (document.body.classList.contains("touch") ? 0.8 : 1.5);
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
         const h=(p.userData.height||PANEL_BASE_H)*s;
-        p.position.y = ARTIFACT_POP_Y*WS() + 0.7*WS() + h*0.5;   // 出土品のやや上に浮かせる
+        p.position.y = ARTIFACT_POP_Y + 0.7 + h*0.5;   // 出土品のやや上に浮かせる
     });
 }
 
@@ -1280,13 +1350,10 @@ function startGame(desktop){
     unlockAudio();
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
-document.getElementById("eyeSlider").addEventListener("input", e=>{ setEyeHeight(parseFloat(e.target.value)); });
-document.getElementById("wsSlider").addEventListener("input", e=>{ setWorldScale(parseInt(e.target.value,10)); });
-applyEyeHeight();
 
 // VR開始/終了
-renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); applyWorldScale(); applyEyeHeight(); updatePanelScale(); if(!GAME.active) startGame(false); });
-renderer.xr.addEventListener("sessionend", ()=>{ applyWorldScale(); applyEyeHeight(); updatePanelScale(); endGame(true); });
+renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); updatePanelScale(); if(!GAME.active) startGame(false); });
+renderer.xr.addEventListener("sessionend", ()=>{ updatePanelScale(); endGame(true); });
 
 function endGame(toMenu){
     if(GAME.mode==="time" && GAME.active && TA.state==="run" && GAME.score>0){ recordTimeAttack(GAME.score); }
@@ -1681,13 +1748,13 @@ function doDig(t){
     t.progress++;
     sfxDig();
     spawnDirt(t.pos, 8);
-    // 掘るほどブロックが削れていく（worldScale込み）
+    // 掘るほどブロックが削れていく
     if(t.block){
         const left=Math.max(0, 1 - t.progress/t.digNeed);
-        const s=(0.45+0.55*left)*WS();
+        const s=0.45+0.55*left;
         t.block.userData.baseS=s;
-        t.block.scale.set(s, Math.max(0.25, left)*WS(), s);
-        t.block.position.y = GROUND_Y + DIG_BLOCK*0.15*Math.max(0.25, left)*WS();
+        t.block.scale.set(s, Math.max(0.25, left), s);
+        t.block.position.y = GROUND_Y + DIG_BLOCK*0.35*Math.max(0.25, left);
         if(t.outline){ t.outline.scale.copy(t.block.scale); t.outline.position.copy(t.block.position); }
     }
     if(t.progress>=t.digNeed){ excavate(t); }
@@ -1757,25 +1824,14 @@ function petDog(){
     // ハートを飛ばす
     spawnHearts(dog.position);
 }
-// VR：手を下げて相棒に伸ばすと、相棒が手元に寄ってきて なでられる
+// VR：手/コントローラーが相棒の頭に近づいたらなでる
 function checkPetVR(){
     if(anyDigReady) return;   // 掘れる状態のときは発掘を優先
-    const head=camera.getWorldPosition(new THREE.Vector3());
-    const dc=dog.getWorldPosition(new THREE.Vector3());
-    const devices=[rightCtrl,leftCtrl].filter(d=>d && d.userData.handedness);
-    let reachPos=null;
-    for(const dev of devices){
-        const p=dev.getWorldPosition(new THREE.Vector3());
-        if(p.y < head.y-0.25){                       // 手を下げている＝なでようとしている
-            if(Math.hypot(p.x-dc.x, p.z-dc.z) < 2.4){ reachPos=p; break; }
-        }
-    }
-    if(reachPos){
-        // 相棒を手元へ呼ぶ（updateDogが最優先で追従）
-        dog.userData.petSeek={ x:reachPos.x, z:reachPos.z, until:performance.now()+500 };
-        const horiz=Math.hypot(reachPos.x-dc.x, reachPos.z-dc.z);
-        const vert=Math.abs(reachPos.y-(dc.y+0.45*dog.scale.y));
-        if(horiz < 0.85 && vert < 1.0){ petDog(); }
+    const head=dog.getWorldPosition(new THREE.Vector3()); head.y += 0.55;   // 頭のあたり
+    const devices=[rightCtrl,leftCtrl].filter(c=>c && c.userData.handedness);
+    for(const c of devices){
+        const p=c.getWorldPosition(new THREE.Vector3());
+        if(p.distanceTo(head) < 0.45 && (c.userData.shakeSpeed||0) > 0.5){ petDog(); return; }
     }
 }
 // PC：画面中央が相棒に当たっていればなでる（厳密判定）
@@ -1887,7 +1943,7 @@ renderer.setAnimationLoop(()=>{
         const spot=p.userData.spot; if(!spot) return;
         const h=(p.userData.height||PANEL_BASE_H)*p.scale.y;
         const pos=link.geometry.attributes.position;
-        pos.setXYZ(0, spot.x, ARTIFACT_POP_Y*WS()+0.15*WS(), spot.z);       // 出土品側
+        pos.setXYZ(0, spot.x, ARTIFACT_POP_Y+0.15, spot.z);       // 出土品側
         pos.setXYZ(1, p.position.x, p.position.y-h*0.5, p.position.z); // パネル下端
         pos.needsUpdate=true; link.geometry.computeBoundingSphere();
     });
@@ -1950,35 +2006,27 @@ renderer.setAnimationLoop(()=>{
 let snapCooldown=0;
 function handleVRLocomotion(dt){
     const s=renderer.xr.getSession(); if(!s) return;
-    let moveX=0,moveY=0,turn=0,rise=0,rGrip=false;
+    let moveX=0,moveY=0,turn=0;
     for(const src of s.inputSources){
         const gp=src.gamepad; if(!gp) continue;
         const ax=gp.axes||[];
         if(src.handedness==="left"){ moveX=ax[2]||0; moveY=ax[3]||0; }
-        else if(src.handedness==="right"){ turn=ax[2]||0; rise=ax[3]||0; rGrip=(gp.buttons[1]?.pressed)||false; }
-    }
-    // 右スティック上下：中指グリップを押していればサイズを1段変更、押していなければ目線の高さ
-    if(rGrip){
-        if(Math.abs(rise)>0.7 && !GAME._wsStep){ setWorldScale(worldScale + (rise<0?1:-1)); GAME._wsStep=true; }
-        if(Math.abs(rise)<0.4) GAME._wsStep=false;
-    } else {
-        GAME._wsStep=false;
-        if(Math.abs(rise)>0.2) setEyeHeight(eyeHeight - rise*1.2*dt);
+        else if(src.handedness==="right"){ turn=ax[2]||0; }
     }
     // 移動（頭の向き基準）
     if(Math.abs(moveX)>0.15||Math.abs(moveY)>0.15){
         const q=camQuat();
         const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const right=new THREE.Vector3(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
-        player.position.addScaledVector(fwd, -moveY*walkSpeedEff*dt);
-        player.position.addScaledVector(right, moveX*walkSpeedEff*dt);
+        player.position.addScaledVector(fwd, -moveY*WALK_SPEED*dt);
+        player.position.addScaledVector(right, moveX*WALK_SPEED*dt);
         // フィールド外に出ない
         const d=Math.hypot(player.position.x,player.position.z);
         if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; }
     }
-    // スナップ回転（右スティックX）
+    // スナップ回転
     snapCooldown-=dt;
-    if(Math.abs(turn)>0.7 && Math.abs(turn)>Math.abs(rise) && snapCooldown<=0){
+    if(Math.abs(turn)>0.7 && snapCooldown<=0){
         player.rotateY(THREE.MathUtils.degToRad(turn>0?-SNAP_DEG:SNAP_DEG));
         snapCooldown=0.28;
     }
@@ -1992,7 +2040,7 @@ function handleDesktopMove(dt){
     if(keys["KeyW"])mz+=1; if(keys["KeyS"])mz-=1; if(keys["KeyA"])mx-=1; if(keys["KeyD"])mx+=1;
     if(touchJoy.id!==null){ mx+=touchJoy.x; mz+=touchJoy.z; }   // スマホのスティック
     mx=Math.max(-1,Math.min(1,mx)); mz=Math.max(-1,Math.min(1,mz));
-    if(mx||mz){ player.position.addScaledVector(fwd, mz*walkSpeedEff*dt); player.position.addScaledVector(right, mx*walkSpeedEff*dt);
+    if(mx||mz){ player.position.addScaledVector(fwd, mz*WALK_SPEED*dt); player.position.addScaledVector(right, mx*WALK_SPEED*dt);
         const d=Math.hypot(player.position.x,player.position.z); if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; } }
 }
 
@@ -2119,11 +2167,7 @@ function updateDog(dt, now){
     let goal, waitingAtHint=false;
     const focus=(typeof focusTarget==="function") ? focusTarget() : null;
     const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < DOG_STAY_R;
-    const seek = dog.userData.petSeek;
-    if(seek && now < seek.until){
-        // なでようと伸ばした手元へ寄る（最優先）
-        goal=new THREE.Vector3(seek.x, 0, seek.z);
-    } else if(focusNear){
+    if(focusNear){
         // 発見済みブロックが近くにある間は、必ずその「右どなり」に立つ（ヒント移動より優先）
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         const q=camQuat();
