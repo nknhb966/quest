@@ -604,139 +604,266 @@ const texLoader = new THREE.TextureLoader();
  * ===================================================== */
 const dog = new THREE.Group();          // 相棒のルート（位置・向きはこれを動かす）
 
-/* ── 恐竜ビルダー（すべてプリミティブ製）───────────────────────────
- *  各ビルダーは THREE.Group を返し、userData に
- *    legs  : 脚ピボット配列（各 userData.phase を持つ）→ 歩行アニメ
- *    tail  : 尻尾（Mesh/Group）→ ゆれるアニメ
- *    wings : 翼配列（各 userData.sign ±1）→ 羽ばたき（プテラノドン用）
- *  を入れると、既存の updateDog がそのままアニメを適用します。       */
-function dmat(c){ return new THREE.MeshStandardMaterial({color:c, roughness:0.85}); }
-function dinoLeg(parent,x,hipY,z,len,r,m,phase){
-    const pivot=new THREE.Group(); pivot.position.set(x,hipY,z); parent.add(pivot);
-    const leg=new THREE.Mesh(new THREE.CylinderGeometry(r*0.85,r,len,8),m); leg.position.y=-len/2; pivot.add(leg);
-    const foot=new THREE.Mesh(new THREE.BoxGeometry(r*2.4,r*1.1,r*3.2),m); foot.position.set(0,-len+r*0.25,r*1.1); pivot.add(foot);
-    pivot.userData.phase=phase; return pivot;
+/* ── リアル寄せヘルパー：可変半径チューブ／ウロコ肌／関節脚 ──────────
+ *  各ビルダーは THREE.Group を返し、userData に legs / tail / wings を入れると
+ *  既存の updateDog が歩行・尻尾ゆれ・羽ばたきをそのまま適用します。          */
+function hex(c){ return "#"+((c>>>0)&0xffffff).toString(16).padStart(6,"0"); }
+// 手続き的なウロコ肌テクスチャ（まだら＋細かいウロコ）
+function skinTexture(base, spot, rep){
+    const S=256, cv=document.createElement("canvas"); cv.width=cv.height=S; const c=cv.getContext("2d");
+    c.fillStyle=hex(base); c.fillRect(0,0,S,S);
+    for(let i=0;i<200;i++){ const x=Math.random()*S,y=Math.random()*S,r=8+Math.random()*26;
+        c.beginPath(); c.arc(x,y,r,0,7); c.fillStyle="rgba("+spot+","+(0.04+Math.random()*0.10).toFixed(3)+")"; c.fill(); }
+    for(let i=0;i<1500;i++){ const x=Math.random()*S,y=Math.random()*S,r=1.3+Math.random()*2.4;
+        c.beginPath(); c.arc(x,y,r,0,7); c.fillStyle="rgba(0,0,0,"+(0.05+Math.random()*0.07).toFixed(3)+")"; c.fill();
+        c.beginPath(); c.arc(x-0.7,y-0.7,r*0.55,0,7); c.fillStyle="rgba(255,255,255,0.05)"; c.fill(); }
+    const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rep||4,rep||4);
+    if("colorSpace" in t) t.colorSpace=THREE.SRGBColorSpace; return t;
 }
-function dinoEyes(parent,x,y,z,r){ [[-x,y,z],[x,y,z]].forEach(p=>{
-    const e=new THREE.Mesh(new THREE.SphereGeometry(r||0.06,10,10), dmat(0x14100a)); e.position.set(p[0],p[1],p[2]); parent.add(e); }); }
+function skinMat(base, spot, rough){
+    return new THREE.MeshStandardMaterial({ map:skinTexture(base,spot,4), roughness:(rough==null?0.92:rough), metalness:0.02, side:THREE.DoubleSide });
+}
+function plainMat(c, rough){ return new THREE.MeshStandardMaterial({ color:c, roughness:(rough==null?0.8:rough), metalness:0.02, side:THREE.DoubleSide }); }
 
-// 1) ティラノサウルス（2足・大きな頭・ちび腕）
+// 背骨（点列）に沿って半径が変化する有機的なチューブ
+function makeSpine(pts, radii, seg, rad){
+    seg=seg||60; rad=rad||16;
+    const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])), false, "catmullrom", 0.5);
+    const fr=curve.computeFrenetFrames(seg,false);
+    const pos=[],nor=[],uv=[],idx=[];
+    for(let i=0;i<=seg;i++){
+        const t=i/seg, C=curve.getPointAt(t);
+        const g=t*(radii.length-1), i0=Math.floor(g), f=g-i0;
+        const r=THREE.MathUtils.lerp(radii[i0], radii[Math.min(i0+1,radii.length-1)], f);
+        const N=fr.normals[i], B=fr.binormals[i];
+        for(let j=0;j<=rad;j++){
+            const a=j/rad*Math.PI*2, cx=Math.cos(a), cy=Math.sin(a);
+            const dx=N.x*cx+B.x*cy, dy=N.y*cx+B.y*cy, dz=N.z*cx+B.z*cy;
+            pos.push(C.x+dx*r, C.y+dy*r, C.z+dz*r); nor.push(dx,dy,dz); uv.push(t*4, j/rad);
+        }
+    }
+    const rp=rad+1;
+    for(let i=0;i<seg;i++) for(let j=0;j<rad;j++){
+        const a=i*rp+j, b=(i+1)*rp+j, c2=(i+1)*rp+j+1, d=i*rp+j+1; idx.push(a,b,d,b,c2,d);
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+    geo.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3));
+    geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
+    geo.setIndex(idx); geo.computeBoundingSphere();
+    return geo;
+}
+function spine(parent, pts, radii, mat, seg, rad){ const m=new THREE.Mesh(makeSpine(pts,radii,seg,rad),mat); parent.add(m); return m; }
+
+// 眼（白目＋黒目）を左右に
+function eyeBall(parent,x,y,z,r){
+    const white=new THREE.MeshStandardMaterial({color:0xf3e7c6, roughness:0.35});
+    const pupil=new THREE.MeshStandardMaterial({color:0x120d06, roughness:0.15});
+    [[-x,y,z],[x,y,z]].forEach((p,k)=>{ const s=(k===0?-1:1);
+        const e=new THREE.Mesh(new THREE.SphereGeometry(r,14,14),white); e.position.set(p[0],p[1],p[2]); parent.add(e);
+        const pu=new THREE.Mesh(new THREE.SphereGeometry(r*0.5,10,10),pupil); pu.position.set(p[0]+s*r*0.25,p[1],p[2]+r*0.72); parent.add(pu); });
+}
+// 歯列
+function teeth(parent, y, z, half, n, size, mat){
+    for(let i=0;i<n;i++){ const x=THREE.MathUtils.lerp(-half,half,(n===1?0.5:i/(n-1)));
+        const t=new THREE.Mesh(new THREE.ConeGeometry(size*0.35,size,5),mat); t.position.set(x,y,z); t.rotation.x=Math.PI; parent.add(t); }
+}
+// 鳥脚（太もも＋すね＋足＋指）: hip pivot が userData.phase を持つ
+function legDigit(parent,x,hipY,z,s,mat,phase,clawMat){
+    const p=new THREE.Group(); p.position.set(x,hipY,z); parent.add(p);
+    const thigh=new THREE.Mesh(new THREE.CylinderGeometry(0.17*s,0.12*s,0.52*s,12),mat); thigh.position.set(0,-0.22*s,0.06*s); thigh.rotation.x=0.4; p.add(thigh);
+    const knee=new THREE.Mesh(new THREE.SphereGeometry(0.12*s,10,10),mat); knee.position.set(0,-0.44*s,0.12*s); p.add(knee);
+    const shin=new THREE.Mesh(new THREE.CylinderGeometry(0.1*s,0.07*s,0.5*s,12),mat); shin.position.set(0,-0.6*s,0.0*s); shin.rotation.x=-0.45; p.add(shin);
+    const ankle=new THREE.Mesh(new THREE.SphereGeometry(0.08*s,8,8),mat); ankle.position.set(0,-0.8*s,-0.05*s); p.add(ankle);
+    const foot=new THREE.Mesh(new THREE.BoxGeometry(0.16*s,0.06*s,0.3*s),mat); foot.position.set(0,-0.82*s,0.1*s); p.add(foot);
+    for(let i=-1;i<=1;i++){ const toe=new THREE.Mesh(new THREE.ConeGeometry(0.035*s,0.14*s,5),clawMat||mat); toe.position.set(i*0.055*s,-0.83*s,0.26*s); toe.rotation.x=Math.PI*0.5; p.add(toe); }
+    p.userData.phase=phase; return p;
+}
+// 柱脚（竜脚・装甲竜など太い脚）
+function legColumn(parent,x,hipY,z,len,r,mat,phase,nailMat){
+    const p=new THREE.Group(); p.position.set(x,hipY,z); parent.add(p);
+    const up=new THREE.Mesh(new THREE.CylinderGeometry(r*1.15,r*0.95,len*0.55,14),mat); up.position.y=-len*0.28; p.add(up);
+    const lo=new THREE.Mesh(new THREE.CylinderGeometry(r*0.95,r*0.8,len*0.5,14),mat); lo.position.y=-len*0.72; p.add(lo);
+    const foot=new THREE.Mesh(new THREE.CylinderGeometry(r*1.15,r*1.35,r*0.7,14),mat); foot.position.y=-len+r*0.25; p.add(foot);
+    for(let i=0;i<3;i++){ const a=(i-1)*0.55; const nail=new THREE.Mesh(new THREE.ConeGeometry(r*0.25,r*0.5,6),nailMat||mat);
+        nail.position.set(Math.sin(a)*r*0.95,-len+r*0.15,Math.cos(a)*r*0.95+r*0.5); nail.rotation.x=Math.PI*0.5; p.add(nail); }
+    p.userData.phase=phase; return p;
+}
+
+// 1) ティラノサウルス
 function build_trex(){
-    const g=new THREE.Group(); const m=dmat(0x4a7c59), d=dmat(0x35604a), cream=dmat(0xf0ead6);
-    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.62,16,12),m); torso.scale.set(0.9,1.05,1.35); torso.position.set(0,1.25,0); g.add(torso);
-    const chest=new THREE.Mesh(new THREE.SphereGeometry(0.5,14,10),m); chest.scale.set(0.85,1.0,1.0); chest.position.set(0,1.5,0.5); g.add(chest);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.75),m); head.position.set(0,1.95,0.95); g.add(head);
-    const jaw=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.2,0.66),d); jaw.position.set(0,1.72,1.0); g.add(jaw);
-    for(let i=-1;i<=1;i++){ const t=new THREE.Mesh(new THREE.ConeGeometry(0.04,0.12,4),cream); t.position.set(i*0.13,1.62,1.28); t.rotation.x=Math.PI; g.add(t); }
-    dinoEyes(g,0.17,2.05,1.2,0.07);
-    [[-0.32,1.5,0.6],[0.32,1.5,0.6]].forEach(p=>{ const a=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.32,6),d); a.position.set(p[0],p[1],p[2]); a.rotation.x=0.8; g.add(a); });
-    g.userData.legs=[ dinoLeg(g,-0.3,0.95,-0.05,0.95,0.15,d,0), dinoLeg(g,0.3,0.95,-0.05,0.95,0.15,d,Math.PI) ];
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.32,1.6,8),m); tail.position.set(0,1.1,-1.05); tail.rotation.x=1.35; g.add(tail); g.userData.tail=tail;
+    const g=new THREE.Group();
+    const skin=skinMat(0x40684a,"18,36,22",0.9), belly=skinMat(0x8f9d6a,"60,70,40");
+    const dark=plainMat(0x2c4a34), cream=plainMat(0xefe6cf,0.5);
+    spine(g,[[0,1.25,-0.55],[0,1.32,-0.15],[0,1.4,0.3],[0,1.55,0.62],[0,1.8,0.85],[0,1.98,1.05]],
+            [0.14,0.44,0.46,0.32,0.22,0.16], skin);
+    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.4,16,12),belly); bel.scale.set(0.8,0.7,1.2); bel.position.set(0,1.2,0.35); g.add(bel);
+    const tail=new THREE.Group(); tail.position.set(0,1.28,-0.5); g.add(tail);
+    spine(tail,[[0,0,0],[0,-0.05,-0.5],[0,-0.18,-1.05],[0,-0.32,-1.6],[0,-0.42,-2.0]],[0.3,0.22,0.14,0.07,0.02],skin);
+    g.userData.tail=tail;
+    const head=new THREE.Group(); head.position.set(0,1.98,1.12); g.add(head);
+    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.36,0.5),skin); skull.position.set(0,0.04,0.12); head.add(skull);
+    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.26,0.42),skin); snout.position.set(0,-0.02,0.48); head.add(snout);
+    const jaw=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.12,0.5),skin); jaw.position.set(0,-0.16,0.4); head.add(jaw);
+    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.1,0.2),skin); brow.position.set(0,0.2,0.05); head.add(brow);
+    teeth(head,-0.06,0.66,0.11,5,0.1,cream);
+    eyeBall(head,0.17,0.14,0.28,0.06);
+    [[-0.34,1.5,0.55],[0.34,1.5,0.55]].forEach(pp=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.04,0.3,8),skin); arm.position.set(pp[0],pp[1],pp[2]); arm.rotation.x=0.9; g.add(arm);
+        const hand=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.12,5),cream); hand.position.set(pp[0],pp[1]-0.16,pp[2]+0.1); hand.rotation.x=1.4; g.add(hand); });
+    g.userData.legs=[ legDigit(g,-0.32,0.98,0.02,1.2,skin,0,dark), legDigit(g,0.32,0.98,0.02,1.2,skin,Math.PI,dark) ];
     return g;
 }
-// 2) トリケラトプス（4足・フリル＋3本角）
+// 2) トリケラトプス
 function build_tri(){
-    const g=new THREE.Group(); const m=dmat(0xb07a4a), d=dmat(0x8a5c32), cream=dmat(0xe8dcc0);
-    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.66,16,12),m); torso.scale.set(1.0,0.95,1.5); torso.position.set(0,0.9,-0.1); g.add(torso);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.5,0.6),m); head.position.set(0,0.85,1.0); g.add(head);
-    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.34,6),d); beak.position.set(0,0.78,1.4); beak.rotation.x=Math.PI/2; g.add(beak);
-    const frill=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.5,0.12,18),cream); frill.position.set(0,1.05,0.6); frill.rotation.x=Math.PI*0.42; g.add(frill);
-    const h1=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.4,7),cream); h1.position.set(0,0.95,1.25); h1.rotation.x=-0.5; g.add(h1);
-    [[-0.2,1.05,1.05],[0.2,1.05,1.05]].forEach(p=>{ const h=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.5,7),cream); h.position.set(p[0],p[1],p[2]); h.rotation.x=-0.3; g.add(h); });
-    dinoEyes(g,0.2,0.95,1.15,0.06);
-    g.userData.legs=[ dinoLeg(g,-0.34,0.5,0.45,0.5,0.14,d,0), dinoLeg(g,0.34,0.5,0.45,0.5,0.14,d,Math.PI),
-                      dinoLeg(g,-0.34,0.5,-0.55,0.5,0.14,d,Math.PI), dinoLeg(g,0.34,0.5,-0.55,0.5,0.14,d,0) ];
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.2,0.7,8),m); tail.position.set(0,0.8,-1.0); tail.rotation.x=-1.2; g.add(tail); g.userData.tail=tail;
+    const g=new THREE.Group();
+    const skin=skinMat(0x9c6b3f,"70,40,18",0.95), belly=skinMat(0xb99a6e,"90,70,40");
+    const cream=plainMat(0xe7d9b6,0.6), dark=plainMat(0x6f4a26);
+    spine(g,[[0,0.98,-1.0],[0,1.05,-0.5],[0,1.08,0.05],[0,1.02,0.55],[0,0.95,0.9],[0,0.9,1.15]],
+            [0.12,0.48,0.54,0.46,0.34,0.26], skin);
+    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.5,16,12),belly); bel.scale.set(0.9,0.7,1.2); bel.position.set(0,0.75,0.1); g.add(bel);
+    const head=new THREE.Group(); head.position.set(0,0.9,1.1); g.add(head);
+    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.4,0.5),skin); skull.position.set(0,0,0.1); head.add(skull);
+    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.14,0.34,6),dark); beak.position.set(0,-0.05,0.42); beak.rotation.x=Math.PI*0.5; head.add(beak);
+    eyeBall(head,0.2,0.05,0.18,0.055);
+    const frill=new THREE.Mesh(new THREE.SphereGeometry(0.62,24,14,0,Math.PI*2,0,Math.PI*0.5),skin);
+    frill.scale.set(1.15,0.4,1.0); frill.position.set(0,0.98,0.5); frill.rotation.x=-0.5; g.add(frill);
+    for(let i=0;i<7;i++){ const a=(i/6-0.5)*2.2; const bump=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.16,5),cream);
+        bump.position.set(Math.sin(a)*0.6,1.15+Math.cos(a)*0.02,0.35-Math.cos(a)*0.15); bump.rotation.x=-1.2; g.add(bump); }
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.34,8),cream); nose.position.set(0,1.0,1.35); nose.rotation.x=-0.6; g.add(nose);
+    [[-0.2,1.15,1.1],[0.2,1.15,1.1]].forEach(pp=>{ const h=new THREE.Mesh(new THREE.ConeGeometry(0.065,0.55,8),cream); h.position.set(pp[0],pp[1],pp[2]); h.rotation.x=-0.35; g.add(h); });
+    const tail=new THREE.Group(); tail.position.set(0,0.95,-1.0); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.4],[0,-0.12,-0.8]],[0.2,0.12,0.03],skin); g.userData.tail=tail;
+    g.userData.legs=[ legColumn(g,-0.36,0.55,0.5,0.55,0.15,skin,0,dark), legColumn(g,0.36,0.55,0.5,0.55,0.15,skin,Math.PI,dark),
+                      legColumn(g,-0.36,0.6,-0.55,0.6,0.16,skin,Math.PI,dark), legColumn(g,0.36,0.6,-0.55,0.6,0.16,skin,0,dark) ];
     return g;
 }
-// 3) ステゴサウルス（4足・背びれ＋尾トゲ）
+// 3) ステゴサウルス
 function build_stego(){
-    const g=new THREE.Group(); const m=dmat(0x3f8a8c), d=dmat(0x2c6466), plate=dmat(0xd98c4a), cream=dmat(0xe8dcc0);
-    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.6,16,12),m); torso.scale.set(0.95,1.1,1.7); torso.position.set(0,0.95,0); g.add(torso);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.32,0.5),m); head.position.set(0,0.6,1.15); g.add(head);
-    dinoEyes(g,0.12,0.66,1.3,0.05);
-    for(let i=0;i<6;i++){ const z=0.75-i*0.32, s=(i===0||i===5)?0.28:0.46;
-        const pl=new THREE.Mesh(new THREE.ConeGeometry(s*0.5,s,3),plate); pl.position.set(0,1.55,z); g.add(pl); }
-    g.userData.legs=[ dinoLeg(g,-0.34,0.55,0.55,0.55,0.14,d,0), dinoLeg(g,0.34,0.55,0.55,0.55,0.14,d,Math.PI),
-                      dinoLeg(g,-0.34,0.6,-0.6,0.6,0.15,d,Math.PI), dinoLeg(g,0.34,0.6,-0.6,0.6,0.15,d,0) ];
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.24,0.9,8),m); tail.position.set(0,1.0,-1.15); tail.rotation.x=-1.35; g.add(tail); g.userData.tail=tail;
-    [[-0.12],[0.12]].forEach(p=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.3,5),cream); sp.position.set(p[0],1.15,-1.5); sp.rotation.x=-2.2; g.add(sp); });
+    const g=new THREE.Group();
+    const skin=skinMat(0x5a7d6b,"28,52,44",0.95), belly=skinMat(0x7f9384,"50,70,60");
+    const plate=plainMat(0xc0673a,0.7), cream=plainMat(0xe7d9b6,0.6), dark=plainMat(0x3f5a4c);
+    spine(g,[[0,1.0,-1.05],[0,1.28,-0.45],[0,1.38,0.15],[0,1.1,0.65],[0,0.82,1.0],[0,0.72,1.2]],
+            [0.12,0.46,0.52,0.36,0.22,0.14], skin);
+    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.46,16,12),belly); bel.scale.set(0.85,0.7,1.3); bel.position.set(0,0.9,0.05); g.add(bel);
+    const head=new THREE.Group(); head.position.set(0,0.72,1.18); g.add(head);
+    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.2,0.4),skin); head.add(skull);
+    eyeBall(head,0.1,0.04,0.08,0.04);
+    const arch=new THREE.CatmullRomCurve3([[0,1.35,-0.55],[0,1.48,-0.15],[0,1.5,0.2],[0,1.3,0.55]].map(p=>new THREE.Vector3(p[0],p[1],p[2])));
+    for(let i=0;i<7;i++){ const t=i/6, c=arch.getPointAt(t), big=Math.sin(t*Math.PI), s=0.22+big*0.34;
+        const shp=new THREE.Shape(); shp.moveTo(0,0); shp.quadraticCurveTo(s*0.7,s*0.6,0,s*1.4); shp.quadraticCurveTo(-s*0.7,s*0.6,0,0);
+        const geo=new THREE.ExtrudeGeometry(shp,{depth:0.05,bevelEnabled:false});
+        const pl=new THREE.Mesh(geo,plate); pl.position.set((i%2?0.04:-0.04),c.y,c.z); pl.rotation.y=Math.PI*0.5; g.add(pl); }
+    const tail=new THREE.Group(); tail.position.set(0,1.05,-1.05); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.5],[0,-0.12,-0.95]],[0.2,0.12,0.04],skin); g.userData.tail=tail;
+    [[-0.12,-0.3],[0.12,-0.3],[-0.1,-0.55],[0.1,-0.55]].forEach(pp=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.34,6),cream); sp.position.set(pp[0],0.05,pp[1]); sp.rotation.x=-2.0; sp.rotation.z=pp[0]*1.5; tail.add(sp); });
+    g.userData.legs=[ legColumn(g,-0.34,0.5,0.55,0.5,0.13,skin,0,dark), legColumn(g,0.34,0.5,0.55,0.5,0.13,skin,Math.PI,dark),
+                      legColumn(g,-0.36,0.72,-0.55,0.72,0.16,skin,Math.PI,dark), legColumn(g,0.36,0.72,-0.55,0.72,0.16,skin,0,dark) ];
     return g;
 }
-// 4) ブラキオサウルス（4足・長い首）
+// 4) ブラキオサウルス
 function build_brachi(){
-    const g=new THREE.Group(); const m=dmat(0x8a7bb5), d=dmat(0x6a5c94);
-    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.7,16,12),m); torso.scale.set(1.0,1.1,1.6); torso.position.set(0,1.05,-0.2); g.add(torso);
-    let ny=1.5, nz=0.5;
-    for(let i=0;i<4;i++){ const seg=new THREE.Mesh(new THREE.CylinderGeometry(0.18-i*0.02,0.2-i*0.02,0.42,8),m); seg.position.set(0,ny,nz); seg.rotation.x=-0.5; g.add(seg); ny+=0.32; nz+=0.18; }
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.26,0.4),m); head.position.set(0,ny+0.05,nz+0.05); g.add(head);
-    dinoEyes(g,0.11,ny+0.1,nz+0.15,0.05);
-    g.userData.legs=[ dinoLeg(g,-0.4,0.7,0.5,0.7,0.16,d,0), dinoLeg(g,0.4,0.7,0.5,0.7,0.16,d,Math.PI),
-                      dinoLeg(g,-0.4,0.7,-0.7,0.7,0.16,d,Math.PI), dinoLeg(g,0.4,0.7,-0.7,0.7,0.16,d,0) ];
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.22,1.3,8),m); tail.position.set(0,0.95,-1.25); tail.rotation.x=-1.25; g.add(tail); g.userData.tail=tail;
+    const g=new THREE.Group();
+    const skin=skinMat(0x7d6fae,"40,32,66",0.9), belly=skinMat(0x9a90c0,"60,55,90");
+    const dark=plainMat(0x574a80);
+    spine(g,[[0,1.15,-0.9],[0,1.25,-0.2],[0,1.35,0.35],[0,1.7,0.6],[0,2.15,0.72],[0,2.65,0.82],[0,3.05,1.0],[0,3.2,1.2]],
+            [0.14,0.6,0.62,0.4,0.26,0.2,0.15,0.1], skin, 72, 16);
+    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.58,16,12),belly); bel.scale.set(0.9,0.8,1.3); bel.position.set(0,1.0,0.1); g.add(bel);
+    const head=new THREE.Group(); head.position.set(0,3.22,1.22); g.add(head);
+    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.34),skin); head.add(skull);
+    const crestb=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10),skin); crestb.position.set(0,0.12,0.02); head.add(crestb);
+    eyeBall(head,0.1,0.03,0.05,0.04);
+    const tail=new THREE.Group(); tail.position.set(0,1.15,-0.85); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.6],[0,-0.15,-1.2],[0,-0.28,-1.8],[0,-0.4,-2.3]],[0.32,0.22,0.14,0.07,0.02],skin); g.userData.tail=tail;
+    g.userData.legs=[ legColumn(g,-0.42,0.85,0.5,0.85,0.18,skin,0,dark), legColumn(g,0.42,0.85,0.5,0.85,0.18,skin,Math.PI,dark),
+                      legColumn(g,-0.42,0.72,-0.7,0.72,0.18,skin,Math.PI,dark), legColumn(g,0.42,0.72,-0.7,0.72,0.18,skin,0,dark) ];
     return g;
 }
-// 5) ヴェロキラプトル（2足・スリム・かぎ爪）
+// 5) ヴェロキラプトル
 function build_raptor(){
-    const g=new THREE.Group(); const m=dmat(0xc9a15b), d=dmat(0x7a5a2e), cream=dmat(0xf0ead6);
-    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.42,14,10),m); torso.scale.set(0.85,0.95,1.4); torso.position.set(0,1.15,0.15); g.add(torso);
-    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.16,0.5,8),m); neck.position.set(0,1.5,0.55); neck.rotation.x=-0.7; g.add(neck);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.5),m); head.position.set(0,1.75,0.9); g.add(head);
-    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.16,0.28),d); snout.position.set(0,1.72,1.2); g.add(snout);
-    dinoEyes(g,0.11,1.82,1.05,0.055);
-    [[-0.26,1.35,0.5],[0.26,1.35,0.5]].forEach(p=>{ const a=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.4,6),d); a.position.set(p[0],p[1],p[2]); a.rotation.x=0.6; g.add(a); });
-    const legs=[ dinoLeg(g,-0.24,0.95,-0.05,0.95,0.12,d,0), dinoLeg(g,0.24,0.95,-0.05,0.95,0.12,d,Math.PI) ];
-    legs.forEach(p=>{ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.18,5),cream); claw.position.set(0,-0.9,0.28); claw.rotation.x=-1.9; p.add(claw); });
+    const g=new THREE.Group();
+    const skin=skinMat(0xb08847,"72,46,20",0.85), belly=skinMat(0xd8c088,"110,90,50");
+    const feather=plainMat(0x7a4f26,0.9), cream=plainMat(0xefe6cf,0.5), dark=plainMat(0x5a3a1c);
+    spine(g,[[0,1.05,-0.5],[0,1.1,-0.05],[0,1.12,0.35],[0,1.2,0.6],[0,1.42,0.78],[0,1.55,0.95],[0,1.5,1.15]],
+            [0.1,0.24,0.24,0.18,0.12,0.1,0.06], skin);
+    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.22,14,10),belly); bel.scale.set(0.8,0.8,1.4); bel.position.set(0,1.02,0.2); g.add(bel);
+    const head=new THREE.Group(); head.position.set(0,1.5,1.12); g.add(head);
+    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.16,0.28),skin); head.add(skull);
+    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.11,0.24),skin); snout.position.set(0,-0.01,0.24); head.add(snout);
+    const jaw=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.05,0.28),skin); jaw.position.set(0,-0.08,0.2); head.add(jaw);
+    teeth(head,-0.03,0.34,0.05,4,0.05,cream);
+    eyeBall(head,0.08,0.05,0.12,0.038);
+    for(let i=0;i<6;i++){ const t=i/5, fz=THREE.MathUtils.lerp(0.9,-0.4,t), fy=THREE.MathUtils.lerp(1.5,1.12,t);
+        const fe=new THREE.Mesh(new THREE.ConeGeometry(0.03,0.16,4),feather); fe.position.set(0,fy+0.12,fz); fe.rotation.x=0.3; g.add(fe); }
+    [[-0.2,1.2,0.5],[0.2,1.2,0.5]].forEach(pp=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.03,0.34,8),skin); arm.position.set(pp[0],pp[1],pp[2]); arm.rotation.x=0.7; g.add(arm); });
+    const tail=new THREE.Group(); tail.position.set(0,1.05,-0.45); tail.rotation.x=-0.1; g.add(tail); spine(tail,[[0,0,0],[0,0.02,-0.5],[0,0.04,-1.0],[0,0.05,-1.45]],[0.13,0.09,0.05,0.02],skin); g.userData.tail=tail;
+    const legs=[ legDigit(g,-0.16,0.72,0.05,0.85,skin,0,dark), legDigit(g,0.16,0.72,0.05,0.85,skin,Math.PI,dark) ];
+    legs.forEach(p=>{ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.24,6),cream); claw.position.set(0,-0.62,0.22); claw.rotation.x=-1.4; p.add(claw); });
     g.userData.legs=legs;
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.16,1.5,8),m); tail.position.set(0,1.1,-0.95); tail.rotation.x=1.5; g.add(tail); g.userData.tail=tail;
     return g;
 }
-// 6) パラサウロロフス（4足・後ろへ伸びるトサカ）
+// 6) パラサウロロフス
 function build_para(){
-    const g=new THREE.Group(); const m=dmat(0x5aa07a), d=dmat(0x3f7a58), crest=dmat(0xd9663f);
-    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.6,16,12),m); torso.scale.set(0.95,1.05,1.6); torso.position.set(0,1.0,-0.1); g.add(torso);
-    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.2,0.55,8),m); neck.position.set(0,1.4,0.55); neck.rotation.x=-0.6; g.add(neck);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.55),m); head.position.set(0,1.7,0.9); g.add(head);
-    const cr=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.1,0.7,8),crest); cr.position.set(0,1.95,0.55); cr.rotation.x=0.9; g.add(cr);
-    dinoEyes(g,0.13,1.75,1.05,0.055);
-    g.userData.legs=[ dinoLeg(g,-0.34,0.6,0.5,0.6,0.15,d,0), dinoLeg(g,0.34,0.6,0.5,0.6,0.15,d,Math.PI),
-                      dinoLeg(g,-0.34,0.65,-0.65,0.65,0.15,d,Math.PI), dinoLeg(g,0.34,0.65,-0.65,0.65,0.15,d,0) ];
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.22,1.1,8),m); tail.position.set(0,0.95,-1.2); tail.rotation.x=-1.3; g.add(tail); g.userData.tail=tail;
+    const g=new THREE.Group();
+    const skin=skinMat(0x4f8f6f,"22,54,40",0.9), belly=skinMat(0x7fae94,"50,80,64");
+    const crest=plainMat(0xcf5f38,0.7), dark=plainMat(0x35604a);
+    spine(g,[[0,1.0,-1.0],[0,1.12,-0.4],[0,1.18,0.2],[0,1.1,0.6],[0,1.35,0.85],[0,1.65,1.05],[0,1.72,1.25]],
+            [0.12,0.46,0.5,0.4,0.26,0.2,0.16], skin);
+    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.46,16,12),belly); bel.scale.set(0.85,0.75,1.3); bel.position.set(0,0.85,0.1); g.add(bel);
+    const head=new THREE.Group(); head.position.set(0,1.72,1.2); g.add(head);
+    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.24,0.34),skin); head.add(skull);
+    const bill=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.1,0.22),skin); bill.position.set(0,-0.08,0.28); head.add(bill);
+    eyeBall(head,0.12,0.05,0.05,0.05);
+    spine(g,[[0,1.85,1.15],[0,2.05,0.9],[0,2.15,0.55],[0,2.1,0.2]],[0.09,0.1,0.09,0.05],crest,40,10);
+    const tail=new THREE.Group(); tail.position.set(0,1.0,-0.95); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.5],[0,-0.14,-1.0],[0,-0.22,-1.4]],[0.22,0.15,0.08,0.03],skin); g.userData.tail=tail;
+    g.userData.legs=[ legColumn(g,-0.32,0.55,0.55,0.55,0.13,skin,0,dark), legColumn(g,0.32,0.55,0.55,0.55,0.13,skin,Math.PI,dark),
+                      legColumn(g,-0.34,0.72,-0.6,0.72,0.16,skin,Math.PI,dark), legColumn(g,0.34,0.72,-0.6,0.72,0.16,skin,0,dark) ];
     return g;
 }
-// 7) アンキロサウルス（4足・甲羅＋尾のこん棒）
+// 7) アンキロサウルス
 function build_anky(){
-    const g=new THREE.Group(); const m=dmat(0x6b7355), d=dmat(0x4a5240), armor=dmat(0x8a8f6e);
-    const torso=new THREE.Mesh(new THREE.SphereGeometry(0.68,16,12),m); torso.scale.set(1.25,0.8,1.6); torso.position.set(0,0.75,0); g.add(torso);
-    [[-0.3,0.4],[0.3,0.4],[0,0.0],[-0.3,-0.4],[0.3,-0.4]].forEach(p=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(0.14,8,6),armor); b.scale.set(1,0.6,1); b.position.set(p[0],1.05,p[1]); g.add(b); });
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.3,0.4),m); head.position.set(0,0.65,1.0); g.add(head);
-    dinoEyes(g,0.14,0.7,1.15,0.05);
-    g.userData.legs=[ dinoLeg(g,-0.42,0.42,0.5,0.42,0.15,d,0), dinoLeg(g,0.42,0.42,0.5,0.42,0.15,d,Math.PI),
-                      dinoLeg(g,-0.42,0.42,-0.5,0.42,0.15,d,Math.PI), dinoLeg(g,0.42,0.42,-0.5,0.42,0.15,d,0) ];
-    const tailG=new THREE.Group(); tailG.position.set(0,0.6,-0.55); tailG.rotation.x=-1.4; g.add(tailG);
-    const tseg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.14,0.9,8),m); tseg.position.y=-0.45; tailG.add(tseg);
-    const knob=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,8),d); knob.position.y=-0.9; tailG.add(knob);
-    g.userData.tail=tailG;
+    const g=new THREE.Group();
+    const skin=skinMat(0x6f7355,"40,46,30",0.95), armor=plainMat(0x8a8f6e,0.7), dark=plainMat(0x474b38), spike=plainMat(0xcfc9a6,0.6);
+    const body=new THREE.Group(); body.scale.set(1.3,1,1); g.add(body);
+    spine(body,[[0,0.72,-0.95],[0,0.82,-0.4],[0,0.88,0.2],[0,0.82,0.65],[0,0.7,0.95],[0,0.62,1.15]],
+            [0.14,0.5,0.56,0.46,0.34,0.26], skin);
+    const head=new THREE.Group(); head.position.set(0,0.6,1.1); g.add(head);
+    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.26,0.36),skin); head.add(skull);
+    [[-0.2,0.05,-0.12],[0.2,0.05,-0.12]].forEach(pp=>{ const horn=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.18,5),spike); horn.position.set(pp[0],pp[1],pp[2]); horn.rotation.z=pp[0]*2; horn.rotation.x=-0.6; head.add(horn); });
+    eyeBall(head,0.16,0.02,0.14,0.045);
+    for(let r=0;r<4;r++) for(let cc=-1;cc<=1;cc++){ const z=0.6-r*0.5, x=cc*0.28;
+        const bump=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),armor); bump.scale.set(1.3,0.6,1.3); bump.position.set(x,0.95-r*0.02,z); g.add(bump); }
+    for(let r=0;r<4;r++){ [-1,1].forEach(s=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.26,6),spike); sp.position.set(s*0.55,0.78,0.5-r*0.45); sp.rotation.z=s*1.3; g.add(sp); }); }
+    const tail=new THREE.Group(); tail.position.set(0,0.6,-0.95); g.add(tail);
+    spine(tail,[[0,0,0],[0,0.02,-0.5],[0,0.03,-0.95]],[0.16,0.12,0.08],skin);
+    const club=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10),armor); club.scale.set(1.2,0.9,1.0); club.position.set(0,0.03,-1.1); tail.add(club);
+    g.userData.tail=tail;
+    g.userData.legs=[ legColumn(g,-0.44,0.42,0.5,0.42,0.16,skin,0,dark), legColumn(g,0.44,0.42,0.5,0.42,0.16,skin,Math.PI,dark),
+                      legColumn(g,-0.44,0.42,-0.5,0.42,0.16,skin,Math.PI,dark), legColumn(g,0.44,0.42,-0.5,0.42,0.16,skin,0,dark) ];
     return g;
 }
-// 8) プテラノドン（飛行・翼を羽ばたく）
+// 8) プテラノドン（飛行・羽ばたき）
 function build_ptera(){
-    const g=new THREE.Group(); const m=dmat(0x5b7fa6), d=dmat(0x3f5c7a), crest=dmat(0xd9663f);
-    const memb=new THREE.MeshStandardMaterial({color:0x8fb0cf, roughness:0.7, side:THREE.DoubleSide});
-    const body=new THREE.Mesh(new THREE.SphereGeometry(0.32,14,10),m); body.scale.set(0.8,0.9,1.5); body.position.set(0,1.3,0); g.add(body);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.22,0.3),m); head.position.set(0,1.5,0.5); g.add(head);
-    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.6,6),d); beak.position.set(0,1.5,0.95); beak.rotation.x=Math.PI/2; g.add(beak);
-    const cr=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.4,4),crest); cr.position.set(0,1.62,0.28); cr.rotation.x=-1.9; g.add(cr);
-    dinoEyes(g,0.1,1.55,0.6,0.05);
+    const g=new THREE.Group();
+    const skin=skinMat(0x5f7fa6,"36,54,80",0.85);
+    const memb=new THREE.MeshStandardMaterial({color:0x8fb0cf,roughness:0.7,metalness:0.02,side:THREE.DoubleSide});
+    const crest=plainMat(0xcf5f38,0.7), dark=plainMat(0x3f5c7a), cream=plainMat(0xefe6cf,0.5);
+    const Y=1.4;
+    spine(g,[[0,Y-0.02,-0.4],[0,Y,0.0],[0,Y+0.02,0.35],[0,Y+0.08,0.55]],[0.05,0.2,0.15,0.08],skin,40,12);
+    const head=new THREE.Group(); head.position.set(0,Y+0.12,0.6); g.add(head);
+    const skull=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,10),skin); skull.scale.set(0.8,0.9,1.1); head.add(skull);
+    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.7,8),cream); beak.position.set(0,-0.01,0.42); beak.rotation.x=Math.PI*0.5; head.add(beak);
+    const cr=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.5,6),crest); cr.position.set(0,0.14,-0.18); cr.rotation.x=-2.1; head.add(cr);
+    eyeBall(head,0.07,0.03,0.08,0.035);
     const wings=[];
     [-1,1].forEach(sgn=>{
-        const w=new THREE.Group(); w.position.set(sgn*0.2,1.32,0); g.add(w);
-        const arm=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.06,0.5),memb); arm.position.set(sgn*0.55,0,0); w.add(arm);
-        const tip=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.5,4),m); tip.position.set(sgn*1.15,0,0); tip.rotation.z=sgn*Math.PI/2; w.add(tip);
+        const w=new THREE.Group(); w.position.set(sgn*0.14,Y+0.02,0.05); g.add(w);
+        const humerus=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.035,0.5,8),skin); humerus.position.set(sgn*0.25,0,0); humerus.rotation.z=Math.PI*0.5; w.add(humerus);
+        const finger=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.012,0.9,8),skin); finger.position.set(sgn*0.9,0,-0.05); finger.rotation.z=Math.PI*0.5; finger.rotation.x=0.1; w.add(finger);
+        const mg=new THREE.BufferGeometry();
+        mg.setAttribute("position",new THREE.Float32BufferAttribute([0,0,0.14, sgn*1.35,0,-0.05, sgn*0.6,0,-0.28, 0,0,-0.45],3));
+        mg.setIndex([0,1,2, 0,2,3]); mg.computeVertexNormals();
+        const mem=new THREE.Mesh(mg,memb); w.add(mem);
         w.userData.sign=sgn; wings.push(w);
     });
     g.userData.wings=wings;
-    g.userData.legs=[ dinoLeg(g,-0.12,1.0,-0.1,0.4,0.05,d,0), dinoLeg(g,0.12,1.0,-0.1,0.4,0.05,d,Math.PI) ];
+    g.userData.legs=[ legDigit(g,-0.08,Y-0.15,-0.1,0.35,skin,0,dark), legDigit(g,0.08,Y-0.15,-0.1,0.35,skin,Math.PI,dark) ];
     return g;
 }
 
@@ -2228,7 +2355,7 @@ function updateDog(dt, now){
         if(body.userData.petals) body.userData.petals.rotation.y += (moving?0.012:0.004);
     }
     const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
-    if(body.userData.tail) body.userData.tail.rotation.z=Math.sin(now*0.02)*0.5;
+    if(body.userData.tail) body.userData.tail.rotation.y=Math.sin(now*0.02)*0.32;
 
     // お祝いジャンプ / 接地高さ
     if(petWiggle>0){ petWiggle-=dt; dog.rotation.y += Math.sin(now*0.02)*0.05; }
