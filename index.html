@@ -76,6 +76,14 @@
     #segBuddy{ display:grid!important; grid-template-columns:repeat(4,1fr); gap:6px; }
     #segBuddy button{ border-radius:9px!important; padding:11px 2px; font-size:12px; line-height:1.25; }
     @media(max-width:520px){ #segBuddy{ grid-template-columns:repeat(2,1fr); } }
+    /* サイズ変更スライダー */
+    .slider{ -webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:99px; outline:none;
+        background:linear-gradient(90deg,#7c3aed,#38bdf8); margin:4px 0 2px; cursor:pointer; }
+    .slider::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:26px; height:26px; border-radius:50%;
+        background:#fff; border:3px solid #7c3aed; box-shadow:0 0 10px rgba(120,80,255,.7); cursor:pointer; }
+    .slider::-moz-range-thumb{ width:26px; height:26px; border-radius:50%; background:#fff; border:3px solid #7c3aed;
+        box-shadow:0 0 10px rgba(120,80,255,.7); cursor:pointer; }
+    #buddyScaleVal{ color:#c9bcff; font-weight:800; letter-spacing:1px; }
 
     .row{ width:100%; display:flex; gap:10px; }
     .ghost{ flex:1; padding:13px 0; border:1px solid rgba(180,140,255,.35); border-radius:11px;
@@ -229,6 +237,10 @@
       <div class="opt wide" id="optBuddy" style="display:none">
         <div class="lbl">相棒</div>
         <div class="seg" id="segBuddy"></div>
+      </div>
+      <div class="opt wide">
+        <div class="lbl">相棒のサイズ <span id="buddyScaleVal">1.0×</span></div>
+        <input id="buddyScale" class="slider" type="range" min="1" max="2.5" step="0.1" value="1" aria-label="相棒のサイズ">
       </div>
       <div class="opt wide">
         <div class="lbl">コントローラー使用時の探知音（振動は常にON／素手のときは自動で音が鳴ります）</div>
@@ -604,30 +616,31 @@ const texLoader = new THREE.TextureLoader();
  * ===================================================== */
 const dog = new THREE.Group();          // 相棒のルート（位置・向きはこれを動かす）
 
-/* ── リアル寄せヘルパー：可変半径チューブ／ウロコ肌／関節脚 ──────────
+/* ── リアル寄せヘルパー v2：可変半径チューブ／ウロコ肌／付け根の筋肉つき関節脚 ──
  *  各ビルダーは THREE.Group を返し、userData に legs / tail / wings を入れると
- *  既存の updateDog が歩行・尻尾ゆれ・羽ばたきをそのまま適用します。          */
+ *  既存の updateDog が歩行・尻尾ゆれ・羽ばたきをそのまま適用します。
+ *  付け根（肩・腰・首・尾のつけ根）には blob() の肉塊を胴に食い込ませ、
+ *  手足と胴の接続が途切れず連続して見えるようにしています。                    */
 function hex(c){ return "#"+((c>>>0)&0xffffff).toString(16).padStart(6,"0"); }
-// 手続き的なウロコ肌テクスチャ（まだら＋細かいウロコ）
 function skinTexture(base, spot, rep){
     const S=256, cv=document.createElement("canvas"); cv.width=cv.height=S; const c=cv.getContext("2d");
     c.fillStyle=hex(base); c.fillRect(0,0,S,S);
-    for(let i=0;i<200;i++){ const x=Math.random()*S,y=Math.random()*S,r=8+Math.random()*26;
+    for(let i=0;i<220;i++){ const x=Math.random()*S,y=Math.random()*S,r=8+Math.random()*26;
         c.beginPath(); c.arc(x,y,r,0,7); c.fillStyle="rgba("+spot+","+(0.04+Math.random()*0.10).toFixed(3)+")"; c.fill(); }
-    for(let i=0;i<1500;i++){ const x=Math.random()*S,y=Math.random()*S,r=1.3+Math.random()*2.4;
+    for(let i=0;i<1700;i++){ const x=Math.random()*S,y=Math.random()*S,r=1.2+Math.random()*2.2;
         c.beginPath(); c.arc(x,y,r,0,7); c.fillStyle="rgba(0,0,0,"+(0.05+Math.random()*0.07).toFixed(3)+")"; c.fill();
         c.beginPath(); c.arc(x-0.7,y-0.7,r*0.55,0,7); c.fillStyle="rgba(255,255,255,0.05)"; c.fill(); }
     const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rep||4,rep||4);
     if("colorSpace" in t) t.colorSpace=THREE.SRGBColorSpace; return t;
 }
 function skinMat(base, spot, rough){
-    return new THREE.MeshStandardMaterial({ map:skinTexture(base,spot,4), roughness:(rough==null?0.92:rough), metalness:0.02, side:THREE.DoubleSide });
+    return new THREE.MeshStandardMaterial({ map:skinTexture(base,spot,4), roughness:(rough==null?0.9:rough), metalness:0.03, side:THREE.DoubleSide });
 }
-function plainMat(c, rough){ return new THREE.MeshStandardMaterial({ color:c, roughness:(rough==null?0.8:rough), metalness:0.02, side:THREE.DoubleSide }); }
+function plainMat(c, rough){ return new THREE.MeshStandardMaterial({ color:c, roughness:(rough==null?0.8:rough), metalness:0.03, side:THREE.DoubleSide }); }
 
 // 背骨（点列）に沿って半径が変化する有機的なチューブ
 function makeSpine(pts, radii, seg, rad){
-    seg=seg||60; rad=rad||16;
+    seg=seg||64; rad=rad||18;
     const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])), false, "catmullrom", 0.5);
     const fr=curve.computeFrenetFrames(seg,false);
     const pos=[],nor=[],uv=[],idx=[];
@@ -654,84 +667,112 @@ function makeSpine(pts, radii, seg, rad){
     return geo;
 }
 function spine(parent, pts, radii, mat, seg, rad){ const m=new THREE.Mesh(makeSpine(pts,radii,seg,rad),mat); parent.add(m); return m; }
-
-// 眼（白目＋黒目）を左右に
+// 丸い肉塊（頭骨・顎・首/尾のつけ根・関節・筋肉に使う）
+function blob(parent,x,y,z,r,sx,sy,sz,mat){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,14),mat);
+    m.scale.set(sx==null?1:sx, sy==null?1:sy, sz==null?1:sz); m.position.set(x,y,z); parent.add(m); return m;
+}
+// 目（黒・つや）＋ごく小さなキャッチライト
 function eyeBall(parent,x,y,z,r){
-    const white=new THREE.MeshStandardMaterial({color:0xf3e7c6, roughness:0.35});
-    const pupil=new THREE.MeshStandardMaterial({color:0x120d06, roughness:0.15});
+    const black=new THREE.MeshStandardMaterial({color:0x040404, roughness:0.12, metalness:0.15});
+    const hi=new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.2, transparent:true, opacity:0.9});
     [[-x,y,z],[x,y,z]].forEach((p,k)=>{ const s=(k===0?-1:1);
-        const e=new THREE.Mesh(new THREE.SphereGeometry(r,14,14),white); e.position.set(p[0],p[1],p[2]); parent.add(e);
-        const pu=new THREE.Mesh(new THREE.SphereGeometry(r*0.5,10,10),pupil); pu.position.set(p[0]+s*r*0.25,p[1],p[2]+r*0.72); parent.add(pu); });
+        const e=new THREE.Mesh(new THREE.SphereGeometry(r,18,18),black); e.position.set(p[0],p[1],p[2]); parent.add(e);
+        const c=new THREE.Mesh(new THREE.SphereGeometry(r*0.2,8,8),hi); c.position.set(p[0]+s*r*0.32,p[1]+r*0.32,p[2]+r*0.82); parent.add(c); });
 }
 // 歯列
 function teeth(parent, y, z, half, n, size, mat){
     for(let i=0;i<n;i++){ const x=THREE.MathUtils.lerp(-half,half,(n===1?0.5:i/(n-1)));
         const t=new THREE.Mesh(new THREE.ConeGeometry(size*0.35,size,5),mat); t.position.set(x,y,z); t.rotation.x=Math.PI; parent.add(t); }
 }
-// 鳥脚（太もも＋すね＋足＋指）: hip pivot が userData.phase を持つ
+// 鳥脚（腰の肉塊＋大腿＋膝＋脛＋足首＋中足骨＋3本指＋後ろ指）— hip pivot が userData.phase
 function legDigit(parent,x,hipY,z,s,mat,phase,clawMat){
+    blob(parent, x, hipY+0.05*s, z-0.02*s, 0.27*s, 1.0,1.25,1.15, mat);       // 腰/腿の付け根（胴に食い込む）
     const p=new THREE.Group(); p.position.set(x,hipY,z); parent.add(p);
-    const thigh=new THREE.Mesh(new THREE.CylinderGeometry(0.17*s,0.12*s,0.52*s,12),mat); thigh.position.set(0,-0.22*s,0.06*s); thigh.rotation.x=0.4; p.add(thigh);
-    const knee=new THREE.Mesh(new THREE.SphereGeometry(0.12*s,10,10),mat); knee.position.set(0,-0.44*s,0.12*s); p.add(knee);
-    const shin=new THREE.Mesh(new THREE.CylinderGeometry(0.1*s,0.07*s,0.5*s,12),mat); shin.position.set(0,-0.6*s,0.0*s); shin.rotation.x=-0.45; p.add(shin);
-    const ankle=new THREE.Mesh(new THREE.SphereGeometry(0.08*s,8,8),mat); ankle.position.set(0,-0.8*s,-0.05*s); p.add(ankle);
-    const foot=new THREE.Mesh(new THREE.BoxGeometry(0.16*s,0.06*s,0.3*s),mat); foot.position.set(0,-0.82*s,0.1*s); p.add(foot);
-    for(let i=-1;i<=1;i++){ const toe=new THREE.Mesh(new THREE.ConeGeometry(0.035*s,0.14*s,5),clawMat||mat); toe.position.set(i*0.055*s,-0.83*s,0.26*s); toe.rotation.x=Math.PI*0.5; p.add(toe); }
+    blob(p, 0, -0.02*s, 0.02*s, 0.2*s, 1,1,1, mat);                            // 股関節の丸み
+    const thigh=new THREE.Mesh(new THREE.CylinderGeometry(0.2*s,0.12*s,0.5*s,16),mat); thigh.position.set(0,-0.22*s,0.06*s); thigh.rotation.x=0.42; p.add(thigh);
+    const knee=new THREE.Mesh(new THREE.SphereGeometry(0.12*s,12,12),mat); knee.position.set(0,-0.44*s,0.13*s); p.add(knee);
+    const shin=new THREE.Mesh(new THREE.CylinderGeometry(0.1*s,0.065*s,0.5*s,16),mat); shin.position.set(0,-0.62*s,0.0*s); shin.rotation.x=-0.5; p.add(shin);
+    const ankle=new THREE.Mesh(new THREE.SphereGeometry(0.075*s,10,10),mat); ankle.position.set(0,-0.82*s,-0.06*s); p.add(ankle);
+    const meta=new THREE.Mesh(new THREE.CylinderGeometry(0.06*s,0.055*s,0.18*s,12),mat); meta.position.set(0,-0.88*s,0.02*s); meta.rotation.x=0.55; p.add(meta);
+    for(let i=-1;i<=1;i++){ const toe=new THREE.Group(); toe.position.set(i*0.05*s,-0.93*s,0.06*s); toe.rotation.y=i*0.28; p.add(toe);
+        const seg=new THREE.Mesh(new THREE.CylinderGeometry(0.032*s,0.022*s,0.18*s,10),mat); seg.position.set(0,0,0.1*s); seg.rotation.x=Math.PI*0.5; toe.add(seg);
+        const claw=new THREE.Mesh(new THREE.ConeGeometry(0.028*s,0.1*s,6),clawMat||mat); claw.position.set(0,-0.01*s,0.22*s); claw.rotation.x=Math.PI*0.5; toe.add(claw); }
+    const hallux=new THREE.Mesh(new THREE.ConeGeometry(0.026*s,0.1*s,6),clawMat||mat); hallux.position.set(0,-0.88*s,-0.1*s); hallux.rotation.x=-2.0; p.add(hallux);
     p.userData.phase=phase; return p;
 }
-// 柱脚（竜脚・装甲竜など太い脚）
+// 柱脚（腰の肉塊＋上肢＋膝＋下肢＋丸い足＋爪）
 function legColumn(parent,x,hipY,z,len,r,mat,phase,nailMat){
+    blob(parent, x, hipY+0.04, z, r*1.8, 1.15,1.0,1.25, mat);                 // 肩/腰の筋肉（胴に食い込む）
     const p=new THREE.Group(); p.position.set(x,hipY,z); parent.add(p);
-    const up=new THREE.Mesh(new THREE.CylinderGeometry(r*1.15,r*0.95,len*0.55,14),mat); up.position.y=-len*0.28; p.add(up);
-    const lo=new THREE.Mesh(new THREE.CylinderGeometry(r*0.95,r*0.8,len*0.5,14),mat); lo.position.y=-len*0.72; p.add(lo);
-    const foot=new THREE.Mesh(new THREE.CylinderGeometry(r*1.15,r*1.35,r*0.7,14),mat); foot.position.y=-len+r*0.25; p.add(foot);
-    for(let i=0;i<3;i++){ const a=(i-1)*0.55; const nail=new THREE.Mesh(new THREE.ConeGeometry(r*0.25,r*0.5,6),nailMat||mat);
-        nail.position.set(Math.sin(a)*r*0.95,-len+r*0.15,Math.cos(a)*r*0.95+r*0.5); nail.rotation.x=Math.PI*0.5; p.add(nail); }
+    const up=new THREE.Mesh(new THREE.CylinderGeometry(r*1.3,r*0.95,len*0.55,18),mat); up.position.y=-len*0.28; p.add(up);
+    const knee=new THREE.Mesh(new THREE.SphereGeometry(r*0.98,14,14),mat); knee.position.y=-len*0.55; p.add(knee);
+    const lo=new THREE.Mesh(new THREE.CylinderGeometry(r*0.92,r*0.8,len*0.5,18),mat); lo.position.y=-len*0.76; p.add(lo);
+    const foot=new THREE.Mesh(new THREE.SphereGeometry(r*1.35,16,12),mat); foot.scale.set(1.1,0.5,1.25); foot.position.set(0,-len+r*0.35,r*0.25); p.add(foot);
+    for(let i=0;i<3;i++){ const a=(i-1)*0.5; const nail=new THREE.Mesh(new THREE.ConeGeometry(r*0.24,r*0.5,6),nailMat||mat);
+        nail.position.set(Math.sin(a)*r*0.85,-len+r*0.22,Math.cos(a)*r*0.6+r*0.95); nail.rotation.x=Math.PI*0.5; p.add(nail); }
     p.userData.phase=phase; return p;
+}
+// 獣脚類の腕（肩の肉塊＋上腕＋肘＋前腕＋2本の爪）
+function armTheropod(parent,x,y,z,s,mat,clawMat){
+    blob(parent,x,y+0.02*s,z-0.03*s,0.12*s,1,1,1,mat);                        // 肩のつけ根
+    const a=new THREE.Group(); a.position.set(x,y,z); parent.add(a);
+    const up=new THREE.Mesh(new THREE.CylinderGeometry(0.055*s,0.042*s,0.24*s,10),mat); up.position.set(0,-0.11*s,0.03*s); up.rotation.x=0.6; a.add(up);
+    const elbow=new THREE.Mesh(new THREE.SphereGeometry(0.05*s,10,10),mat); elbow.position.set(0,-0.22*s,0.1*s); a.add(elbow);
+    const fore=new THREE.Mesh(new THREE.CylinderGeometry(0.04*s,0.03*s,0.22*s,10),mat); fore.position.set(0,-0.3*s,0.18*s); fore.rotation.x=1.15; a.add(fore);
+    for(let i=0;i<2;i++){ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.02*s,0.11*s,6),clawMat||mat); claw.position.set((i-0.5)*0.05*s,-0.37*s,0.3*s); claw.rotation.x=1.4; a.add(claw); }
+    return a;
 }
 
 // 1) ティラノサウルス
 function build_trex(){
     const g=new THREE.Group();
-    const skin=skinMat(0x40684a,"18,36,22",0.9), belly=skinMat(0x8f9d6a,"60,70,40");
+    const skin=skinMat(0x40684a,"18,36,22",0.85), belly=skinMat(0x93a06d,"60,70,40");
     const dark=plainMat(0x2c4a34), cream=plainMat(0xefe6cf,0.5);
     spine(g,[[0,1.25,-0.55],[0,1.32,-0.15],[0,1.4,0.3],[0,1.55,0.62],[0,1.8,0.85],[0,1.98,1.05]],
             [0.14,0.44,0.46,0.32,0.22,0.16], skin);
-    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.4,16,12),belly); bel.scale.set(0.8,0.7,1.2); bel.position.set(0,1.2,0.35); g.add(bel);
-    const tail=new THREE.Group(); tail.position.set(0,1.28,-0.5); g.add(tail);
-    spine(tail,[[0,0,0],[0,-0.05,-0.5],[0,-0.18,-1.05],[0,-0.32,-1.6],[0,-0.42,-2.0]],[0.3,0.22,0.14,0.07,0.02],skin);
+    blob(g,0,1.2,0.35,0.4,0.85,0.72,1.15,belly);                              // 腹（明色）
+    blob(g,0,1.32,-0.35,0.32,1.1,1.0,1.0,skin);                               // 腰のつけ根
+    // 尾（つけ根を胴に重ねる）
+    const tail=new THREE.Group(); tail.position.set(0,1.3,-0.42); g.add(tail);
+    spine(tail,[[0,0,0.12],[0,-0.03,-0.4],[0,-0.15,-1.0],[0,-0.3,-1.6],[0,-0.42,-2.05]],[0.32,0.28,0.16,0.08,0.02],skin);
     g.userData.tail=tail;
-    const head=new THREE.Group(); head.position.set(0,1.98,1.12); g.add(head);
-    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.36,0.5),skin); skull.position.set(0,0.04,0.12); head.add(skull);
-    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.26,0.42),skin); snout.position.set(0,-0.02,0.48); head.add(snout);
-    const jaw=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.12,0.5),skin); jaw.position.set(0,-0.16,0.4); head.add(jaw);
-    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.1,0.2),skin); brow.position.set(0,0.2,0.05); head.add(brow);
+    // 頭（丸い頭骨＋テーパーした鼻先＋下顎）
+    const head=new THREE.Group(); head.position.set(0,1.99,1.1); g.add(head);
+    blob(head,0,0.06,0.06,0.2,1.05,1.0,1.15,skin);                            // 頭骨
+    spine(head,[[0,0.04,0.16],[0,0.0,0.4],[0,-0.02,0.66]],[0.19,0.16,0.11],skin,24,14); // 鼻先
+    blob(head,0,-0.14,0.42,0.14,1.0,0.7,1.6,skin);                            // 下顎
+    blob(head,0,0.2,0.06,0.1,1.6,0.7,1.0,skin);                              // 眉の隆起
+    const nostrilL=blob(head,-0.06,0.02,0.6,0.02,1,1,1,dark), nostrilR=blob(head,0.06,0.02,0.6,0.02,1,1,1,dark);
     teeth(head,-0.06,0.66,0.11,5,0.1,cream);
-    eyeBall(head,0.17,0.14,0.28,0.06);
-    [[-0.34,1.5,0.55],[0.34,1.5,0.55]].forEach(pp=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.04,0.3,8),skin); arm.position.set(pp[0],pp[1],pp[2]); arm.rotation.x=0.9; g.add(arm);
-        const hand=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.12,5),cream); hand.position.set(pp[0],pp[1]-0.16,pp[2]+0.1); hand.rotation.x=1.4; g.add(hand); });
+    eyeBall(head,0.16,0.13,0.28,0.058);
+    armTheropod(g,-0.3,1.5,0.55,1.0,skin,cream); armTheropod(g,0.3,1.5,0.55,1.0,skin,cream);
     g.userData.legs=[ legDigit(g,-0.32,0.98,0.02,1.2,skin,0,dark), legDigit(g,0.32,0.98,0.02,1.2,skin,Math.PI,dark) ];
     return g;
 }
 // 2) トリケラトプス
 function build_tri(){
     const g=new THREE.Group();
-    const skin=skinMat(0x9c6b3f,"70,40,18",0.95), belly=skinMat(0xb99a6e,"90,70,40");
+    const skin=skinMat(0x9c6b3f,"70,40,18",0.9), belly=skinMat(0xbb9c70,"90,70,40");
     const cream=plainMat(0xe7d9b6,0.6), dark=plainMat(0x6f4a26);
-    spine(g,[[0,0.98,-1.0],[0,1.05,-0.5],[0,1.08,0.05],[0,1.02,0.55],[0,0.95,0.9],[0,0.9,1.15]],
+    spine(g,[[0,0.98,-1.0],[0,1.05,-0.5],[0,1.08,0.05],[0,1.02,0.55],[0,0.95,0.9],[0,0.9,1.12]],
             [0.12,0.48,0.54,0.46,0.34,0.26], skin);
-    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.5,16,12),belly); bel.scale.set(0.9,0.7,1.2); bel.position.set(0,0.75,0.1); g.add(bel);
-    const head=new THREE.Group(); head.position.set(0,0.9,1.1); g.add(head);
-    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.4,0.5),skin); skull.position.set(0,0,0.1); head.add(skull);
-    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.14,0.34,6),dark); beak.position.set(0,-0.05,0.42); beak.rotation.x=Math.PI*0.5; head.add(beak);
-    eyeBall(head,0.2,0.05,0.18,0.055);
-    const frill=new THREE.Mesh(new THREE.SphereGeometry(0.62,24,14,0,Math.PI*2,0,Math.PI*0.5),skin);
-    frill.scale.set(1.15,0.4,1.0); frill.position.set(0,0.98,0.5); frill.rotation.x=-0.5; g.add(frill);
-    for(let i=0;i<7;i++){ const a=(i/6-0.5)*2.2; const bump=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.16,5),cream);
-        bump.position.set(Math.sin(a)*0.6,1.15+Math.cos(a)*0.02,0.35-Math.cos(a)*0.15); bump.rotation.x=-1.2; g.add(bump); }
-    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.34,8),cream); nose.position.set(0,1.0,1.35); nose.rotation.x=-0.6; g.add(nose);
-    [[-0.2,1.15,1.1],[0.2,1.15,1.1]].forEach(pp=>{ const h=new THREE.Mesh(new THREE.ConeGeometry(0.065,0.55,8),cream); h.position.set(pp[0],pp[1],pp[2]); h.rotation.x=-0.35; g.add(h); });
-    const tail=new THREE.Group(); tail.position.set(0,0.95,-1.0); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.4],[0,-0.12,-0.8]],[0.2,0.12,0.03],skin); g.userData.tail=tail;
+    blob(g,0,0.75,0.1,0.5,0.95,0.72,1.2,belly);
+    blob(g,0,0.92,0.7,0.34,1.0,1.0,1.0,skin);                                 // 肩のつけ根
+    // 頭：丸い頭骨＋くちばし＋ドームのフリル
+    const head=new THREE.Group(); head.position.set(0,0.9,1.08); g.add(head);
+    blob(head,0,0,0.08,0.24,1.1,1.0,1.1,skin);
+    blob(head,0,-0.08,0.34,0.14,0.9,0.9,1.2,skin);                            // 頬
+    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.34,8),dark); beak.position.set(0,-0.08,0.5); beak.rotation.x=Math.PI*0.5; head.add(beak);
+    eyeBall(head,0.19,0.04,0.2,0.052);
+    const frill=new THREE.Mesh(new THREE.SphereGeometry(0.64,28,16,0,Math.PI*2,0,Math.PI*0.5),skin);
+    frill.scale.set(1.2,0.42,1.0); frill.position.set(0,0.98,0.48); frill.rotation.x=-0.5; g.add(frill);
+    blob(g,0,0.95,0.55,0.28,1.2,0.9,0.7,skin);                                // フリルのつけ根
+    for(let i=0;i<7;i++){ const a=(i/6-0.5)*2.2; const bump=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.15,6),cream);
+        bump.position.set(Math.sin(a)*0.62,1.15+Math.cos(a)*0.02,0.34-Math.cos(a)*0.15); bump.rotation.x=-1.2; g.add(bump); }
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.32,10),cream); nose.position.set(0,1.0,1.32); nose.rotation.x=-0.6; g.add(nose);
+    [[-0.2,1.16,1.06],[0.2,1.16,1.06]].forEach(pp=>{ const h=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.56,10),cream); h.position.set(pp[0],pp[1],pp[2]); h.rotation.x=-0.35; g.add(h); });
+    const tail=new THREE.Group(); tail.position.set(0,0.95,-0.92); g.add(tail); spine(tail,[[0,0,0.12],[0,-0.05,-0.4],[0,-0.12,-0.82]],[0.26,0.15,0.03],skin); g.userData.tail=tail;
     g.userData.legs=[ legColumn(g,-0.36,0.55,0.5,0.55,0.15,skin,0,dark), legColumn(g,0.36,0.55,0.5,0.55,0.15,skin,Math.PI,dark),
                       legColumn(g,-0.36,0.6,-0.55,0.6,0.16,skin,Math.PI,dark), legColumn(g,0.36,0.6,-0.55,0.6,0.16,skin,0,dark) ];
     return g;
@@ -739,20 +780,21 @@ function build_tri(){
 // 3) ステゴサウルス
 function build_stego(){
     const g=new THREE.Group();
-    const skin=skinMat(0x5a7d6b,"28,52,44",0.95), belly=skinMat(0x7f9384,"50,70,60");
+    const skin=skinMat(0x5a7d6b,"28,52,44",0.9), belly=skinMat(0x829685,"50,70,60");
     const plate=plainMat(0xc0673a,0.7), cream=plainMat(0xe7d9b6,0.6), dark=plainMat(0x3f5a4c);
-    spine(g,[[0,1.0,-1.05],[0,1.28,-0.45],[0,1.38,0.15],[0,1.1,0.65],[0,0.82,1.0],[0,0.72,1.2]],
+    spine(g,[[0,1.0,-1.05],[0,1.28,-0.45],[0,1.38,0.15],[0,1.1,0.65],[0,0.82,1.0],[0,0.72,1.18]],
             [0.12,0.46,0.52,0.36,0.22,0.14], skin);
-    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.46,16,12),belly); bel.scale.set(0.85,0.7,1.3); bel.position.set(0,0.9,0.05); g.add(bel);
-    const head=new THREE.Group(); head.position.set(0,0.72,1.18); g.add(head);
-    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.2,0.4),skin); head.add(skull);
-    eyeBall(head,0.1,0.04,0.08,0.04);
+    blob(g,0,0.9,0.05,0.46,0.82,0.7,1.35,belly);
+    // 小さな頭（丸め）
+    const head=new THREE.Group(); head.position.set(0,0.72,1.16); g.add(head);
+    blob(head,0,0,0.02,0.14,1.0,1.0,1.4,skin); blob(head,0,-0.03,0.2,0.09,0.9,0.7,1.3,skin);
+    eyeBall(head,0.09,0.04,0.06,0.038);
     const arch=new THREE.CatmullRomCurve3([[0,1.35,-0.55],[0,1.48,-0.15],[0,1.5,0.2],[0,1.3,0.55]].map(p=>new THREE.Vector3(p[0],p[1],p[2])));
     for(let i=0;i<7;i++){ const t=i/6, c=arch.getPointAt(t), big=Math.sin(t*Math.PI), s=0.22+big*0.34;
         const shp=new THREE.Shape(); shp.moveTo(0,0); shp.quadraticCurveTo(s*0.7,s*0.6,0,s*1.4); shp.quadraticCurveTo(-s*0.7,s*0.6,0,0);
-        const geo=new THREE.ExtrudeGeometry(shp,{depth:0.05,bevelEnabled:false});
-        const pl=new THREE.Mesh(geo,plate); pl.position.set((i%2?0.04:-0.04),c.y,c.z); pl.rotation.y=Math.PI*0.5; g.add(pl); }
-    const tail=new THREE.Group(); tail.position.set(0,1.05,-1.05); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.5],[0,-0.12,-0.95]],[0.2,0.12,0.04],skin); g.userData.tail=tail;
+        const geo=new THREE.ExtrudeGeometry(shp,{depth:0.05,bevelEnabled:true,bevelThickness:0.015,bevelSize:0.015,bevelSegments:1});
+        const pl=new THREE.Mesh(geo,plate); pl.position.set((i%2?0.03:-0.03),c.y,c.z); pl.rotation.y=Math.PI*0.5; g.add(pl); }
+    const tail=new THREE.Group(); tail.position.set(0,1.05,-1.02); g.add(tail); spine(tail,[[0,0,0.1],[0,-0.05,-0.5],[0,-0.12,-0.95]],[0.24,0.13,0.04],skin); g.userData.tail=tail;
     [[-0.12,-0.3],[0.12,-0.3],[-0.1,-0.55],[0.1,-0.55]].forEach(pp=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.34,6),cream); sp.position.set(pp[0],0.05,pp[1]); sp.rotation.x=-2.0; sp.rotation.z=pp[0]*1.5; tail.add(sp); });
     g.userData.legs=[ legColumn(g,-0.34,0.5,0.55,0.5,0.13,skin,0,dark), legColumn(g,0.34,0.5,0.55,0.5,0.13,skin,Math.PI,dark),
                       legColumn(g,-0.36,0.72,-0.55,0.72,0.16,skin,Math.PI,dark), legColumn(g,0.36,0.72,-0.55,0.72,0.16,skin,0,dark) ];
@@ -761,57 +803,60 @@ function build_stego(){
 // 4) ブラキオサウルス
 function build_brachi(){
     const g=new THREE.Group();
-    const skin=skinMat(0x7d6fae,"40,32,66",0.9), belly=skinMat(0x9a90c0,"60,55,90");
+    const skin=skinMat(0x7d6fae,"40,32,66",0.85), belly=skinMat(0x9d93c3,"60,55,90");
     const dark=plainMat(0x574a80);
     spine(g,[[0,1.15,-0.9],[0,1.25,-0.2],[0,1.35,0.35],[0,1.7,0.6],[0,2.15,0.72],[0,2.65,0.82],[0,3.05,1.0],[0,3.2,1.2]],
-            [0.14,0.6,0.62,0.4,0.26,0.2,0.15,0.1], skin, 72, 16);
-    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.58,16,12),belly); bel.scale.set(0.9,0.8,1.3); bel.position.set(0,1.0,0.1); g.add(bel);
+            [0.14,0.6,0.62,0.4,0.26,0.2,0.15,0.1], skin, 80, 18);
+    blob(g,0,1.0,0.1,0.58,0.9,0.8,1.3,belly);
+    blob(g,0,1.5,0.55,0.3,1.0,1.2,1.0,skin);                                  // 肩〜首のつけ根
     const head=new THREE.Group(); head.position.set(0,3.22,1.22); g.add(head);
-    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.34),skin); head.add(skull);
-    const crestb=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10),skin); crestb.position.set(0,0.12,0.02); head.add(crestb);
-    eyeBall(head,0.1,0.03,0.05,0.04);
-    const tail=new THREE.Group(); tail.position.set(0,1.15,-0.85); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.6],[0,-0.15,-1.2],[0,-0.28,-1.8],[0,-0.4,-2.3]],[0.32,0.22,0.14,0.07,0.02],skin); g.userData.tail=tail;
-    g.userData.legs=[ legColumn(g,-0.42,0.85,0.5,0.85,0.18,skin,0,dark), legColumn(g,0.42,0.85,0.5,0.85,0.18,skin,Math.PI,dark),
+    blob(head,0,0,0.06,0.12,1.0,1.0,1.4,skin); blob(head,0,0.1,0.0,0.09,1.0,1.0,1.0,skin);
+    eyeBall(head,0.1,0.03,0.06,0.04);
+    const tail=new THREE.Group(); tail.position.set(0,1.15,-0.78); g.add(tail); spine(tail,[[0,0,0.14],[0,-0.05,-0.6],[0,-0.15,-1.2],[0,-0.28,-1.8],[0,-0.4,-2.3]],[0.34,0.24,0.14,0.07,0.02],skin); g.userData.tail=tail;
+    g.userData.legs=[ legColumn(g,-0.42,0.85,0.5,0.85,0.19,skin,0,dark), legColumn(g,0.42,0.85,0.5,0.85,0.19,skin,Math.PI,dark),
                       legColumn(g,-0.42,0.72,-0.7,0.72,0.18,skin,Math.PI,dark), legColumn(g,0.42,0.72,-0.7,0.72,0.18,skin,0,dark) ];
     return g;
 }
 // 5) ヴェロキラプトル
 function build_raptor(){
     const g=new THREE.Group();
-    const skin=skinMat(0xb08847,"72,46,20",0.85), belly=skinMat(0xd8c088,"110,90,50");
+    const skin=skinMat(0xb08847,"72,46,20",0.8), belly=skinMat(0xdcc48c,"110,90,50");
     const feather=plainMat(0x7a4f26,0.9), cream=plainMat(0xefe6cf,0.5), dark=plainMat(0x5a3a1c);
     spine(g,[[0,1.05,-0.5],[0,1.1,-0.05],[0,1.12,0.35],[0,1.2,0.6],[0,1.42,0.78],[0,1.55,0.95],[0,1.5,1.15]],
             [0.1,0.24,0.24,0.18,0.12,0.1,0.06], skin);
-    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.22,14,10),belly); bel.scale.set(0.8,0.8,1.4); bel.position.set(0,1.02,0.2); g.add(bel);
-    const head=new THREE.Group(); head.position.set(0,1.5,1.12); g.add(head);
-    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.16,0.28),skin); head.add(skull);
-    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.11,0.24),skin); snout.position.set(0,-0.01,0.24); head.add(snout);
-    const jaw=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.05,0.28),skin); jaw.position.set(0,-0.08,0.2); head.add(jaw);
-    teeth(head,-0.03,0.34,0.05,4,0.05,cream);
-    eyeBall(head,0.08,0.05,0.12,0.038);
-    for(let i=0;i<6;i++){ const t=i/5, fz=THREE.MathUtils.lerp(0.9,-0.4,t), fy=THREE.MathUtils.lerp(1.5,1.12,t);
-        const fe=new THREE.Mesh(new THREE.ConeGeometry(0.03,0.16,4),feather); fe.position.set(0,fy+0.12,fz); fe.rotation.x=0.3; g.add(fe); }
-    [[-0.2,1.2,0.5],[0.2,1.2,0.5]].forEach(pp=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.03,0.34,8),skin); arm.position.set(pp[0],pp[1],pp[2]); arm.rotation.x=0.7; g.add(arm); });
-    const tail=new THREE.Group(); tail.position.set(0,1.05,-0.45); tail.rotation.x=-0.1; g.add(tail); spine(tail,[[0,0,0],[0,0.02,-0.5],[0,0.04,-1.0],[0,0.05,-1.45]],[0.13,0.09,0.05,0.02],skin); g.userData.tail=tail;
+    blob(g,0,1.03,0.2,0.2,0.85,0.85,1.4,belly);
+    blob(g,0,1.1,-0.05,0.16,1.0,1.0,1.0,skin);                                // 腰のつけ根
+    const head=new THREE.Group(); head.position.set(0,1.5,1.1); g.add(head);
+    blob(head,0,0.02,0.02,0.1,1.0,1.0,1.2,skin);                              // 頭骨
+    spine(head,[[0,0.0,0.1],[0,-0.02,0.26],[0,-0.03,0.4]],[0.09,0.07,0.04],skin,20,12); // 細い鼻先
+    blob(head,0,-0.07,0.24,0.06,0.9,0.6,1.6,skin);                            // 下顎
+    teeth(head,-0.03,0.42,0.05,4,0.05,cream);
+    eyeBall(head,0.08,0.05,0.14,0.036);
+    for(let i=0;i<7;i++){ const t=i/6, fz=THREE.MathUtils.lerp(0.9,-0.5,t), fy=THREE.MathUtils.lerp(1.5,1.1,t);
+        const fe=new THREE.Mesh(new THREE.ConeGeometry(0.028,0.16,4),feather); fe.position.set(0,fy+0.12,fz); fe.rotation.x=0.3; g.add(fe); }
+    armTheropod(g,-0.18,1.2,0.5,0.85,skin,cream); armTheropod(g,0.18,1.2,0.5,0.85,skin,cream);
+    const tail=new THREE.Group(); tail.position.set(0,1.05,-0.42); tail.rotation.x=-0.1; g.add(tail); spine(tail,[[0,0,0.1],[0,0.02,-0.5],[0,0.04,-1.0],[0,0.05,-1.45]],[0.14,0.1,0.05,0.02],skin); g.userData.tail=tail;
     const legs=[ legDigit(g,-0.16,0.72,0.05,0.85,skin,0,dark), legDigit(g,0.16,0.72,0.05,0.85,skin,Math.PI,dark) ];
-    legs.forEach(p=>{ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.24,6),cream); claw.position.set(0,-0.62,0.22); claw.rotation.x=-1.4; p.add(claw); });
+    legs.forEach(p=>{ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.26,6),cream); claw.position.set(0,-0.64,0.24); claw.rotation.x=-1.3; p.add(claw); });
     g.userData.legs=legs;
     return g;
 }
 // 6) パラサウロロフス
 function build_para(){
     const g=new THREE.Group();
-    const skin=skinMat(0x4f8f6f,"22,54,40",0.9), belly=skinMat(0x7fae94,"50,80,64");
-    const crest=plainMat(0xcf5f38,0.7), dark=plainMat(0x35604a);
+    const skin=skinMat(0x4f8f6f,"22,54,40",0.85), belly=skinMat(0x83b198,"50,80,64");
+    const crest=plainMat(0xcf5f38,0.7), crestL=plainMat(0xe7b58a,0.7), dark=plainMat(0x35604a);
     spine(g,[[0,1.0,-1.0],[0,1.12,-0.4],[0,1.18,0.2],[0,1.1,0.6],[0,1.35,0.85],[0,1.65,1.05],[0,1.72,1.25]],
             [0.12,0.46,0.5,0.4,0.26,0.2,0.16], skin);
-    const bel=new THREE.Mesh(new THREE.SphereGeometry(0.46,16,12),belly); bel.scale.set(0.85,0.75,1.3); bel.position.set(0,0.85,0.1); g.add(bel);
+    blob(g,0,0.85,0.1,0.46,0.85,0.76,1.3,belly);
+    blob(g,0,1.5,0.95,0.24,1.0,1.1,1.0,skin);                                 // 首のつけ根
     const head=new THREE.Group(); head.position.set(0,1.72,1.2); g.add(head);
-    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.24,0.34),skin); head.add(skull);
-    const bill=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.1,0.22),skin); bill.position.set(0,-0.08,0.28); head.add(bill);
-    eyeBall(head,0.12,0.05,0.05,0.05);
-    spine(g,[[0,1.85,1.15],[0,2.05,0.9],[0,2.15,0.55],[0,2.1,0.2]],[0.09,0.1,0.09,0.05],crest,40,10);
-    const tail=new THREE.Group(); tail.position.set(0,1.0,-0.95); g.add(tail); spine(tail,[[0,0,0],[0,-0.05,-0.5],[0,-0.14,-1.0],[0,-0.22,-1.4]],[0.22,0.15,0.08,0.03],skin); g.userData.tail=tail;
+    blob(head,0,0,0.02,0.15,1.0,1.0,1.15,skin);
+    blob(head,0,-0.07,0.28,0.14,1.4,0.6,1.0,skin);                            // ダックビル（平たい口）
+    eyeBall(head,0.12,0.05,0.06,0.048);
+    spine(g,[[0,1.85,1.15],[0,2.05,0.9],[0,2.16,0.55],[0,2.1,0.2]],[0.09,0.1,0.09,0.05],crest,44,12); // トサカ
+    blob(g,0,1.83,1.12,0.08,1,1,1,crestL);
+    const tail=new THREE.Group(); tail.position.set(0,1.0,-0.9); g.add(tail); spine(tail,[[0,0,0.12],[0,-0.05,-0.5],[0,-0.14,-1.0],[0,-0.22,-1.4]],[0.24,0.16,0.08,0.03],skin); g.userData.tail=tail;
     g.userData.legs=[ legColumn(g,-0.32,0.55,0.55,0.55,0.13,skin,0,dark), legColumn(g,0.32,0.55,0.55,0.55,0.13,skin,Math.PI,dark),
                       legColumn(g,-0.34,0.72,-0.6,0.72,0.16,skin,Math.PI,dark), legColumn(g,0.34,0.72,-0.6,0.72,0.16,skin,0,dark) ];
     return g;
@@ -819,47 +864,49 @@ function build_para(){
 // 7) アンキロサウルス
 function build_anky(){
     const g=new THREE.Group();
-    const skin=skinMat(0x6f7355,"40,46,30",0.95), armor=plainMat(0x8a8f6e,0.7), dark=plainMat(0x474b38), spike=plainMat(0xcfc9a6,0.6);
+    const skin=skinMat(0x6f7355,"40,46,30",0.9), armor=plainMat(0x8a8f6e,0.7), dark=plainMat(0x474b38), spike=plainMat(0xcfc9a6,0.6);
     const body=new THREE.Group(); body.scale.set(1.3,1,1); g.add(body);
-    spine(body,[[0,0.72,-0.95],[0,0.82,-0.4],[0,0.88,0.2],[0,0.82,0.65],[0,0.7,0.95],[0,0.62,1.15]],
+    spine(body,[[0,0.72,-0.95],[0,0.82,-0.4],[0,0.88,0.2],[0,0.82,0.65],[0,0.7,0.95],[0,0.62,1.12]],
             [0.14,0.5,0.56,0.46,0.34,0.26], skin);
-    const head=new THREE.Group(); head.position.set(0,0.6,1.1); g.add(head);
-    const skull=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.26,0.36),skin); head.add(skull);
+    const head=new THREE.Group(); head.position.set(0,0.6,1.08); g.add(head);
+    blob(head,0,0,0.02,0.2,1.3,0.85,1.0,skin);                                // 幅広の頭
     [[-0.2,0.05,-0.12],[0.2,0.05,-0.12]].forEach(pp=>{ const horn=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.18,5),spike); horn.position.set(pp[0],pp[1],pp[2]); horn.rotation.z=pp[0]*2; horn.rotation.x=-0.6; head.add(horn); });
-    eyeBall(head,0.16,0.02,0.14,0.045);
+    eyeBall(head,0.16,0.02,0.16,0.044);
     for(let r=0;r<4;r++) for(let cc=-1;cc<=1;cc++){ const z=0.6-r*0.5, x=cc*0.28;
-        const bump=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),armor); bump.scale.set(1.3,0.6,1.3); bump.position.set(x,0.95-r*0.02,z); g.add(bump); }
-    for(let r=0;r<4;r++){ [-1,1].forEach(s=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.26,6),spike); sp.position.set(s*0.55,0.78,0.5-r*0.45); sp.rotation.z=s*1.3; g.add(sp); }); }
-    const tail=new THREE.Group(); tail.position.set(0,0.6,-0.95); g.add(tail);
-    spine(tail,[[0,0,0],[0,0.02,-0.5],[0,0.03,-0.95]],[0.16,0.12,0.08],skin);
-    const club=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10),armor); club.scale.set(1.2,0.9,1.0); club.position.set(0,0.03,-1.1); tail.add(club);
+        const bump=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,10),armor); bump.scale.set(1.3,0.6,1.3); bump.position.set(x,0.95-r*0.02,z); g.add(bump); }
+    for(let r=0;r<4;r++){ [-1,1].forEach(s=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.26,6),spike); sp.position.set(s*0.56,0.78,0.5-r*0.45); sp.rotation.z=s*1.3; g.add(sp); }); }
+    const tail=new THREE.Group(); tail.position.set(0,0.6,-0.9); g.add(tail);
+    spine(tail,[[0,0,0.12],[0,0.02,-0.5],[0,0.03,-0.95]],[0.18,0.13,0.08],skin);
+    const club=new THREE.Mesh(new THREE.SphereGeometry(0.22,14,12),armor); club.scale.set(1.2,0.9,1.0); club.position.set(0,0.03,-1.1); tail.add(club);
     g.userData.tail=tail;
-    g.userData.legs=[ legColumn(g,-0.44,0.42,0.5,0.42,0.16,skin,0,dark), legColumn(g,0.44,0.42,0.5,0.42,0.16,skin,Math.PI,dark),
-                      legColumn(g,-0.44,0.42,-0.5,0.42,0.16,skin,Math.PI,dark), legColumn(g,0.44,0.42,-0.5,0.42,0.16,skin,0,dark) ];
+    g.userData.legs=[ legColumn(g,-0.46,0.42,0.5,0.42,0.16,skin,0,dark), legColumn(g,0.46,0.42,0.5,0.42,0.16,skin,Math.PI,dark),
+                      legColumn(g,-0.46,0.42,-0.5,0.42,0.16,skin,Math.PI,dark), legColumn(g,0.46,0.42,-0.5,0.42,0.16,skin,0,dark) ];
     return g;
 }
 // 8) プテラノドン（飛行・羽ばたき）
 function build_ptera(){
     const g=new THREE.Group();
-    const skin=skinMat(0x5f7fa6,"36,54,80",0.85);
-    const memb=new THREE.MeshStandardMaterial({color:0x8fb0cf,roughness:0.7,metalness:0.02,side:THREE.DoubleSide});
+    const skin=skinMat(0x5f7fa6,"36,54,80",0.8);
+    const memb=new THREE.MeshStandardMaterial({color:0x8fb0cf,roughness:0.7,metalness:0.03,side:THREE.DoubleSide});
     const crest=plainMat(0xcf5f38,0.7), dark=plainMat(0x3f5c7a), cream=plainMat(0xefe6cf,0.5);
     const Y=1.4;
-    spine(g,[[0,Y-0.02,-0.4],[0,Y,0.0],[0,Y+0.02,0.35],[0,Y+0.08,0.55]],[0.05,0.2,0.15,0.08],skin,40,12);
+    spine(g,[[0,Y-0.02,-0.4],[0,Y,0.0],[0,Y+0.02,0.35],[0,Y+0.08,0.55]],[0.05,0.2,0.15,0.08],skin,44,14);
     const head=new THREE.Group(); head.position.set(0,Y+0.12,0.6); g.add(head);
-    const skull=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,10),skin); skull.scale.set(0.8,0.9,1.1); head.add(skull);
-    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.7,8),cream); beak.position.set(0,-0.01,0.42); beak.rotation.x=Math.PI*0.5; head.add(beak);
-    const cr=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.5,6),crest); cr.position.set(0,0.14,-0.18); cr.rotation.x=-2.1; head.add(cr);
-    eyeBall(head,0.07,0.03,0.08,0.035);
+    blob(head,0,0,0.0,0.11,0.85,0.95,1.15,skin);                              // 頭
+    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.065,0.72,10),cream); beak.position.set(0,-0.01,0.44); beak.rotation.x=Math.PI*0.5; head.add(beak);
+    const cr=new THREE.Mesh(new THREE.ConeGeometry(0.085,0.5,8),crest); cr.position.set(0,0.14,-0.18); cr.rotation.x=-2.1; head.add(cr);
+    eyeBall(head,0.07,0.03,0.08,0.033);
     const wings=[];
     [-1,1].forEach(sgn=>{
         const w=new THREE.Group(); w.position.set(sgn*0.14,Y+0.02,0.05); g.add(w);
-        const humerus=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.035,0.5,8),skin); humerus.position.set(sgn*0.25,0,0); humerus.rotation.z=Math.PI*0.5; w.add(humerus);
-        const finger=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.012,0.9,8),skin); finger.position.set(sgn*0.9,0,-0.05); finger.rotation.z=Math.PI*0.5; finger.rotation.x=0.1; w.add(finger);
+        blob(w,0,0,0,0.08,1,1,1,skin);                                        // 肩のつけ根
+        const humerus=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.035,0.5,10),skin); humerus.position.set(sgn*0.25,0,0); humerus.rotation.z=Math.PI*0.5; w.add(humerus);
+        const elbow=new THREE.Mesh(new THREE.SphereGeometry(0.04,10,10),skin); elbow.position.set(sgn*0.5,0,0); w.add(elbow);
+        const finger=new THREE.Mesh(new THREE.CylinderGeometry(0.032,0.012,0.95,10),skin); finger.position.set(sgn*0.95,0,-0.05); finger.rotation.z=Math.PI*0.5; finger.rotation.x=0.1; w.add(finger);
         const mg=new THREE.BufferGeometry();
-        mg.setAttribute("position",new THREE.Float32BufferAttribute([0,0,0.14, sgn*1.35,0,-0.05, sgn*0.6,0,-0.28, 0,0,-0.45],3));
+        mg.setAttribute("position",new THREE.Float32BufferAttribute([0,0,0.14, sgn*1.4,0,-0.05, sgn*0.62,0,-0.3, 0,0,-0.46],3));
         mg.setIndex([0,1,2, 0,2,3]); mg.computeVertexNormals();
-        const mem=new THREE.Mesh(mg,memb); w.add(mem);
+        w.add(new THREE.Mesh(mg,memb));
         w.userData.sign=sgn; wings.push(w);
     });
     g.userData.wings=wings;
@@ -895,8 +942,10 @@ const DINOS=[
     {key:"ptera",  label:"🕊 プテラノ", cry:"ピギャー",   build:build_ptera},
 ];
 
+const BUDDY_BASE=0.35; let buddyScale=1;   // 相棒の基準スケール × ユーザー倍率(1.0〜2.5)
+function applyBuddyScale(){ dog.scale.setScalar(BUDDY_BASE*buddyScale); }
 scene.add(dog);
-dog.scale.setScalar(0.35);
+applyBuddyScale();
 dog.position.set(2,GROUND_Y,2);
 
 /* =====================================================
@@ -1421,6 +1470,11 @@ const menu=document.getElementById("menu");
 document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; });
 document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segTool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenTool=b.dataset.v; });
 document.querySelectorAll("#segSound button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segSound button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); scanSoundOn=(b.dataset.v==="on"); });
+(function(){ const el=document.getElementById("buddyScale"), lab=document.getElementById("buddyScaleVal");
+    if(!el) return;
+    const upd=()=>{ buddyScale=parseFloat(el.value)||1; if(lab) lab.textContent=buddyScale.toFixed(1)+"×"; applyBuddyScale(); };
+    el.addEventListener("input",upd); el.addEventListener("change",upd); upd();
+})();
 document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
