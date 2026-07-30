@@ -687,9 +687,9 @@ function teeth(parent, y, z, half, n, size, mat){
 }
 // 鳥脚（腰の肉塊＋大腿＋膝＋脛＋足首＋中足骨＋3本指＋後ろ指）— hip pivot が userData.phase
 function legDigit(parent,x,hipY,z,s,mat,phase,clawMat){
-    blob(parent, x, hipY+0.05*s, z-0.02*s, 0.27*s, 1.0,1.25,1.15, mat);       // 腰/腿の付け根（胴に食い込む）
+    blob(parent, x, hipY+0.03*s, z-0.02*s, 0.17*s, 1.0,1.08,1.05, mat);       // 腰/腿の付け根（控えめに胴へなじませる）
     const p=new THREE.Group(); p.position.set(x,hipY,z); parent.add(p);
-    blob(p, 0, -0.02*s, 0.02*s, 0.2*s, 1,1,1, mat);                            // 股関節の丸み
+    blob(p, 0, -0.02*s, 0.02*s, 0.12*s, 1,1,1, mat);                           // 股関節の丸み
     const thigh=new THREE.Mesh(new THREE.CylinderGeometry(0.2*s,0.12*s,0.5*s,16),mat); thigh.position.set(0,-0.22*s,0.06*s); thigh.rotation.x=0.42; p.add(thigh);
     const knee=new THREE.Mesh(new THREE.SphereGeometry(0.12*s,12,12),mat); knee.position.set(0,-0.44*s,0.13*s); p.add(knee);
     const shin=new THREE.Mesh(new THREE.CylinderGeometry(0.1*s,0.065*s,0.5*s,16),mat); shin.position.set(0,-0.62*s,0.0*s); shin.rotation.x=-0.5; p.add(shin);
@@ -703,7 +703,7 @@ function legDigit(parent,x,hipY,z,s,mat,phase,clawMat){
 }
 // 柱脚（腰の肉塊＋上肢＋膝＋下肢＋丸い足＋爪）
 function legColumn(parent,x,hipY,z,len,r,mat,phase,nailMat){
-    blob(parent, x, hipY+0.04, z, r*1.8, 1.15,1.0,1.25, mat);                 // 肩/腰の筋肉（胴に食い込む）
+    blob(parent, x, hipY+0.02, z, r*1.1, 1.0,0.9,1.1, mat);                   // 肩/腰の付け根（控えめ）
     const p=new THREE.Group(); p.position.set(x,hipY,z); parent.add(p);
     const up=new THREE.Mesh(new THREE.CylinderGeometry(r*1.3,r*0.95,len*0.55,18),mat); up.position.y=-len*0.28; p.add(up);
     const knee=new THREE.Mesh(new THREE.SphereGeometry(r*0.98,14,14),mat); knee.position.y=-len*0.55; p.add(knee);
@@ -715,7 +715,7 @@ function legColumn(parent,x,hipY,z,len,r,mat,phase,nailMat){
 }
 // 獣脚類の腕（肩の肉塊＋上腕＋肘＋前腕＋2本の爪）
 function armTheropod(parent,x,y,z,s,mat,clawMat){
-    blob(parent,x,y+0.02*s,z-0.03*s,0.12*s,1,1,1,mat);                        // 肩のつけ根
+    blob(parent,x,y+0.02*s,z-0.03*s,0.085*s,1,1,1,mat);                       // 肩のつけ根
     const a=new THREE.Group(); a.position.set(x,y,z); parent.add(a);
     const up=new THREE.Mesh(new THREE.CylinderGeometry(0.055*s,0.042*s,0.24*s,10),mat); up.position.set(0,-0.11*s,0.03*s); up.rotation.x=0.6; a.add(up);
     const elbow=new THREE.Mesh(new THREE.SphereGeometry(0.05*s,10,10),mat); elbow.position.set(0,-0.22*s,0.1*s); a.add(elbow);
@@ -742,7 +742,7 @@ function build_trex(){
     blob(head,0,0.06,0.06,0.2,1.05,1.0,1.15,skin);                            // 頭骨
     spine(head,[[0,0.04,0.16],[0,0.0,0.4],[0,-0.02,0.66]],[0.19,0.16,0.11],skin,24,14); // 鼻先
     blob(head,0,-0.14,0.42,0.14,1.0,0.7,1.6,skin);                            // 下顎
-    blob(head,0,0.2,0.06,0.1,1.6,0.7,1.0,skin);                              // 眉の隆起
+    blob(head,0,0.17,0.08,0.09,1.4,0.6,1.0,skin);                            // 眉の隆起
     const nostrilL=blob(head,-0.06,0.02,0.6,0.02,1,1,1,dark), nostrilR=blob(head,0.06,0.02,0.6,0.02,1,1,1,dark);
     teeth(head,-0.06,0.66,0.11,5,0.1,cream);
     eyeBall(head,0.16,0.13,0.28,0.058);
@@ -758,7 +758,7 @@ function build_tri(){
     spine(g,[[0,0.98,-1.0],[0,1.05,-0.5],[0,1.08,0.05],[0,1.02,0.55],[0,0.95,0.9],[0,0.9,1.12]],
             [0.12,0.48,0.54,0.46,0.34,0.26], skin);
     blob(g,0,0.75,0.1,0.5,0.95,0.72,1.2,belly);
-    blob(g,0,0.92,0.7,0.34,1.0,1.0,1.0,skin);                                 // 肩のつけ根
+    blob(g,0,0.92,0.7,0.26,1.0,0.95,1.05,skin);                               // 肩のつけ根
     // 頭：丸い頭骨＋くちばし＋ドームのフリル
     const head=new THREE.Group(); head.position.set(0,0.9,1.08); g.add(head);
     blob(head,0,0,0.08,0.24,1.1,1.0,1.1,skin);
@@ -769,9 +769,9 @@ function build_tri(){
     frill.scale.set(1.2,0.42,1.0); frill.position.set(0,0.98,0.48); frill.rotation.x=-0.5; g.add(frill);
     blob(g,0,0.95,0.55,0.28,1.2,0.9,0.7,skin);                                // フリルのつけ根
     for(let i=0;i<7;i++){ const a=(i/6-0.5)*2.2; const bump=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.15,6),cream);
-        bump.position.set(Math.sin(a)*0.62,1.15+Math.cos(a)*0.02,0.34-Math.cos(a)*0.15); bump.rotation.x=-1.2; g.add(bump); }
-    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.32,10),cream); nose.position.set(0,1.0,1.32); nose.rotation.x=-0.6; g.add(nose);
-    [[-0.2,1.16,1.06],[0.2,1.16,1.06]].forEach(pp=>{ const h=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.56,10),cream); h.position.set(pp[0],pp[1],pp[2]); h.rotation.x=-0.35; g.add(h); });
+        bump.position.set(Math.sin(a)*0.62,1.15+Math.cos(a)*0.02,0.34-Math.cos(a)*0.15); bump.rotation.x=-0.3; bump.rotation.z=Math.sin(a)*0.7; g.add(bump); }
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.32,10),cream); nose.position.set(0,1.02,1.28); nose.rotation.x=0.35; g.add(nose);
+    [[-0.19,1.14,1.12],[0.19,1.14,1.12]].forEach(pp=>{ const h=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.56,10),cream); h.position.set(pp[0],pp[1],pp[2]); h.rotation.x=0.55; g.add(h); });
     const tail=new THREE.Group(); tail.position.set(0,0.95,-0.92); g.add(tail); spine(tail,[[0,0,0.12],[0,-0.05,-0.4],[0,-0.12,-0.82]],[0.26,0.15,0.03],skin); g.userData.tail=tail;
     g.userData.legs=[ legColumn(g,-0.36,0.55,0.5,0.55,0.15,skin,0,dark), legColumn(g,0.36,0.55,0.5,0.55,0.15,skin,Math.PI,dark),
                       legColumn(g,-0.36,0.6,-0.55,0.6,0.16,skin,Math.PI,dark), legColumn(g,0.36,0.6,-0.55,0.6,0.16,skin,0,dark) ];
@@ -795,7 +795,7 @@ function build_stego(){
         const geo=new THREE.ExtrudeGeometry(shp,{depth:0.05,bevelEnabled:true,bevelThickness:0.015,bevelSize:0.015,bevelSegments:1});
         const pl=new THREE.Mesh(geo,plate); pl.position.set((i%2?0.03:-0.03),c.y,c.z); pl.rotation.y=Math.PI*0.5; g.add(pl); }
     const tail=new THREE.Group(); tail.position.set(0,1.05,-1.02); g.add(tail); spine(tail,[[0,0,0.1],[0,-0.05,-0.5],[0,-0.12,-0.95]],[0.24,0.13,0.04],skin); g.userData.tail=tail;
-    [[-0.12,-0.3],[0.12,-0.3],[-0.1,-0.55],[0.1,-0.55]].forEach(pp=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.34,6),cream); sp.position.set(pp[0],0.05,pp[1]); sp.rotation.x=-2.0; sp.rotation.z=pp[0]*1.5; tail.add(sp); });
+    [[-0.12,-0.3],[0.12,-0.3],[-0.1,-0.55],[0.1,-0.55]].forEach(pp=>{ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.34,6),cream); sp.position.set(pp[0],0.02,pp[1]); sp.rotation.x=-0.8; sp.rotation.z=pp[0]*2.2; tail.add(sp); });
     g.userData.legs=[ legColumn(g,-0.34,0.5,0.55,0.5,0.13,skin,0,dark), legColumn(g,0.34,0.5,0.55,0.5,0.13,skin,Math.PI,dark),
                       legColumn(g,-0.36,0.72,-0.55,0.72,0.16,skin,Math.PI,dark), legColumn(g,0.36,0.72,-0.55,0.72,0.16,skin,0,dark) ];
     return g;
@@ -837,7 +837,7 @@ function build_raptor(){
     armTheropod(g,-0.18,1.2,0.5,0.85,skin,cream); armTheropod(g,0.18,1.2,0.5,0.85,skin,cream);
     const tail=new THREE.Group(); tail.position.set(0,1.05,-0.42); tail.rotation.x=-0.1; g.add(tail); spine(tail,[[0,0,0.1],[0,0.02,-0.5],[0,0.04,-1.0],[0,0.05,-1.45]],[0.14,0.1,0.05,0.02],skin); g.userData.tail=tail;
     const legs=[ legDigit(g,-0.16,0.72,0.05,0.85,skin,0,dark), legDigit(g,0.16,0.72,0.05,0.85,skin,Math.PI,dark) ];
-    legs.forEach(p=>{ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.26,6),cream); claw.position.set(0,-0.64,0.24); claw.rotation.x=-1.3; p.add(claw); });
+    legs.forEach(p=>{ const claw=new THREE.Mesh(new THREE.ConeGeometry(0.045,0.2,6),cream); claw.position.set(0,-0.82,0.16); claw.rotation.x=0.4; p.add(claw); });
     g.userData.legs=legs;
     return g;
 }
@@ -894,12 +894,12 @@ function build_ptera(){
     const head=new THREE.Group(); head.position.set(0,Y+0.12,0.6); g.add(head);
     blob(head,0,0,0.0,0.11,0.85,0.95,1.15,skin);                              // 頭
     const beak=new THREE.Mesh(new THREE.ConeGeometry(0.065,0.72,10),cream); beak.position.set(0,-0.01,0.44); beak.rotation.x=Math.PI*0.5; head.add(beak);
-    const cr=new THREE.Mesh(new THREE.ConeGeometry(0.085,0.5,8),crest); cr.position.set(0,0.14,-0.18); cr.rotation.x=-2.1; head.add(cr);
+    const cr=new THREE.Mesh(new THREE.ConeGeometry(0.085,0.5,8),crest); cr.position.set(0,0.12,-0.16); cr.rotation.x=-1.0; head.add(cr);
     eyeBall(head,0.07,0.03,0.08,0.033);
     const wings=[];
     [-1,1].forEach(sgn=>{
         const w=new THREE.Group(); w.position.set(sgn*0.14,Y+0.02,0.05); g.add(w);
-        blob(w,0,0,0,0.08,1,1,1,skin);                                        // 肩のつけ根
+        blob(w,0,0,0,0.06,1,1,1,skin);                                        // 肩のつけ根
         const humerus=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.035,0.5,10),skin); humerus.position.set(sgn*0.25,0,0); humerus.rotation.z=Math.PI*0.5; w.add(humerus);
         const elbow=new THREE.Mesh(new THREE.SphereGeometry(0.04,10,10),skin); elbow.position.set(sgn*0.5,0,0); w.add(elbow);
         const finger=new THREE.Mesh(new THREE.CylinderGeometry(0.032,0.012,0.95,10),skin); finger.position.set(sgn*0.95,0,-0.05); finger.rotation.z=Math.PI*0.5; finger.rotation.x=0.1; w.add(finger);
