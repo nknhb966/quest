@@ -676,10 +676,11 @@ Chunk.prototype.mirrorX=function(){
   for(const [key,c] of this.v){ const p=key.split("|"); const ix=+p[0]; if(ix!==0) add.push([-ix,+p[1],+p[2],c]); }
   for(const a of add) this.set(a[0],a[1],a[2],a[3]);
 };
-// 目：前(+z)へ少し出した大きめの黒目ブロック＋上に小さなきらめき（黒が主役）
+// 目：適切なサイズの黒目を左右に。中心から必ず離して、正面から見ても両目がつながらない
 Chunk.prototype.eye=function(x,y,z){
-  this.box(x-0.09,y-0.09,z-0.03, x+0.09,y+0.09,z+0.16, EYE);      // 大きめの黒目（前に出して確実に見える）
-  this.box(x-0.015,y+0.01,z+0.13, x+0.015,y+0.05,z+0.17, 0xffffff);  // きらめき（黒目前面の中央に1マス）
+  const s = x<0 ? -1 : 1;
+  const cx = s*Math.max(0.11, Math.abs(x));                 // 内側は最低0.11。中央(index0)を空けて両目を分離
+  this.box(cx-0.045, y-0.06, z-0.03, cx+0.045, y+0.06, z+0.15, EYE);  // 前に出して正面から見える黒目
 };
 Chunk.prototype.build=function(){
   const pos=[],nor=[],col=[],idx=[]; let vi=0; const H=VOX*0.5, v=this.v;
