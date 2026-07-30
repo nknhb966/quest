@@ -620,7 +620,7 @@ const dog = new THREE.Group();          // 相棒のルート（位置・向き�
  *  小さな立方体(VOX)で恐竜を「塗り」、内部面を省いた1枚のメッシュに結合。
  *  脚・尾・翼は別グループにして userData.legs / tail / wings に入れるので、
  *  既存の updateDog が歩行・尻尾ゆれ・羽ばたきをそのまま適用します。         */
-const VOX=0.12;                         // 立方体サイズ（区別がつく粗さ）
+const VOX=0.04;                         // 立方体サイズ（従来0.12の1/3＝より細かい3Dドット）
 const EYE=0x111111, WHTE=0xf2ead2;
 const _voxMat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.82, metalness:0.02, side:THREE.DoubleSide});
 function _rgb(hex){ return [((hex>>16)&255)/255, ((hex>>8)&255)/255, (hex&255)/255]; }
@@ -653,7 +653,7 @@ Chunk.prototype.cone=function(bx,by,bz,tx,ty,tz,rBase,c){
   const N=7; for(let i=0;i<=N;i++){ const t=i/N, r=rBase*(1-t)+0.02;
     this.ellip(bx+(tx-bx)*t, by+(ty-by)*t, bz+(tz-bz)*t, r,r,r, c); }
 };
-Chunk.prototype.eye=function(x,y,z){ this.set(Math.round(x/VOX),Math.round(y/VOX),Math.round(z/VOX),EYE); };
+Chunk.prototype.eye=function(x,y,z){ this.ellip(x,y,z,0.055,0.055,0.055,EYE); };
 Chunk.prototype.build=function(){
   const pos=[],nor=[],col=[],idx=[]; let vi=0; const H=VOX*0.5, v=this.v;
   const has=(x,y,z)=>v.has(x+"|"+y+"|"+z);
@@ -894,22 +894,26 @@ dog.position.set(2,GROUND_Y,2);
  * ===================================================== */
 const COMPANIONS={};
 let companionKind=DEFAULT_KIND;
-function registerCompanion(key, def){
-    COMPANIONS[key]=def;
-    if(def.body){
-        def.body.updateMatrixWorld(true);
-        if(!def.body.userData.wings){                       // 飛行タイプ以外は足を接地(y=0)にそろえる
-            const bb=new THREE.Box3().setFromObject(def.body);
-            if(isFinite(bb.min.y)) def.body.position.y -= bb.min.y;
+function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
+// 実際のボクセル生成は「その相棒が必要になったとき」に一度だけ行う（起動を軽く保つ）
+function ensureBody(key){
+    const def=COMPANIONS[key]; if(!def) return null;
+    if(!def.body && def.builder){
+        const body=def.builder();
+        body.updateMatrixWorld(true);
+        if(!body.userData.wings){                       // 飛行タイプ以外は足を接地(y=0)にそろえる
+            const bb=new THREE.Box3().setFromObject(body);
+            if(isFinite(bb.min.y)) body.position.y -= bb.min.y;
         }
-        def.body.visible=(key===companionKind); dog.add(def.body);
+        body.visible=(key===companionKind); dog.add(body); def.body=body;
     }
-    refreshBuddyUI();
+    return def.body;
 }
-function activeBody(){ return (COMPANIONS[companionKind]||COMPANIONS[DEFAULT_KIND]).body; }
+function activeBody(){ return ensureBody(companionKind) || ensureBody(DEFAULT_KIND); }
 function setCompanion(kind){
     if(!COMPANIONS[kind]) kind=DEFAULT_KIND;
     companionKind=kind;
+    ensureBody(kind);                                   // 選ばれた種を（未生成なら）ここで生成
     for(const k in COMPANIONS){ if(COMPANIONS[k].body) COMPANIONS[k].body.visible=(k===kind); }
     refreshBuddyUI();
 }
@@ -945,7 +949,8 @@ DINOS.forEach(dn=>{
     registerCompanion(dn.key, {
         label:   dn.label,
         askLabel:(dn.label.split(" ")[0]||"🦖")+" きいてみる",
-        body:    dn.build(),
+        builder: dn.build,       // 生成関数だけ登録（実生成は選択時）
+        body:    null,
         lines:   dinoLines(dn.cry)
     });
 });
