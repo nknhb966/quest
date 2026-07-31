@@ -358,7 +358,7 @@
       </section>
       <section>
         <h3>🎮 移動</h3>
-        <p class="k">VR：左スティックで歩く／右スティックでスナップ回転<br>PC：WASD＋マウス（クリックで視点固定）<br>スマホ：画面左半分でスティック／右半分をなぞって見回す</p>
+        <p class="k">VR/AR：左スティックで歩く／右スティックでスナップ回転<br>右手の中指グリップを押しながら 右スティック上下＝サイトの高さ調整／左右＝相棒との距離調整<br>PC：WASD＋マウス（クリックで視点固定）<br>スマホ：画面左半分でスティック／右半分をなぞって見回す</p>
       </section>
     </div>
   </div>
@@ -419,8 +419,14 @@ const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット
 const DIG_BLOCK     = 0.85;              // 掘れるブロックの一辺（m）※マイクラ風の当たり判定
 const DIG_REACH     = 4.0;               // 掘れる距離（m）
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
-const DOG_Y         = -0.2;              // 犬の接地高さ補正（m。少し下げる）
-const DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）
+const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
+let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
+// VR/AR：右中指グリップ＋右スティックで調整するパラメータ
+const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
+const DOG_DIST_SPEED= 2.2;               // 相棒距離調整の速さ（m/秒）
+let worldBaseY=0, worldYAdjust=0;        // サイト（ワールド）全体の高さ微調整
+function adjustWorldHeight(dy){ if(typeof world==="undefined") return; worldYAdjust=Math.max(-2,Math.min(2, worldYAdjust+dy)); world.position.y = worldBaseY + worldYAdjust; }
+function adjustDogDist(dd){ DOG_FWD=Math.max(1.2, Math.min(5.5, DOG_FWD+dd)); }
 const DOG_STAY_R    = 7.0;               // ブロック横で待つ範囲（これ以上離れたらプレイヤーに付いてくる）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -670,6 +676,7 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     }
     siteRoot.position.y += SITE_Y_OFFSET / fit;      // 追加の微調整（既定0）
     world.updateMatrixWorld(true);
+    worldBaseY = world.position.y;        // 高さ調整の基準
     siteReady=true; updateSiteVis();
     document.body.classList.remove("loading");
 }, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; document.body.classList.remove("loading"); });
@@ -2384,16 +2391,24 @@ renderer.setAnimationLoop(()=>{
     renderer.render(scene,camera);
 });
 
-/* VR移動：左スティックで前後左右、右スティックXでスナップ回転 */
+/* VR移動：左スティックで前後左右、右スティックXでスナップ回転
+   右中指グリップ押下中は、右スティック 上下＝ワールド高さ／左右＝相棒との距離 を調整 */
 let snapCooldown=0;
 function handleVRLocomotion(dt){
     const s=renderer.xr.getSession(); if(!s) return;
-    let moveX=0,moveY=0,turn=0;
+    let moveX=0,moveY=0,turn=0, rGrip=false, rStickX=0, rStickY=0;
     for(const src of s.inputSources){
         const gp=src.gamepad; if(!gp) continue;
         const ax=gp.axes||[];
         if(src.handedness==="left"){ moveX=ax[2]||0; moveY=ax[3]||0; }
-        else if(src.handedness==="right"){ turn=ax[2]||0; }
+        else if(src.handedness==="right"){ turn=ax[2]||0; rStickX=ax[2]||0; rStickY=ax[3]||0;
+            rGrip = !!(gp.buttons && gp.buttons[1] && gp.buttons[1].pressed); }   // buttons[1]=中指グリップ(squeeze)
+    }
+    // 右中指グリップ＋右スティック：ワールド高さ（上下）＆相棒距離（左右）を調整
+    if(rGrip){
+        if(Math.abs(rStickY)>0.15) adjustWorldHeight(-rStickY*WORLD_H_SPEED*dt);   // 上に倒す(負)＝サイトを上げる
+        if(Math.abs(rStickX)>0.15) adjustDogDist(rStickX*DOG_DIST_SPEED*dt);        // 右＝相棒を遠ざける／左＝近づける
+        turn=0;   // 調整中はスナップ回転しない
     }
     // 移動（頭の向き基準）
     if(Math.abs(moveX)>0.15||Math.abs(moveY)>0.15){
