@@ -897,22 +897,32 @@ function build_fukuititan(){
   return g;
 }
 
-// 相棒の犬（マイクラのオオカミ風）
+// 相棒の犬（タン＆クリームの柴犬風）
 function build_dog(){
-  const g=new THREE.Group(); const M=0xdad3c3,D=0xa79f8c,N=0x241f1a,C=0xf1ecdf;
+  const g=new THREE.Group(); const M=0xc98f57,D=0x9a6a3a,C=0xf1e7d2,N=0x241f1a;
   const B=new Chunk();
-  B.box(-0.22,0.68,-0.5, 0.22,1.12,0.42, M);            // 胴
-  B.box(-0.19,0.7,-0.15, 0.19,0.92,0.4, C);             // 胸〜腹（明色）
-  B.box(-0.26,0.98,0.35, 0.26,1.48,0.92, M);            // 頭
-  B.box(-0.17,0.94,0.86, 0.17,1.2,1.18, M);             // 口先
-  B.box(-0.13,0.94,1.12, 0.13,1.06,1.22, N);            // 鼻
-  B.box(-0.14,1.04,1.02, 0.14,1.1,1.18, N);             // 口
-  B.box(-0.26,1.46,0.5, -0.12,1.74,0.66, M);            // 耳L（mirrorで右も）
-  B.eye(-0.15,1.26,0.92,1.0); B.eye(0.15,1.26,0.92,1.0);
+  B.box(-0.22,0.66,-0.5, 0.22,1.08,0.42, M);            // 胴
+  B.box(-0.19,0.66,-0.12, 0.19,0.9,0.42, C);            // 胸〜腹（クリーム）
+  B.box(-0.26,0.98,0.34, 0.26,1.46,0.9, M);             // 頭
+  B.box(-0.19,0.98,0.5, 0.19,1.18,0.9, C);              // ほほ（クリーム）
+  B.box(-0.15,0.96,0.84, 0.15,1.18,1.2, C);             // マズル
+  B.box(-0.12,0.94,1.14, 0.12,1.07,1.24, N);            // 鼻
+  B.box(-0.02,1.05,1.06, 0.02,1.12,1.22, N);            // 鼻筋
+  B.box(-0.16,1.06,1.04, 0.16,1.12,1.14, D);            // 口
+  B.box(-0.3,1.4,0.42, -0.14,1.82,0.6, M);              // 耳L（mirrorで右も）
+  B.box(-0.28,1.42,0.46, -0.16,1.7,0.58, D);            // 耳の内側（影）
+  B.eye(-0.15,1.24,0.9,1.0); B.eye(0.15,1.24,0.9,1.0);
   B.mirrorX(); g.add(B.build());
-  voxTail(g,0,1.05,-0.5,0.7,0.26,0.09,M);
-  g.userData.legs=[ voxLeg(g,-0.15,0.68,0.3,0.12,0.68,C,D,0), voxLeg(g,0.15,0.68,0.3,0.12,0.68,C,D,Math.PI),
-                    voxLeg(g,-0.15,0.68,-0.38,0.12,0.68,C,D,Math.PI), voxLeg(g,0.15,0.68,-0.38,0.12,0.68,C,D,0) ];
+  // 立ち上がってカールした尻尾（左右に振る）
+  const tail=new THREE.Group(); tail.position.set(0,1.0,-0.5); g.add(tail);
+  const tc=new Chunk();
+  tc.box(-0.07,-0.02,-0.06, 0.07,0.24,0.06, M);
+  tc.box(-0.07,0.2,0.0, 0.07,0.44,0.14, M);
+  tc.box(-0.07,0.38,0.08, 0.07,0.54,0.22, C);           // 先端（クリーム）
+  tc.mirrorX(); tail.add(tc.build());
+  g.userData.tail=tail;
+  g.userData.legs=[ voxLeg(g,-0.15,0.66,0.3,0.12,0.66,M,C,0), voxLeg(g,0.15,0.66,0.3,0.12,0.66,M,C,Math.PI),
+                    voxLeg(g,-0.15,0.66,-0.38,0.12,0.66,M,C,Math.PI), voxLeg(g,0.15,0.66,-0.38,0.12,0.66,M,C,0) ];
   return g;
 }
 // 恐竜のたまご（マイクラのドラゴンエッグ風）
@@ -1488,7 +1498,7 @@ function makeLabelSprite(text, color, width, y){
     c.strokeStyle="#"+color.toString(16).padStart(6,"0"); c.lineWidth=5; c.stroke();
     c.fillStyle="#"+color.toString(16).padStart(6,"0"); c.font="bold 54px sans-serif";
     c.textAlign="center"; c.textBaseline="middle"; c.fillText(text,128,50);
-    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv), transparent:true, depthTest:false}));
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv), transparent:true, depthTest:true, depthWrite:false}));
     spr.scale.set(width, width*96/256, 1); spr.position.set(0, y, 0.02);
     return spr;
 }
@@ -1499,7 +1509,7 @@ function updatePanelScale(){
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
         const h=(p.userData.height||PANEL_BASE_H)*s;
-        p.position.y = ARTIFACT_POP_Y + 0.7 + h*0.5;   // 出土品のやや上に浮かせる
+        p.position.y = ARTIFACT_POP_Y + 1.15 + h*0.5;   // 恐竜/出土品の上に、少し離して浮かせる
     });
 }
 
@@ -2557,7 +2567,8 @@ function updateDog(dt, now){
         if(body.userData.petals) body.userData.petals.rotation.y += (moving?0.012:0.004);
     }
     const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
-    if(body.userData.tail){ const tt=Math.sin(_dogWalkPhase*0.5)*(moving?0.2:0.05); body.userData.tail.rotation.y += (tt - body.userData.tail.rotation.y)*0.06; }
+    if(body.userData.tail){ const wag = moving ? Math.sin(_dogWalkPhase*1.3)*0.6 : Math.sin(now*0.009)*0.35;
+        body.userData.tail.rotation.y += (wag - body.userData.tail.rotation.y)*0.2; }   // 歩くとよく振る／待機もゆるく振る
 
     // お祝いジャンプ / 接地高さ
     if(petWiggle>0){ petWiggle-=dt; dog.rotation.y += Math.sin(now*0.02)*0.05; }
