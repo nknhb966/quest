@@ -235,7 +235,7 @@
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
     <h1 class="title">越前国府発掘クエスト</h1>
-    <p class="subtitle">遺跡を歩いて探して、出土品を掘り当てよう。相棒の恐竜と一緒に。</p>
+    <p class="subtitle">遺跡を歩いて探して、出土品や恐竜を掘り当てよう。相棒の犬と一緒に。</p>
 
     <p id="loadingNote"><i></i>遺跡データを読み込み中…（完了すると開始できます）</p>
     <div id="vrbtnwrap"></div>
@@ -261,8 +261,11 @@
         <div class="seg" id="segBuddy"></div>
       </div>
       <div class="opt wide">
-        <div class="lbl">相棒のサイズ <span id="buddyScaleVal">1.0×</span></div>
-        <input id="buddyScale" class="slider" type="range" min="1" max="2.5" step="0.1" value="1" aria-label="相棒のサイズ">
+        <div class="lbl">発掘する対象</div>
+        <div class="seg" id="segDig">
+          <button data-v="artifact" class="on">🏺 出土品</button>
+          <button data-v="dino">🦖 恐竜</button>
+        </div>
       </div>
       <div class="opt wide">
         <div class="lbl">コントローラー使用時の探知音（振動は常にON／素手のときは自動で音が鳴ります）</div>
@@ -421,6 +424,9 @@ const ART_FILES  = ["model01_small.glb","model02_small.glb","model03_small.glb",
                     "model05_small.glb","model06_small.glb","model07_small.glb","model08_small.glb"];
 const ART_IMGS   = ["40100","40200","40300","40400","40500","40600","40700","40800"]
                     .map(n=>IMG_BASE+n+"_kokufuhakkutsu3.png");
+// 恐竜の説明パネル画像（8種）。※パスは後で共有される予定。空文字のあいだはプレースホルダー表示。
+//   順番は DINOS と同じ：0ティラノ 1トリケラ 2ステゴ 3ブラキオ 4プテラノ 5フクイラプトル 6フクイサウルス 7フクイティタン
+const DINO_IMGS  = ["", "", "", "", "", "", "", ""];
 const TIME_LIMIT = 100; // タイムアタック秒数
 
 /* =====================================================
@@ -433,7 +439,18 @@ function loadTA(){ try{ return JSON.parse(localStorage.getItem(TA_KEY)||"[]"); }
 function saveTA(a){ localStorage.setItem(TA_KEY, JSON.stringify(a)); }
 // 発掘図鑑は「その回のプレイ」だけの記録。保存はせず、リロードで必ず空になる。
 try{ localStorage.removeItem(DEX_KEY); }catch(e){}
-let dexData = {};
+let dexArt = {}, dexDino = {};
+let curTarget = "artifact";                 // 発掘対象（発掘図鑑もこれに追従）
+let dexData = dexArt;
+function curImgs(){ return curTarget==="dino" ? DINO_IMGS : ART_IMGS; }
+function setDigTarget(target){
+    curTarget = (target==="dino") ? "dino" : "artifact";
+    dexData = (curTarget==="dino") ? dexDino : dexArt;
+    chosenDigTarget = curTarget;
+    if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
+    if(typeof refreshDexHTML==="function") refreshDexHTML();
+    if(typeof updateGoal==="function") updateGoal();
+}
 function saveDex(){ /* 保存しない（リロードでリセットするため） */ }
 
 /* =====================================================
@@ -481,6 +498,14 @@ const sfxExcavate = ()=> chord([523,659,784,1047],0.09,"triangle",0.5);// 出土
 const sfxBark     = ()=>{ beep(520,0.08,0.3,"square"); setTimeout(()=>beep(430,0.1,0.28,"square"),90); };
 const sfxComplete = ()=> chord([523,659,784,1047,1319],0.11,"triangle",0.55);
 const sfxTimeUp   = ()=> chord([880,660,440,330],0.15,"sawtooth",0.4);
+// 恐竜の鳴き声（下降するうなり）
+function sfxCry(){
+    const t=audioCtx.currentTime;
+    [190,150,110].forEach((f,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type="sawtooth"; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(Math.max(50,f*0.55), t+0.45);
+        g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.22,t+0.03); g.gain.exponentialRampToValueAtTime(0.0001,t+0.55);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+0.6); });
+}
 
 /* =====================================================
  * シーン / レンダラ / カメラ / プレイヤーリグ
@@ -872,8 +897,46 @@ function build_fukuititan(){
   return g;
 }
 
-// 恐竜たちの定義（鳴き声からセリフを自動生成）
-const DEFAULT_KIND="trex";
+// 相棒の犬（マイクラのオオカミ風）
+function build_dog(){
+  const g=new THREE.Group(); const M=0xdad3c3,D=0xa79f8c,N=0x241f1a,C=0xf1ecdf;
+  const B=new Chunk();
+  B.box(-0.22,0.68,-0.5, 0.22,1.12,0.42, M);            // 胴
+  B.box(-0.19,0.7,-0.15, 0.19,0.92,0.4, C);             // 胸〜腹（明色）
+  B.box(-0.26,0.98,0.35, 0.26,1.48,0.92, M);            // 頭
+  B.box(-0.17,0.94,0.86, 0.17,1.2,1.18, M);             // 口先
+  B.box(-0.13,0.94,1.12, 0.13,1.06,1.22, N);            // 鼻
+  B.box(-0.14,1.04,1.02, 0.14,1.1,1.18, N);             // 口
+  B.box(-0.26,1.46,0.5, -0.12,1.74,0.66, M);            // 耳L（mirrorで右も）
+  B.eye(-0.15,1.26,0.92,1.0); B.eye(0.15,1.26,0.92,1.0);
+  B.mirrorX(); g.add(B.build());
+  voxTail(g,0,1.05,-0.5,0.7,0.26,0.09,M);
+  g.userData.legs=[ voxLeg(g,-0.15,0.68,0.3,0.12,0.68,C,D,0), voxLeg(g,0.15,0.68,0.3,0.12,0.68,C,D,Math.PI),
+                    voxLeg(g,-0.15,0.68,-0.38,0.12,0.68,C,D,Math.PI), voxLeg(g,0.15,0.68,-0.38,0.12,0.68,C,D,0) ];
+  return g;
+}
+// 恐竜のたまご（マイクラのドラゴンエッグ風）
+function build_egg(){
+  const g=new THREE.Group(); const M=0x33305a,S=0x6a5fa0,L=0x9f95d0;
+  const B=new Chunk();
+  B.ellip(0,0.44,0, 0.26,0.4,0.26, M);                  // 卵本体（縦長）
+  B.ellip(0,0.74,0, 0.13,0.16,0.13, M);                 // 上のとがり
+  B.box(-0.06,0.34,0.2, 0.08,0.5,0.3, S);               // 斑点
+  B.box(0.12,0.54,0.02, 0.24,0.68,0.16, S);
+  B.box(-0.24,0.4,-0.04, -0.12,0.54,0.1, S);
+  B.box(-0.05,0.62,0.16, 0.05,0.7,0.24, L);             // 光沢点
+  B.mirrorX(); g.add(B.build());
+  return g;
+}
+
+const DEFAULT_KIND="dog";
+// 相棒の犬のセリフ
+function dogLines(){
+  return { start:"いっしょに さがそうワン！", found:"みつけたワン！🎉", here:"ここ ほってワン！",
+    hintOk:"こっちワン！ ついてきて→", hintNg:"たぶん こっちワン…？", wrong:"…あれ、ちがったワン",
+    done:"ぜんぶ みつけたワン！", again:"おしい！ もう一回ワン？", pet:"うれしいワン！",
+    closer:"もっと 近くに来てワン！", digNow:"ここ 掘れるワン！" };
+}
 // 福井生まれ（フクイ〜）の恐竜は福井弁でしゃべる
 function fukuiLines(cry){
     return {
@@ -983,17 +1046,9 @@ function refreshBuddyUI(){
     if(btn) btn.textContent="相棒："+((cur.label||"").split(" ")[0]||"🦖");
 }
 
-// 相棒＝恐竜8種を登録（メニューの「相棒」で選べる。既定はティラノ）
-DINOS.forEach(dn=>{
-    registerCompanion(dn.key, {
-        label:   dn.label,
-        askLabel:(dn.label.split(" ")[0]||"🦖")+" きいてみる",
-        builder: dn.build,       // 生成関数だけ登録（実生成は選択時）
-        body:    null,
-        lines:   (dn.key.indexOf("fukui")===0 ? fukuiLines : dinoLines)(dn.cry)
-    });
-});
-setCompanion(DEFAULT_KIND);
+// 相棒＝犬（1種のみ。切り替えUIは自動的に隠れる）
+registerCompanion("dog", { label:"🐶 いぬ", askLabel:"🐶 きいてみる", builder:build_dog, body:null, lines:dogLines() });
+setCompanion("dog");
 
 // 吹き出しスプライト
 const bubble = (function(){
@@ -1107,14 +1162,14 @@ function updateDexPanel(){
  * ゲーム状態
  * ===================================================== */
 const GAME = {
-    active:false, mode:"collect", tool:"wide", desktop:false,
+    active:false, mode:"collect", tool:"wide", desktop:false, digTarget:"artifact",
     collectedCount:0,          // コレクション：発掘済み数（＝難易度ティア）
     targets:[],                // アクティブな埋蔵ターゲット
     recent:[],                 // 直近に出したスポット（同じ場所の再出現を防ぐ）
     doneIdx:new Set(),         // 発掘済みスポット（リセットまで再出現しない）
     timeLeft:TIME_LIMIT, score:0, endT:0,
 };
-let chosenMode="collect", chosenTool="wide";
+let chosenMode="collect", chosenTool="wide", chosenDigTarget="artifact";
 let scanSoundOn=false;   // 既定：コントローラー使用時は探知音を鳴らさない
 
 /* 難易度：ティア0(易)→7(難)。探知半径↓ / 必要掘り回数↑ / 犬の信頼度↓ / 遠く */
@@ -1216,6 +1271,42 @@ function clearTargets(){
  * 発掘演出（出土品ポップアウト）
  * ===================================================== */
 const popAnims=[];
+// ── 恐竜モードの発掘演出：岩→たまご→孵化→恐竜（鳴き声＋セリフ） ──
+const dinoDigModels=new Array(8).fill(null);
+const eggHatch=[];
+function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
+function dinoEmergeLine(dn){
+    const name=(dn.label||"").replace(/^\S+\s*/,"");
+    if((dn.key||"").indexOf("fukui")===0) return `${name}やざ！ ${dn.cry}！`;   // 福井弁
+    return `${name}だ！ ${dn.cry}！`;
+}
+function revealDino(idx, pos, color){
+    const egg=build_egg(); makeFit(egg,0.55); scene.add(egg);
+    egg.position.set(pos.x, GROUND_Y, pos.z);
+    popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:ARTIFACT_POP_Y-0.25, t:0, dur:0.7 });
+    eggHatch.push({ egg, idx, pos:pos.clone(), color, at:performance.now()+1300, wob:0 });
+}
+function tickHatch(now, dt){
+    for(let i=eggHatch.length-1;i>=0;i--){ const e=eggHatch[i];
+        if(e.egg){ e.wob+=dt; e.egg.rotation.z=Math.sin(e.wob*11)*0.16*Math.min(1,e.wob*1.5); }  // 孵化前に揺れる
+        if(now>=e.at){
+            scene.remove(e.egg); sfxDig();
+            const dn=DINOS[e.idx];
+            let m=dinoDigModels[e.idx];
+            if(!m){ m=dn.build(); makeFit(m,1.0); scene.add(m); dinoDigModels[e.idx]=m; }
+            m.visible=true; m.position.set(e.pos.x, GROUND_Y, e.pos.z); m.rotation.set(0,Math.random()*Math.PI*2,0);
+            popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0 });
+            sfxCry(); vibrate(220,0.85);
+            bubble.say(dinoEmergeLine(dn), 3000);
+            showInfoPanel(e.idx, e.pos, e.color, DINO_IMGS[e.idx], (dn.label||"").replace(/^\S+\s*/,""));
+            eggHatch.splice(i,1);
+        }
+    }
+}
+function clearDinoReveal(){
+    eggHatch.forEach(e=>{ if(e.egg) scene.remove(e.egg); }); eggHatch.length=0;
+    dinoDigModels.forEach(m=>{ if(m) m.visible=false; });
+}
 function excavate(t){
     // 図鑑登録
     const firstTime = !dexData[t.idx]?.found;
@@ -1230,18 +1321,21 @@ function excavate(t){
     bubble.say(line("found"), 2600);
     dogCelebrate();
 
-    // モデルをポップアウト
-    const model = artModels[t.idx];
-    if(model){
-        model.visible=true;
-        model.position.set(t.pos.x, GROUND_Y, t.pos.z);
-        model.rotation.set(0,Math.random()*Math.PI*2,0);
-        popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
-    }
-    // オーラを出し続ける（出土品ごとに色を変えてパネルと対応づけ）
+    // オーラ（対象ごとの色でパネルと対応づけ）
     const aura = addAura(t.idx, t.pos);
-    // 情報パネルをその場に立てる（同じ色の帯＋番号＋つなぐ線で関連づけ）
-    showInfoPanel(t.idx, t.pos, aura.color);
+    if(GAME.digTarget==="dino"){
+        revealDino(t.idx, t.pos, aura.color);       // 岩を砕く→卵→孵化→恐竜（鳴き声＋セリフ）
+    } else {
+        // 出土品モデルをポップアウト＋説明パネル
+        const model = artModels[t.idx];
+        if(model){
+            model.visible=true;
+            model.position.set(t.pos.x, GROUND_Y, t.pos.z);
+            model.rotation.set(0,Math.random()*Math.PI*2,0);
+            popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
+        }
+        showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
+    }
 
     // ターゲット除去
     scene.remove(t.marker);
@@ -1315,16 +1409,24 @@ function clearAuras(){ auras.forEach(a=>scene.remove(a.group)); auras.length=0; 
 // 画像はカード形式（縦長）。実際の縦横比で作り、出土品のすぐ上に置く。
 const infoPanels=[];
 const PANEL_BASE_H = 1.725;     // パネルの高さ（m）※幅は画像の比率から決まる（1.15の1.5倍）
-function showInfoPanel(idx, pos, color){
-    texLoader.load(ART_IMGS[idx], tex=>{
-        tex.colorSpace=THREE.SRGBColorSpace;
-        const img=tex.image;
-        const ratio=(img&&img.width&&img.height)? img.width/img.height : 0.75;  // 幅/高さ（カード形式）
+function placeholderTex(title){
+    const cv=document.createElement("canvas"); cv.width=512; cv.height=683; const c=cv.getContext("2d");
+    c.fillStyle="#f4e8cc"; c.fillRect(0,0,512,683);
+    c.fillStyle="#c9b384"; c.fillRect(0,0,512,14); c.fillRect(0,669,512,14);
+    c.fillStyle="#efe3c2"; c.fillRect(40,120,432,300);
+    c.strokeStyle="#c9b384"; c.lineWidth=3; c.strokeRect(40,120,432,300);
+    c.fillStyle="rgba(150,120,60,.5)"; c.font="bold 120px sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText("🦖",256,270);
+    c.fillStyle="#6e5a2e"; c.font="bold 40px sans-serif"; c.fillText(title||"", 256, 500);
+    c.fillStyle="#9a7f4a"; c.font="bold 26px sans-serif"; c.fillText("説明パネル（準備中）", 256, 560);
+    const tex=new THREE.CanvasTexture(cv); if("colorSpace" in tex) tex.colorSpace=THREE.SRGBColorSpace; tex.needsUpdate=true; return tex;
+}
+function showInfoPanel(idx, pos, color, imgUrl, title){
+    imgUrl = (imgUrl===undefined) ? ART_IMGS[idx] : imgUrl;
+    const build=(tex, ratio)=>{
         const h=PANEL_BASE_H, w=h*ratio;
         const grp=new THREE.Group();
         const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
         grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat));
-        // 出土品と同じ色の枠＋「No.xx」ラベル（どの出土品の説明かを示す）
         const frame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(w*1.04, h*1.04)),
             new THREE.LineBasicMaterial({color}));
         grp.add(frame);
@@ -1333,13 +1435,20 @@ function showInfoPanel(idx, pos, color){
         grp.userData.face=true; grp.userData.idx=idx;
         grp.userData.width=w; grp.userData.height=h; grp.userData.spot=pos.clone();
         scene.add(grp); infoPanels.push(grp);
-        // 出土品とパネルを結ぶ線（同色）
         const lineMat=new THREE.LineBasicMaterial({color, transparent:true, opacity:0.5});
         const lineGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
         const link=new THREE.Line(lineGeo, lineMat); scene.add(link);
         grp.userData.link=link;
         updatePanelScale();
-    });
+    };
+    if(imgUrl){
+        texLoader.load(imgUrl,
+            tex=>{ tex.colorSpace=THREE.SRGBColorSpace; const img=tex.image; const ratio=(img&&img.width&&img.height)? img.width/img.height : 0.75; build(tex, ratio); },
+            undefined,
+            ()=>{ build(placeholderTex(title||("No."+(idx+1))), 0.75); });   // 読み込み失敗時もプレースホルダー
+    } else {
+        build(placeholderTex(title||("No."+(idx+1))), 0.75);                 // 画像未設定（恐竜パネル準備中）
+    }
 }
 // パネル上の小さなラベル
 function makeLabelSprite(text, color, width, y){
@@ -1423,9 +1532,10 @@ const dexGrid=document.getElementById("dexGrid");
 // トレカをタップ → 前面に大きく表示（読みやすく）
 const dexView=document.getElementById("dexView"), dexViewCard=document.getElementById("dexViewCard");
 function openDexView(i){
-    const e=dexData[i], found=e&&e.found;
+    const e=dexData[i], found=e&&e.found; const u=curImgs()[i];
     dexViewCard.className="dexview-card"+(found?"":" locked");
-    const art = found ? '<div class="art"><img src="'+ART_IMGS[i]+'" alt="出土品'+(i+1)+'"></div>'
+    const art = found ? (u ? '<div class="art"><img src="'+u+'" alt="No.'+(i+1)+'"></div>'
+                           : '<div class="art"><span class="q">'+(curTarget==="dino"?"🦖":"？")+'</span></div>')
                       : '<div class="art"><span class="q">？</span></div>';
     const meta = found ? '<div class="meta">発掘済み<br>'+((e.date||"")+(e.time? " "+e.time : ""))+'</div>'
                        : '<div class="meta">未発掘</div>';
@@ -1450,7 +1560,9 @@ function refreshDexHTML(){
         const stamp=document.createElement("span"); stamp.className="stamp";
         if(e?.found){
             found++;
-            const img=document.createElement("img"); img.src=ART_IMGS[i]; img.alt="出土品"+(i+1); art.appendChild(img);
+            const u=curImgs()[i];
+            if(u){ const img=document.createElement("img"); img.src=u; img.alt="No."+(i+1); art.appendChild(img); }
+            else { const q=document.createElement("span"); q.className="q"; q.textContent=(curTarget==="dino"?"🦖":"？"); art.appendChild(q); }
             if(e.isNew){ const st=document.createElement("span"); st.className="newstamp"; st.textContent="NEW!"; card.appendChild(st); }
             stamp.innerHTML = (e.date||"") + (e.time? '<br><span class="t">'+e.time+'</span>' : "");
         } else {
@@ -1474,11 +1586,7 @@ const menu=document.getElementById("menu");
 document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; });
 document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segTool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenTool=b.dataset.v; });
 document.querySelectorAll("#segSound button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segSound button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); scanSoundOn=(b.dataset.v==="on"); });
-(function(){ const el=document.getElementById("buddyScale"), lab=document.getElementById("buddyScaleVal");
-    if(!el) return;
-    const upd=()=>{ buddyScale=parseFloat(el.value)||1; if(lab) lab.textContent=buddyScale.toFixed(1)+"×"; applyBuddyScale(); };
-    el.addEventListener("input",upd); el.addEventListener("change",upd); upd();
-})();
+document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); setDigTarget(b.dataset.v); });
 document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
@@ -1489,6 +1597,7 @@ document.getElementById("dexReset").onclick=()=>{
     if(typeof dexPanel!=="undefined") dexPanel.draw();
     // ワールド上の発掘物・演出を消す
     artModels.forEach(m=>{ if(m) m.visible=false; });
+    clearDinoReveal();
     infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
     clearAuras();
     popAnims.length=0;
@@ -1508,12 +1617,15 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
+    setDigTarget(chosenDigTarget);   // 発掘対象を確定（図鑑もこの対象に切替）
+    clearDinoReveal();
     GAME.collectedCount=0; GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.endT=performance.now()+TIME_LIMIT*1000;
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
     clearTargets();
     // 出土品モデルを一旦隠す
     artModels.forEach(m=>{ if(m) m.visible=false; });
+    clearDinoReveal();
     infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
     clearAuras();
     // 初期ターゲット（サイト読込・発掘スポット確定後に配置）
@@ -1624,6 +1736,7 @@ function dexFoundCount(){ let n=0; for(let i=0;i<8;i++) if(dexData[i]&&dexData[i
 function clearRunWorld(){
     clearTargets();
     artModels.forEach(m=>{ if(m) m.visible=false; });
+    clearDinoReveal();
     infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
     clearAuras(); popAnims.length=0;
 }
@@ -1685,7 +1798,8 @@ function updateTAButton(){
 /* HUD更新 */
 function updateGoal(){
     const el=document.getElementById("dGoal");
-    if(GAME.mode==="collect"){ el.textContent=`コレクション：${GAME.collectedCount} / 8 発掘（残り${8-GAME.collectedCount}）`; }
+    const tgt=(GAME.digTarget==="dino")?"恐竜":"出土品";
+    if(GAME.mode==="collect"){ el.textContent=`コレクション：${tgt} ${GAME.collectedCount} / 8 発掘（残り${8-GAME.collectedCount}）`; }
     else if(TA.state==="ready")    { el.textContent="タイムアタック：スタート待ち（右トリガー / スペース）"; }
     else if(TA.state==="countdown"){ el.textContent="タイムアタック：まもなくスタート！"; }
     else if(TA.state==="results")  { el.textContent=`タイムアタック：結果 ${TA.lastScore}pt`; }
@@ -2109,6 +2223,7 @@ renderer.setAnimationLoop(()=>{
         a.obj.position.set(a.x, y, a.z); a.obj.rotation.y+=0.12;
         if(r>=1){ popAnims.splice(i,1); }
     }
+    tickHatch(now, dt);   // 恐竜モード：たまごの揺れ＆孵化
     // 発掘済みモデルを回転
     artModels.forEach(m=>{ if(m&&m.visible) m.rotation.y+=0.005; });
     // 情報パネルをカメラへ向ける
