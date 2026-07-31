@@ -424,9 +424,9 @@ let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセッ
 // VR/AR：右中指グリップ＋右スティックで調整するパラメータ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
 const DOG_DIST_SPEED= 2.2;               // 相棒距離調整の速さ（m/秒）
-let worldBaseY=0, worldYAdjust=0;        // サイト（ワールド）全体の高さ微調整
-function adjustWorldHeight(dy){ if(typeof world==="undefined") return; worldYAdjust=Math.max(-2,Math.min(2, worldYAdjust+dy)); world.position.y = worldBaseY + worldYAdjust; }
-function adjustDogDist(dd){ DOG_FWD=Math.max(1.2, Math.min(5.5, DOG_FWD+dd)); }
+let worldBaseY=0, worldYAdjust=0;        // 全コンテンツ(stage)の高さ微調整
+function adjustWorldHeight(dy){ if(typeof stage==="undefined") return; worldYAdjust=Math.max(-1.5,Math.min(2.5, worldYAdjust+dy)); stage.position.y = worldYAdjust; }
+function adjustDogDist(dd){ DOG_FWD=Math.max(0.5, Math.min(5.5, DOG_FWD+dd)); }
 const DOG_STAY_R    = 7.0;               // ブロック横で待つ範囲（これ以上離れたらプレイヤーに付いてくる）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -550,6 +550,7 @@ scene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
 const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
 sun.position.set(30, 60, 20); scene.add(sun);
 scene.add(new THREE.AmbientLight(0x404060, 0.5));
+const stage = new THREE.Group(); scene.add(stage);   // プレイヤー以外の全コンテンツ（高さ調整でまとめて上下）
 
 // VRButton / ARButton（どちらでも遊べる）
 document.getElementById("vrbtnwrap").appendChild(VRButton.createButton(renderer));
@@ -597,7 +598,10 @@ controllers.forEach(c=>{
     // ハンドトラッキング：右手のつまみ＝進行/相棒に聞く／左手のつまみ＝道具の持ち替え
     c.addEventListener("selectstart", ()=>{
         if(!GAME.active || !c.userData.isHand) return;
-        if(c.userData.handedness==="right"){ if(!taAdvance()) askDog(); }
+        if(c.userData.handedness==="right"){
+            if(dexHolder.visible && dexPanel.hover>=0){ toggleHologram(dexPanel.hover); }
+            else if(!taAdvance()) askDog();
+        }
         else { toggleTool(); }
     });
 });
@@ -617,7 +621,7 @@ try{
 const gltfLoader = new GLTFLoader();
 let siteReady=false;
 document.body.classList.add("loading");   // 読み込み完了までゲーム開始を無効化
-const world = new THREE.Group(); scene.add(world);
+const world = new THREE.Group(); stage.add(world);
 const ARTPOS = new Array(8).fill(null);   // 各出土品の確定ワールド座標（地面）
 let siteRoot=null, siteVisible=true, inAR=false;
 // サイト非表示時の代替地面（ARでは実世界が地面なので出さない）
@@ -626,7 +630,7 @@ const fallbackGround=new THREE.Group();
     const disc=new THREE.Mesh(new THREE.CircleGeometry(30,48), new THREE.MeshStandardMaterial({color:0x241f33, roughness:1}));
     disc.rotation.x=-Math.PI/2; disc.position.y=GROUND_Y-0.02; fallbackGround.add(disc);
     const grid=new THREE.GridHelper(60,40,0x6a5fa0,0x3a3160); grid.position.y=GROUND_Y; grid.material.transparent=true; grid.material.opacity=0.5; fallbackGround.add(grid);
-    fallbackGround.visible=false; scene.add(fallbackGround);
+    fallbackGround.visible=false; stage.add(fallbackGround);
 })();
 function updateSiteVis(){
     if(siteRoot) siteRoot.visible = siteVisible;                 // ARでも表示/非表示どちらでも体験可
@@ -692,7 +696,7 @@ ART_FILES.forEach((f,idx)=>{
         const size=box.getSize(new THREE.Vector3());
         const fit=ART_TARGET_H/Math.max(size.x,size.y,size.z,0.001);
         o.scale.setScalar(fit);
-        o.visible=false; scene.add(o); artModels[idx]=o;
+        o.visible=false; stage.add(o); artModels[idx]=o;
     }, undefined, ()=>{ /* 失敗しても続行 */ });
 });
 // 図鑑カード用の画像テクスチャ（発掘演出パネル）
@@ -1027,7 +1031,7 @@ const DINOS=[
 const BUDDY_BASE=0.35; let buddyScale=1, bubbleSpr=null;   // 相棒の基準スケール × ユーザー倍率(1.0〜2.5)
 function applyBuddyScale(){ dog.scale.setScalar(BUDDY_BASE*buddyScale);
     if(bubbleSpr) bubbleSpr.scale.set(4.8/buddyScale, 1.6/buddyScale, 1); }   // キャラが大きくてもセリフの大きさは一定に
-scene.add(dog);
+stage.add(dog);
 applyBuddyScale();
 dog.position.set(2,GROUND_Y,2);
 
@@ -1159,27 +1163,28 @@ const dexPanel=(function(){
     const tex=new THREE.CanvasTexture(cv);
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, depthTest:false});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.375), mat);
-    // 位置は左手の少し上。向きは毎フレーム カメラを向く（updateDexPanelでビルボード）
     mesh.position.set(0,0.10,-0.06); mesh.renderOrder=999;
     dexHolder.add(mesh);
     const imgs=ART_IMGS.map(src=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>draw(); im.src=src; return im; });
     function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+    const cols=2, pad=18, gx=28, gyy=96, cw=(496-gx-28-pad)/cols, chh=(624-96-20-pad*3)/4;
+    function rectOf(i){ const r=(i/cols)|0,c=i%cols; return {x:gx+c*(cw+pad), y:gyy+r*(chh+pad), w:cw, h:chh}; }
+    let hoverIdx=-1;
     function draw(){
         ctx.clearRect(0,0,512,640);
         ctx.fillStyle="rgba(18,12,32,0.94)"; roundRect(ctx,8,8,496,624,26); ctx.fill();
         ctx.strokeStyle="#d8b46a"; ctx.lineWidth=5; ctx.stroke();
         let found=0; for(let i=0;i<8;i++) if(dexData[i]&&dexData[i].found) found++;
-        ctx.fillStyle="#f0d98a"; ctx.font="bold 42px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-        ctx.fillText("発掘図鑑  "+found+" / 8", 256, 54);
-        const cols=2, pad=18, gx=28, gy=96, cw=(496-gx-28-pad)/cols, chh=(624-96-20-pad*3)/4;
+        ctx.fillStyle="#f0d98a"; ctx.font="bold 40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText((curTarget==="dino"?"🦖 恐竜図鑑  ":"🏺 発掘図鑑  ")+found+" / 8", 256, 52);
         for(let i=0;i<8;i++){
-            const r=(i/cols)|0, c=i%cols, x=gx+c*(cw+pad), y=gy+r*(chh+pad), e=dexData[i];
+            const R=rectOf(i), x=R.x,y=R.y, e=dexData[i];
             if(e&&e.found){
                 ctx.fillStyle="#efe2c4"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
                 if(curTarget==="dino"){
                     ctx.textAlign="center"; ctx.textBaseline="middle";
-                    ctx.fillStyle="rgba(150,120,60,.5)"; ctx.font="bold 44px sans-serif"; ctx.fillText("🦖", x+cw/2, y+chh/2-16);
-                    ctx.fillStyle="#6e5a2e"; ctx.font="bold 20px sans-serif"; ctx.fillText(curName(i), x+cw/2, y+chh/2+22);
+                    ctx.fillStyle="rgba(150,120,60,.5)"; ctx.font="bold 40px sans-serif"; ctx.fillText("🦖", x+cw/2, y+chh/2-14);
+                    ctx.fillStyle="#6e5a2e"; ctx.font="bold 22px sans-serif"; ctx.fillText(curName(i), x+cw/2, y+chh/2+22);
                 } else {
                     const im=imgs[i];
                     if(im&&im.complete&&im.naturalWidth){ const s=Math.min(cw/im.naturalWidth,(chh-16)/im.naturalHeight), iw=im.naturalWidth*s, ih=im.naturalHeight*s;
@@ -1193,12 +1198,15 @@ const dexPanel=(function(){
                 ctx.textAlign="right"; ctx.font="bold 18px sans-serif";
                 ctx.fillText((e.date||"")+(e.time?" "+e.time:""), x+cw-8, y+9);
             }
+            if(i===hoverIdx){ ctx.strokeStyle="#ffe066"; ctx.lineWidth=6; roundRect(ctx,x-2,y-2,cw+4,chh+4,14); ctx.stroke(); }  // 右手で指した位置
             ctx.textAlign="center"; ctx.textBaseline="middle";
         }
         tex.needsUpdate=true;
     }
+    function pick(u,v){ const X=u*512, Y=(1-v)*640; for(let i=0;i<8;i++){ const r=rectOf(i); if(X>=r.x&&X<=r.x+r.w&&Y>=r.y&&Y<=r.y+r.h) return i; } return -1; }
+    function setHover(i){ if(i!==hoverIdx){ hoverIdx=i; draw(); } }
     draw();
-    return { mesh, draw };
+    return { mesh, draw, pick, setHover, get hover(){ return hoverIdx; } };
 })();
 // 左手のひらが顔を向いたら図鑑を表示（Yボタンで固定表示）。向きは常にカメラ向き。
 function updateDexPanel(){
@@ -1208,6 +1216,62 @@ function updateDexPanel(){
     dexHolder.visible = dexPinned || up.dot(toHead) > 0.15;
     if(dexHolder.visible){ dexPanel.mesh.lookAt(camera.getWorldPosition(new THREE.Vector3())); }
 }
+/* 右手のレイで図鑑カードを指す → 右トリガーで「トレカ＋モデル」をホログラム風に宙へ表示 */
+const _dexRay=new THREE.Raycaster();
+function updateDexHover(){
+    if(!renderer.xr.isPresenting || !dexHolder.visible || !rightCtrl){ dexPanel.setHover(-1); return; }
+    const o=new THREE.Vector3(); rightCtrl.getWorldPosition(o);
+    const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    _dexRay.set(o,d);
+    const hit=_dexRay.intersectObject(dexPanel.mesh,false)[0];
+    dexPanel.setHover(hit&&hit.uv ? dexPanel.pick(hit.uv.x,hit.uv.y) : -1);
+}
+let holo=null;
+function makeTradingCardTex(idx){
+    const cv=document.createElement("canvas"); cv.width=512; cv.height=717; const c=cv.getContext("2d");
+    const tex=new THREE.CanvasTexture(cv); if("colorSpace" in tex) tex.colorSpace=THREE.SRGBColorSpace;
+    const found=dexData[idx]&&dexData[idx].found;
+    c.fillStyle="#f4e8cc"; c.fillRect(0,0,512,717);
+    c.strokeStyle="#c9b384"; c.lineWidth=10; c.strokeRect(6,6,500,705);
+    c.fillStyle="#7a6532"; c.textAlign="center"; c.textBaseline="middle";
+    c.font="bold 34px sans-serif"; c.fillText("No."+String(idx+1).padStart(2,"0"), 256, 46);
+    c.fillStyle="#efe3c2"; c.fillRect(56,90,400,400); c.strokeStyle="#c9b384"; c.lineWidth=4; c.strokeRect(56,90,400,400);
+    c.fillStyle="#6e5a2e"; c.font="bold 36px sans-serif"; c.fillText(curTarget==="dino"? curName(idx) : "出土品", 256, 560);
+    c.fillStyle="#9a7f4a"; c.font="bold 26px sans-serif";
+    c.fillText(found? ((dexData[idx].date||"")+(dexData[idx].time? " "+dexData[idx].time:"")) : "未発掘", 256, 620);
+    const u=found? curImgs()[idx] : "";
+    if(u){ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>{ try{ c.drawImage(im,56,90,400,400); tex.needsUpdate=true; }catch(_){} }; im.src=u; }
+    else { c.fillStyle="rgba(150,120,60,.5)"; c.font="bold 150px sans-serif"; c.fillText(curTarget==="dino"?"🦖":"？", 256, 290); }
+    tex.needsUpdate=true; return tex;
+}
+function closeHologram(){ if(holo&&holo.group) scene.remove(holo.group); holo=null; }
+function buildHologram(idx){
+    closeHologram();
+    const g=new THREE.Group();
+    const card=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.588),
+        new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.97, side:THREE.DoubleSide, toneMapped:false}));
+    card.position.set(-0.4,0,0); g.add(card);
+    let model=null;
+    if(curTarget==="dino"){ try{ model=makeDigDino(DINOS[idx]); }catch(_){} }
+    else if(artModels[idx]){ model=artModels[idx].clone(); }
+    if(model){
+        model.visible=true; makeFit(model,0.5); model.updateMatrixWorld(true);
+        const bb=new THREE.Box3().setFromObject(model); model.position.y=-(bb.min.y+bb.max.y)/2;
+        const holoMat=new THREE.MeshBasicMaterial({color:0x7fe3ff, transparent:true, opacity:0.5, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
+        model.traverse(o=>{ if(o.isMesh) o.material=holoMat; });
+        const mg=new THREE.Group(); mg.position.set(0.34,0.02,0); mg.add(model); g.add(mg); g.userData.model=mg;
+        const ring=new THREE.Mesh(new THREE.RingGeometry(0.16,0.22,40),
+            new THREE.MeshBasicMaterial({color:0x7fe3ff,transparent:true,opacity:0.4,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+        ring.rotation.x=-Math.PI/2; ring.position.set(0.34,-0.3,0); g.add(ring);
+    }
+    const cam=camera.getWorldPosition(new THREE.Vector3());
+    const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
+    g.position.copy(cam).addScaledVector(dir,1.25); g.position.y=cam.y-0.05;
+    g.lookAt(cam.x, g.position.y, cam.z);
+    scene.add(g);            // プレイヤー基準（高さ調整stageの影響を受けない）
+    holo={ group:g, idx }; sfxLocate();
+}
+function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx) closeHologram(); else buildHologram(idx); }
 
 /* =====================================================
  * ゲーム状態
@@ -1247,7 +1311,7 @@ function makeMarker(){
         new THREE.MeshBasicMaterial({color:0xffdd66, transparent:true, opacity:0.85, side:THREE.DoubleSide}));
     ring.rotation.x=-Math.PI/2; ring.position.y=0.03; g.add(ring);
     g.userData.ring=ring; g.visible=false;
-    scene.add(g); return g;
+    stage.add(g); return g;
 }
 
 
@@ -1258,7 +1322,9 @@ function pickSpotIdx(){
     const active=GAME.targets.map(t=>t.idx);
     // 発掘済みは再出現させない（全部掘り終わったら一巡してリセット）
     let pool=[...Array(8).keys()].filter(i=>!active.includes(i) && !GAME.doneIdx.has(i));
-    if(!pool.length){ GAME.doneIdx.clear(); GAME.recent.length=0;
+    if(!pool.length){
+        if(GAME.mode==="time") return null;    // タイムアタックは発掘済みを再出現させない
+        GAME.doneIdx.clear(); GAME.recent.length=0;
         pool=[...Array(8).keys()].filter(i=>!active.includes(i)); }
     let banned=GAME.recent.slice(0, MAX_RECENT);
     let avail=pool.filter(i=>!banned.includes(i));
@@ -1301,11 +1367,11 @@ function spawnTarget(tier, forcedIdx=null){
     // マイクラ風の「掘れるブロック」＋照準時の枠線
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK, DIG_BLOCK*0.7, DIG_BLOCK),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
-    block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35, pos.z); scene.add(block);
+    block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35, pos.z); stage.add(block);
     const outline=new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02, DIG_BLOCK*0.72, DIG_BLOCK*1.02)),
         new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:false}));
-    outline.position.copy(block.position); outline.visible=false; outline.renderOrder=997; scene.add(outline);
+    outline.position.copy(block.position); outline.visible=false; outline.renderOrder=997; stage.add(outline);
     const t = { idx, tier, pos, diff:d, marker, block, outline, discovered:false, progress:0,
                 digNeed: Math.max(2, Math.round(d.digNeed * toolMods().digMul)) };
     GAME.targets.push(t);
@@ -1347,11 +1413,10 @@ function makeDigDino(dn){
     cont.userData.animPhase=Math.random()*Math.PI*2;        // 足踏みの位相を個体ごとにバラす
     cont.userData.animSpeed=0.85+Math.random()*0.4;         // 速さも少し変える
     cont.userData.tailPhase=Math.random()*Math.PI*2;
-    cont.userData.shakeCd=4+Math.random()*7; cont.userData.shakeT=0;   // ときどきブルブル
     return cont;
 }
 function revealDino(idx, pos, color){
-    const egg=build_egg(); makeFit(egg,0.55); scene.add(egg);
+    const egg=build_egg(); makeFit(egg,0.55); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);
     popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:ARTIFACT_POP_Y-0.25, t:0, dur:0.7 });
     eggHatch.push({ egg, idx, pos:pos.clone(), color, at:performance.now()+1300, wob:0 });
@@ -1363,7 +1428,7 @@ function tickHatch(now, dt){
             scene.remove(e.egg); sfxDig();
             const dn=DINOS[e.idx], mul=dinoSizeOf(e.idx);
             let m=dinoDigModels[e.idx];
-            if(!m){ m=makeDigDino(dn); scene.add(m); dinoDigModels[e.idx]=m; }
+            if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; }
             m.visible=true; m.position.set(e.pos.x, GROUND_Y, e.pos.z); m.rotation.set(0,Math.random()*Math.PI*2,0);
             m.userData.baseY=ARTIFACT_POP_Y-0.05; m.userData.settled=false;
             popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0, dino:true });
@@ -1374,7 +1439,7 @@ function tickHatch(now, dt){
         }
     }
 }
-// 出てきた恐竜のアイドル動作（足踏み＝個体ごとにバラす／尻尾ふり／回転／ときどきブルブル）
+// 出てきた恐竜のアイドル動作（足踏み＝個体ごとにバラす／尻尾ふり／ゆっくり回転）
 function animateDigDinos(now, dt){
     dinoDigModels.forEach(cont=>{ if(!cont||!cont.visible) return;
         cont.rotation.y += 0.004;                             // ゆっくり回転
@@ -1388,12 +1453,6 @@ function animateDigDinos(now, dt){
             if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(ph))*0.045;            // 軽く弾む
         }
         if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003*spd + (cont.userData.tailPhase||0))*0.28;   // 尻尾ふり
-        // ときどき首/体をブルブル
-        cont.userData.shakeCd-=dt;
-        if(cont.userData.shakeCd<=0 && cont.userData.shakeT<=0){ cont.userData.shakeT=0.55; cont.userData.shakeCd=5+Math.random()*8; }
-        if(cont.userData.shakeT>0){ cont.userData.shakeT-=dt; const k=Math.max(0,cont.userData.shakeT/0.55);
-            m.rotation.z=Math.sin(now*0.045)*0.14*k; m.rotation.x=Math.sin(now*0.05)*0.05*k; }
-        else if(Math.abs(m.rotation.z)>0.001){ m.rotation.z*=0.6; m.rotation.x*=0.6; }
     });
 }
 function clearDinoReveal(){
@@ -1494,7 +1553,7 @@ function addAura(idx, pos, sizeMul){
         new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false}));
     ring.rotation.x=-Math.PI/2; ring.position.y=0.03; g.add(ring);
     g.position.set(pos.x, GROUND_Y, pos.z);
-    scene.add(g);
+    stage.add(g);
     const a={ group:g, glow, ring, color, idx, phase:Math.random()*Math.PI*2 };
     auras.push(a); return a;
 }
@@ -1536,10 +1595,10 @@ function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
         grp.position.set(px, 0, pz);
         grp.userData.face=true; grp.userData.idx=idx;
         grp.userData.width=w; grp.userData.height=h; grp.userData.spot=pos.clone(); grp.userData.sizeMul=sizeMul;
-        scene.add(grp); infoPanels.push(grp);
+        stage.add(grp); infoPanels.push(grp);
         const lineMat=new THREE.LineBasicMaterial({color, transparent:true, opacity:0.5});
         const lineGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-        const link=new THREE.Line(lineGeo, lineMat); scene.add(link);
+        const link=new THREE.Line(lineGeo, lineMat); stage.add(link);
         grp.userData.link=link;
         updatePanelScale();
     };
@@ -1581,7 +1640,6 @@ function updatePanelScale(){
  * 犬のふるまい（常時同行＋ヒント／たまに外す）
  * ===================================================== */
 let dogCelebrateT=0;
-let dogShakeCd=5+Math.random()*6, dogShakeT=0;   // 相棒がときどきブルブル
 const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
 // 犬に「聞く」＝場所ヒント。信頼度に応じて当たり/はずれ。教えた場所へ行って少し待つ。
 function askDog(){
@@ -1708,6 +1766,7 @@ document.getElementById("dexReset").onclick=()=>{
     // ワールド上の発掘物・演出を消す
     artModels.forEach(m=>{ if(m) m.visible=false; });
     clearDinoReveal();
+    closeHologram();
     infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
     clearAuras();
     popAnims.length=0;
@@ -1729,6 +1788,7 @@ function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
     setDigTarget(chosenDigTarget);   // 発掘対象を確定（図鑑もこの対象に切替）
     clearDinoReveal();
+    closeHologram();
     GAME.collectedCount=0; GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.endT=performance.now()+TIME_LIMIT*1000;
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
@@ -1736,6 +1796,7 @@ function startGame(desktop){
     // 出土品モデルを一旦隠す
     artModels.forEach(m=>{ if(m) m.visible=false; });
     clearDinoReveal();
+    closeHologram();
     infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
     clearAuras();
     // 初期ターゲット（サイト読込・発掘スポット確定後に配置）
@@ -1781,8 +1842,10 @@ function endGame(toMenu){
     if(document.pointerLockElement) document.exitPointerLock();
 }
 function recordTimeAttack(score){
-    const arr=loadTA(); const now=new Date();
-    arr.push({score, date:`${now.getMonth()+1}/${now.getDate()}`, id:Date.now()});
+    const arr=loadTA(); const now=new Date(); const p=n=>String(n).padStart(2,"0");
+    arr.push({score,
+        date:`${now.getFullYear()}/${p(now.getMonth()+1)}/${p(now.getDate())}`,
+        time:`${p(now.getHours())}:${p(now.getMinutes())}`, id:Date.now()});
     arr.sort((a,b)=>b.score-a.score); saveTA(arr.slice(0,5));
 }
 
@@ -1804,7 +1867,7 @@ const worldHud=(function(){
     const tex=new THREE.CanvasTexture(cv);
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:false, toneMapped:false});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.3), mat);
-    mesh.renderOrder=998; mesh.visible=false; scene.add(mesh);
+    mesh.renderOrder=998; mesh.visible=false; stage.add(mesh);
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function bg(){ ctx.clearRect(0,0,768,768);
@@ -1827,13 +1890,12 @@ const worldHud=(function(){
             ctx.fillStyle="#ffffff"; ctx.font="bold 104px sans-serif"; ctx.fillText(score+" pt",384,196);
             ctx.fillStyle="rgba(226,216,255,.8)"; ctx.font="bold 36px sans-serif"; ctx.fillText("発掘 "+found+" / 8",384,264);
             ctx.fillStyle="#e6c26a"; ctx.font="bold 40px sans-serif"; ctx.fillText("― TOP 5 ―",384,340);
-            ctx.font="bold 42px sans-serif";
             for(let i=0;i<5;i++){
                 const e=list[i], y=410+i*62, hit=e&&e.score===score;
-                ctx.textAlign="left";  ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
-                ctx.fillText((i+1)+".", 150, y);
-                ctx.textAlign="right";
-                ctx.fillText(e? (e.score+"pt  "+e.date) : "----", 620, y);
+                ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
+                ctx.textAlign="left";   ctx.font="bold 42px sans-serif"; ctx.fillText((i+1)+".", 60, y);
+                ctx.textAlign="center"; ctx.font="bold 46px sans-serif"; ctx.fillText(e? (e.score+" pt") : "----", 384, y);   // ポイント中央
+                ctx.textAlign="right";  ctx.font="bold 28px sans-serif"; ctx.fillText(e? ((e.date||"")+(e.time? " "+e.time:"")) : "", 712, y);  // 年月日＋時間 右揃え
             }
             ctx.textAlign="center"; ctx.fillStyle="rgba(200,190,240,.75)"; ctx.font="bold 30px sans-serif";
             ctx.fillText(GAME.desktop?"スペース / ボタンで閉じる（歩き回れます）":"右トリガーで閉じる（歩き回れます）",384,712);
@@ -1857,6 +1919,7 @@ function clearRunWorld(){
     clearTargets();
     artModels.forEach(m=>{ if(m) m.visible=false; });
     clearDinoReveal();
+    closeHologram();
     infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
     clearAuras(); popAnims.length=0;
 }
@@ -2097,7 +2160,7 @@ function spawnDirt(pos, n=8){
         if(!d){
             const s=0.05+Math.random()*0.05;
             d={ mesh:new THREE.Mesh(new THREE.BoxGeometry(s,s,s), dirtMat), v:new THREE.Vector3(), life:0, alive:false };
-            scene.add(d.mesh); dirtPool.push(d);
+            stage.add(d.mesh); dirtPool.push(d);
         }
         const a=Math.random()*Math.PI*2, sp=0.8+Math.random()*1.4;
         d.mesh.position.set(pos.x+(Math.random()-0.5)*0.3, GROUND_Y+0.12, pos.z+(Math.random()-0.5)*0.3);
@@ -2303,7 +2366,7 @@ function spawnHearts(pos, n=4){
     for(let i=0;i<n;i++){
         let h=hearts.find(x=>!x.alive);
         if(!h){ h={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:heartTex, transparent:true, depthTest:false})), life:0, alive:false, vx:0, vz:0 };
-            h.spr.scale.set(0.22,0.22,1); scene.add(h.spr); hearts.push(h); }
+            h.spr.scale.set(0.22,0.22,1); stage.add(h.spr); hearts.push(h); }
         h.spr.position.set(pos.x+(Math.random()-0.5)*0.3, pos.y+0.7, pos.z+(Math.random()-0.5)*0.3);
         h.vx=(Math.random()-0.5)*0.3; h.vz=(Math.random()-0.5)*0.3;
         h.life=1.4; h.alive=true; h.spr.visible=true; h.spr.material.opacity=1;
@@ -2413,6 +2476,8 @@ renderer.setAnimationLoop(()=>{
 
     // 左手のひらの発掘図鑑パネル
     updateDexPanel();
+    updateDexHover();
+    if(holo && holo.group.userData.model) holo.group.userData.model.rotation.y += 0.012;   // ホログラムの恐竜/出土品を回す
 
     // デスクトップのカメラ向き適用
     if(GAME.desktop && !isVR){
@@ -2558,7 +2623,10 @@ function handleVRDig(){
         const trig = gp.buttons[0]?.pressed ?? false;
         const which = src.handedness==="left"?1:0;
         if(trig && !prevTriggers[which]){
-            if(src.handedness==="right"){ if(!taAdvance()) askDog(); }
+            if(src.handedness==="right"){
+                if(dexHolder.visible && dexPanel.hover>=0){ toggleHologram(dexPanel.hover); }   // 図鑑カードを指していれば拡大ホログラム
+                else if(!taAdvance()) askDog();
+            }
             else if(src.handedness==="left"){ toggleTool(); }
         }
         prevTriggers[which]=trig;
@@ -2659,12 +2727,6 @@ function updateDog(dt, now){
     const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
     if(body.userData.tail){ const wag = moving ? Math.sin(_dogWalkPhase*1.3)*0.6 : Math.sin(now*0.009)*0.35;
         body.userData.tail.rotation.y += (wag - body.userData.tail.rotation.y)*0.2; }   // 歩くとよく振る／待機もゆるく振る
-    // ときどき首/体をブルブル
-    dogShakeCd-=dt;
-    if(dogShakeCd<=0 && dogShakeT<=0){ dogShakeT=0.55; dogShakeCd=6+Math.random()*8; }
-    if(dogShakeT>0){ dogShakeT-=dt; const k=Math.max(0,dogShakeT/0.55);
-        body.rotation.z=Math.sin(now*0.045)*0.14*k; body.rotation.x=Math.sin(now*0.05)*0.05*k; }
-    else if(Math.abs(body.rotation.z)>0.001){ body.rotation.z*=0.6; body.rotation.x*=0.6; }
 
     // お祝いジャンプ / 接地高さ
     if(petWiggle>0){ petWiggle-=dt; dog.rotation.y += Math.sin(now*0.02)*0.05; }
