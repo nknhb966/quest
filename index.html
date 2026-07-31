@@ -458,6 +458,7 @@ let dexArt = {}, dexDino = {};
 let curTarget = "artifact";                 // 発掘対象（発掘図鑑もこれに追従）
 let dexData = dexArt;
 function curImgs(){ return curTarget==="dino" ? DINO_IMGS : ART_IMGS; }
+function curName(i){ return curTarget==="dino" ? ((typeof DINOS!=="undefined"&&DINOS[i]? DINOS[i].label : "")||"").replace(/^\S+\s*/,"") : ""; }
 function setDigTarget(target){
     curTarget = (target==="dino") ? "dino" : "artifact";
     dexData = (curTarget==="dino") ? dexDino : dexArt;
@@ -1175,11 +1176,17 @@ const dexPanel=(function(){
             const r=(i/cols)|0, c=i%cols, x=gx+c*(cw+pad), y=gy+r*(chh+pad), e=dexData[i];
             if(e&&e.found){
                 ctx.fillStyle="#efe2c4"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
-                const im=imgs[i];
-                if(im&&im.complete&&im.naturalWidth){ const s=Math.min(cw/im.naturalWidth,(chh-16)/im.naturalHeight), iw=im.naturalWidth*s, ih=im.naturalHeight*s;
-                    try{ ctx.drawImage(im, x+(cw-iw)/2, y+10+(chh-16-ih)/2, iw, ih); }catch(_){}}
+                if(curTarget==="dino"){
+                    ctx.textAlign="center"; ctx.textBaseline="middle";
+                    ctx.fillStyle="rgba(150,120,60,.5)"; ctx.font="bold 44px sans-serif"; ctx.fillText("🦖", x+cw/2, y+chh/2-16);
+                    ctx.fillStyle="#6e5a2e"; ctx.font="bold 20px sans-serif"; ctx.fillText(curName(i), x+cw/2, y+chh/2+22);
+                } else {
+                    const im=imgs[i];
+                    if(im&&im.complete&&im.naturalWidth){ const s=Math.min(cw/im.naturalWidth,(chh-16)/im.naturalHeight), iw=im.naturalWidth*s, ih=im.naturalHeight*s;
+                        try{ ctx.drawImage(im, x+(cw-iw)/2, y+10+(chh-16-ih)/2, iw, ih); }catch(_){}}
+                }
             } else { ctx.fillStyle="rgba(42,32,60,0.92)"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
-                ctx.fillStyle="rgba(185,165,225,0.55)"; ctx.font="bold 64px sans-serif"; ctx.fillText("？", x+cw/2, y+chh/2); }
+                ctx.fillStyle="rgba(185,165,225,0.55)"; ctx.font="bold 64px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("？", x+cw/2, y+chh/2); }
             ctx.fillStyle=(e&&e.found)?"#7a6532":"rgba(185,165,225,0.75)"; ctx.font="bold 22px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
             ctx.fillText("No."+String(i+1).padStart(2,"0"), x+8, y+7);
             if(e&&e.found&&(e.date||e.time)){
@@ -1574,6 +1581,7 @@ function updatePanelScale(){
  * 犬のふるまい（常時同行＋ヒント／たまに外す）
  * ===================================================== */
 let dogCelebrateT=0;
+let dogShakeCd=5+Math.random()*6, dogShakeT=0;   // 相棒がときどきブルブル
 const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
 // 犬に「聞く」＝場所ヒント。信頼度に応じて当たり/はずれ。教えた場所へ行って少し待つ。
 function askDog(){
@@ -1632,7 +1640,7 @@ function openDexView(i){
     const art = found ? (u ? '<div class="art"><img src="'+u+'" alt="No.'+(i+1)+'"></div>'
                            : '<div class="art"><span class="q">'+(curTarget==="dino"?"🦖":"？")+'</span></div>')
                       : '<div class="art"><span class="q">？</span></div>';
-    const meta = found ? '<div class="meta">発掘済み<br>'+((e.date||"")+(e.time? " "+e.time : ""))+'</div>'
+    const meta = found ? '<div class="meta">'+(curTarget==="dino"? '<b>'+curName(i)+'</b><br>' : '')+'発掘済み<br>'+((e.date||"")+(e.time? " "+e.time : ""))+'</div>'
                        : '<div class="meta">未発掘</div>';
     dexViewCard.innerHTML='<div class="no">No.'+String(i+1).padStart(2,"0")+'</div>'+art+meta;
     dexView.classList.add("open");
@@ -1659,7 +1667,8 @@ function refreshDexHTML(){
             if(u){ const img=document.createElement("img"); img.src=u; img.alt="No."+(i+1); art.appendChild(img); }
             else { const q=document.createElement("span"); q.className="q"; q.textContent=(curTarget==="dino"?"🦖":"？"); art.appendChild(q); }
             if(e.isNew){ const st=document.createElement("span"); st.className="newstamp"; st.textContent="NEW!"; card.appendChild(st); }
-            stamp.innerHTML = (e.date||"") + (e.time? '<br><span class="t">'+e.time+'</span>' : "");
+            const nm=(curTarget==="dino")? '<b>'+curName(i)+'</b><br>' : "";
+            stamp.innerHTML = nm + (e.date||"") + (e.time? '<br><span class="t">'+e.time+'</span>' : "");
         } else {
             const q=document.createElement("span"); q.className="q"; q.textContent="？"; art.appendChild(q);
             stamp.textContent="未発掘";
@@ -2650,6 +2659,12 @@ function updateDog(dt, now){
     const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
     if(body.userData.tail){ const wag = moving ? Math.sin(_dogWalkPhase*1.3)*0.6 : Math.sin(now*0.009)*0.35;
         body.userData.tail.rotation.y += (wag - body.userData.tail.rotation.y)*0.2; }   // 歩くとよく振る／待機もゆるく振る
+    // ときどき首/体をブルブル
+    dogShakeCd-=dt;
+    if(dogShakeCd<=0 && dogShakeT<=0){ dogShakeT=0.55; dogShakeCd=6+Math.random()*8; }
+    if(dogShakeT>0){ dogShakeT-=dt; const k=Math.max(0,dogShakeT/0.55);
+        body.rotation.z=Math.sin(now*0.045)*0.14*k; body.rotation.x=Math.sin(now*0.05)*0.05*k; }
+    else if(Math.abs(body.rotation.z)>0.001){ body.rotation.z*=0.6; body.rotation.x*=0.6; }
 
     // お祝いジャンプ / 接地高さ
     if(petWiggle>0){ petWiggle-=dt; dog.rotation.y += Math.sin(now*0.02)*0.05; }
