@@ -424,8 +424,9 @@ let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセッ
 // VR/AR：右中指グリップ＋右スティックで調整するパラメータ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
 const DOG_DIST_SPEED= 2.2;               // 相棒距離調整の速さ（m/秒）
-let worldBaseY=0, worldYAdjust=0;        // 全コンテンツ(stage)の高さ微調整
-function adjustWorldHeight(dy){ if(typeof stage==="undefined") return; worldYAdjust=Math.max(-1.5,Math.min(2.5, worldYAdjust+dy)); stage.position.y = worldYAdjust; }
+const WORLD_BASE_Y = -1.5;               // VR/ARでのワールド高さ基準（最も低い位置）
+let worldBaseY=0, worldYAdjust=0;        // 全コンテンツ(stage)の高さ
+function adjustWorldHeight(dy){ if(typeof stage==="undefined") return; worldYAdjust=Math.max(WORLD_BASE_Y-2.0, Math.min(WORLD_BASE_Y+2.0, worldYAdjust+dy)); stage.position.y = worldYAdjust; }
 function adjustDogDist(dd){ DOG_FWD=Math.max(0.5, Math.min(5.5, DOG_FWD+dd)); }
 const DOG_STAY_R    = 7.0;               // ブロック横で待つ範囲（これ以上離れたらプレイヤーに付いてくる）
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
@@ -1244,32 +1245,57 @@ function makeTradingCardTex(idx){
     else { c.fillStyle="rgba(150,120,60,.5)"; c.font="bold 150px sans-serif"; c.fillText(curTarget==="dino"?"🦖":"？", 256, 290); }
     tex.needsUpdate=true; return tex;
 }
-function closeHologram(){ if(holo&&holo.group) scene.remove(holo.group); holo=null; }
+function closeHologram(){ if(holo&&holo.group&&holo.group.parent) holo.group.parent.remove(holo.group); holo=null; }
 function buildHologram(idx){
     closeHologram();
     const g=new THREE.Group();
     const card=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.588),
         new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.97, side:THREE.DoubleSide, toneMapped:false}));
-    card.position.set(-0.4,0,0); g.add(card);
-    let model=null;
-    if(curTarget==="dino"){ try{ model=makeDigDino(DINOS[idx]); }catch(_){} }
-    else if(artModels[idx]){ model=artModels[idx].clone(); }
+    card.position.set(-0.34,0,0); g.add(card);
+    let dino=null, art=null;
+    if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); }catch(_){} }
+    else if(artModels[idx]){ art=artModels[idx].clone(); }
+    const model = dino || art;
     if(model){
         model.visible=true; makeFit(model,0.5); model.updateMatrixWorld(true);
         const bb=new THREE.Box3().setFromObject(model); model.position.y=-(bb.min.y+bb.max.y)/2;
-        const holoMat=new THREE.MeshBasicMaterial({color:0x7fe3ff, transparent:true, opacity:0.5, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
-        model.traverse(o=>{ if(o.isMesh) o.material=holoMat; });
-        const mg=new THREE.Group(); mg.position.set(0.34,0.02,0); mg.add(model); g.add(mg); g.userData.model=mg;
+        // 元の色を保ちつつ、少し透けさせて発光（ホログラム風）
+        model.traverse(o=>{ if(o.isMesh && o.material){ const m=Array.isArray(o.material)?o.material:[o.material];
+            o.material = m.map(src=>{ const c=src.clone(); c.transparent=true; c.opacity=0.9; c.depthWrite=true;
+                if("emissive" in c){ c.emissive=new THREE.Color(0x224a66); c.emissiveIntensity=0.5; } return c; });
+            if(!Array.isArray(o.material)) o.material=o.material[0]; } });
+        const mg=new THREE.Group(); mg.position.set(0.3,0.02,0); mg.add(model); g.add(mg); g.userData.mg=mg;
         const ring=new THREE.Mesh(new THREE.RingGeometry(0.16,0.22,40),
             new THREE.MeshBasicMaterial({color:0x7fe3ff,transparent:true,opacity:0.4,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
-        ring.rotation.x=-Math.PI/2; ring.position.set(0.34,-0.3,0); g.add(ring);
+        ring.rotation.x=-Math.PI/2; ring.position.set(0.3,-0.3,0); g.add(ring); g.userData.ring=ring;
     }
-    const cam=camera.getWorldPosition(new THREE.Vector3());
-    const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
-    g.position.copy(cam).addScaledVector(dir,1.25); g.position.y=cam.y-0.05;
+    scene.add(g);
+    holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
+}
+// 毎フレーム：左手に追従＋カメラを向く＋モデルのモーション
+function updateHologram(){
+    if(!holo) return;
+    const g=holo.group, cam=camera.getWorldPosition(new THREE.Vector3());
+    let base;
+    if(renderer.xr.isPresenting && leftCtrl){
+        base=leftCtrl.getWorldPosition(new THREE.Vector3()); base.y+=0.34;
+        const away=new THREE.Vector3().subVectors(base,cam); away.y=0; if(away.lengthSq()<1e-4) away.set(0,0,1); away.normalize();
+        base.addScaledVector(away,0.12);
+    } else {
+        const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
+        base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
+    }
+    g.position.lerp(base, 0.25);
     g.lookAt(cam.x, g.position.y, cam.z);
-    scene.add(g);            // プレイヤー基準（高さ調整stageの影響を受けない）
-    holo={ group:g, idx }; sfxLocate();
+    if(holo.ring) { }
+    const now=performance.now(), ph=now*0.006;
+    if(holo.dino){ holo.dino.rotation.y+=0.02;
+        const m=holo.dino.userData.model;
+        if(m){ if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x=Math.sin(ph+p.userData.phase)*0.3; });
+               if(m.userData.tail) m.userData.tail.rotation.y=Math.sin(now*0.003)*0.28;
+               if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z=w.userData.sign*(0.22+Math.sin(now*0.004)*0.4); }); }
+    } else if(holo.art){ holo.art.rotation.y+=0.02; }
+    if(g.userData.ring) g.userData.ring.rotation.z+=0.01;
 }
 function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx) closeHologram(); else buildHologram(idx); }
 
@@ -1379,7 +1405,7 @@ function spawnTarget(tier, forcedIdx=null){
     return t;
 }
 function clearTargets(){
-    GAME.targets.forEach(t=>{ scene.remove(t.marker); if(t.block) scene.remove(t.block); if(t.outline) scene.remove(t.outline); });
+    GAME.targets.forEach(t=>{ stage.remove(t.marker); if(t.block) stage.remove(t.block); if(t.outline) stage.remove(t.outline); });
     GAME.targets.length=0;
     aimedTarget=null;
 }
@@ -1425,7 +1451,7 @@ function tickHatch(now, dt){
     for(let i=eggHatch.length-1;i>=0;i--){ const e=eggHatch[i];
         if(e.egg){ e.wob+=dt; e.egg.rotation.z=Math.sin(e.wob*11)*0.16*Math.min(1,e.wob*1.5); }  // 孵化前に揺れる
         if(now>=e.at){
-            scene.remove(e.egg); sfxDig();
+            stage.remove(e.egg); sfxDig();
             const dn=DINOS[e.idx], mul=dinoSizeOf(e.idx);
             let m=dinoDigModels[e.idx];
             if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; }
@@ -1456,7 +1482,7 @@ function animateDigDinos(now, dt){
     });
 }
 function clearDinoReveal(){
-    eggHatch.forEach(e=>{ if(e.egg) scene.remove(e.egg); }); eggHatch.length=0;
+    eggHatch.forEach(e=>{ if(e.egg) stage.remove(e.egg); }); eggHatch.length=0;
     dinoDigModels.forEach(m=>{ if(m) m.visible=false; });
 }
 function excavate(t){
@@ -1491,9 +1517,9 @@ function excavate(t){
     }
 
     // ターゲット除去
-    scene.remove(t.marker);
-    if(t.block) scene.remove(t.block);
-    if(t.outline) scene.remove(t.outline);
+    stage.remove(t.marker);
+    if(t.block) stage.remove(t.block);
+    if(t.outline) stage.remove(t.outline);
     if(aimedTarget===t) aimedTarget=null;
     GAME.doneIdx.add(t.idx);        // このスポットはリセットまで再出現しない
     GAME.targets = GAME.targets.filter(x=>x!==t);
@@ -1557,7 +1583,7 @@ function addAura(idx, pos, sizeMul){
     const a={ group:g, glow, ring, color, idx, phase:Math.random()*Math.PI*2 };
     auras.push(a); return a;
 }
-function clearAuras(){ auras.forEach(a=>scene.remove(a.group)); auras.length=0; }
+function clearAuras(){ auras.forEach(a=>stage.remove(a.group)); auras.length=0; }
 
 // 情報パネル（発掘済みの解説画像を現地に表示）
 // 画像はカード形式（縦長）。実際の縦横比で作り、出土品のすぐ上に置く。
@@ -1767,7 +1793,7 @@ document.getElementById("dexReset").onclick=()=>{
     artModels.forEach(m=>{ if(m) m.visible=false; });
     clearDinoReveal();
     closeHologram();
-    infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
+    infoPanels.forEach(p=>{ if(p.userData.link) stage.remove(p.userData.link); stage.remove(p); }); infoPanels.length=0;
     clearAuras();
     popAnims.length=0;
     // プレイ中なら現在のモードを最初から
@@ -1797,7 +1823,7 @@ function startGame(desktop){
     artModels.forEach(m=>{ if(m) m.visible=false; });
     clearDinoReveal();
     closeHologram();
-    infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
+    infoPanels.forEach(p=>{ if(p.userData.link) stage.remove(p.userData.link); stage.remove(p); }); infoPanels.length=0;
     clearAuras();
     // 初期ターゲット（サイト読込・発掘スポット確定後に配置）
     if(GAME.mode==="collect"){
@@ -1825,12 +1851,14 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     const session=renderer.xr.getSession();
     inAR = !!(session && session.environmentBlendMode && session.environmentBlendMode!=="opaque");   // 実世界パススルー＝AR
     if(inAR){ _savedBg=scene.background; _savedFog=scene.fog; scene.background=null; scene.fog=null; renderer.setClearColor(0x000000,0); }
+    worldYAdjust=WORLD_BASE_Y; stage.position.y=WORLD_BASE_Y;   // VR/ARは低い基準から開始（±2.0mで調整）
     updateSiteVis(); updatePanelScale();
     if(!GAME.active) startGame(false);
 });
 renderer.xr.addEventListener("sessionend", ()=>{
     if(inAR){ scene.background=_savedBg; scene.fog=_savedFog; renderer.setClearColor(0x000000,1); }
-    inAR=false; updateSiteVis(); updatePanelScale(); endGame(true);
+    inAR=false; worldYAdjust=0; stage.position.y=0;             // デスクトップは通常の高さへ
+    updateSiteVis(); updatePanelScale(); endGame(true);
 });
 
 function endGame(toMenu){
@@ -1867,7 +1895,7 @@ const worldHud=(function(){
     const tex=new THREE.CanvasTexture(cv);
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:false, toneMapped:false});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.3), mat);
-    mesh.renderOrder=998; mesh.visible=false; stage.add(mesh);
+    mesh.renderOrder=998; mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function bg(){ ctx.clearRect(0,0,768,768);
@@ -1920,7 +1948,7 @@ function clearRunWorld(){
     artModels.forEach(m=>{ if(m) m.visible=false; });
     clearDinoReveal();
     closeHologram();
-    infoPanels.forEach(p=>{ if(p.userData.link) scene.remove(p.userData.link); scene.remove(p); }); infoPanels.length=0;
+    infoPanels.forEach(p=>{ if(p.userData.link) stage.remove(p.userData.link); stage.remove(p); }); infoPanels.length=0;
     clearAuras(); popAnims.length=0;
 }
 function resetDexForRun(){
@@ -2412,7 +2440,7 @@ renderer.setAnimationLoop(()=>{
     artModels.forEach(m=>{ if(m&&m.visible) m.rotation.y+=0.005; });
     // 情報パネルをカメラへ向ける
     const camPos=camera.getWorldPosition(tmpV2);
-    infoPanels.forEach(p=>{ p.lookAt(camPos.x,p.position.y,camPos.z); });
+    infoPanels.forEach(p=>{ p.lookAt(camPos); });   // 自分（カメラ）の方を向く（高い位置でも見下ろす向きに）
     // オーラの脈動（発掘後ずっと光り続ける）
     for(const a of auras){
         const pulse=0.85+Math.sin(now*0.003+a.phase)*0.15;
@@ -2477,7 +2505,7 @@ renderer.setAnimationLoop(()=>{
     // 左手のひらの発掘図鑑パネル
     updateDexPanel();
     updateDexHover();
-    if(holo && holo.group.userData.model) holo.group.userData.model.rotation.y += 0.012;   // ホログラムの恐竜/出土品を回す
+    updateHologram();   // 左手に追従＋カメラ向き＋モデルのモーション
 
     // デスクトップのカメラ向き適用
     if(GAME.desktop && !isVR){
@@ -2620,6 +2648,7 @@ function handleVRDig(){
     unlockAudio();
     for(const src of s.inputSources){
         const gp=src.gamepad; if(!gp) continue;
+        if(src.hand) continue;                 // 手（ハンドトラッキング）はselectstartで処理（二重発火を防ぐ）
         const trig = gp.buttons[0]?.pressed ?? false;
         const which = src.handedness==="left"?1:0;
         if(trig && !prevTriggers[which]){
