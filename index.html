@@ -403,7 +403,7 @@ const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
-const ARTIFACT_POP_Y= 1.2;               // 出土品が落ち着く高さ（目線より少し下）
+const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高さ（少し低め。パネルもこれに追従）
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
@@ -1280,6 +1280,17 @@ function dinoEmergeLine(dn){
     if((dn.key||"").indexOf("fukui")===0) return `${name}やざ！ ${dn.cry}！`;   // 福井弁
     return `${name}だ！ ${dn.cry}！`;
 }
+// 恐竜モデルを「底面＝原点」のコンテナに包む（プテラノも他と同じ基準高さに揃う）
+function makeDigDino(dn){
+    const inner=dn.build(); makeFit(inner,1.0); inner.updateMatrixWorld(true);
+    const bb=new THREE.Box3().setFromObject(inner);
+    if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
+    const cont=new THREE.Group(); cont.add(inner);
+    cont.userData.model=inner;
+    cont.userData.legs=inner.userData.legs; cont.userData.tail=inner.userData.tail; cont.userData.wings=inner.userData.wings;
+    cont.userData.flying=!!inner.userData.wings;
+    return cont;
+}
 function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg,0.55); scene.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);
@@ -1293,15 +1304,32 @@ function tickHatch(now, dt){
             scene.remove(e.egg); sfxDig();
             const dn=DINOS[e.idx];
             let m=dinoDigModels[e.idx];
-            if(!m){ m=dn.build(); makeFit(m,1.0); scene.add(m); dinoDigModels[e.idx]=m; }
+            if(!m){ m=makeDigDino(dn); scene.add(m); dinoDigModels[e.idx]=m; }
             m.visible=true; m.position.set(e.pos.x, GROUND_Y, e.pos.z); m.rotation.set(0,Math.random()*Math.PI*2,0);
-            popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0 });
+            m.userData.baseY=ARTIFACT_POP_Y-0.05; m.userData.settled=false;
+            popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
             bubble.say(dinoEmergeLine(dn), 3000);
             showInfoPanel(e.idx, e.pos, e.color, DINO_IMGS[e.idx], (dn.label||"").replace(/^\S+\s*/,""));
             eggHatch.splice(i,1);
         }
     }
+}
+// 出てきた恐竜のアイドル動作（足踏み・尻尾ふり・ゆっくり回転／プテラノは羽ばたき＋上下）
+function animateDigDinos(now, dt){
+    const ph=now*0.006;                                       // ゆっくりした足踏み位相
+    dinoDigModels.forEach(cont=>{ if(!cont||!cont.visible) return;
+        cont.rotation.y += 0.004;                             // ゆっくり回転
+        const m=cont.userData.model; if(!m) return;
+        if(cont.userData.flying){
+            if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z = w.userData.sign*(0.22+Math.sin(now*0.004)*0.4); }); // 羽ばたき
+            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.sin(now*0.0016)*0.18;   // 上下にゆっくり
+        } else {
+            if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(ph + p.userData.phase)*0.32; });  // 足踏み
+            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(ph))*0.045;            // 軽く弾む
+        }
+        if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003)*0.28;   // 尻尾ふり
+    });
 }
 function clearDinoReveal(){
     eggHatch.forEach(e=>{ if(e.egg) scene.remove(e.egg); }); eggHatch.length=0;
@@ -2221,9 +2249,10 @@ renderer.setAnimationLoop(()=>{
         const y = r<0.5 ? THREE.MathUtils.lerp(a.startY,a.peakY, r*2)
                         : THREE.MathUtils.lerp(a.peakY,a.endY,(r-0.5)*2);
         a.obj.position.set(a.x, y, a.z); a.obj.rotation.y+=0.12;
-        if(r>=1){ popAnims.splice(i,1); }
+        if(r>=1){ if(a.dino && a.obj.userData) a.obj.userData.settled=true; popAnims.splice(i,1); }
     }
-    tickHatch(now, dt);   // 恐竜モード：たまごの揺れ＆孵化
+    tickHatch(now, dt);        // 恐竜モード：たまごの揺れ＆孵化
+    animateDigDinos(now, dt);  // 出てきた恐竜の足踏み・尻尾ふり・回転・上下
     // 発掘済みモデルを回転
     artModels.forEach(m=>{ if(m&&m.visible) m.rotation.y+=0.005; });
     // 情報パネルをカメラへ向ける
