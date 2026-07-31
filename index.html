@@ -268,6 +268,13 @@
         </div>
       </div>
       <div class="opt wide">
+        <div class="lbl">サイトモデル（遺跡の3D）※ARでは非表示にすると自分の部屋で発掘できます</div>
+        <div class="seg" id="segSite">
+          <button data-v="show" class="on">🗺 表示</button>
+          <button data-v="hide">🚫 非表示</button>
+        </div>
+      </div>
+      <div class="opt wide">
         <div class="lbl">コントローラー使用時の探知音（振動は常にON／素手のときは自動で音が鳴ります）</div>
         <div class="seg" id="segSound">
           <button data-v="off" class="on">🔇 鳴らさない</button>
@@ -373,6 +380,7 @@
     <button id="dBuddy" style="display:none">相棒：🦖</button>
     <button id="dAsk">🦖 きいてみる</button>
     <button id="dTool">道具：🖌 幅広</button>
+    <button id="dSite">🗺 サイト：表示</button>
     <button id="dDex">📖 図鑑</button>
     <button id="dQuit">やめる</button>
   </div>
@@ -393,6 +401,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRButton} from "three/addons/webxr/VRButton.js";
+import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
 
 /* =====================================================
@@ -514,7 +523,7 @@ const scene    = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a16);
 scene.fog = new THREE.FogExp2(0x0a0a16, 0.006);
 
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
@@ -535,8 +544,12 @@ const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
 sun.position.set(30, 60, 20); scene.add(sun);
 scene.add(new THREE.AmbientLight(0x404060, 0.5));
 
-// VRButton
+// VRButton / ARButton（どちらでも遊べる）
 document.getElementById("vrbtnwrap").appendChild(VRButton.createButton(renderer));
+try{
+    const arBtn = ARButton.createButton(renderer, { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] });
+    document.getElementById("vrbtnwrap").appendChild(arBtn);
+}catch(e){ console.warn("ARButton unavailable", e); }
 
 /* ── コントローラ ── */
 const ctrlFactory = new XRControllerModelFactory();
@@ -599,8 +612,22 @@ let siteReady=false;
 document.body.classList.add("loading");   // 読み込み完了までゲーム開始を無効化
 const world = new THREE.Group(); scene.add(world);
 const ARTPOS = new Array(8).fill(null);   // 各出土品の確定ワールド座標（地面）
+let siteRoot=null, siteVisible=true, inAR=false;
+// サイト非表示時の代替地面（ARでは実世界が地面なので出さない）
+const fallbackGround=new THREE.Group();
+(function(){
+    const disc=new THREE.Mesh(new THREE.CircleGeometry(30,48), new THREE.MeshStandardMaterial({color:0x241f33, roughness:1}));
+    disc.rotation.x=-Math.PI/2; disc.position.y=GROUND_Y-0.02; fallbackGround.add(disc);
+    const grid=new THREE.GridHelper(60,40,0x6a5fa0,0x3a3160); grid.position.y=GROUND_Y; grid.material.transparent=true; grid.material.opacity=0.5; fallbackGround.add(grid);
+    fallbackGround.visible=false; scene.add(fallbackGround);
+})();
+function updateSiteVis(){
+    if(siteRoot) siteRoot.visible = siteVisible;                 // ARでも表示/非表示どちらでも体験可
+    fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
+}
+function setSiteVisible(v){ siteVisible=!!v; updateSiteVis(); }
 gltfLoader.load(SITE_GLB, (gltf)=>{
-    const siteRoot = gltf.scene;
+    siteRoot = gltf.scene;
     siteRoot.rotation.y = THREE.MathUtils.degToRad(-90);   // 元と同じ向き
     world.add(siteRoot);
     // 発掘スポットのプレースホルダ（元HTMLと同じ相対配置＝サイトのネイティブ座標）
@@ -643,7 +670,7 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     }
     siteRoot.position.y += SITE_Y_OFFSET / fit;      // 追加の微調整（既定0）
     world.updateMatrixWorld(true);
-    siteReady=true;
+    siteReady=true; updateSiteVis();
     document.body.classList.remove("loading");
 }, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; document.body.classList.remove("loading"); });
 function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if(siteReady){ clearInterval(iv); cb(); } }, 100); } }
@@ -1625,6 +1652,12 @@ document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document
 document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segTool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenTool=b.dataset.v; });
 document.querySelectorAll("#segSound button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segSound button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); scanSoundOn=(b.dataset.v==="on"); });
 document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); setDigTarget(b.dataset.v); });
+// サイトモデル 表示/非表示（メニュー＋HUD）
+function updateSiteBtn(){ const b=document.getElementById("dSite"); if(b) b.textContent="🗺 サイト："+(siteVisible?"表示":"非表示"); }
+function syncSiteSeg(){ document.querySelectorAll("#segSite button").forEach(x=>x.classList.toggle("on", (x.dataset.v==="show")===siteVisible)); }
+document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ setSiteVisible(b.dataset.v==="show"); syncSiteSeg(); updateSiteBtn(); });
+{ const b=document.getElementById("dSite"); if(b) b.onclick=()=>{ setSiteVisible(!siteVisible); syncSiteSeg(); updateSiteBtn(); }; }
+updateSiteBtn();
 document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
@@ -1687,8 +1720,18 @@ function startGame(desktop){
 document.getElementById("startDesktop").onclick=()=> startGame(true);
 
 // VR開始/終了
-renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio(); updatePanelScale(); if(!GAME.active) startGame(false); });
-renderer.xr.addEventListener("sessionend", ()=>{ updatePanelScale(); endGame(true); });
+let _savedBg=null, _savedFog=null;
+renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
+    const session=renderer.xr.getSession();
+    inAR = !!(session && session.environmentBlendMode && session.environmentBlendMode!=="opaque");   // 実世界パススルー＝AR
+    if(inAR){ _savedBg=scene.background; _savedFog=scene.fog; scene.background=null; scene.fog=null; renderer.setClearColor(0x000000,0); }
+    updateSiteVis(); updatePanelScale();
+    if(!GAME.active) startGame(false);
+});
+renderer.xr.addEventListener("sessionend", ()=>{
+    if(inAR){ scene.background=_savedBg; scene.fog=_savedFog; renderer.setClearColor(0x000000,1); }
+    inAR=false; updateSiteVis(); updatePanelScale(); endGame(true);
+});
 
 function endGame(toMenu){
     if(GAME.mode==="time" && GAME.active && TA.state==="run" && GAME.score>0){ recordTimeAttack(GAME.score); }
