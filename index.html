@@ -1256,14 +1256,10 @@ function buildHologram(idx){
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.set(1,1,1); }  // 出土品は変形をリセット
     const model = dino || art;
     if(model){
-        model.visible=true; makeFit(model, art?0.42:0.5); model.updateMatrixWorld(true);   // 出土品は少し小さめが自然
+        model.visible=true; makeFit(model, art?0.3:0.5); model.updateMatrixWorld(true);   // 出土品は小さめ
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
-        // 元の色のまま不透明で表示（ホログラム風の加工はしない）
         const mg=new THREE.Group(); mg.position.set(0.42,0.0,0); mg.add(model); g.add(mg); g.userData.mg=mg;
-        const ring=new THREE.Mesh(new THREE.RingGeometry(0.15,0.2,40),
-            new THREE.MeshBasicMaterial({color:0xd8b46a,transparent:true,opacity:0.5,side:THREE.DoubleSide,depthWrite:false}));
-        ring.rotation.x=-Math.PI/2; ring.position.set(0.42,-0.28,0); g.add(ring); g.userData.ring=ring;
     }
     scene.add(g);
     holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
@@ -1846,7 +1842,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     inAR = !!(session && session.environmentBlendMode && session.environmentBlendMode!=="opaque");   // 実世界パススルー＝AR
     if(inAR){ _savedBg=scene.background; _savedFog=scene.fog; scene.background=null; scene.fog=null; renderer.setClearColor(0x000000,0); }
     worldYAdjust=WORLD_BASE_Y; stage.position.y=WORLD_BASE_Y;   // VR/ARは低い基準から開始（±2.0mで調整）
-    DOG_FWD=0.5;                                                // 相棒は最も近い距離から開始（右スティックで遠ざけ調整）
+    DOG_FWD=0.8;                                                // 相棒は近め（最短+30cm）から開始（右スティックで調整）
     updateSiteVis(); updatePanelScale();
     if(!GAME.active) startGame(false);
 });
@@ -2329,14 +2325,14 @@ function petDog(){
     // ハートを飛ばす
     spawnHearts(dog.position);
 }
-// VR：道具を持っていないとき、手/コントローラーが相棒に触れたらなでる
+// VR：道具を持っていないとき、相棒の近くで手/コントローラーを往復（撫でる動作）させたらなでる
 function checkPetVR(){
     if(rightHeld) return;     // 道具を持っている間はなでない（発掘中）
     const c=dog.getWorldPosition(new THREE.Vector3()); c.y += 0.4;   // 体〜頭あたり
     const devices=[rightCtrl,leftCtrl].filter(d=>d && d.userData.handedness);
     for(const d of devices){
         const p=d.getWorldPosition(new THREE.Vector3());
-        if(p.distanceTo(c) < 0.5){ petDog(); return; }   // タッチでなでる
+        if(p.distanceTo(c) < 0.55 && (d.userData.shakeSpeed||0) > 0.6){ petDog(); return; }   // 近くで往復＝撫でる
     }
 }
 // PC：画面中央が相棒に当たっていればなでる（厳密判定）
@@ -2645,8 +2641,9 @@ function onRightPressEdge(){
         if(e && e.found) toggleHologram(dexPanel.hover);   // 発掘済みのみ選択可（未発掘は無反応）
         return;
     }
+    if(taAdvance()) return;                                // タイムアタックの開始/進行は1回押し
     const now=performance.now();
-    if(now-lastRightPress<400){ lastRightPress=0; if(!taAdvance()) askDog(); }   // 二回連続＝相棒に聞く（TA中は開始）
+    if(now-lastRightPress<400){ lastRightPress=0; askDog(); }   // 二回連続＝相棒に聞く
     else lastRightPress=now;
 }
 function handleVRDig(){
@@ -2743,9 +2740,22 @@ function updateDog(dt, now){
     const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
     const moving = moved > 0.004;
 
-    // 向き：進行方向 or プレイヤー
+    // 向き：進行方向 or プレイヤー（最短角でなめらかに追従＝切替時の小刻み揺れを防ぐ）
     const faceDir = moving ? to : new THREE.Vector3().subVectors(playerPos,dog.position);
-    if(faceDir.lengthSq()>1e-3){ const yaw=Math.atan2(faceDir.x,faceDir.z); dog.rotation.y=THREE.MathUtils.lerp(dog.rotation.y, yaw, 0.18); }
+    if(faceDir.lengthSq()>1e-3){
+        const yaw=Math.atan2(faceDir.x,faceDir.z);
+        let d=yaw-dog.rotation.y; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+        dog.rotation.y += d*0.08;
+    }
+    // セリフ吹き出しは、プレイヤーから見て相棒の「奥側」に出す（相棒の向きに関係なく）
+    if(bubbleSpr){
+        dog.updateMatrixWorld();
+        const dogW=dog.getWorldPosition(new THREE.Vector3());
+        const away=new THREE.Vector3(dogW.x-playerPos.x,0,dogW.z-playerPos.z);
+        if(away.lengthSq()<1e-4) away.set(0,0,1); away.normalize();
+        const want=new THREE.Vector3(dogW.x+away.x*0.5, dogW.y+1.0, dogW.z+away.z*0.5);
+        bubbleSpr.position.copy(dog.worldToLocal(want));
+    }
 
     // 歩行アニメ（脚の振り＋上下バウンド）
     _dogWalkPhase += (moving?6.5:0)*dt;   // 歩調をゆっくり（重量感）。移動速度自体は不変
