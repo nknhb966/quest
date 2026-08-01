@@ -363,12 +363,12 @@
       <section>
         <h3>🗺 モード</h3>
         <p><b>じっくりコレクション</b>：8種を順番に発掘。後の出土品ほど反応範囲が狭く、掘る回数も増え、相棒も外しやすくなります。</p>
-        <p><b>タイムアタック</b>：スタンバイで<b>右トリガー1回</b>（PC：スペース）→3秒カウントダウン→スタート。<b>8種を掘り切ると終了</b>し、スコア＝<b>残り秒×30 −（相棒に聞いた回数×10）</b>。結果とTOP5が表示されます。結果を閉じる／再挑戦は<b>右トリガー2回連続</b>。<b>Bボタン長押し</b>で図鑑リセット（スタンバイに戻る）。じっくりコレクションもコンプリート後は<b>右トリガー2回連続</b>でリセット＆再開。カウントダウン／残り時間は発掘図鑑の近く（左手）に出ます。PCは「🏅記録」ボタンでTOP5の確認・全リセットができます。</p>
+        <p><b>タイムアタック</b>：スタンバイで<b>右トリガー2回連続</b>（PC：スペース）→3秒カウントダウン→スタート。<b>8種を掘り切ると終了</b>し、スコア＝<b>発掘ポイント＋残り秒×30 −（相棒に聞いた回数×10）</b>。結果とTOP5が表示されます。結果を閉じる／再挑戦も<b>右トリガー2回連続</b>（左手の図鑑近くに「▶▶2回押し」のサインが出ます）。<b>Ｙボタン長押し</b>で図鑑リセット（成功するとバイブと音でお知らせ・TAはスタンバイに戻る）。じっくりコレクションもコンプリート後は<b>右トリガー2回連続</b>でリセット＆再開。カウントダウン／残り時間は発掘図鑑の近く（左手）に出ます。PCは「🏅記録」ボタンでTOP5の確認・全リセットができます。</p>
       </section>
       <section>
         <h3>📖 発掘図鑑</h3>
         <p>発掘するとシルエットが解除され、NEWスタンプと日付が記録されます（全8種）。記録は端末に保存され、リセットもできます。</p>
-        <p class="k">VR：左の手のひらを返すと表示（Yボタンで固定）／PC・スマホ：「図鑑」ボタン</p>
+        <p class="k">VR：左手側に<b>常に表示</b>（手や角度を気にせず見られます）／PC・スマホ：「図鑑」ボタン。カードを右手で指して<b>右トリガー</b>（素手なら右つまみ）で拡大ホログラム。</p>
       </section>
       <section>
         <h3>🎮 移動</h3>
@@ -1236,22 +1236,24 @@ const taClock=(function(){
         c.fillStyle="rgba(18,12,32,0.9)"; c.beginPath();
         if(c.roundRect) c.roundRect(6,6,244,116,22); else c.rect(6,6,244,116);
         c.fill(); c.strokeStyle="#d8b46a"; c.lineWidth=4; c.stroke();
-        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+(big?86:52)+"px sans-serif"; c.fillText(txt,128,66); tex.needsUpdate=true; }
+        const fs = big?86 : (txt.length>4?32:52);
+        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+fs+"px sans-serif"; c.fillText(txt,128,66); tex.needsUpdate=true; }
     return { spr, draw, show(v){ spr.visible=v; } };
 })();
 function updateTAClock(){
     if(!renderer.xr.isPresenting || GAME.mode!=="time"){ taClock.show(false); return; }
-    if(TA.state==="countdown"){ const s=Math.max(1,Math.ceil((TA.cdEnd-performance.now())/1000)); taClock.draw(String(s),true); taClock.show(true); }
-    else if(TA.state==="run"){ taClock.draw("⏱ "+Math.max(0,Math.ceil(GAME.timeLeft))+"s",false); taClock.show(true); }
+    const s=TA.state;
+    if(s==="countdown"){ const n=Math.max(1,Math.ceil((TA.cdEnd-performance.now())/1000)); taClock.draw(String(n),true); taClock.show(true); }
+    else if(s==="run"){ taClock.draw("⏱ "+Math.max(0,Math.ceil(GAME.timeLeft))+"s",false); taClock.show(true); }
+    else if(s==="ready"){ taClock.draw("▶▶ 2回押しで開始",false); taClock.show(true); }
+    else if(s==="results" || s==="free"){ taClock.draw("▶▶ 2回押しで再挑戦",false); taClock.show(true); }
     else taClock.show(false);
 }
-// 左手のひらが顔を向いたら図鑑を表示（Yボタンで固定表示）。向きは常にカメラ向き。
+// 発掘図鑑は常に表示（左手/コントローラーの角度に関係なく）。向きは常にカメラ向き。
 function updateDexPanel(){
     if(!renderer.xr.isPresenting || !leftCtrl){ dexHolder.visible=false; return; }
-    const up=new THREE.Vector3(0,1,0).applyQuaternion(leftCtrl.getWorldQuaternion(new THREE.Quaternion()));
-    const toHead=new THREE.Vector3().subVectors(camera.getWorldPosition(new THREE.Vector3()), leftCtrl.getWorldPosition(new THREE.Vector3())).normalize();
-    dexHolder.visible = dexPinned || up.dot(toHead) > 0.15;
-    if(dexHolder.visible){ dexPanel.mesh.lookAt(camera.getWorldPosition(new THREE.Vector3())); }
+    dexHolder.visible = true;
+    dexPanel.mesh.lookAt(camera.getWorldPosition(new THREE.Vector3()));
 }
 /* 右手のレイで図鑑カードを指す → 右トリガーで「トレカ＋モデル」をホログラム風に宙へ表示 */
 const _dexRay=new THREE.Raycaster();
@@ -1286,44 +1288,50 @@ function buildHologram(idx){
     closeHologram();
     const g=new THREE.Group();
     const card=new THREE.Mesh(new THREE.PlaneGeometry(0.63,0.882),
-        new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.98, side:THREE.DoubleSide, toneMapped:false}));
-    card.position.set(-0.5,0,0); g.add(card);
+        new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.98, side:THREE.DoubleSide, toneMapped:false, depthTest:true, depthWrite:false}));
+    card.position.set(-0.42,0.05,0); card.renderOrder=1002; g.add(card);
     let dino=null, art=null;
     if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); makeFit(dino,0.5); }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
     const model = dino || art;
     if(model){
-        model.visible=true; model.updateMatrixWorld(true);   // ★測る前に必ず行列更新（巨大化の原因だった）
+        model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
-        const mg=new THREE.Group(); mg.position.set(0.42,0.0,0); mg.add(model); g.add(mg); g.userData.mg=mg;
-    }
+        // 元の色のまま／結果パネル(renderOrder 998)より手前に描く。材質は複製して共有素材を汚さない
+        model.traverse(o=>{ if(o.isMesh && o.material){
+            const wasArr=Array.isArray(o.material);
+            const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.transparent=true; c.opacity=1; c.depthTest=true; c.depthWrite=true; return c; });
+            o.material=wasArr?arr:arr[0]; o.renderOrder=1002;
+        }});
+        const mg=new THREE.Group(); mg.position.set(0.36,0.0,0); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;
+    } else g.userData.card=card;
     scene.add(g);
     holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
 }
-// 毎フレーム：左手に追従＋プレイヤー(カメラ)を向く＋モデルのゆっくりモーション
+// 毎フレーム：左手の位置に追従。カードは常にプレイヤーを向く。モデルは左手の角度で回る
 function updateHologram(){
     if(!holo) return;
     const g=holo.group, cam=camera.getWorldPosition(new THREE.Vector3());
-    let base;
+    const mg=g.userData.mg, card=g.userData.card;
     if(renderer.xr.isPresenting && leftCtrl){
-        base=leftCtrl.getWorldPosition(new THREE.Vector3()); base.y+=0.34;
-        const away=new THREE.Vector3().subVectors(base,cam); away.y=0; if(away.lengthSq()<1e-4) away.set(0,0,1); away.normalize();
-        base.addScaledVector(away,0.12);
+        const base=leftCtrl.getWorldPosition(new THREE.Vector3()); base.y+=0.30;
+        g.position.lerp(base, 0.4); g.quaternion.identity();                 // gは回さず位置だけ追従
+        if(card) card.lookAt(cam);                                          // カードはプレイヤーを向く
+        if(mg){ mg.quaternion.copy(leftCtrl.getWorldQuaternion(new THREE.Quaternion())); }  // モデルは左手の角度で回る
     } else {
         const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
-        base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
+        const base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
+        g.position.lerp(base,0.25); g.quaternion.identity();
+        if(card) card.lookAt(cam);
+        if(mg) mg.rotation.y+=0.006;
     }
-    g.position.lerp(base, 0.25);
-    g.lookAt(cam);   // プレイヤー（カメラ）の方を向く＝トレカが正面を向く
     const now=performance.now(), ph=now*0.006;
-    if(holo.dino){ holo.dino.rotation.y+=0.006;   // ゆっくり回転
-        const m=holo.dino.userData.model;
+    if(holo.dino){ const m=holo.dino.userData.model;
         if(m){ if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x=Math.sin(ph+p.userData.phase)*0.3; });
                if(m.userData.tail) m.userData.tail.rotation.y=Math.sin(now*0.003)*0.28;
                if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z=w.userData.sign*(0.22+Math.sin(now*0.004)*0.4); }); }
-    } else if(holo.art){ holo.art.rotation.y+=0.006; }
-    if(g.userData.ring) g.userData.ring.rotation.z+=0.004;
+    }
 }
 function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx) closeHologram(); else buildHologram(idx); }
 
@@ -2780,7 +2788,7 @@ function restartCollection(){
     afterSite(()=>{ clearTargets(); spawnTarget(0); });
     updateGoal(); showToast("図鑑をリセット。もう一度発掘スタート！");
 }
-// Bボタン長押し：図鑑リセット。TAはカウントダウン直前のスタンバイ状態へ
+// Ｙボタン長押し：図鑑リセット。TAはカウントダウン直前のスタンバイ状態へ
 function resetDexAndStandby(){
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
@@ -2808,13 +2816,11 @@ function handleVRDig(){
         prevTriggers[which]=trig;
     }
     toolHolder.visible = GAME.active && rightHeld;              // 保持中だけ道具を表示（離すと手に戻る）
-    // Bボタンで道具切替（右手）／ Yボタンで図鑑の固定表示（左手）
+    // B=道具切替（右手）／ A=犬に聞く／ Ｙ長押し=図鑑リセット（左手）
     for(const src of s.inputSources){
         if(src.handedness==="right" && src.gamepad){
             const b=src.gamepad.buttons[5]?.pressed ?? false;
-            if(b && !GAME._prevB){ GAME._bDownAt=performance.now(); GAME._bFired=false; }
-            if(b && !GAME._bFired && performance.now()-(GAME._bDownAt||0)>800){ GAME._bFired=true; resetDexAndStandby(); }  // 長押し=リセット
-            if(!b && GAME._prevB && !GAME._bFired){ toggleTool(); }   // 短押し=道具切替
+            if(b && !GAME._prevB){ toggleTool(); }   // B：道具切替（長押しの発火は廃止）
             GAME._prevB=b;
             const a=src.gamepad.buttons[4]?.pressed ?? false;   // Aボタンで犬に聞く
             if(a && !GAME._prevA){ askDog(); }
@@ -2822,7 +2828,10 @@ function handleVRDig(){
         }
         if(src.handedness==="left" && src.gamepad){
             const y=src.gamepad.buttons[5]?.pressed ?? false;
-            if(y && !GAME._prevY){ dexPinned=!dexPinned; showToast(dexPinned?"📖 図鑑を固定表示":"📖 図鑑：手のひらを返すと表示"); }
+            if(y && !GAME._prevY){ GAME._yDownAt=performance.now(); GAME._yFired=false; }
+            if(y && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し＝図鑑リセット
+                GAME._yFired=true; resetDexAndStandby(); vibrate(200,0.95); chord([523,784,1047],0.06,"triangle",0.5); showToast("Y長押し：図鑑リセット");
+            }
             GAME._prevY=y;
         }
     }
