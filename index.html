@@ -418,6 +418,7 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRButton} from "three/addons/webxr/VRButton.js";
 import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
+import {XRHandModelFactory} from "three/addons/webxr/XRHandModelFactory.js";
 
 /* =====================================================
  * 定数
@@ -577,12 +578,21 @@ try{
 
 /* ── コントローラ ── */
 const ctrlFactory = new XRControllerModelFactory();
+// コントローラー時に見せる簡易ハンド（肌色）
+function buildSimpleHand(){
+    const g=new THREE.Group(); const mat=new THREE.MeshStandardMaterial({color:0xe6b48c, roughness:0.85});
+    const palm=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.032,0.10), mat); palm.position.set(0,-0.015,-0.02); g.add(palm);
+    for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.BoxGeometry(0.017,0.017,0.055), mat); f.position.set(-0.031+i*0.021,-0.012,-0.085); g.add(f); }
+    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.045), mat); thumb.position.set(0.05,-0.012,-0.03); thumb.rotation.y=0.6; g.add(thumb);
+    g.rotation.x=0.5;   // 手のひらが前を向く自然な角度
+    return g;
+}
 const controllers = [];
 for(let i=0;i<2;i++){
     const c = renderer.xr.getController(i);
     player.add(c); controllers.push(c);
     const grip = renderer.xr.getControllerGrip(i);
-    grip.add(ctrlFactory.createControllerModel(grip));
+    grip.add(buildSimpleHand());     // コントローラーでも手モデルを表示
     player.add(grip);
     // レーザー（掘る照準用）
     const line = new THREE.Line(
@@ -598,7 +608,10 @@ let leftCtrl = controllers[1], rightCtrl = controllers[0]; // 既定（0=右, 1=
 const dexHolder  = new THREE.Group();  // 左手のひら側：発掘図鑑
 const toolHolder = new THREE.Group();  // 右手：発掘道具モデル
 toolHolder.visible=false;              // 既定は非表示（トリガーを押している間だけ表示）
+toolHolder.position.set(0, -0.03, -0.05);   // 手の中に収める
+toolHolder.rotation.set(-0.6, 0, 0);        // 握って前下に構えた角度
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
+let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
     if(leftCtrl  && dexHolder.parent  !== leftCtrl)  leftCtrl.add(dexHolder);
     if(rightCtrl && toolHolder.parent !== rightCtrl) rightCtrl.add(toolHolder);
@@ -616,7 +629,7 @@ controllers.forEach(c=>{
     // ハンドトラッキング：右つまみ＝道具を持つ（離すと手に戻る）／二回連続つまみ＝相棒に聞く／左つまみ＝道具の持ち替え
     c.addEventListener("selectstart", ()=>{
         if(!c.userData.isHand) return;
-        if(c.userData.handedness==="right"){ if(GAME.active){ rightHeld=true; onRightPressEdge(); } }
+        if(c.userData.handedness==="right"){ if(GAME.active){ rightHeld=true; rightDownAt=performance.now(); onRightPressEdge(); } }
         else if(GAME.active){ toggleTool(); }
     });
     c.addEventListener("selectend", ()=>{
@@ -625,11 +638,12 @@ controllers.forEach(c=>{
     });
 });
 attachAccessories();
-// 手（ハンドトラッキング）— コントローラー非装着時のフォールバック（音のみ）
+// 手（ハンドトラッキング）— 手メッシュを表示
+const handFactory = new XRHandModelFactory();
 let hands=[];
 try{
     hands = [renderer.xr.getHand(0), renderer.xr.getHand(1)];
-    hands.forEach(h=>{ player.add(h); h.userData.prevPos=new THREE.Vector3(); h.userData.shakeSpeed=0; });
+    hands.forEach(h=>{ try{ h.add(handFactory.createHandModel(h,"mesh")); }catch(_){}; player.add(h); h.userData.prevPos=new THREE.Vector3(); h.userData.shakeSpeed=0; });
 }catch(e){ console.warn("hand tracking unavailable", e); hands=[]; }
 
 /* =====================================================
@@ -1181,9 +1195,9 @@ const dexPanel=(function(){
     const cv=document.createElement("canvas"); cv.width=512; cv.height=640;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
-    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, depthTest:false});
+    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, depthTest:true});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.375), mat);
-    mesh.position.set(0,0.10,-0.06); mesh.renderOrder=999;
+    mesh.position.set(0,0.10,-0.06);
     dexHolder.add(mesh);
     const imgs=ART_IMGS.map(src=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>draw(); im.src=src; return im; });
     function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -1226,18 +1240,18 @@ const dexPanel=(function(){
 })();
 // タイムアタックのカウントダウン/残り時間を「発掘図鑑の近く（左手）」に表示
 const taClock=(function(){
-    const cv=document.createElement("canvas"); cv.width=256; cv.height=128; const c=cv.getContext("2d");
+    const cv=document.createElement("canvas"); cv.width=384; cv.height=128; const c=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
-    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
-    spr.scale.set(0.14,0.07,1); spr.position.set(0,0.31,-0.02); spr.visible=false; spr.renderOrder=1000;
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true}));
+    spr.scale.set(0.21,0.07,1); spr.position.set(0,0.31,-0.02); spr.visible=false;
     dexHolder.add(spr);
     let last="";
-    function draw(txt,big){ if(txt===last) return; last=txt; c.clearRect(0,0,256,128);
+    function draw(txt,big){ if(txt===last) return; last=txt; c.clearRect(0,0,384,128);
         c.fillStyle="rgba(18,12,32,0.9)"; c.beginPath();
-        if(c.roundRect) c.roundRect(6,6,244,116,22); else c.rect(6,6,244,116);
+        if(c.roundRect) c.roundRect(6,6,372,116,22); else c.rect(6,6,372,116);
         c.fill(); c.strokeStyle="#d8b46a"; c.lineWidth=4; c.stroke();
-        const fs = big?86 : (txt.length>4?32:52);
-        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+fs+"px sans-serif"; c.fillText(txt,128,66); tex.needsUpdate=true; }
+        const fs = big?86 : (txt.length>6?34:52);
+        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+fs+"px sans-serif"; c.fillText(txt,192,66); tex.needsUpdate=true; }
     return { spr, draw, show(v){ spr.visible=v; } };
 })();
 function updateTAClock(){
@@ -1289,22 +1303,22 @@ function buildHologram(idx){
     const g=new THREE.Group();
     const card=new THREE.Mesh(new THREE.PlaneGeometry(0.63,0.882),
         new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.98, side:THREE.DoubleSide, toneMapped:false, depthTest:true, depthWrite:false}));
-    card.position.set(-0.42,0.05,0); card.renderOrder=1002; g.add(card);
+    card.position.set(-0.62,0.05,-0.2); g.add(card);   // 現在から +20cm左・+20cm奥
     let dino=null, art=null;
-    if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); makeFit(dino,0.5); }catch(_){} }
+    if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); makeFit(dino, dinoHoloH(idx)); }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
     const model = dino || art;
     if(model){
         model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
-        // 元の色のまま／結果パネル(renderOrder 998)より手前に描く。材質は複製して共有素材を汚さない
+        // 元の色のまま（材質は複製して共有素材を汚さない）。深度テストで自然に手前へ
         model.traverse(o=>{ if(o.isMesh && o.material){
             const wasArr=Array.isArray(o.material);
-            const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.transparent=true; c.opacity=1; c.depthTest=true; c.depthWrite=true; return c; });
-            o.material=wasArr?arr:arr[0]; o.renderOrder=1002;
+            const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.depthTest=true; c.depthWrite=true; return c; });
+            o.material=wasArr?arr:arr[0];
         }});
-        const mg=new THREE.Group(); mg.position.set(0.36,0.0,0); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;
+        const mg=new THREE.Group(); mg.position.set(0.36,0.0,-0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // モデルも +20cm奥
     } else g.userData.card=card;
     scene.add(g);
     holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
@@ -1432,8 +1446,8 @@ function spawnTarget(tier, forcedIdx=null){
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35, pos.z); stage.add(block);
     const outline=new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02, DIG_BLOCK*0.72, DIG_BLOCK*1.02)),
-        new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:false}));
-    outline.position.copy(block.position); outline.visible=false; outline.renderOrder=997; stage.add(outline);
+        new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:true}));
+    outline.position.copy(block.position); outline.visible=false; stage.add(outline);
     const t = { idx, tier, pos, diff:d, marker, block, outline, discovered:false, progress:0,
                 digNeed: Math.max(2, Math.round(d.digNeed * toolMods().digMul)) };
     GAME.targets.push(t);
@@ -1454,24 +1468,28 @@ const popAnims=[];
 const dinoDigModels=new Array(8).fill(null);
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
-const DINO_SIZE = { brachi:2.0 };   // 種別の表示サイズ倍率（ブラキオサウルスは約2倍）
-function dinoSizeOf(idx){ return DINO_SIZE[(DINOS[idx]||{}).key]||1; }
+// 恐竜の表示サイズ階層（下限0.9〜上限2.1の4段階）。種別ごとに階層を割り当て、生成時にそのサイズで作る
+const DINO_TIER_H=[0.9, 1.2, 1.6, 2.1];
+const DINO_TIER={ ptera:0, fukuiraptor:0, tri:1, stego:1, fukuisaurus:1, trex:2, fukuititan:2, brachi:3 };
+function dinoHByKey(key){ const t=DINO_TIER[key]; return DINO_TIER_H[t!==undefined?t:1]; }
+function dinoWorldH(idx){ return dinoHByKey((DINOS[idx]||{}).key); }
+function dinoSizeOf(idx){ return dinoWorldH(idx); }         // パネル/演出用のサイズ指標（＝表示高さ）
+function dinoHoloH(idx){ return dinoWorldH(idx) * 0.24; }   // ホログラムにも同じ比率で反映（最大2.1→約0.5m）
 function dinoEmergeLine(dn){
     const name=(dn.label||"").replace(/^\S+\s*/,"");
     if((dn.key||"").indexOf("fukui")===0) return `${name}やざ！ ${dn.cry}！`;   // 福井弁
     return `${name}だ！ ${dn.cry}！`;
 }
-// 恐竜モデルを「底面＝原点」のコンテナに包む（プテラノも他と同じ基準高さに揃う）
+// 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
-    const mul=DINO_SIZE[dn.key]||1;
-    const inner=dn.build(); makeFit(inner, 1.0*mul); inner.updateMatrixWorld(true);
+    const inner=dn.build(); makeFit(inner, dinoHByKey(dn.key)); inner.updateMatrixWorld(true);
     const bb=new THREE.Box3().setFromObject(inner);
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
     const cont=new THREE.Group(); cont.add(inner);
     cont.userData.model=inner;
     cont.userData.legs=inner.userData.legs; cont.userData.tail=inner.userData.tail; cont.userData.wings=inner.userData.wings;
     cont.userData.flying=!!inner.userData.wings;
-    cont.userData.sizeMul=mul;
+    cont.userData.sizeMul=dinoHByKey(dn.key);
     cont.userData.animPhase=Math.random()*Math.PI*2;        // 足踏みの位相を個体ごとにバラす
     cont.userData.animSpeed=0.85+Math.random()*0.4;         // 速さも少し変える
     cont.userData.tailPhase=Math.random()*Math.PI*2;
@@ -1933,9 +1951,9 @@ const worldHud=(function(){
     const cv=document.createElement("canvas"); cv.width=768; cv.height=864;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
-    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:false, toneMapped:false});
+    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:true, toneMapped:false});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.46), mat);
-    mesh.renderOrder=998; mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
+    mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function bg(){ ctx.clearRect(0,0,768,768);
@@ -2482,7 +2500,7 @@ const heartTex=(function(){
 function spawnHearts(pos, n=4){
     for(let i=0;i<n;i++){
         let h=hearts.find(x=>!x.alive);
-        if(!h){ h={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:heartTex, transparent:true, depthTest:false})), life:0, alive:false, vx:0, vz:0 };
+        if(!h){ h={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:heartTex, transparent:true, depthTest:true})), life:0, alive:false, vx:0, vz:0 };
             h.spr.scale.set(0.22,0.22,1); stage.add(h.spr); hearts.push(h); }
         h.spr.position.set(pos.x+(Math.random()-0.5)*0.3, pos.y+0.7, pos.z+(Math.random()-0.5)*0.3);
         h.vx=(Math.random()-0.5)*0.3; h.vz=(Math.random()-0.5)*0.3;
@@ -2512,7 +2530,7 @@ const sparkleTex=(function(){
 function spawnSparkle(pos, n=1){
     for(let i=0;i<n;i++){
         let s=sparkles.find(x=>!x.alive);
-        if(!s){ s={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:sparkleTex, transparent:true, depthTest:false, blending:THREE.AdditiveBlending})), life:0, alive:false, vy:0 };
+        if(!s){ s={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:sparkleTex, transparent:true, depthTest:true, blending:THREE.AdditiveBlending})), life:0, alive:false, vy:0 };
             s.spr.scale.set(0.18,0.18,1); stage.add(s.spr); sparkles.push(s); }
         s.spr.position.set(pos.x+(Math.random()-0.5)*0.26, pos.y+0.72+Math.random()*0.14, pos.z+(Math.random()-0.5)*0.26);
         s.vy=0.18+Math.random()*0.14; s.life=0.9; s.alive=true; s.spr.visible=true; s.spr.material.opacity=1;
@@ -2748,7 +2766,7 @@ function updateScan(dt, isVR, now){
     }
     // 発掘：狙ったブロックに向けてコントローラー/手を振ると掘れる（VR）
     if(handDigCooldown>0) handDigCooldown-=dt;
-    if(isVR && handDigCooldown<=0 && aimedTarget && rightHeld){   // 道具を持っている間だけ掘れる
+    if(isVR && handDigCooldown<=0 && aimedTarget && toolActive){   // 道具が出ている間だけ掘れる
         for(const pr of probes){
             if(!pr.shaking) continue;
             if(digAimed()){ handDigCooldown=0.35; }
@@ -2808,14 +2826,15 @@ function handleVRDig(){
         const trig = gp.buttons[0]?.pressed ?? false;
         const which = src.handedness==="left"?1:0;
         if(src.handedness==="right"){
-            rightHeld = trig;                                  // 押している間だけ道具を持つ＝発掘可能
-            if(trig && !prevTriggers[which]) onRightPressEdge();
+            if(trig && !prevTriggers[which]){ rightDownAt=performance.now(); onRightPressEdge(); }
+            rightHeld = trig;
         } else if(src.handedness==="left"){
             if(trig && !prevTriggers[which]) toggleTool();
         }
         prevTriggers[which]=trig;
     }
-    toolHolder.visible = GAME.active && rightHeld;              // 保持中だけ道具を表示（離すと手に戻る）
+    toolActive = rightHeld && (performance.now()-rightDownAt > 220);   // 0.22秒以上の保持で道具（2回押しの一瞬表示を防ぐ）
+    toolHolder.visible = GAME.active && toolActive;
     // B=道具切替（右手）／ A=犬に聞く／ Ｙ長押し=図鑑リセット（左手）
     for(const src of s.inputSources){
         if(src.handedness==="right" && src.gamepad){
