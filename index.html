@@ -286,6 +286,7 @@
     <div class="row">
       <button class="ghost" id="openDex">📖 発掘図鑑</button>
       <button class="ghost" id="openHelp">❓ あそび方</button>
+      <button class="ghost" id="openRecords">🏅 記録</button>
     </div>
 
     <p class="hint" id="menuHint">
@@ -1564,6 +1565,7 @@ function excavate(t){
             setTimeout(()=> spawnTarget(GAME.collectedCount), 900);
         }
     } else { // タイムアタック
+        GAME.digScore = (GAME.digScore||0) + 100 + t.tier*40;   // 発掘ポイント（時間ボーナス/減点は終了時に加除）
         updateGoal();
         if(dexFoundCount()>=8){ taFinish(); }   // 全8種を掘り切ったら終了＝残り時間でスコア
         else if(TA.state==="run") setTimeout(()=>{ if(TA.state==="run") spawnTarget(Math.min(7, (Math.random()*8|0))); }, 600);
@@ -1943,26 +1945,34 @@ const worldHud=(function(){
         drawResults(score, found, list, calc){
             bg();
             ctx.textAlign="center"; ctx.textBaseline="middle";
-            ctx.fillStyle="#f0d98a"; ctx.font="bold 52px sans-serif"; ctx.fillText(found>=8?"🏆 コンプリート！":"⏱ タイムアップ！",384,78);
-            ctx.fillStyle="#ffffff"; ctx.font="bold 96px sans-serif"; ctx.fillText(score+" pt",384,166);
+            ctx.fillStyle="#f0d98a"; ctx.font="bold 50px sans-serif"; ctx.fillText(found>=8?"🏆 コンプリート！":"⏱ タイムアップ！",384,74);
+            ctx.fillStyle="#ffffff"; ctx.font="bold 88px sans-serif"; ctx.fillText(score+" pt",384,158);
             if(calc){
-                ctx.fillStyle="rgba(226,216,255,.9)"; ctx.font="bold 30px sans-serif";
-                ctx.fillText("残り "+calc.secs+"秒 × 30 ＝ "+(calc.secs*30), 384, 230);
-                ctx.fillText("相棒に聞いた "+calc.asks+"回 × −10 ＝ −"+(calc.asks*10), 384, 270);
-                ctx.fillStyle="rgba(255,240,170,.95)"; ctx.font="bold 32px sans-serif";
-                ctx.fillText("＝ "+score+" pt", 384, 312);
+                // 計算過程（余白を広めに、左ラベル・右数値で読みやすく）
+                const lx=150, rx=620; let y=232; const rowH=48;
+                ctx.font="bold 30px sans-serif";
+                const row=(label,val,col)=>{ ctx.fillStyle=col||"rgba(226,216,255,.9)";
+                    ctx.textAlign="left";  ctx.fillText(label, lx, y);
+                    ctx.textAlign="right"; ctx.fillText(val, rx, y); y+=rowH; };
+                row("発掘ポイント", "+"+calc.digPts);
+                row("時間ボーナス（残り"+calc.secs+"秒×30）", "+"+calc.timeBonus);
+                row("相棒に聞いた（"+calc.asks+"回×−10）", "−"+calc.askPenalty, "rgba(255,190,190,.9)");
+                // 区切り線＋合計
+                ctx.strokeStyle="rgba(216,180,106,.5)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(lx,y-14); ctx.lineTo(rx,y-14); ctx.stroke();
+                ctx.fillStyle="#ffe066"; ctx.font="bold 34px sans-serif";
+                ctx.textAlign="left"; ctx.fillText("合計", lx, y+8);
+                ctx.textAlign="right"; ctx.fillText(score+" pt", rx, y+8);
             }
-            ctx.fillStyle="rgba(226,216,255,.8)"; ctx.font="bold 30px sans-serif"; ctx.fillText("発掘 "+found+" / 8",384,352);
-            ctx.fillStyle="#e6c26a"; ctx.font="bold 36px sans-serif"; ctx.fillText("― TOP 5 ―",384,404);
+            ctx.textAlign="center"; ctx.fillStyle="#e6c26a"; ctx.font="bold 34px sans-serif"; ctx.fillText("― TOP 5 ―",384,470);
             for(let i=0;i<5;i++){
-                const e=list[i], y=452+i*52, hit=e&&e.score===score;
+                const e=list[i], yy=516+i*44, hit=e&&e.score===score;
                 ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
-                ctx.textAlign="left";   ctx.font="bold 36px sans-serif"; ctx.fillText((i+1)+".", 60, y);
-                ctx.textAlign="center"; ctx.font="bold 40px sans-serif"; ctx.fillText(e? (e.score+" pt") : "----", 384, y);   // ポイント中央
-                ctx.textAlign="right";  ctx.font="bold 26px sans-serif"; ctx.fillText(e? ((e.date||"")+(e.time? " "+e.time:"")) : "", 712, y);  // 年月日＋時間 右揃え
+                ctx.textAlign="left";   ctx.font="bold 30px sans-serif"; ctx.fillText((i+1)+".", 90, yy);
+                ctx.textAlign="center"; ctx.font="bold 34px sans-serif"; ctx.fillText(e? (e.score+" pt") : "----", 384, yy);
+                ctx.textAlign="right";  ctx.font="bold 24px sans-serif"; ctx.fillText(e? ((e.date||"")+(e.time? " "+e.time:"")) : "", 680, yy);
             }
-            ctx.textAlign="center"; ctx.fillStyle="rgba(200,190,240,.75)"; ctx.font="bold 28px sans-serif";
-            ctx.fillText(GAME.desktop?"スペース / ボタンで閉じる（歩き回れます）":"右トリガー2回で閉じる（歩き回れます）",384,724);
+            ctx.textAlign="center"; ctx.fillStyle="rgba(200,190,240,.75)"; ctx.font="bold 26px sans-serif";
+            ctx.fillText(GAME.desktop?"スペース / ボタンで閉じる（歩き回れます）":"右トリガー2回で閉じる（歩き回れます）",384,746);
             tex.needsUpdate=true; mesh.visible=true;
         }
     };
@@ -1995,7 +2005,7 @@ function taBeginCountdown(){
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
-    GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.askCount=0;
+    GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.askCount=0; GAME.digScore=0;
     TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS;
     worldHud.drawCountdown("3","まもなくスタート");
     bubble.say(line("start"), 2200);
@@ -2010,17 +2020,19 @@ function taStartRun(){
     updateGoal(); updateTAButton();
 }
 function taFinish(){
+    const digPts=GAME.digScore||0;
     const secs=Math.max(0, Math.ceil(GAME.timeLeft));
     const asks=GAME.askCount||0;
-    const score=Math.max(0, secs*30 - asks*10);
+    const timeBonus=secs*30, askPenalty=asks*10;
+    const score=Math.max(0, digPts + timeBonus - askPenalty);
     GAME.score=score; TA.lastScore=score;
     if(score>0) recordTimeAttack(score);
     clearTargets();
     TA.state="results";
-    TA.lockUntil=performance.now()+1500;      // ひと呼吸おいてから入力を受け付ける
+    TA.lockUntil=performance.now()+1500;
     sfxTimeUp();
     const found=dexFoundCount();
-    worldHud.drawResults(score, found, loadTA(), {secs, asks});   // 計算過程も渡す
+    worldHud.drawResults(score, found, loadTA(), {digPts, secs, timeBonus, asks, askPenalty});
     bubble.say(found>=8 ? line("done") : line("again"), 4000);
     updateGoal(); updateTAButton();
 }
@@ -2083,6 +2095,7 @@ function openTAModal(){
     document.getElementById("taModal").style.display="flex";
 }
 { const rb=document.getElementById("dRecords"); if(rb) rb.onclick=openTAModal; }
+{ const rb2=document.getElementById("openRecords"); if(rb2) rb2.onclick=openTAModal; }
 document.getElementById("taModalClose").onclick=()=>{ document.getElementById("taModal").style.display="none"; };
 document.getElementById("taResetAll").onclick=()=>{ if(confirm("すべてのタイムアタック記録を削除します。よろしいですか？")){ saveTA([]); openTAModal(); } };
 document.getElementById("taModal").addEventListener("click",e=>{ if(e.target.id==="taModal") e.currentTarget.style.display="none"; });
@@ -2384,6 +2397,7 @@ let petBoost=0;                 // 撫でるほど上がる「当てる確率」
 let dogAttentive=false;         // 相棒がプレイヤーを向いて待っている（撫でられる状態）
 let digBusy=false, digBusySpot=null, digBusyUntil=0;  // 発掘中はヒント/撫でを止める区間
 let sparkleCd=0;                // 当てる確率キラキラの発生タイマー
+let lastProbes=[];             // 直近の探査デバイス（手/コントローラー）＝撫で判定に使用
 const PET_LINES=["うれしいワン！","もっと なでて ワン♪","えへへ…ワン","がんばるワン！"];
 function petDog(){
     if(petCooldown>0) return;
@@ -2397,12 +2411,11 @@ function petDog(){
 }
 // VR：道具を持たず・相棒が注視中で・忙しくない時、相棒の近くで手を往復（撫でる）させたら喜ぶ
 function checkPetVR(){
+    if(!renderer.xr.isPresenting) return;
     if(rightHeld || digBusy || !dogAttentive) return;    // 道具中/発掘中/相棒が向いていない時はなでない
     const c=dog.getWorldPosition(new THREE.Vector3()); c.y += 0.4;
-    const devices=[rightCtrl,leftCtrl].filter(d=>d && d.userData.handedness);
-    for(const d of devices){
-        const p=d.getWorldPosition(new THREE.Vector3());
-        if(p.distanceTo(c) < 0.5 && (d.userData.shakeSpeed||0) > 1.1){ petDog(); return; }   // 感度控えめ（しっかり往復）
+    for(const pr of lastProbes){                          // 手（指先）もコントローラーも対象
+        if(pr && pr.pos && pr.pos.distanceTo(c) < 0.5 && pr.shaking){ petDog(); return; }   // 近くで往復＝撫でる
     }
 }
 // PC：画面中央が相棒に当たっていればなでる（厳密判定）
@@ -2468,6 +2481,36 @@ function updateHearts(dt){
         h.spr.position.y+=dt*0.7; h.spr.position.x+=h.vx*dt; h.spr.position.z+=h.vz*dt;
         h.spr.material.opacity=Math.max(0,h.life/1.4);
         if(h.life<=0){ h.alive=false; h.spr.visible=false; }
+    }
+}
+// キラキラ（ひらめき）演出：当てる確率インジケータ用
+const sparkles=[];
+const sparkleTex=(function(){
+    const cv=document.createElement("canvas"); cv.width=cv.height=64; const c=cv.getContext("2d");
+    c.translate(32,32);
+    const grd=c.createRadialGradient(0,0,0,0,0,30); grd.addColorStop(0,"rgba(255,255,220,1)"); grd.addColorStop(0.4,"rgba(255,230,120,.9)"); grd.addColorStop(1,"rgba(255,220,90,0)");
+    c.fillStyle=grd; c.beginPath(); c.arc(0,0,30,0,Math.PI*2); c.fill();
+    c.fillStyle="rgba(255,255,240,.95)";               // 4方向のきらめき
+    for(let k=0;k<4;k++){ c.rotate(Math.PI/2); c.beginPath(); c.moveTo(0,-28); c.lineTo(4,-6); c.lineTo(0,0); c.lineTo(-4,-6); c.closePath(); c.fill(); }
+    return new THREE.CanvasTexture(cv);
+})();
+function spawnSparkle(pos, n=1){
+    for(let i=0;i<n;i++){
+        let s=sparkles.find(x=>!x.alive);
+        if(!s){ s={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:sparkleTex, transparent:true, depthTest:false, blending:THREE.AdditiveBlending})), life:0, alive:false, vy:0 };
+            s.spr.scale.set(0.18,0.18,1); stage.add(s.spr); sparkles.push(s); }
+        s.spr.position.set(pos.x+(Math.random()-0.5)*0.45, pos.y+1.05+Math.random()*0.25, pos.z+(Math.random()-0.5)*0.45);
+        s.vy=0.25+Math.random()*0.2; s.life=1.0; s.alive=true; s.spr.visible=true; s.spr.material.opacity=1;
+    }
+}
+function updateSparkles(dt){
+    const now=performance.now();
+    for(const s of sparkles){
+        if(!s.alive) continue;
+        s.life-=dt; s.spr.position.y+=s.vy*dt;
+        const k=Math.max(0,s.life); s.spr.material.opacity=k*(0.6+0.4*Math.abs(Math.sin(now*0.02)));  // チカチカ
+        s.spr.scale.setScalar(0.12+0.08*k);
+        if(s.life<=0){ s.alive=false; s.spr.visible=false; }
     }
 }
 
@@ -2560,6 +2603,7 @@ renderer.setAnimationLoop(()=>{
     updateWorldHud();
     updateDirt(dt);
     updateHearts(dt);
+    updateSparkles(dt);
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
@@ -2660,6 +2704,7 @@ function updateScan(dt, isVR, now){
     } else if(GAME.desktop){
         probes.push({pos:desktopProbe().clone(), shaking:true, haptic:false, isHand:false}); // デスクトップは常時探査
     }
+    lastProbes = probes;   // 撫で判定（手/コントローラー共通）に使う
 
     // 各ターゲットについて最大信号を求める
     let heat=0;
@@ -2712,15 +2757,14 @@ function onRightPressEdge(){
         if(e && e.found) toggleHologram(dexPanel.hover);   // 発掘済みのみ選択可（未発掘は無反応）
         return;
     }
-    if(GAME.mode==="time" && TA.state==="ready"){ taAdvance(); return; }   // スタート待ちは1回押しで開始
     const now=performance.now();
-    if(now-lastRightPress<400){ lastRightPress=0; onRightDouble(); }       // 2回連続
+    if(now-lastRightPress<400){ lastRightPress=0; onRightDouble(); }   // 2回連続で実行
     else lastRightPress=now;
 }
 function onRightDouble(){
-    if(GAME.mode==="time" && (TA.state==="results" || TA.state==="free")){ taAdvance(); return; }   // 結果を閉じる/再挑戦
-    if(GAME.mode==="collect" && GAME.collectedCount>=8){ restartCollection(); return; }             // コンプリート後の再開
-    askDog();                                                                                        // 通常＝相棒に聞く
+    if(GAME.mode==="time" && taAdvance()) return;                                       // 開始/結果閉じ/再挑戦（すべて2回連続）
+    if(GAME.mode==="collect" && GAME.collectedCount>=8){ restartCollection(); return; } // コンプリート後の再開
+    askDog();                                                                           // 通常＝相棒に聞く
 }
 function restartCollection(){
     resetDexForRun(); clearRunWorld();
@@ -2871,7 +2915,7 @@ function updateDog(dt, now){
       const prob=Math.min(1, baseRel+petBoost);
       const rate = prob>=0.99?0.16 : prob>=0.8?0.42 : prob>=0.6?0.9 : 0;
       sparkleCd-=dt;
-      if(rate>0 && sparkleCd<=0 && !digBusy){ sparkleCd=rate; spawnHearts(dog.position, prob>=0.99?2:1); }
+      if(rate>0 && sparkleCd<=0 && !digBusy){ sparkleCd=rate; spawnSparkle(dog.position, prob>=0.99?2:1); }
     }
 
     // 歩行アニメ（脚の振り＋上下バウンド）
