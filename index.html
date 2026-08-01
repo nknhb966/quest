@@ -1137,8 +1137,9 @@ const bubble = (function(){
         ctx.lineTo(r,180); ctx.quadraticCurveTo(8,180,8,180-r);
         ctx.lineTo(8,20+r); ctx.quadraticCurveTo(8,20,r,20); ctx.closePath();
         ctx.fill(); ctx.strokeStyle="#d8b46a"; ctx.lineWidth=4; ctx.stroke();
-        ctx.fillStyle="#3a2d16"; ctx.font="bold 48px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-        ctx.fillText(text,cx,100); tex.needsUpdate=true;
+        ctx.fillStyle="#3a2d16"; ctx.font="bold 46px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        const lines=String(text).split("\n"); const lh=54, sy=100-(lines.length-1)*lh/2;
+        lines.forEach((ln,i)=> ctx.fillText(ln, cx, sy+i*lh)); tex.needsUpdate=true;
     }
     let hideT=null, holdText=null;
     return {
@@ -1288,11 +1289,11 @@ function buildHologram(idx){
         new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.98, side:THREE.DoubleSide, toneMapped:false}));
     card.position.set(-0.5,0,0); g.add(card);
     let dino=null, art=null;
-    if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); }catch(_){} }
-    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.set(1,1,1); }  // 出土品は変形をリセット
+    if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); makeFit(dino,0.5); }catch(_){} }
+    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
     const model = dino || art;
     if(model){
-        model.visible=true; makeFit(model, art? ART_TARGET_H*0.7 : 0.5); model.updateMatrixWorld(true);   // 出土品はワールド配置サイズの0.7倍
+        model.visible=true; model.updateMatrixWorld(true);   // ★測る前に必ず行列更新（巨大化の原因だった）
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
         const mg=new THREE.Group(); mg.position.set(0.42,0.0,0); mg.add(model); g.add(mg); g.userData.mg=mg;
@@ -1346,7 +1347,7 @@ function difficulty(tier){
     return {
         detectR : THREE.MathUtils.lerp(7.0, 2.4, t),   // 探知が反応する半径
         digNeed : Math.round(THREE.MathUtils.lerp(3, 10, t)),
-        dogRel  : THREE.MathUtils.lerp(0.95, 0.4, t),  // 犬ヒント信頼度
+        dogRel  : THREE.MathUtils.lerp(0.5, 0.2, t),   // 犬ヒント信頼度（基本は低め＝外しがち。撫でると上がる）
         minDist : THREE.MathUtils.lerp(4, 9, t),       // 中心からの最低距離
     };
 }
@@ -1905,7 +1906,7 @@ function recordTimeAttack(score){
     arr.push({score,
         date:`${now.getFullYear()}/${p(now.getMonth()+1)}/${p(now.getDate())}`,
         time:`${p(now.getHours())}:${p(now.getMinutes())}`, id:Date.now()});
-    arr.sort((a,b)=>b.score-a.score); saveTA(arr.slice(0,5));
+    arr.sort((a,b)=> (b.score-a.score) || ((b.id||0)-(a.id||0)) ); saveTA(arr.slice(0,5));
 }
 
 /* =====================================================
@@ -1921,16 +1922,16 @@ const COUNTDOWN_MS=3000;
 
 // ワールド内の大型表示（カメラの正面に追従。移動しながらでも読める）
 const worldHud=(function(){
-    const cv=document.createElement("canvas"); cv.width=768; cv.height=768;
+    const cv=document.createElement("canvas"); cv.width=768; cv.height=864;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:false, toneMapped:false});
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.3), mat);
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.46), mat);
     mesh.renderOrder=998; mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function bg(){ ctx.clearRect(0,0,768,768);
-        ctx.fillStyle="rgba(10,7,26,0.90)"; rr(24,24,720,720,40); ctx.fill();
+        ctx.fillStyle="rgba(10,7,26,0.90)"; rr(24,24,720,816,40); ctx.fill();
         ctx.strokeStyle="#d8b46a"; ctx.lineWidth=6; ctx.stroke(); }
     return {
         mesh,
@@ -1938,8 +1939,8 @@ const worldHud=(function(){
         drawCountdown(text, sub){
             bg();
             ctx.textAlign="center"; ctx.textBaseline="middle";
-            ctx.fillStyle="#f0d98a"; ctx.font="bold 300px sans-serif"; ctx.fillText(text,384,360);
-            if(sub){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="bold 44px sans-serif"; ctx.fillText(sub,384,610); }
+            ctx.fillStyle="#f0d98a"; ctx.font="bold 300px sans-serif"; ctx.fillText(text,384,410);
+            if(sub){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="bold 44px sans-serif"; ctx.fillText(sub,384,670); }
             tex.needsUpdate=true; mesh.visible=true;
         },
         drawResults(score, found, list, calc){
@@ -2399,13 +2400,19 @@ let digBusy=false, digBusySpot=null, digBusyUntil=0;  // 発掘中はヒント/�
 let sparkleCd=0;                // 当てる確率キラキラの発生タイマー
 let lastProbes=[];             // 直近の探査デバイス（手/コントローラー）＝撫で判定に使用
 const PET_LINES=["うれしいワン！","もっと なでて ワン♪","えへへ…ワン","がんばるワン！"];
+function currentHitProb(){ let base=0.5; const tg=GAME.targets.find(x=>!x.discovered); if(tg&&tg.diff) base=tg.diff.dogRel; return Math.min(1, base+petBoost); }
 function petDog(){
     if(petCooldown>0) return;
     if(digBusy) return;                          // 発掘中はなでない
     petCooldown=1.6; petWiggle=1.4;
-    petBoost=Math.min(0.5, petBoost+0.09);       // 撫でるほど当てる確率アップ
+    petBoost=Math.min(0.6, petBoost+0.12);       // 撫でるほど当てる確率アップ（大きめ）
     sfxBark();
-    bubble.say(line("pet") || PET_LINES[(Math.random()*PET_LINES.length)|0], 2000);
+    const p=currentHitProb();                    // 確率に応じてセリフ変化（改行でスマホでも見やすく）
+    const petLine = p>=0.99 ? "うれしいワン！\nぜったい見つかるワン！"
+        : p>=0.8 ? "うれしいワン！\n見つけられそう！"
+        : p>=0.6 ? "なでなで うれしい♪\nもう少しで分かるワン"
+        : "うれしいワン！\nまだ 自信ないワン…";
+    bubble.say(petLine, 2000);
     vibrate(90,0.5);
     spawnHearts(dog.position);
 }
@@ -2499,8 +2506,8 @@ function spawnSparkle(pos, n=1){
         let s=sparkles.find(x=>!x.alive);
         if(!s){ s={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:sparkleTex, transparent:true, depthTest:false, blending:THREE.AdditiveBlending})), life:0, alive:false, vy:0 };
             s.spr.scale.set(0.18,0.18,1); stage.add(s.spr); sparkles.push(s); }
-        s.spr.position.set(pos.x+(Math.random()-0.5)*0.45, pos.y+1.05+Math.random()*0.25, pos.z+(Math.random()-0.5)*0.45);
-        s.vy=0.25+Math.random()*0.2; s.life=1.0; s.alive=true; s.spr.visible=true; s.spr.material.opacity=1;
+        s.spr.position.set(pos.x+(Math.random()-0.5)*0.26, pos.y+0.72+Math.random()*0.14, pos.z+(Math.random()-0.5)*0.26);
+        s.vy=0.18+Math.random()*0.14; s.life=0.9; s.alive=true; s.spr.visible=true; s.spr.material.opacity=1;
     }
 }
 function updateSparkles(dt){
@@ -2911,11 +2918,11 @@ function updateDog(dt, now){
     }
     petBoost=Math.max(0, petBoost - dt*0.02);   // 撫でボーナスはゆっくり減衰
     // 当てる確率のキラキラ（頭上）：100%多め / 80%以上ふつう / 60%以上少し / 未満なし
-    { let baseRel=0.7; const tg=GAME.targets.find(x=>!x.discovered); if(tg&&tg.diff) baseRel=tg.diff.dogRel;
-      const prob=Math.min(1, baseRel+petBoost);
-      const rate = prob>=0.99?0.16 : prob>=0.8?0.42 : prob>=0.6?0.9 : 0;
+    { const prob=currentHitProb();
+      let rate=0, n=1;
+      if(prob>=0.99){ rate=0.12; n=3; } else if(prob>=0.8){ rate=0.4; n=1; } else if(prob>=0.6){ rate=1.1; n=1; }
       sparkleCd-=dt;
-      if(rate>0 && sparkleCd<=0 && !digBusy){ sparkleCd=rate; spawnSparkle(dog.position, prob>=0.99?2:1); }
+      if(rate>0 && sparkleCd<=0 && !digBusy){ sparkleCd=rate; spawnSparkle(dog.position, n); }
     }
 
     // 歩行アニメ（脚の振り＋上下バウンド）
