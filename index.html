@@ -418,7 +418,6 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRButton} from "three/addons/webxr/VRButton.js";
 import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
-import {XRHandModelFactory} from "three/addons/webxr/XRHandModelFactory.js";
 
 /* =====================================================
  * 定数
@@ -578,13 +577,13 @@ try{
 
 /* ── コントローラ ── */
 const ctrlFactory = new XRControllerModelFactory();
-// コントローラー時に見せる簡易ハンド（肌色）
+// 右手用の簡易ハンド（肌色）。道具と同じコントローラーに付け、右手だけ表示
 function buildSimpleHand(){
     const g=new THREE.Group(); const mat=new THREE.MeshStandardMaterial({color:0xe6b48c, roughness:0.85});
     const palm=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.032,0.10), mat); palm.position.set(0,-0.015,-0.02); g.add(palm);
     for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.BoxGeometry(0.017,0.017,0.055), mat); f.position.set(-0.031+i*0.021,-0.012,-0.085); g.add(f); }
-    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.045), mat); thumb.position.set(0.05,-0.012,-0.03); thumb.rotation.y=0.6; g.add(thumb);
-    g.rotation.x=0.5;   // 手のひらが前を向く自然な角度
+    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.045), mat); thumb.position.set(-0.05,-0.012,-0.03); thumb.rotation.y=-0.6; g.add(thumb);  // 親指を反対側・逆向きに
+    g.rotation.set(0.5, 0, -Math.PI/2);   // 手のひらの向き＋全体を90度回転
     return g;
 }
 const controllers = [];
@@ -592,8 +591,8 @@ for(let i=0;i<2;i++){
     const c = renderer.xr.getController(i);
     player.add(c); controllers.push(c);
     const grip = renderer.xr.getControllerGrip(i);
-    grip.add(buildSimpleHand());     // コントローラーでも手モデルを表示
     player.add(grip);
+    c.userData.handModel = buildSimpleHand(); c.add(c.userData.handModel);   // 手モデル（右手だけ表示。道具と同じ座標系）
     // レーザー（掘る照準用）
     const line = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-1)]),
@@ -602,6 +601,10 @@ for(let i=0;i<2;i++){
     c.userData.prevPos = new THREE.Vector3();
     c.userData.shakeSpeed = 0;
     c.userData.index = i;
+}
+// 手モデルは右手だけ表示（左手は非表示）
+function updateHandModels(){
+    for(const c of controllers){ if(c.userData.handModel) c.userData.handModel.visible = (c.userData.handedness==="right"); }
 }
 // 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
 let leftCtrl = controllers[1], rightCtrl = controllers[0]; // 既定（0=右, 1=左）
@@ -638,12 +641,11 @@ controllers.forEach(c=>{
     });
 });
 attachAccessories();
-// 手（ハンドトラッキング）— 手メッシュを表示
-const handFactory = new XRHandModelFactory();
+// 手（ハンドトラッキング）— 指先の探査に使用（見た目はコントローラー側の手モデルを共用）
 let hands=[];
 try{
     hands = [renderer.xr.getHand(0), renderer.xr.getHand(1)];
-    hands.forEach(h=>{ try{ h.add(handFactory.createHandModel(h,"mesh")); }catch(_){}; player.add(h); h.userData.prevPos=new THREE.Vector3(); h.userData.shakeSpeed=0; });
+    hands.forEach(h=>{ player.add(h); h.userData.prevPos=new THREE.Vector3(); h.userData.shakeSpeed=0; });
 }catch(e){ console.warn("hand tracking unavailable", e); hands=[]; }
 
 /* =====================================================
@@ -1170,16 +1172,18 @@ const bubble = (function(){
  * ===================================================== */
 function buildToolModel(kind){
     const g=new THREE.Group();
-    const handleMat=new THREE.MeshStandardMaterial({color:0x6b4a2b, roughness:0.7});
-    const metalMat =new THREE.MeshStandardMaterial({color:0xb9c2cc, roughness:0.35, metalness:0.6});
-    const handle=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.022,0.22,10), handleMat);
-    handle.rotation.x=Math.PI/2; handle.position.set(0,0,-0.11); g.add(handle); // 前方へ伸びる柄
-    if(kind==="wide"){ // ブラシ
-        const ferrule=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.04,10), metalMat); ferrule.rotation.x=Math.PI/2; ferrule.position.set(0,0,-0.225); g.add(ferrule);
-        const bristles=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.02,0.06), new THREE.MeshStandardMaterial({color:0xe8d9a0, roughness:0.95})); bristles.position.set(0,0,-0.275); g.add(bristles);
-    } else { // ピック
-        const tip=new THREE.Mesh(new THREE.ConeGeometry(0.02,0.16,10), metalMat); tip.rotation.x=-Math.PI/2; tip.position.set(0,0,-0.30); g.add(tip);
-        const cross=new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.13,8), metalMat); cross.position.set(0,0,-0.225); g.add(cross);
+    const wood=new THREE.MeshStandardMaterial({color:0x8a5a2b, roughness:0.95});   // マイクラの棒
+    const iron=new THREE.MeshStandardMaterial({color:0xd8dde3, roughness:0.85});   // 鉄
+    const dark=new THREE.MeshStandardMaterial({color:0x9aa2ab, roughness:0.9});
+    const stick=new THREE.Mesh(new THREE.BoxGeometry(0.024,0.024,0.24), wood); stick.position.set(0,0,-0.12); g.add(stick);   // 柄
+    if(kind==="wide"){ // シャベル（四角い頭）
+        const head=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,0.03), iron); head.position.set(0,0,-0.255); g.add(head);
+        const rim =new THREE.Mesh(new THREE.BoxGeometry(0.096,0.096,0.012), dark); rim.position.set(0,0,-0.272); g.add(rim);
+    } else { // ツルハシ（横バーのT字）
+        const bar =new THREE.Mesh(new THREE.BoxGeometry(0.17,0.032,0.032), iron); bar.position.set(0,0,-0.245); g.add(bar);
+        const neck=new THREE.Mesh(new THREE.BoxGeometry(0.032,0.032,0.03), iron); neck.position.set(0,0,-0.222); g.add(neck);
+        const tipL=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.028,0.028), dark); tipL.position.set(-0.085,0,-0.245); g.add(tipL);
+        const tipR=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.028,0.028), dark); tipR.position.set(0.085,0,-0.245); g.add(tipR);
     }
     return g;
 }
@@ -1890,7 +1894,8 @@ function startGame(desktop){
         // タイムアタックは「開始待ち」。右トリガー（PC/スマホはボタン）でカウントダウン。
         TA.state="ready";
         GAME.timeLeft=TIME_LIMIT;
-        worldHud.drawCountdown("⏱", desktop ? (IS_TOUCH?"「スタート」ボタンで開始":"スペース / スタートで開始") : "右トリガーでスタート");
+        if(desktop){ worldHud.drawCountdown("⏱", IS_TOUCH?"「スタート」ボタンで開始":"スペース / スタートで開始"); }
+        else { worldHud.hide(); }   // VR/ARは発掘図鑑の近くのサインで案内（パネルは出さない）
     }
     document.body.classList.add("playing");
     if(desktop) document.body.classList.add("desktop");
@@ -1909,7 +1914,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     inAR = !!(session && session.environmentBlendMode && session.environmentBlendMode!=="opaque");   // 実世界パススルー＝AR
     if(inAR){ _savedBg=scene.background; _savedFog=scene.fog; scene.background=null; scene.fog=null; renderer.setClearColor(0x000000,0); }
     worldYAdjust=WORLD_BASE_Y; stage.position.y=WORLD_BASE_Y;   // VR/ARは低い基準から開始（±2.0mで調整）
-    DOG_FWD=0.7;                                                // 相棒はやや近め（最短+20cm）から開始
+    DOG_FWD=0.6;                                                // 相棒はさらに近め（最短+10cm）から開始
     updateSiteVis(); updatePanelScale();
     if(!GAME.active) startGame(false);
 });
@@ -2433,11 +2438,14 @@ function petDog(){
     petCooldown=1.6; petWiggle=1.4;
     petBoost=Math.min(0.6, petBoost+0.12);       // 撫でるほど当てる確率アップ（大きめ）
     sfxBark();
-    const p=currentHitProb();                    // 確率に応じてセリフ変化（改行でスマホでも見やすく）
-    const petLine = p>=0.99 ? "うれしいワン！\nぜったい見つかるワン！"
-        : p>=0.8 ? "うれしいワン！\n見つけられそう！"
-        : p>=0.6 ? "なでなで うれしい♪\nもう少しで分かるワン"
-        : "うれしいワン！\nまだ 自信ないワン…";
+    const finished = (GAME.mode==="collect" && GAME.collectedCount>=8) || (GAME.mode==="time" && (TA.state==="results"||TA.state==="free"));
+    let petLine;
+    if(finished){ const happy=["たのしかったワン♪","なでなで だいすき！","えへへ ワン","また あそぼうワン！"]; petLine="うれしいワン！\n"+happy[(Math.random()*happy.length)|0]; }
+    else { const p=currentHitProb();                    // 確率に応じてセリフ変化（改行でスマホでも見やすく）
+        petLine = p>=0.99 ? "うれしいワン！\nぜったい見つかるワン！"
+            : p>=0.8 ? "うれしいワン！\n見つけられそう！"
+            : p>=0.6 ? "なでなで うれしい♪\nもう少しで分かるワン"
+            : "うれしいワン！\nまだ 自信ないワン…"; }
     bubble.say(petLine, 2000);
     vibrate(90,0.5);
     spawnHearts(dog.position);
@@ -2448,7 +2456,7 @@ function checkPetVR(){
     if(rightHeld || digBusy || !dogAttentive) return;    // 道具中/発掘中/相棒が向いていない時はなでない
     const c=dog.getWorldPosition(new THREE.Vector3()); c.y += 0.4;
     for(const pr of lastProbes){                          // 手（指先）もコントローラーも対象
-        if(pr && pr.pos && pr.pos.distanceTo(c) < 0.5 && pr.shaking){ petDog(); return; }   // 近くで往復＝撫でる
+        if(pr && pr.pos && pr.pos.distanceTo(c) < 0.6 && (pr.sp||0) > 0.6){ petDog(); return; }   // 近くで少し動かす＝撫でる（甘め）
     }
 }
 // PC：画面中央が相棒に当たっていればなでる（厳密判定）
@@ -2642,6 +2650,7 @@ renderer.setAnimationLoop(()=>{
 
     // 左手のひらの発掘図鑑パネル
     updateDexPanel();
+    updateHandModels();   // 手モデルは右手だけ
     updateDexHover();
     updateTAClock();    // カウントダウン/残り時間を図鑑の近くに
     updateHologram();   // 左手に追従＋カメラ向き＋モデルのモーション
@@ -2725,17 +2734,17 @@ function updateScan(dt, isVR, now){
             const p=c.getWorldPosition(new THREE.Vector3());
             const sp=p.distanceTo(c.userData.prevPos)/Math.max(dt,1e-3);
             c.userData.prevPos.copy(p); c.userData.shakeSpeed=sp;
-            probes.push({pos:p, shaking:sp>1.2, haptic:true, handedness:c.userData.handedness});
+            probes.push({pos:p, shaking:sp>1.2, sp, haptic:true, handedness:c.userData.handedness});
         });
         // ハンドトラッキング（コントローラ無し時）
         hands.forEach(h=>{
             const joint=h.joints?.["index-finger-tip"]||h.joints?.["wrist"];
             if(joint){ const p=joint.getWorldPosition(new THREE.Vector3());
                 const sp=p.distanceTo(h.userData.prevPos)/Math.max(dt,1e-3); h.userData.prevPos.copy(p);
-                probes.push({pos:p, shaking:sp>1.0, haptic:false, isHand:true}); }
+                probes.push({pos:p, shaking:sp>1.0, sp, haptic:false, isHand:true}); }
         });
     } else if(GAME.desktop){
-        probes.push({pos:desktopProbe().clone(), shaking:true, haptic:false, isHand:false}); // デスクトップは常時探査
+        probes.push({pos:desktopProbe().clone(), shaking:true, sp:99, haptic:false, isHand:false}); // デスクトップは常時探査
     }
     lastProbes = probes;   // 撫で判定（手/コントローラー共通）に使う
 
