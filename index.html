@@ -582,7 +582,7 @@ function buildSimpleHand(){
     const g=new THREE.Group(); const mat=new THREE.MeshStandardMaterial({color:0xe6b48c, roughness:0.85});
     const palm=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.032,0.10), mat); palm.position.set(0,-0.015,-0.02); g.add(palm);
     for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.BoxGeometry(0.017,0.017,0.055), mat); f.position.set(-0.031+i*0.021,-0.012,-0.085); g.add(f); }
-    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.045), mat); thumb.position.set(-0.05,-0.012,-0.03); thumb.rotation.y=-0.6; g.add(thumb);  // 親指を反対側・逆向きに
+    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.045), mat); thumb.position.set(-0.05,-0.012,-0.03); thumb.rotation.y=0.6; g.add(thumb);  // 親指を逆向きに
     g.rotation.set(0.5, 0, -Math.PI/2);   // 手のひらの向き＋全体を90度回転
     return g;
 }
@@ -602,17 +602,26 @@ for(let i=0;i<2;i++){
     c.userData.shakeSpeed = 0;
     c.userData.index = i;
 }
-// 手モデルは右手だけ表示（左手は非表示）
+// 手モデルは右手だけ表示（左手は非表示）。角度はモード別
 function updateHandModels(){
-    for(const c of controllers){ if(c.userData.handModel) c.userData.handModel.visible = (c.userData.handedness==="right"); }
+    for(const c of controllers){
+        const hm=c.userData.handModel; if(!hm) continue;
+        hm.visible = (c.userData.handedness==="right");
+        if(c.userData.isHand) hm.rotation.set(0.5, 0, 0);        // ハンドトラッキング：元の角度に戻す
+        else hm.rotation.set(0.5, 0, -Math.PI/2);                // コントローラー：90度回転（現状維持）
+    }
+    // 発掘道具の傾き：ハンドトラッキング時は内側への傾きを打ち消す
+    if(rightCtrl && rightCtrl.userData.isHand) toolHolder.rotation.set(-0.6, HAND_TOOL_YAW, 0);
+    else toolHolder.rotation.set(-0.6, 0, 0);
 }
 // 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
 let leftCtrl = controllers[1], rightCtrl = controllers[0]; // 既定（0=右, 1=左）
 const dexHolder  = new THREE.Group();  // 左手のひら側：発掘図鑑
 const toolHolder = new THREE.Group();  // 右手：発掘道具モデル
 toolHolder.visible=false;              // 既定は非表示（トリガーを押している間だけ表示）
-toolHolder.position.set(0, -0.03, -0.05);   // 手の中に収める
-toolHolder.rotation.set(-0.6, 0, 0);        // 握って前下に構えた角度
+toolHolder.position.set(0.05, -0.03, -0.05);   // 5cm右へ（手のひら側に）
+toolHolder.rotation.set(-0.6, 0, 0);           // 握って前下に構えた角度（既定＝コントローラー）
+const HAND_TOOL_YAW = 0.4;                      // ハンドトラッキング時、内側への傾きを打ち消すヨー（要調整可）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
@@ -1179,11 +1188,13 @@ function buildToolModel(kind){
     if(kind==="wide"){ // シャベル（四角い頭）
         const head=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,0.03), iron); head.position.set(0,0,-0.255); g.add(head);
         const rim =new THREE.Mesh(new THREE.BoxGeometry(0.096,0.096,0.012), dark); rim.position.set(0,0,-0.272); g.add(rim);
-    } else { // ツルハシ（横バーのT字）
-        const bar =new THREE.Mesh(new THREE.BoxGeometry(0.17,0.032,0.032), iron); bar.position.set(0,0,-0.245); g.add(bar);
+    } else { // ツルハシ（頭を90度回転）
+        const head=new THREE.Group(); head.position.set(0,0,-0.245);
+        const bar =new THREE.Mesh(new THREE.BoxGeometry(0.17,0.032,0.032), iron); head.add(bar);
+        const tipL=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.028,0.028), dark); tipL.position.set(-0.085,0,0); head.add(tipL);
+        const tipR=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.028,0.028), dark); tipR.position.set(0.085,0,0); head.add(tipR);
+        head.rotation.z=Math.PI/2; g.add(head);   // 90度回転
         const neck=new THREE.Mesh(new THREE.BoxGeometry(0.032,0.032,0.03), iron); neck.position.set(0,0,-0.222); g.add(neck);
-        const tipL=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.028,0.028), dark); tipL.position.set(-0.085,0,-0.245); g.add(tipL);
-        const tipR=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.028,0.028), dark); tipR.position.set(0.085,0,-0.245); g.add(tipR);
     }
     return g;
 }
@@ -2438,15 +2449,7 @@ function petDog(){
     petCooldown=1.6; petWiggle=1.4;
     petBoost=Math.min(0.6, petBoost+0.12);       // 撫でるほど当てる確率アップ（大きめ）
     sfxBark();
-    const finished = (GAME.mode==="collect" && GAME.collectedCount>=8) || (GAME.mode==="time" && (TA.state==="results"||TA.state==="free"));
-    let petLine;
-    if(finished){ const happy=["たのしかったワン♪","なでなで だいすき！","えへへ ワン","また あそぼうワン！"]; petLine="うれしいワン！\n"+happy[(Math.random()*happy.length)|0]; }
-    else { const p=currentHitProb();                    // 確率に応じてセリフ変化（改行でスマホでも見やすく）
-        petLine = p>=0.99 ? "うれしいワン！\nぜったい見つかるワン！"
-            : p>=0.8 ? "うれしいワン！\n見つけられそう！"
-            : p>=0.6 ? "なでなで うれしい♪\nもう少しで分かるワン"
-            : "うれしいワン！\nまだ 自信ないワン…"; }
-    bubble.say(petLine, 2000);
+    bubble.say("うれしいワン！\nなでなで だいすき", 2000);   // 発掘中以外はいつもこのセリフ
     vibrate(90,0.5);
     spawnHearts(dog.position);
 }
