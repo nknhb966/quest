@@ -308,6 +308,19 @@
   </div>
 </div>
 
+<!-- ═══ TOP5 記録モーダル ═══ -->
+<div id="taModal" style="position:fixed; inset:0; z-index:70; display:none; align-items:center; justify-content:center; background:rgba(10,6,20,.72); backdrop-filter:blur(3px); padding:20px;">
+  <div style="width:min(420px,92vw); background:linear-gradient(160deg,#1c1430,#140e24); border:2px solid #d8b46a; border-radius:18px; padding:22px; color:#efe6ff; box-shadow:0 18px 50px rgba(0,0,0,.5);">
+    <div style="text-align:center; font-size:22px; font-weight:800; color:#f0d98a; margin-bottom:6px;">🏅 タイムアタック TOP5</div>
+    <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:14px;">残り秒数×30 −（相棒に聞いた回数×10）</div>
+    <div id="taModalList"></div>
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button id="taResetAll" style="flex:1; padding:11px; border-radius:10px; border:1px solid #a04b57; background:#3a1a22; color:#ffd0d6; font-weight:800; cursor:pointer;">すべての記録をリセット</button>
+      <button id="taModalClose" style="flex:1; padding:11px; border-radius:10px; border:1px solid #6a5c94; background:#241a34; color:#d9cbf5; font-weight:800; cursor:pointer;">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ トレカ拡大表示 ═══ -->
 <div id="dexView">
   <button class="dexview-close" id="dexViewClose">×</button>
@@ -334,22 +347,22 @@
       <section>
         <h3>🐾 相棒をなでる</h3>
         <p>相棒をなでると喜んでハートが舞います。<b>ブロックが光っている間は発掘が優先</b>されるので、相棒がブロックと重なっていても誤って撫でることはありません。光っていないときにタップすると喜びます。</p>
-        <p class="k">スマホ：<b>相棒をタップ</b>／PC：相棒に照準を合わせて左クリック／VR：相棒の頭に手を近づけて動かす</p>
+        <p class="k">スマホ：<b>相棒をタップ</b>／PC：相棒に照準を合わせて左クリック／VR：道具を持たず、相棒がこちらを向いている時に<b>手を往復（撫でる）</b>。撫でるほど当てる確率UP、頭上のキラキラで確率が分かります。</p>
       </section>
       <section>
         <h3>🖌 道具</h3>
         <p><b>幅広ブラシ</b>＝広く探せるが掘る回数が多い。<b>細ピック</b>＝探せる範囲は狭いが掘る回数が少ない。右手に持った道具の見た目も変わります。</p>
-        <p class="k">VR：<b>左手のトリガー</b>（素手なら左手でつまむ）／PC：Tキー・スマホ：「道具」ボタン</p>
+        <p class="k">VR：<b>右トリガーを引いている間</b>だけ道具が出て、狙って手を振ると掘れます（離すと手に戻る）。持ち替えは<b>左トリガー</b>やBボタン短押し／PC：Tキー・スマホ：「道具」ボタン</p>
       </section>
       <section>
-        <h3>🦖 相棒（恐竜に聞く）</h3>
-        <p>相棒の恐竜は常に視界の前を歩きます。<b>聞くと発掘ポイントのヒント</b>をくれて、その場所まで歩いて<b>少し待って</b>くれます。ただし難しい出土品ほど<b>まちがえます</b>。メニューの「相棒」で8種類から選べます。</p>
-        <p class="k">VR：<b>右手のトリガー</b>（素手なら右手でつまむ）／PC：Qキー・スマホ：「恐竜に聞く」ボタン</p>
+        <h3>🐶 相棒（犬）</h3>
+        <p>相棒の犬は常に視界の前を歩きます。<b>聞くとヒント</b>をくれます（当たり/外れは着いてから分かります）。<b>撫でるほど当てる確率が上がり</b>、頭上のキラキラで今の確率が分かります。発掘中はヒント・撫でができません。</p>
+        <p class="k">VR：ヒントは<b>右トリガーを2回連続</b>（素手なら2回つまむ）またはAボタン／PC：Qキー・スマホ：ボタン</p>
       </section>
       <section>
         <h3>🗺 モード</h3>
         <p><b>じっくりコレクション</b>：8種を順番に発掘。後の出土品ほど反応範囲が狭く、掘る回数も増え、相棒も外しやすくなります。</p>
-        <p><b>タイムアタック</b>：<b>右トリガー</b>（PC：スペース／スマホ：「スタート」）で図鑑をリセットし、3秒のカウントダウン後にスタート。時間切れになると、その場に<b>結果とTOP5</b>が表示されます（歩き回れます）。もう一度押すと記録を閉じ、さらにもう一度押すとリセットして再挑戦。ワールドから出ずに何度でも挑戦できます。</p>
+        <p><b>タイムアタック</b>：スタンバイで<b>右トリガー1回</b>（PC：スペース）→3秒カウントダウン→スタート。<b>8種を掘り切ると終了</b>し、スコア＝<b>残り秒×30 −（相棒に聞いた回数×10）</b>。結果とTOP5が表示されます。結果を閉じる／再挑戦は<b>右トリガー2回連続</b>。<b>Bボタン長押し</b>で図鑑リセット（スタンバイに戻る）。じっくりコレクションもコンプリート後は<b>右トリガー2回連続</b>でリセット＆再開。カウントダウン／残り時間は発掘図鑑の近く（左手）に出ます。PCは「🏅記録」ボタンでTOP5の確認・全リセットができます。</p>
       </section>
       <section>
         <h3>📖 発掘図鑑</h3>
@@ -382,6 +395,7 @@
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dSite">🗺 サイト：表示</button>
     <button id="dDex">📖 図鑑</button>
+    <button id="dRecords">🏅 記録</button>
     <button id="dQuit">やめる</button>
   </div>
 </div>
@@ -554,7 +568,7 @@ scene.add(new THREE.AmbientLight(0x404060, 0.5));
 const stage = new THREE.Group(); scene.add(stage);   // プレイヤー以外の全コンテンツ（高さ調整でまとめて上下）
 
 // VRButton / ARButton（どちらでも遊べる）
-document.getElementById("vrbtnwrap").appendChild(VRButton.createButton(renderer));
+document.getElementById("vrbtnwrap").appendChild(VRButton.createButton(renderer, { optionalFeatures:["hand-tracking","local-floor","bounded-floor"] }));
 try{
     const arBtn = ARButton.createButton(renderer, { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] });
     document.getElementById("vrbtnwrap").appendChild(arBtn);
@@ -1208,6 +1222,27 @@ const dexPanel=(function(){
     draw();
     return { mesh, draw, pick, setHover, get hover(){ return hoverIdx; } };
 })();
+// タイムアタックのカウントダウン/残り時間を「発掘図鑑の近く（左手）」に表示
+const taClock=(function(){
+    const cv=document.createElement("canvas"); cv.width=256; cv.height=128; const c=cv.getContext("2d");
+    const tex=new THREE.CanvasTexture(cv);
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
+    spr.scale.set(0.14,0.07,1); spr.position.set(0,0.31,-0.02); spr.visible=false; spr.renderOrder=1000;
+    dexHolder.add(spr);
+    let last="";
+    function draw(txt,big){ if(txt===last) return; last=txt; c.clearRect(0,0,256,128);
+        c.fillStyle="rgba(18,12,32,0.9)"; c.beginPath();
+        if(c.roundRect) c.roundRect(6,6,244,116,22); else c.rect(6,6,244,116);
+        c.fill(); c.strokeStyle="#d8b46a"; c.lineWidth=4; c.stroke();
+        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+(big?86:52)+"px sans-serif"; c.fillText(txt,128,66); tex.needsUpdate=true; }
+    return { spr, draw, show(v){ spr.visible=v; } };
+})();
+function updateTAClock(){
+    if(!renderer.xr.isPresenting || GAME.mode!=="time"){ taClock.show(false); return; }
+    if(TA.state==="countdown"){ const s=Math.max(1,Math.ceil((TA.cdEnd-performance.now())/1000)); taClock.draw(String(s),true); taClock.show(true); }
+    else if(TA.state==="run"){ taClock.draw("⏱ "+Math.max(0,Math.ceil(GAME.timeLeft))+"s",false); taClock.show(true); }
+    else taClock.show(false);
+}
 // 左手のひらが顔を向いたら図鑑を表示（Yボタンで固定表示）。向きは常にカメラ向き。
 function updateDexPanel(){
     if(!renderer.xr.isPresenting || !leftCtrl){ dexHolder.visible=false; return; }
@@ -1256,7 +1291,7 @@ function buildHologram(idx){
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.set(1,1,1); }  // 出土品は変形をリセット
     const model = dino || art;
     if(model){
-        model.visible=true; makeFit(model, art?0.3:0.5); model.updateMatrixWorld(true);   // 出土品は小さめ
+        model.visible=true; makeFit(model, art? ART_TARGET_H*0.7 : 0.5); model.updateMatrixWorld(true);   // 出土品はワールド配置サイズの0.7倍
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
         const mg=new THREE.Group(); mg.position.set(0.42,0.0,0); mg.add(model); g.add(mg); g.userData.mg=mg;
@@ -1451,6 +1486,7 @@ function tickHatch(now, dt){
             popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
             bubble.say(dinoEmergeLine(dn), 3000);
+            digBusyUntil=performance.now()+2000;   // 恐竜登場セリフから2秒後まで
             showInfoPanel(e.idx, e.pos, e.color, DINO_IMGS[e.idx], (dn.label||"").replace(/^\S+\s*/,""), mul);
             eggHatch.splice(i,1);
         }
@@ -1488,15 +1524,15 @@ function excavate(t){
     saveDex(dexData); refreshDexHTML();
     sfxExcavate(); vibrate(400,1.0);
     bubble.say(line("found"), 2600);
+    digBusyUntil=performance.now()+2000;   // 「見つけたワン！」から2秒後まで
     dogCelebrate();
 
-    // オーラ（対象ごとの色でパネルと対応づけ。恐竜はサイズに合わせる）
-    const auraMul = (GAME.digTarget==="dino") ? dinoSizeOf(t.idx) : 1;
-    const aura = addAura(t.idx, t.pos, auraMul);
+    // 色（パネルと対応づけ）。恐竜は脈動オーラを出さず色だけ使う
+    const auraColor = ART_COLORS[t.idx % ART_COLORS.length];
     if(GAME.digTarget==="dino"){
-        revealDino(t.idx, t.pos, aura.color);       // 岩を砕く→卵→孵化→恐竜（鳴き声＋セリフ）
+        revealDino(t.idx, t.pos, auraColor);       // 恐竜：オーラなし。岩→卵→孵化→恐竜
     } else {
-        // 出土品モデルをポップアウト＋説明パネル
+        const aura = addAura(t.idx, t.pos, 1);     // 出土品：脈動オーラあり
         const model = artModels[t.idx];
         if(model){
             model.visible=true;
@@ -1528,10 +1564,9 @@ function excavate(t){
             setTimeout(()=> spawnTarget(GAME.collectedCount), 900);
         }
     } else { // タイムアタック
-        GAME.score += 100 + t.tier*40;
         updateGoal();
-        // 計測中のみ次を出す（常に3体キープ）
-        if(TA.state==="run") setTimeout(()=>{ if(TA.state==="run") spawnTarget(Math.min(7, (Math.random()*8|0))); }, 600);
+        if(dexFoundCount()>=8){ taFinish(); }   // 全8種を掘り切ったら終了＝残り時間でスコア
+        else if(TA.state==="run") setTimeout(()=>{ if(TA.state==="run") spawnTarget(Math.min(7, (Math.random()*8|0))); }, 600);
     }
     return firstTime;
 }
@@ -1669,7 +1704,10 @@ function askDog(){
     }
     const t = GAME.targets.find(x=>!x.discovered) || GAME.targets[0];
     if(!t){ sfxBark(); bubble.say(dexFoundCount()>=8 ? line("done") : line("again"), 1800); return; }
-    const reliable = Math.random() < t.diff.dogRel;
+    if(digBusy){ sfxBark(); bubble.say(line("here"), 1600); return; }   // 発掘中は新しいヒントを出さない
+    const hitProb = Math.min(1, t.diff.dogRel + petBoost);   // 撫でるほど当たりやすい
+    const reliable = Math.random() < hitProb;
+    if(GAME.mode==="time"){ GAME.askCount=(GAME.askCount||0)+1; }   // 相棒に聞いた回数（減点用）
     let pos;
     if(reliable){ pos = t.pos.clone(); }
     else { // はずれ：フィールド内の別地点
@@ -1682,7 +1720,7 @@ function askDog(){
     dog.userData.hintWaitUntil = 0;   // 到着後に設定
     dog.userData.hintStart = performance.now();   // 動き出しを緩やかにするための起点
     sfxBark();
-    bubble.say(reliable ? line("hintOk") : line("hintNg"), 2200);
+    bubble.say(line("hintOk"), 2200);   // 当たり/外れに関わらず同じ（着いた時に判明）
 }
 function dogCelebrate(){ dogCelebrateT=2.4; }   // ゆっくり数回ジャンプして喜ぶ
 
@@ -1842,7 +1880,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     inAR = !!(session && session.environmentBlendMode && session.environmentBlendMode!=="opaque");   // 実世界パススルー＝AR
     if(inAR){ _savedBg=scene.background; _savedFog=scene.fog; scene.background=null; scene.fog=null; renderer.setClearColor(0x000000,0); }
     worldYAdjust=WORLD_BASE_Y; stage.position.y=WORLD_BASE_Y;   // VR/ARは低い基準から開始（±2.0mで調整）
-    DOG_FWD=0.8;                                                // 相棒は近め（最短+30cm）から開始（右スティックで調整）
+    DOG_FWD=0.7;                                                // 相棒はやや近め（最短+20cm）から開始
     updateSiteVis(); updatePanelScale();
     if(!GAME.active) startGame(false);
 });
@@ -1902,22 +1940,29 @@ const worldHud=(function(){
             if(sub){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="bold 44px sans-serif"; ctx.fillText(sub,384,610); }
             tex.needsUpdate=true; mesh.visible=true;
         },
-        drawResults(score, found, list){
+        drawResults(score, found, list, calc){
             bg();
             ctx.textAlign="center"; ctx.textBaseline="middle";
-            ctx.fillStyle="#f0d98a"; ctx.font="bold 56px sans-serif"; ctx.fillText("⏱ タイムアップ！",384,96);
-            ctx.fillStyle="#ffffff"; ctx.font="bold 104px sans-serif"; ctx.fillText(score+" pt",384,196);
-            ctx.fillStyle="rgba(226,216,255,.8)"; ctx.font="bold 36px sans-serif"; ctx.fillText("発掘 "+found+" / 8",384,264);
-            ctx.fillStyle="#e6c26a"; ctx.font="bold 40px sans-serif"; ctx.fillText("― TOP 5 ―",384,340);
-            for(let i=0;i<5;i++){
-                const e=list[i], y=410+i*62, hit=e&&e.score===score;
-                ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
-                ctx.textAlign="left";   ctx.font="bold 42px sans-serif"; ctx.fillText((i+1)+".", 60, y);
-                ctx.textAlign="center"; ctx.font="bold 46px sans-serif"; ctx.fillText(e? (e.score+" pt") : "----", 384, y);   // ポイント中央
-                ctx.textAlign="right";  ctx.font="bold 28px sans-serif"; ctx.fillText(e? ((e.date||"")+(e.time? " "+e.time:"")) : "", 712, y);  // 年月日＋時間 右揃え
+            ctx.fillStyle="#f0d98a"; ctx.font="bold 52px sans-serif"; ctx.fillText(found>=8?"🏆 コンプリート！":"⏱ タイムアップ！",384,78);
+            ctx.fillStyle="#ffffff"; ctx.font="bold 96px sans-serif"; ctx.fillText(score+" pt",384,166);
+            if(calc){
+                ctx.fillStyle="rgba(226,216,255,.9)"; ctx.font="bold 30px sans-serif";
+                ctx.fillText("残り "+calc.secs+"秒 × 30 ＝ "+(calc.secs*30), 384, 230);
+                ctx.fillText("相棒に聞いた "+calc.asks+"回 × −10 ＝ −"+(calc.asks*10), 384, 270);
+                ctx.fillStyle="rgba(255,240,170,.95)"; ctx.font="bold 32px sans-serif";
+                ctx.fillText("＝ "+score+" pt", 384, 312);
             }
-            ctx.textAlign="center"; ctx.fillStyle="rgba(200,190,240,.75)"; ctx.font="bold 30px sans-serif";
-            ctx.fillText(GAME.desktop?"スペース / ボタンで閉じる（歩き回れます）":"右トリガーで閉じる（歩き回れます）",384,712);
+            ctx.fillStyle="rgba(226,216,255,.8)"; ctx.font="bold 30px sans-serif"; ctx.fillText("発掘 "+found+" / 8",384,352);
+            ctx.fillStyle="#e6c26a"; ctx.font="bold 36px sans-serif"; ctx.fillText("― TOP 5 ―",384,404);
+            for(let i=0;i<5;i++){
+                const e=list[i], y=452+i*52, hit=e&&e.score===score;
+                ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
+                ctx.textAlign="left";   ctx.font="bold 36px sans-serif"; ctx.fillText((i+1)+".", 60, y);
+                ctx.textAlign="center"; ctx.font="bold 40px sans-serif"; ctx.fillText(e? (e.score+" pt") : "----", 384, y);   // ポイント中央
+                ctx.textAlign="right";  ctx.font="bold 26px sans-serif"; ctx.fillText(e? ((e.date||"")+(e.time? " "+e.time:"")) : "", 712, y);  // 年月日＋時間 右揃え
+            }
+            ctx.textAlign="center"; ctx.fillStyle="rgba(200,190,240,.75)"; ctx.font="bold 28px sans-serif";
+            ctx.fillText(GAME.desktop?"スペース / ボタンで閉じる（歩き回れます）":"右トリガー2回で閉じる（歩き回れます）",384,724);
             tex.needsUpdate=true; mesh.visible=true;
         }
     };
@@ -1950,7 +1995,7 @@ function taBeginCountdown(){
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
-    GAME.score=0; GAME.timeLeft=TIME_LIMIT;
+    GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.askCount=0;
     TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS;
     worldHud.drawCountdown("3","まもなくスタート");
     bubble.say(line("start"), 2200);
@@ -1965,14 +2010,17 @@ function taStartRun(){
     updateGoal(); updateTAButton();
 }
 function taFinish(){
-    TA.lastScore=GAME.score;
-    if(GAME.score>0) recordTimeAttack(GAME.score);
+    const secs=Math.max(0, Math.ceil(GAME.timeLeft));
+    const asks=GAME.askCount||0;
+    const score=Math.max(0, secs*30 - asks*10);
+    GAME.score=score; TA.lastScore=score;
+    if(score>0) recordTimeAttack(score);
     clearTargets();
     TA.state="results";
     TA.lockUntil=performance.now()+1500;      // ひと呼吸おいてから入力を受け付ける
     sfxTimeUp();
     const found=dexFoundCount();
-    worldHud.drawResults(GAME.score, found, loadTA());
+    worldHud.drawResults(score, found, loadTA(), {secs, asks});   // 計算過程も渡す
     bubble.say(found>=8 ? line("done") : line("again"), 4000);
     updateGoal(); updateTAButton();
 }
@@ -2022,6 +2070,22 @@ document.getElementById("dBuddy").onclick=()=>{
     setCompanion(keys[(keys.indexOf(companionKind)+1)%keys.length]);
 };
 document.getElementById("dDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
+// TOP5 記録モーダル
+function openTAModal(){
+    const list=loadTA(); const el=document.getElementById("taModalList");
+    if(!list.length){ el.innerHTML='<div style="text-align:center;color:rgba(200,190,240,.6);padding:20px;">まだ記録がありません</div>'; }
+    else{ el.innerHTML=list.slice(0,5).map((e,i)=>
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 6px;border-bottom:1px solid rgba(216,180,106,.2);">'
+        +'<span style="font-weight:800;color:#f0d98a;width:28px;">'+(i+1)+'.</span>'
+        +'<span style="flex:1;text-align:center;font-weight:800;font-size:19px;">'+e.score+' pt</span>'
+        +'<span style="font-size:12px;color:rgba(200,190,240,.75);text-align:right;">'+((e.date||"")+(e.time?" "+e.time:""))+'</span>'
+        +'</div>').join(""); }
+    document.getElementById("taModal").style.display="flex";
+}
+{ const rb=document.getElementById("dRecords"); if(rb) rb.onclick=openTAModal; }
+document.getElementById("taModalClose").onclick=()=>{ document.getElementById("taModal").style.display="none"; };
+document.getElementById("taResetAll").onclick=()=>{ if(confirm("すべてのタイムアタック記録を削除します。よろしいですか？")){ saveTA([]); openTAModal(); } };
+document.getElementById("taModal").addEventListener("click",e=>{ if(e.target.id==="taModal") e.currentTarget.style.display="none"; });
 document.getElementById("dQuit").onclick=()=> endGame(true);
 
 let toastT=null;
@@ -2264,6 +2328,7 @@ function doDig(t){
 function discoverTarget(t){
     if(t.discovered) return;
     t.discovered=true; t.marker.visible=true;
+    digBusy=true; digBusySpot=t.pos.clone(); digBusyUntil=0;   // 発見〜発掘完了2秒後まで ヒント/撫でを止める
     // 掘れるブロックを実体として見せる（タップ/照準の目標になる）
     if(t.block){ t.block.material.opacity=0.95; t.block.material.transparent=false; }
     sfxLocate(); vibrate(120,0.7);
@@ -2315,24 +2380,29 @@ let handDigCooldown=0;
  * おまけ：相棒をなでる
  * ===================================================== */
 let petCooldown=0, petWiggle=0;
+let petBoost=0;                 // 撫でるほど上がる「当てる確率」ボーナス(0〜0.5)
+let dogAttentive=false;         // 相棒がプレイヤーを向いて待っている（撫でられる状態）
+let digBusy=false, digBusySpot=null, digBusyUntil=0;  // 発掘中はヒント/撫でを止める区間
+let sparkleCd=0;                // 当てる確率キラキラの発生タイマー
 const PET_LINES=["うれしいワン！","もっと なでて ワン♪","えへへ…ワン","がんばるワン！"];
 function petDog(){
     if(petCooldown>0) return;
+    if(digBusy) return;                          // 発掘中はなでない
     petCooldown=1.6; petWiggle=1.4;
+    petBoost=Math.min(0.5, petBoost+0.09);       // 撫でるほど当てる確率アップ
     sfxBark();
     bubble.say(line("pet") || PET_LINES[(Math.random()*PET_LINES.length)|0], 2000);
     vibrate(90,0.5);
-    // ハートを飛ばす
     spawnHearts(dog.position);
 }
-// VR：道具を持っていないとき、相棒の近くで手/コントローラーを往復（撫でる動作）させたらなでる
+// VR：道具を持たず・相棒が注視中で・忙しくない時、相棒の近くで手を往復（撫でる）させたら喜ぶ
 function checkPetVR(){
-    if(rightHeld) return;     // 道具を持っている間はなでない（発掘中）
-    const c=dog.getWorldPosition(new THREE.Vector3()); c.y += 0.4;   // 体〜頭あたり
+    if(rightHeld || digBusy || !dogAttentive) return;    // 道具中/発掘中/相棒が向いていない時はなでない
+    const c=dog.getWorldPosition(new THREE.Vector3()); c.y += 0.4;
     const devices=[rightCtrl,leftCtrl].filter(d=>d && d.userData.handedness);
     for(const d of devices){
         const p=d.getWorldPosition(new THREE.Vector3());
-        if(p.distanceTo(c) < 0.55 && (d.userData.shakeSpeed||0) > 0.6){ petDog(); return; }   // 近くで往復＝撫でる
+        if(p.distanceTo(c) < 0.5 && (d.userData.shakeSpeed||0) > 1.1){ petDog(); return; }   // 感度控えめ（しっかり往復）
     }
 }
 // PC：画面中央が相棒に当たっていればなでる（厳密判定）
@@ -2496,6 +2566,7 @@ renderer.setAnimationLoop(()=>{
     // 左手のひらの発掘図鑑パネル
     updateDexPanel();
     updateDexHover();
+    updateTAClock();    // カウントダウン/残り時間を図鑑の近くに
     updateHologram();   // 左手に追従＋カメラ向き＋モデルのモーション
 
     // デスクトップのカメラ向き適用
@@ -2641,10 +2712,33 @@ function onRightPressEdge(){
         if(e && e.found) toggleHologram(dexPanel.hover);   // 発掘済みのみ選択可（未発掘は無反応）
         return;
     }
-    if(taAdvance()) return;                                // タイムアタックの開始/進行は1回押し
+    if(GAME.mode==="time" && TA.state==="ready"){ taAdvance(); return; }   // スタート待ちは1回押しで開始
     const now=performance.now();
-    if(now-lastRightPress<400){ lastRightPress=0; askDog(); }   // 二回連続＝相棒に聞く
+    if(now-lastRightPress<400){ lastRightPress=0; onRightDouble(); }       // 2回連続
     else lastRightPress=now;
+}
+function onRightDouble(){
+    if(GAME.mode==="time" && (TA.state==="results" || TA.state==="free")){ taAdvance(); return; }   // 結果を閉じる/再挑戦
+    if(GAME.mode==="collect" && GAME.collectedCount>=8){ restartCollection(); return; }             // コンプリート後の再開
+    askDog();                                                                                        // 通常＝相棒に聞く
+}
+function restartCollection(){
+    resetDexForRun(); clearRunWorld();
+    GAME.recent.length=0; GAME.doneIdx.clear();
+    GAME.collectedCount=0; GAME.score=0;
+    afterSite(()=>{ clearTargets(); spawnTarget(0); });
+    updateGoal(); showToast("図鑑をリセット。もう一度発掘スタート！");
+}
+// Bボタン長押し：図鑑リセット。TAはカウントダウン直前のスタンバイ状態へ
+function resetDexAndStandby(){
+    resetDexForRun(); clearRunWorld();
+    GAME.recent.length=0; GAME.doneIdx.clear();
+    GAME.collectedCount=0; GAME.score=0; GAME.askCount=0;
+    digBusy=false; digBusySpot=null; digBusyUntil=0; petBoost=0;
+    afterSite(()=>clearTargets());
+    if(GAME.mode==="time"){ TA.state="ready"; worldHud.hide(); if(typeof taClock!=="undefined") taClock.show(false); showToast("図鑑リセット。右トリガーでスタート"); }
+    else { afterSite(()=>spawnTarget(0)); showToast("図鑑をリセットしました"); }
+    updateGoal(); updateTAButton();
 }
 function handleVRDig(){
     const s=renderer.xr.getSession(); if(!s) return;
@@ -2667,7 +2761,9 @@ function handleVRDig(){
     for(const src of s.inputSources){
         if(src.handedness==="right" && src.gamepad){
             const b=src.gamepad.buttons[5]?.pressed ?? false;
-            if(b && !GAME._prevB){ toggleTool(); }
+            if(b && !GAME._prevB){ GAME._bDownAt=performance.now(); GAME._bFired=false; }
+            if(b && !GAME._bFired && performance.now()-(GAME._bDownAt||0)>800){ GAME._bFired=true; resetDexAndStandby(); }  // 長押し=リセット
+            if(!b && GAME._prevB && !GAME._bFired){ toggleTool(); }   // 短押し=道具切替
             GAME._prevB=b;
             const a=src.gamepad.buttons[4]?.pressed ?? false;   // Aボタンで犬に聞く
             if(a && !GAME._prevA){ askDog(); }
@@ -2755,6 +2851,27 @@ function updateDog(dt, now){
         if(away.lengthSq()<1e-4) away.set(0,0,1); away.normalize();
         const want=new THREE.Vector3(dogW.x+away.x*0.5, dogW.y+1.0, dogW.z+away.z*0.5);
         bubbleSpr.position.copy(dog.worldToLocal(want));
+    }
+    // 発掘中の解除：完了2秒後、または プレイヤーと相棒の両方が発掘ポイントから離れたら
+    if(digBusy){
+        const now2=performance.now();
+        const pFar=!digBusySpot || Math.hypot(playerPos.x-digBusySpot.x, playerPos.z-digBusySpot.z) > 6;
+        const dFar=!digBusySpot || Math.hypot(dog.position.x-digBusySpot.x, dog.position.z-digBusySpot.z) > 6;
+        if((digBusyUntil>0 && now2>digBusyUntil) || (pFar && dFar)){ digBusy=false; digBusySpot=null; digBusyUntil=0; }
+    }
+    // 相棒が「プレイヤーを向いて待っている」状態か（撫でられる条件）
+    {
+        const fwd=new THREE.Vector3(Math.sin(dog.rotation.y),0,Math.cos(dog.rotation.y));
+        const toP=new THREE.Vector3(playerPos.x-dog.position.x,0,playerPos.z-dog.position.z);
+        dogAttentive = !moving && !digBusy && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>0.4;
+    }
+    petBoost=Math.max(0, petBoost - dt*0.02);   // 撫でボーナスはゆっくり減衰
+    // 当てる確率のキラキラ（頭上）：100%多め / 80%以上ふつう / 60%以上少し / 未満なし
+    { let baseRel=0.7; const tg=GAME.targets.find(x=>!x.discovered); if(tg&&tg.diff) baseRel=tg.diff.dogRel;
+      const prob=Math.min(1, baseRel+petBoost);
+      const rate = prob>=0.99?0.16 : prob>=0.8?0.42 : prob>=0.6?0.9 : 0;
+      sparkleCd-=dt;
+      if(rate>0 && sparkleCd<=0 && !digBusy){ sparkleCd=rate; spawnHearts(dog.position, prob>=0.99?2:1); }
     }
 
     // 歩行アニメ（脚の振り＋上下バウンド）
