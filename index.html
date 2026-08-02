@@ -626,7 +626,7 @@ toolHolder.rotation.set(-0.6, 0, 0);           // 握って前下に構えた角
 // ハンドトラッキング時の姿勢補正：垂直な手（＝コントローラーを離した姿勢）に合わせる補正回転（要調整可）
 const HAND_COMP = new THREE.Euler(-Math.PI/2, 0, 0);
 const HAND_COMP_Q = new THREE.Quaternion().setFromEuler(HAND_COMP);
-const TOOL_ELEV = Math.PI*130/180;             // 仰角方向（手を前に出した時の上下＝ピッチ）に約130度。先端を親指/人差し指側へ
+const TOOL_ELEV = Math.PI*100/180;             // 仰角方向（ピッチ）に約100度（130度から30度戻し）。先端を親指/人差し指側へ
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
