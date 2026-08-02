@@ -636,7 +636,7 @@ const TOOL_BASE_Q = new THREE.Quaternion().setFromEuler(TOOL_BASE_E);
 const GRIP_COMP_Q = new THREE.Quaternion();    // ハンド時（グリップ空間）の標準姿勢の微調整（既定＝なし。ズレたらここで補正）
 const HOLO_FLIP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI);  // ハンド時：モデルの上下逆を直す（Z軸180度）
 const TOOL_POS_CTRL = new THREE.Vector3(-0.05,-0.03,-0.05);       // コントローラー時の道具位置
-const TOOL_POS_HAND = new THREE.Vector3( 0.03,-0.05,-0.04);       // ハンド時の道具位置
+const TOOL_POS_HAND = new THREE.Vector3(-0.06, 0.02, 0.03);       // ハンド時：位置調整（y=0.02）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
@@ -1371,9 +1371,9 @@ function updateHologram(){
         g.rotation.set(0, viewYaw, 0);                                   // プレイヤー基準：カード左・モデル右を固定
         if(card) card.lookAt(cam);                                      // カードは常にプレイヤーを向く
         if(mg){
-            if(leftCtrl.userData.isHand && leftCtrl.userData.grip){
-                // 左手をコントローラーのように扱う：現在の手首Quaternionをニュートラル基準で分解し各1.5倍
-                const qWrist=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion());
+            if(leftCtrl.userData.isHand){
+                // 左手をコントローラーのように扱う：現在の手首Quaternion（手に追従するleftCtrlから）をニュートラル基準で分解し各1.5倍
+                const qWrist=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
                 const qYaw=new THREE.Quaternion().setFromAxisAngle(_YAXIS, viewYaw);        // プレイヤー基準
                 const wristLocal=qYaw.invert().multiply(qWrist);                            // 手首をプレイヤー基準へ
                 const d=HOLO_NEUTRAL.clone().invert().multiply(wristLocal);                 // ニュートラルからの差分
