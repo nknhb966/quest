@@ -602,30 +602,20 @@ for(let i=0;i<2;i++){
     c.userData.shakeSpeed = 0;
     c.userData.index = i;
 }
-// 手モデルは右手だけ表示。ハンド時は「グリップ空間（物理的な手＝手首の回転を拾う）」から向きを取る
-const _hmq1=new THREE.Quaternion(), _hmq2=new THREE.Quaternion();
+// 手モデルは右手だけ表示（左手は非表示）。姿勢はモード別
 function updateHandModels(){
     for(const c of controllers){
         const hm=c.userData.handModel; if(!hm) continue;
         hm.visible = (c.userData.handedness==="right");
-        if(c.userData.isHand && c.userData.grip){
-            const world=c.userData.grip.getWorldQuaternion(_hmq1).multiply(HM_BASE_Q).multiply(GRIP_COMP_Q);   // world = grip × 基本姿勢
-            hm.quaternion.copy(c.getWorldQuaternion(_hmq2).invert()).multiply(world);                          // ローカル化
-        } else {
-            hm.quaternion.copy(HM_BASE_Q);
-        }
+        hm.quaternion.setFromEuler(HM_BASE_E);
+        if(c.userData.isHand) hm.quaternion.premultiply(HAND_COMP_Q);   // 手のひら向かい合わせに補正
     }
-    // 発掘道具：ハンド時はグリップ空間から向きを取る（手首の回転がコントローラーのように反映）
-    if(rightCtrl && rightCtrl.userData.isHand && rightCtrl.userData.grip){
-        const world=rightCtrl.userData.grip.getWorldQuaternion(_hmq1).multiply(TOOL_BASE_Q).multiply(GRIP_COMP_Q);
-        toolHolder.quaternion.copy(rightCtrl.getWorldQuaternion(_hmq2).invert()).multiply(world);
-        toolHolder.position.copy(TOOL_POS_HAND);
-    } else {
-        toolHolder.quaternion.copy(TOOL_BASE_Q);
-        toolHolder.position.copy(TOOL_POS_CTRL);
-    }
+    // 発掘道具：基本姿勢＋（ハンド時のみ）前後軸ロール。位置もモード別
+    toolHolder.quaternion.setFromEuler(TOOL_BASE_E);
+    if(rightCtrl && rightCtrl.userData.isHand){ toolHolder.quaternion.premultiply(HAND_COMP_Q); toolHolder.position.copy(TOOL_POS_HAND); }
+    else toolHolder.position.copy(TOOL_POS_CTRL);
     // 発掘図鑑ホルダー：ハンド時は世界基準（上向き固定）にして、タイマーが図鑑の上に来るように
-    if(leftCtrl && leftCtrl.userData.isHand) dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(_hmq1).invert());
+    if(leftCtrl && leftCtrl.userData.isHand) dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(new THREE.Quaternion()).invert());
     else dexHolder.quaternion.identity();
 }
 // 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
@@ -1361,7 +1351,13 @@ function buildHologram(idx){
         const mg=new THREE.Group(); mg.position.set(0.36,0.0,-0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // モデルも +20cm奥
     } else g.userData.card=card;
     scene.add(g);
-    holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
+    let gripComp=null;
+    if(renderer.xr.isPresenting && leftCtrl && leftCtrl.userData.isHand && leftCtrl.userData.grip){
+        const oStd=leftCtrl.getWorldQuaternion(new THREE.Quaternion()).multiply(HAND_COMP_Q).multiply(HOLO_FLIP_Q);   // 開いた時の標準姿勢
+        const gq=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion());
+        gripComp=gq.invert().multiply(oStd);   // grip × gripComp = 標準姿勢
+    }
+    holo={ group:g, idx, dino, art, gripComp }; updateHologram(); sfxLocate();
 }
 // 毎フレーム：左手の位置に追従。カードは常にプレイヤーを向く。モデルは左手の角度で回る
 function updateHologram(){
@@ -1376,9 +1372,14 @@ function updateHologram(){
         g.rotation.set(0, viewYaw, 0);                                   // プレイヤー基準：カード左・モデル右を固定
         if(card) card.lookAt(cam);                                      // カードは常にプレイヤーを向く
         if(mg){ let hq;
-                if(leftCtrl.userData.isHand && leftCtrl.userData.grip){ hq=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion()).multiply(GRIP_COMP_Q); }
-                else { hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion()); }
-                mg.quaternion.copy(g.quaternion).invert().multiply(hq); }  // モデルは左手の角度で回る（グリップ空間＝手首回転を反映）
+                if(leftCtrl.userData.isHand && leftCtrl.userData.grip && holo.gripComp){
+                    // 手首の回転はグリップ空間の差分で拾う（標準姿勢は開いた時のtarget-ray基準を維持）
+                    hq=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion()).multiply(holo.gripComp);
+                } else {
+                    hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
+                    if(leftCtrl.userData.isHand) hq.multiply(HAND_COMP_Q).multiply(HOLO_FLIP_Q);   // 標準姿勢の補正
+                }
+                mg.quaternion.copy(g.quaternion).invert().multiply(hq); }  // gの回転は打ち消す
     } else {
         const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
         const base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
