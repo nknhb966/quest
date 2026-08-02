@@ -607,13 +607,15 @@ function updateHandModels(){
     for(const c of controllers){
         const hm=c.userData.handModel; if(!hm) continue;
         hm.visible = (c.userData.handedness==="right");
-        hm.rotation.set(0.5, 0, -Math.PI/2);   // ハンド/コントローラー共通（コントローラーの見え方に統一）
+        hm.quaternion.setFromEuler(HM_BASE_E);
+        if(c.userData.isHand) hm.quaternion.premultiply(HAND_COMP_Q);   // 手のひら向かい合わせに補正
     }
-    // 発掘道具：仰角方向（ピッチ）に130度（先端を親指側へ）。ハンドトラッキング時は姿勢補正も合成
-    if(rightCtrl && rightCtrl.userData.isHand) toolHolder.rotation.set(-0.6+TOOL_ELEV+HAND_COMP.x, HAND_COMP.y, HAND_COMP.z);
-    else toolHolder.rotation.set(-0.6+TOOL_ELEV, 0, 0);
-    // 発掘図鑑ホルダー：ハンドトラッキング時は補正、コントローラーはそのまま
-    if(leftCtrl){ if(leftCtrl.userData.isHand) dexHolder.rotation.copy(HAND_COMP); else dexHolder.rotation.set(0,0,0); }
+    // 発掘道具：基本姿勢＋（ハンド時のみ）前後軸ロール
+    toolHolder.quaternion.setFromEuler(TOOL_BASE_E);
+    if(rightCtrl && rightCtrl.userData.isHand) toolHolder.quaternion.premultiply(HAND_COMP_Q);
+    // 発掘図鑑ホルダー：ハンド時のみ補正
+    dexHolder.quaternion.identity();
+    if(leftCtrl && leftCtrl.userData.isHand) dexHolder.quaternion.copy(HAND_COMP_Q);
 }
 // 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
 let leftCtrl = controllers[1], rightCtrl = controllers[0]; // 既定（0=右, 1=左）
@@ -622,10 +624,12 @@ const toolHolder = new THREE.Group();  // 右手：発掘道具モデル
 toolHolder.visible=false;              // 既定は非表示（トリガーを押している間だけ表示）
 toolHolder.position.set(-0.05, -0.03, -0.05);  // 手のひら側（内側）へ
 toolHolder.rotation.set(-0.6, 0, 0);           // 握って前下に構えた角度（既定＝コントローラー）
-// ハンドトラッキング時の姿勢補正：手のひら向かい合わせ（＝コントローラーを持った姿勢のまま離した）＝コントローラーと同じ扱い（既定は補正なし。残差が出たらここで微調整）
-const HAND_COMP = new THREE.Euler(0, 0, 0);
-const HAND_COMP_Q = new THREE.Quaternion().setFromEuler(HAND_COMP);
-const TOOL_ELEV = Math.PI*100/180;             // 仰角方向（ピッチ）に約100度（130度から30度戻し）。先端を親指/人差し指側へ
+// ハンドトラッキング補正：基準姿勢を「手のひら下向き」→「手のひら向かい合わせ」にするため、前後軸(z)まわりに90度ロール
+const HAND_ROLL_ANGLE = Math.PI/2;             // 調整可（符号を変えると逆回り）
+const HAND_COMP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), HAND_ROLL_ANGLE);
+const HM_BASE_E   = new THREE.Euler(0.5, 0, -Math.PI/2);          // 手モデルの基本姿勢（コントローラー基準）
+const TOOL_ELEV = Math.PI*100/180;             // 仰角方向（ピッチ）に約100度。先端を親指/人差し指側へ
+const TOOL_BASE_E = new THREE.Euler(-0.6+TOOL_ELEV, 0, 0);        // 道具の基本姿勢（コントローラー基準）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
