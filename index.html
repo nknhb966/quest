@@ -1351,13 +1351,12 @@ function buildHologram(idx){
         const mg=new THREE.Group(); mg.position.set(0.36,0.0,-0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // モデルも +20cm奥
     } else g.userData.card=card;
     scene.add(g);
-    let gripComp=null;
+    let gripRef=null, oStd=null;
     if(renderer.xr.isPresenting && leftCtrl && leftCtrl.userData.isHand && leftCtrl.userData.grip){
-        const oStd=leftCtrl.getWorldQuaternion(new THREE.Quaternion()).multiply(HAND_COMP_Q).multiply(HOLO_FLIP_Q);   // 開いた時の標準姿勢
-        const gq=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion());
-        gripComp=gq.invert().multiply(oStd);   // grip × gripComp = 標準姿勢
+        oStd=leftCtrl.getWorldQuaternion(new THREE.Quaternion()).multiply(HAND_COMP_Q).multiply(HOLO_FLIP_Q);   // 開いた時の標準姿勢
+        gripRef=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion());                              // 開いた時のグリップ向き
     }
-    holo={ group:g, idx, dino, art, gripComp }; updateHologram(); sfxLocate();
+    holo={ group:g, idx, dino, art, gripRef, oStd }; updateHologram(); sfxLocate();
 }
 // 毎フレーム：左手の位置に追従。カードは常にプレイヤーを向く。モデルは左手の角度で回る
 function updateHologram(){
