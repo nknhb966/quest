@@ -607,8 +607,7 @@ function updateHandModels(){
     for(const c of controllers){
         const hm=c.userData.handModel; if(!hm) continue;
         hm.visible = (c.userData.handedness==="right");
-        if(c.userData.isHand) hm.rotation.set(0.5, 0, 0);       // ハンドトラッキング：元の角度（前回設定）
-        else hm.rotation.set(0.5, 0, -Math.PI/2);               // コントローラー：現状維持
+        hm.rotation.set(0.5, 0, -Math.PI/2);   // ハンド/コントローラー共通（コントローラーの見え方に統一）
     }
     // 発掘道具：仰角方向（ピッチ）に130度（先端を親指側へ）。ハンドトラッキング時は姿勢補正も合成
     if(rightCtrl && rightCtrl.userData.isHand) toolHolder.rotation.set(-0.6+TOOL_ELEV+HAND_COMP.x, HAND_COMP.y, HAND_COMP.z);
@@ -623,8 +622,8 @@ const toolHolder = new THREE.Group();  // 右手：発掘道具モデル
 toolHolder.visible=false;              // 既定は非表示（トリガーを押している間だけ表示）
 toolHolder.position.set(-0.05, -0.03, -0.05);  // 手のひら側（内側）へ
 toolHolder.rotation.set(-0.6, 0, 0);           // 握って前下に構えた角度（既定＝コントローラー）
-// ハンドトラッキング時の姿勢補正：垂直な手（＝コントローラーを離した姿勢）に合わせる補正回転（要調整可）
-const HAND_COMP = new THREE.Euler(-Math.PI/2, 0, 0);
+// ハンドトラッキング時の姿勢補正：手のひら向かい合わせ（＝コントローラーを持った姿勢のまま離した）＝コントローラーと同じ扱い（既定は補正なし。残差が出たらここで微調整）
+const HAND_COMP = new THREE.Euler(0, 0, 0);
 const HAND_COMP_Q = new THREE.Quaternion().setFromEuler(HAND_COMP);
 const TOOL_ELEV = Math.PI*100/180;             // 仰角方向（ピッチ）に約100度（130度から30度戻し）。先端を親指/人差し指側へ
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
@@ -1323,7 +1322,7 @@ function buildHologram(idx){
     const g=new THREE.Group();
     const card=new THREE.Mesh(new THREE.PlaneGeometry(0.63,0.882),
         new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.98, side:THREE.DoubleSide, toneMapped:false, depthTest:true, depthWrite:false}));
-    card.position.set(-0.30,0.34,-0.2); g.add(card);   // 左寄りすぎ解消：右＋上へ（図鑑と重ならない位置）
+    card.position.set(-0.15,0.34,-0.2); g.add(card);   // 右＋上（見やすく・図鑑と重ならない）
     let dino=null, art=null;
     if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); makeFit(dino, dinoHoloH(idx)); }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
