@@ -631,9 +631,9 @@ const HAND_COMP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,
 const HM_BASE_E   = new THREE.Euler(0.5, 0, -Math.PI/2);          // 手モデルの基本姿勢（コントローラー基準）
 const TOOL_ELEV = Math.PI*100/180;             // 仰角方向（ピッチ）に約100度。先端を親指/人差し指側へ
 const TOOL_BASE_E = new THREE.Euler(-0.6+TOOL_ELEV, 0, 0);        // 道具の基本姿勢（コントローラー基準）
-const HOLO_FLIP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI);  // ハンド時：ホログラムのモデルが裏返る対策（180度）
+const HOLO_FLIP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI);  // ハンド時：モデルの上下逆を直す（Z軸180度）
 const TOOL_POS_CTRL = new THREE.Vector3(-0.05,-0.03,-0.05);       // コントローラー時の道具位置
-const TOOL_POS_HAND = new THREE.Vector3(-0.05,-0.03, 0.03);       // ハンド時：柄の根元を手のひら側へ（+z）※要調整
+const TOOL_POS_HAND = new THREE.Vector3(-0.06,-0.08, 0.03);       // ハンド時：地面側5cm・左1cm移動（要調整）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
