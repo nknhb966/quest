@@ -636,7 +636,7 @@ const TOOL_BASE_Q = new THREE.Quaternion().setFromEuler(TOOL_BASE_E);
 const GRIP_COMP_Q = new THREE.Quaternion();    // ハンド時（グリップ空間）の標準姿勢の微調整（既定＝なし。ズレたらここで補正）
 const HOLO_FLIP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI);  // ハンド時：モデルの上下逆を直す（Z軸180度）
 const TOOL_POS_CTRL = new THREE.Vector3(-0.05,-0.03,-0.05);       // コントローラー時の道具位置
-const TOOL_POS_HAND = new THREE.Vector3( 0.05,-0.05, 0.03);       // ハンド時：位置調整（y=0.02）
+const TOOL_POS_HAND = new THREE.Vector3( 0.05,-0.05,-0.05);       // ハンド時：位置調整（y=0.02）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
