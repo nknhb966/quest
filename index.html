@@ -274,6 +274,25 @@
           <button data-v="hide">🚫 非表示</button>
         </div>
       </div>
+      <div class="opt wide" id="worldSizeOpt" style="display:none;">
+        <div class="lbl">ワールドの広さ（サイト非表示時・VR/ARのみ／単位：メートル）</div>
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:200px;">
+            <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">横幅 X：<span id="wxVal">20</span> m</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input id="wxSlider" type="range" min="3" max="50" step="1" value="20" style="flex:1;">
+              <input id="wxNum" type="number" min="3" max="50" step="1" value="20" style="width:64px;">
+            </div>
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">奥行き Z：<span id="wzVal">20</span> m</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input id="wzSlider" type="range" min="3" max="50" step="1" value="20" style="flex:1;">
+              <input id="wzNum" type="number" min="3" max="50" step="1" value="20" style="width:64px;">
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="opt wide">
         <div class="lbl">コントローラー使用時の探知音（振動は常にON／素手のときは自動で音が鳴ります）</div>
         <div class="seg" id="segSound">
@@ -425,6 +444,29 @@ import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFact
 // ワールド単位＝メートル（XR local-floor基準）。プレイヤーは等身大なので全て実寸で扱う。
 const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
+let   WORLD_X       = 20;                 // カスタムワールド（サイト非表示時）の広さX（m）
+let   WORLD_Z       = 20;                 // 同 Z（m）
+let   fieldCX       = 0, fieldCZ = 0;     // カスタムワールドの中心
+function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カスタム矩形ワールド
+function clampToField(p){
+    if(customWorldOn()){                            // 矩形（WORLD_X×WORLD_Z、中心 fieldCX/CZ）
+        const hx=WORLD_X/2, hz=WORLD_Z/2;
+        p.x=Math.max(fieldCX-hx, Math.min(fieldCX+hx, p.x));
+        p.z=Math.max(fieldCZ-hz, Math.min(fieldCZ+hz, p.z));
+    } else { const d=Math.hypot(p.x,p.z); if(d>FIELD_R){ p.x*=FIELD_R/d; p.z*=FIELD_R/d; } }
+}
+// カスタムワールドのスタート位置：x中央・z最大、フィールド側（-Z）を向く
+function placeAtStart(){
+    if(!customWorldOn() || typeof player==="undefined") return;
+    fieldCX=0; fieldCZ=0; fallbackGround.position.set(0,0,0);
+    player.position.x=0; player.position.z=WORLD_Z/2; player.rotation.y=0;
+}
+// Yリセット：今いる場所＋向きをスタート位置に（フィールドを現在地に再センター）
+function recenterFieldHere(){
+    if(!customWorldOn() || typeof player==="undefined") return;
+    fieldCX=player.position.x; fieldCZ=player.position.z - WORLD_Z/2;   // 今の位置が z最大の端になる
+    fallbackGround.position.set(fieldCX,0,fieldCZ);
+}
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
 const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高さ（少し低め。パネルもこれに追従）
@@ -683,14 +725,19 @@ document.body.classList.add("loading");   // 読み込み完了までゲーム�
 const world = new THREE.Group(); stage.add(world);
 const ARTPOS = new Array(8).fill(null);   // 各出土品の確定ワールド座標（地面）
 let siteRoot=null, siteVisible=true, inAR=false;
-// サイト非表示時の代替地面（ARでは実世界が地面なので出さない）
+// サイト非表示時の代替地面（ARでは実世界が地面なので出さない）。矩形サイズで作り直せる
 const fallbackGround=new THREE.Group();
-(function(){
-    const disc=new THREE.Mesh(new THREE.CircleGeometry(30,48), new THREE.MeshStandardMaterial({color:0x241f33, roughness:1}));
-    disc.rotation.x=-Math.PI/2; disc.position.y=GROUND_Y-0.02; fallbackGround.add(disc);
-    const grid=new THREE.GridHelper(60,40,0x6a5fa0,0x3a3160); grid.position.y=GROUND_Y; grid.material.transparent=true; grid.material.opacity=0.5; fallbackGround.add(grid);
-    fallbackGround.visible=false; stage.add(fallbackGround);
-})();
+stage.add(fallbackGround);
+function buildFallbackGround(x,z){
+    while(fallbackGround.children.length){ const c=fallbackGround.children.pop(); c.geometry&&c.geometry.dispose(); }
+    const plane=new THREE.Mesh(new THREE.PlaneGeometry(x,z), new THREE.MeshStandardMaterial({color:0x241f33, roughness:1}));
+    plane.rotation.x=-Math.PI/2; plane.position.set(0,GROUND_Y-0.02,0); fallbackGround.add(plane);
+    const grid=new THREE.GridHelper(Math.max(x,z), Math.max(4,Math.round(Math.max(x,z))), 0x6a5fa0, 0x3a3160);
+    grid.position.y=GROUND_Y; grid.material.transparent=true; grid.material.opacity=0.5; fallbackGround.add(grid);
+    fallbackGround.position.set(fieldCX,0,fieldCZ);
+}
+buildFallbackGround(WORLD_X, WORLD_Z);
+fallbackGround.visible=false;
 function updateSiteVis(){
     if(siteRoot) siteRoot.visible = siteVisible;                 // ARでも表示/非表示どちらでも体験可
     fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
@@ -1494,6 +1541,11 @@ function spawnTarget(tier, forcedIdx=null){
     const d = difficulty(tier);
     const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*3, GROUND_Y, ART_ORIG[idx][1]*3)).clone();
     pos.y = GROUND_Y;
+    if(customWorldOn()){   // 矩形ワールド内に散らす（idxベースで決定的）
+        const hx=Math.max(0.5,WORLD_X/2-0.8), hz=Math.max(0.5,WORLD_Z/2-0.8);
+        const ang=idx*2.399963, rad=Math.sqrt((idx+0.5)/8);
+        pos.set(fieldCX+Math.cos(ang)*hx*rad, GROUND_Y, fieldCZ+Math.sin(ang)*hz*rad);
+    }
     const marker = makeMarker(); marker.position.copy(pos);
     // マイクラ風の「掘れるブロック」＋照準時の枠線
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK, DIG_BLOCK*0.7, DIG_BLOCK),
@@ -1890,8 +1942,21 @@ document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.
 // サイトモデル 表示/非表示（メニュー＋HUD）
 function updateSiteBtn(){ const b=document.getElementById("dSite"); if(b) b.textContent="🗺 サイト："+(siteVisible?"表示":"非表示"); }
 function syncSiteSeg(){ document.querySelectorAll("#segSite button").forEach(x=>x.classList.toggle("on", (x.dataset.v==="show")===siteVisible)); }
-document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ setSiteVisible(b.dataset.v==="show"); syncSiteSeg(); updateSiteBtn(); });
-{ const b=document.getElementById("dSite"); if(b) b.onclick=()=>{ setSiteVisible(!siteVisible); syncSiteSeg(); updateSiteBtn(); }; }
+document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ setSiteVisible(b.dataset.v==="show"); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); });
+{ const b=document.getElementById("dSite"); if(b) b.onclick=()=>{ setSiteVisible(!siteVisible); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); }; }
+// ワールドサイズUI（サイト非表示時のみ表示）
+function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); if(o) o.style.display = siteVisible? "none":"block"; }
+function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
+    const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
+function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
+    const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
+{ const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
+  if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
+  const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
+  if(c)c.oninput=()=>setWorldZ(+c.value); if(d)d.onchange=()=>setWorldZ(+d.value);
+  updateWorldSizeUI(); }
 updateSiteBtn();
 document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
@@ -1967,6 +2032,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     worldYAdjust=WORLD_BASE_Y; stage.position.y=WORLD_BASE_Y;   // VR/ARは低い基準から開始（±2.0mで調整）
     DOG_FWD=0.6;                                                // 相棒はさらに近め（最短+10cm）から開始
     updateSiteVis(); updatePanelScale();
+    placeAtStart();                                            // カスタムワールドは x中央・z最大から開始
     if(!GAME.active) startGame(false);
 });
 renderer.xr.addEventListener("sessionend", ()=>{
@@ -2743,8 +2809,7 @@ function handleVRLocomotion(dt){
         player.position.addScaledVector(fwd, -moveY*WALK_SPEED*dt);
         player.position.addScaledVector(right, moveX*WALK_SPEED*dt);
         // フィールド外に出ない
-        const d=Math.hypot(player.position.x,player.position.z);
-        if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; }
+        clampToField(player.position);
     }
     // スナップ回転
     snapCooldown-=dt;
@@ -2763,7 +2828,7 @@ function handleDesktopMove(dt){
     if(touchJoy.id!==null){ mx+=touchJoy.x; mz+=touchJoy.z; }   // スマホのスティック
     mx=Math.max(-1,Math.min(1,mx)); mz=Math.max(-1,Math.min(1,mz));
     if(mx||mz){ player.position.addScaledVector(fwd, mz*WALK_SPEED*dt); player.position.addScaledVector(right, mx*WALK_SPEED*dt);
-        const d=Math.hypot(player.position.x,player.position.z); if(d>FIELD_R){ player.position.x*=FIELD_R/d; player.position.z*=FIELD_R/d; } }
+        clampToField(player.position); }
 }
 
 /* コントローラー（＝ゲームパッド有り、手ではない）が今つながっているか。毎フレーム判定。 */
@@ -2869,6 +2934,7 @@ function restartCollection(){
 }
 // Ｙボタン長押し：図鑑リセット。TAはカウントダウン直前のスタンバイ状態へ
 function resetDexAndStandby(){
+    recenterFieldHere();                                       // 今いる場所＋向きを新しいスタート位置に
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     GAME.collectedCount=0; GAME.score=0; GAME.askCount=0;
