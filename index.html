@@ -636,7 +636,7 @@ const TOOL_BASE_Q = new THREE.Quaternion().setFromEuler(TOOL_BASE_E);
 const GRIP_COMP_Q = new THREE.Quaternion();    // ハンド時（グリップ空間）の標準姿勢の微調整（既定＝なし。ズレたらここで補正）
 const HOLO_FLIP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI);  // ハンド時：モデルの上下逆を直す（Z軸180度）
 const TOOL_POS_CTRL = new THREE.Vector3(-0.05,-0.03,-0.05);       // コントローラー時の道具位置
-const TOOL_POS_HAND = new THREE.Vector3( 0.03,-0.05,-0.04);       // ハンド時の道具位置
+const TOOL_POS_HAND = new THREE.Vector3(-0.06, 0.02, 0.03);       // ハンド時：位置調整（y=0.02）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
@@ -1328,24 +1328,11 @@ function makeTradingCardTex(idx){
     tex.needsUpdate=true; return tex;
 }
 function closeHologram(){ if(holo&&holo.group&&holo.group.parent) holo.group.parent.remove(holo.group); holo=null; }
-// クォータニオンを軸まわりのツイストと、それ以外のスイングに分解
-function swingTwist(q, axis){
-    q=q.clone().normalize();
-    const d = q.x*axis.x + q.y*axis.y + q.z*axis.z;
-    const twist = new THREE.Quaternion(axis.x*d, axis.y*d, axis.z*d, q.w);
-    if(twist.lengthSq()<1e-8) twist.set(0,0,0,1); else twist.normalize();
-    const swing = q.clone().multiply(twist.clone().invert());
-    return { swing, twist };
-}
-// 回転角をk倍にする（同じ軸まわり）
-function scaleRotation(q, k){
-    q=q.clone().normalize();
-    if(q.w<0){ q.x=-q.x; q.y=-q.y; q.z=-q.z; q.w=-q.w; }   // 最短経路
-    const half=Math.acos(Math.min(1,q.w)), s=Math.sin(half);
-    if(s<1e-6) return new THREE.Quaternion();               // ほぼ無回転
-    const nh=half*k, ns=Math.sin(nh);
-    return new THREE.Quaternion(q.x/s*ns, q.y/s*ns, q.z/s*ns, Math.cos(nh));
-}
+// 左手をコントローラーのように扱う：手首回転をRoll/Pitch/Yawへ分解して各1.5倍
+const _YAXIS = new THREE.Vector3(0,1,0);
+const HOLO_AMP = 1.5;                             // 各回転成分の倍率
+const HOLO_NEUTRAL = new THREE.Quaternion();      // ニュートラル姿勢（左手を前へ・掌右・垂直）でのグリップ向き（プレイヤー基準）※要調整
+const HOLO_MODEL_FACE = new THREE.Quaternion();   // ニュートラルでモデルを正面に向ける固定補正 ※要調整
 function buildHologram(idx){
     closeHologram();
     const g=new THREE.Group();
@@ -1369,12 +1356,7 @@ function buildHologram(idx){
         const mg=new THREE.Group(); mg.position.set(0.36,0.0,-0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // モデルも +20cm奥
     } else g.userData.card=card;
     scene.add(g);
-    let gripRef=null, oStd=null;
-    if(renderer.xr.isPresenting && leftCtrl && leftCtrl.userData.isHand && leftCtrl.userData.grip){
-        oStd=leftCtrl.getWorldQuaternion(new THREE.Quaternion()).multiply(HAND_COMP_Q).multiply(HOLO_FLIP_Q);   // 開いた時の標準姿勢
-        gripRef=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion());                              // 開いた時のグリップ向き
-    }
-    holo={ group:g, idx, dino, art, gripRef, oStd }; updateHologram(); sfxLocate();
+    holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
 }
 // 毎フレーム：左手の位置に追従。カードは常にプレイヤーを向く。モデルは左手の角度で回る
 function updateHologram(){
@@ -1388,20 +1370,22 @@ function updateHologram(){
         g.position.lerp(base, 0.4);
         g.rotation.set(0, viewYaw, 0);                                   // プレイヤー基準：カード左・モデル右を固定
         if(card) card.lookAt(cam);                                      // カードは常にプレイヤーを向く
-        if(mg){ let hq;
-                if(leftCtrl.userData.isHand && leftCtrl.userData.grip && holo.gripRef && holo.oStd){
-                    // 手首の回転差分をグリップ空間で拾い、スイング（上下左右）だけ5倍・前腕ロールは等倍
-                    const gripNow=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion());
-                    const delta=gripNow.multiply(holo.gripRef.clone().invert());        // world差分
-                    const axis=new THREE.Vector3(0,0,-1).applyQuaternion(holo.gripRef).normalize();  // 前腕（指す）方向
-                    const st=swingTwist(delta, axis);
-                    const swingAmp=scaleRotation(st.swing, 5);                           // スイングのみ5倍
-                    hq=swingAmp.multiply(st.twist).multiply(holo.oStd);
-                } else {
-                    hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
-                    if(leftCtrl.userData.isHand) hq.multiply(HAND_COMP_Q).multiply(HOLO_FLIP_Q);   // 標準姿勢の補正
-                }
-                mg.quaternion.copy(g.quaternion).invert().multiply(hq); }  // gの回転は打ち消す
+        if(mg){
+            if(leftCtrl.userData.isHand && leftCtrl.userData.grip){
+                // 左手をコントローラーのように扱う：現在の手首Quaternionをニュートラル基準で分解し各1.5倍
+                const qWrist=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion());
+                const qYaw=new THREE.Quaternion().setFromAxisAngle(_YAXIS, viewYaw);        // プレイヤー基準
+                const wristLocal=qYaw.invert().multiply(qWrist);                            // 手首をプレイヤー基準へ
+                const d=HOLO_NEUTRAL.clone().invert().multiply(wristLocal);                 // ニュートラルからの差分
+                const e=new THREE.Euler().setFromQuaternion(d,'YXZ');                       // Yaw(y)/Pitch(x)/Roll(z)へ分解
+                e.x*=HOLO_AMP; e.y*=HOLO_AMP; e.z*=HOLO_AMP;                                // 各成分1.5倍
+                const dAmp=new THREE.Quaternion().setFromEuler(e);
+                mg.quaternion.copy(dAmp).multiply(HOLO_MODEL_FACE);                         // 増幅回転＋正面補正（g基準）
+            } else {
+                const hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion());               // コントローラー：従来どおり
+                mg.quaternion.copy(g.quaternion).invert().multiply(hq);
+            }
+        }
     } else {
         const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
         const base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
