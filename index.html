@@ -1328,10 +1328,11 @@ function makeTradingCardTex(idx){
     tex.needsUpdate=true; return tex;
 }
 function closeHologram(){ if(holo&&holo.group&&holo.group.parent) holo.group.parent.remove(holo.group); holo=null; }
-// 左手をコントローラーのように扱う：手首回転をRoll/Pitch/Yawへ分解して各1.5倍
+// 左手をコントローラーのように扱う：手首回転をRoll/Pitch/Yawへ分解して倍率変更
 const _YAXIS = new THREE.Vector3(0,1,0);
-const HOLO_AMP = 1.5;                             // 各回転成分の倍率
-const HOLO_NEUTRAL = new THREE.Quaternion();      // ニュートラル姿勢（左手を前へ・掌右・垂直）でのグリップ向き（プレイヤー基準）※要調整
+const HOLO_AMP_ROLL = 1.5;                        // Roll(z)の倍率
+const HOLO_AMP_PY   = 2.5;                        // Pitch(x)/Yaw(y)の倍率
+const HOLO_NEUTRAL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI/2);  // ニュートラルでの手首roll(約90度)を打ち消す ※要調整
 const HOLO_MODEL_FACE = new THREE.Quaternion();   // ニュートラルでモデルを正面に向ける固定補正 ※要調整
 function buildHologram(idx){
     closeHologram();
@@ -1378,7 +1379,7 @@ function updateHologram(){
                 const wristLocal=qYaw.invert().multiply(qWrist);                            // 手首をプレイヤー基準へ
                 const d=HOLO_NEUTRAL.clone().invert().multiply(wristLocal);                 // ニュートラルからの差分
                 const e=new THREE.Euler().setFromQuaternion(d,'YXZ');                       // Yaw(y)/Pitch(x)/Roll(z)へ分解
-                e.x*=HOLO_AMP; e.y*=HOLO_AMP; e.z*=HOLO_AMP;                                // 各成分1.5倍
+                e.x*=HOLO_AMP_PY; e.y*=HOLO_AMP_PY; e.z*=HOLO_AMP_ROLL;                    // Pitch/Yawは2.5倍・Rollは1.5倍
                 const dAmp=new THREE.Quaternion().setFromEuler(e);
                 mg.quaternion.copy(dAmp).multiply(HOLO_MODEL_FACE);                         // 増幅回転＋正面補正（g基準）
             } else {
