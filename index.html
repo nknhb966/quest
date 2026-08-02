@@ -591,7 +591,7 @@ for(let i=0;i<2;i++){
     const c = renderer.xr.getController(i);
     player.add(c); controllers.push(c);
     const grip = renderer.xr.getControllerGrip(i);
-    player.add(grip);
+    player.add(grip); c.userData.grip = grip;   // グリップ空間（物理的な手の向き＝手首の回転を拾う）
     c.userData.handModel = buildSimpleHand(); c.add(c.userData.handModel);   // 手モデル（右手だけ表示。道具と同じ座標系）
     // レーザー（掘る照準用）
     const line = new THREE.Line(
@@ -602,20 +602,30 @@ for(let i=0;i<2;i++){
     c.userData.shakeSpeed = 0;
     c.userData.index = i;
 }
-// 手モデルは右手だけ表示（左手は非表示）。姿勢はモード別（ハンドトラッキングは垂直な手に合わせて補正）
+// 手モデルは右手だけ表示。ハンド時は「グリップ空間（物理的な手＝手首の回転を拾う）」から向きを取る
+const _hmq1=new THREE.Quaternion(), _hmq2=new THREE.Quaternion();
 function updateHandModels(){
     for(const c of controllers){
         const hm=c.userData.handModel; if(!hm) continue;
         hm.visible = (c.userData.handedness==="right");
-        hm.quaternion.setFromEuler(HM_BASE_E);
-        if(c.userData.isHand) hm.quaternion.premultiply(HAND_COMP_Q);   // 手のひら向かい合わせに補正
+        if(c.userData.isHand && c.userData.grip){
+            const world=c.userData.grip.getWorldQuaternion(_hmq1).multiply(HM_BASE_Q).multiply(GRIP_COMP_Q);   // world = grip × 基本姿勢
+            hm.quaternion.copy(c.getWorldQuaternion(_hmq2).invert()).multiply(world);                          // ローカル化
+        } else {
+            hm.quaternion.copy(HM_BASE_Q);
+        }
     }
-    // 発掘道具：基本姿勢＋（ハンド時のみ）前後軸ロール。位置もモード別
-    toolHolder.quaternion.setFromEuler(TOOL_BASE_E);
-    if(rightCtrl && rightCtrl.userData.isHand){ toolHolder.quaternion.premultiply(HAND_COMP_Q); toolHolder.position.copy(TOOL_POS_HAND); }
-    else toolHolder.position.copy(TOOL_POS_CTRL);
+    // 発掘道具：ハンド時はグリップ空間から向きを取る（手首の回転がコントローラーのように反映）
+    if(rightCtrl && rightCtrl.userData.isHand && rightCtrl.userData.grip){
+        const world=rightCtrl.userData.grip.getWorldQuaternion(_hmq1).multiply(TOOL_BASE_Q).multiply(GRIP_COMP_Q);
+        toolHolder.quaternion.copy(rightCtrl.getWorldQuaternion(_hmq2).invert()).multiply(world);
+        toolHolder.position.copy(TOOL_POS_HAND);
+    } else {
+        toolHolder.quaternion.copy(TOOL_BASE_Q);
+        toolHolder.position.copy(TOOL_POS_CTRL);
+    }
     // 発掘図鑑ホルダー：ハンド時は世界基準（上向き固定）にして、タイマーが図鑑の上に来るように
-    if(leftCtrl && leftCtrl.userData.isHand) dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(new THREE.Quaternion()).invert());
+    if(leftCtrl && leftCtrl.userData.isHand) dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(_hmq1).invert());
     else dexHolder.quaternion.identity();
 }
 // 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
@@ -629,11 +639,14 @@ toolHolder.rotation.set(-0.6, 0, 0);           // 握って前下に構えた角
 const HAND_ROLL_ANGLE = Math.PI/2;             // 調整可（符号を変えると逆回り）
 const HAND_COMP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), HAND_ROLL_ANGLE);
 const HM_BASE_E   = new THREE.Euler(0.5, 0, -Math.PI/2);          // 手モデルの基本姿勢（コントローラー基準）
+const HM_BASE_Q   = new THREE.Quaternion().setFromEuler(HM_BASE_E);
 const TOOL_ELEV = Math.PI*100/180;             // 仰角方向（ピッチ）に約100度。先端を親指/人差し指側へ
 const TOOL_BASE_E = new THREE.Euler(-0.6+TOOL_ELEV, 0, 0);        // 道具の基本姿勢（コントローラー基準）
+const TOOL_BASE_Q = new THREE.Quaternion().setFromEuler(TOOL_BASE_E);
+const GRIP_COMP_Q = new THREE.Quaternion();    // ハンド時（グリップ空間）の標準姿勢の微調整（既定＝なし。ズレたらここで補正）
 const HOLO_FLIP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI);  // ハンド時：モデルの上下逆を直す（Z軸180度）
 const TOOL_POS_CTRL = new THREE.Vector3(-0.05,-0.03,-0.05);       // コントローラー時の道具位置
-const TOOL_POS_HAND = new THREE.Vector3(-0.06,-0.08, 0.03);       // ハンド時：地面側5cm・左1cm移動（要調整）
+const TOOL_POS_HAND = new THREE.Vector3(-0.06, 0.02, 0.03);       // ハンド時：位置調整（y=0.02）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
@@ -1362,9 +1375,10 @@ function updateHologram(){
         g.position.lerp(base, 0.4);
         g.rotation.set(0, viewYaw, 0);                                   // プレイヤー基準：カード左・モデル右を固定
         if(card) card.lookAt(cam);                                      // カードは常にプレイヤーを向く
-        if(mg){ const hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
-                if(leftCtrl.userData.isHand) hq.multiply(HAND_COMP_Q).multiply(HOLO_FLIP_Q);   // ロール＋裏返り対策
-                mg.quaternion.copy(g.quaternion).invert().multiply(hq); }  // モデルは左手の角度で回る（gの回転は打ち消す）
+        if(mg){ let hq;
+                if(leftCtrl.userData.isHand && leftCtrl.userData.grip){ hq=leftCtrl.userData.grip.getWorldQuaternion(new THREE.Quaternion()).multiply(GRIP_COMP_Q); }
+                else { hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion()); }
+                mg.quaternion.copy(g.quaternion).invert().multiply(hq); }  // モデルは左手の角度で回る（グリップ空間＝手首回転を反映）
     } else {
         const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
         const base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
