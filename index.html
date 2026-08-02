@@ -1348,17 +1348,21 @@ function updateHologram(){
     if(!holo) return;
     const g=holo.group, cam=camera.getWorldPosition(new THREE.Vector3());
     const mg=g.userData.mg, card=g.userData.card;
+    const camDir=camera.getWorldDirection(new THREE.Vector3()); camDir.y=0; if(camDir.lengthSq()<1e-4) camDir.set(0,0,-1); camDir.normalize();
+    const viewYaw=Math.atan2(-camDir.x, -camDir.z);   // gの+x=プレイヤーの右／-z=奥 になるヨー
     if(renderer.xr.isPresenting && leftCtrl){
         const base=leftCtrl.getWorldPosition(new THREE.Vector3()); base.y+=0.30;
-        g.position.lerp(base, 0.4); g.quaternion.identity();                 // gは回さず位置だけ追従
-        if(card) card.lookAt(cam);                                          // カードはプレイヤーを向く
-        if(mg){ const q=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
-                if(leftCtrl.userData.isHand) q.multiply(HAND_COMP_Q);   // ハンドは垂直な手の標準姿勢に合わせる
-                mg.quaternion.copy(q); }   // モデルは左手の角度で回る
+        g.position.lerp(base, 0.4);
+        g.rotation.set(0, viewYaw, 0);                                   // プレイヤー基準：カード左・モデル右を固定
+        if(card) card.lookAt(cam);                                      // カードは常にプレイヤーを向く
+        if(mg){ const hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
+                if(leftCtrl.userData.isHand) hq.multiply(HAND_COMP_Q);
+                mg.quaternion.copy(g.quaternion).invert().multiply(hq); }  // モデルは左手の角度で回る（gの回転は打ち消す）
     } else {
         const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
         const base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
-        g.position.lerp(base,0.25); g.quaternion.identity();
+        g.position.lerp(base,0.25);
+        g.rotation.set(0, viewYaw, 0);                                   // デスクトップも同様にカード左・モデル右
         if(card) card.lookAt(cam);
         if(mg) mg.rotation.y+=0.006;
     }
