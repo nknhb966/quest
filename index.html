@@ -581,8 +581,8 @@ const ctrlFactory = new XRControllerModelFactory();
 function buildSimpleHand(){
     const g=new THREE.Group(); const mat=new THREE.MeshStandardMaterial({color:0xe6b48c, roughness:0.85});
     const palm=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.032,0.10), mat); palm.position.set(0,-0.015,-0.02); g.add(palm);
-    for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.BoxGeometry(0.017,0.017,0.055), mat); f.position.set(-0.031+i*0.021,-0.022,-0.085); g.add(f); }   // 指を手のひら側へ1cm
-    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.045), mat); thumb.position.set(-0.05,-0.012,-0.03); thumb.rotation.y=0.6; g.add(thumb);  // 親指を逆向きに
+    for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.BoxGeometry(0.017,0.017,0.055), mat); f.position.set(-0.031+i*0.021,-0.017,-0.085); g.add(f); }   // 指（手のひら側へ寄せすぎたので0.5cm甲側へ）
+    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.045), mat); thumb.position.set(-0.05,-0.007,-0.03); thumb.rotation.y=0.6; g.add(thumb);  // 親指（0.5cm甲側へ・逆向き）
     g.rotation.set(0.5, 0, -Math.PI/2);   // 手のひらの向き＋全体を90度回転
     return g;
 }
@@ -610,9 +610,9 @@ function updateHandModels(){
         if(c.userData.isHand) hm.rotation.set(0.5, 0, 0);       // ハンドトラッキング：元の角度（前回設定）
         else hm.rotation.set(0.5, 0, -Math.PI/2);               // コントローラー：現状維持
     }
-    // 発掘道具：ハンドトラッキング時は姿勢補正を合成
-    if(rightCtrl && rightCtrl.userData.isHand) toolHolder.rotation.set(-0.6+HAND_COMP.x, HAND_COMP.y, HAND_COMP.z);
-    else toolHolder.rotation.set(-0.6, 0, 0);
+    // 発掘道具：柄まわりに130度ロール（先端を親指側へ）。ハンドトラッキング時は姿勢補正も合成
+    if(rightCtrl && rightCtrl.userData.isHand) toolHolder.rotation.set(-0.6+HAND_COMP.x, HAND_COMP.y, HAND_COMP.z+TOOL_ROLL);
+    else toolHolder.rotation.set(-0.6, 0, TOOL_ROLL);
     // 発掘図鑑ホルダー：ハンドトラッキング時は補正、コントローラーはそのまま
     if(leftCtrl){ if(leftCtrl.userData.isHand) dexHolder.rotation.copy(HAND_COMP); else dexHolder.rotation.set(0,0,0); }
 }
@@ -626,6 +626,7 @@ toolHolder.rotation.set(-0.6, 0, 0);           // 握って前下に構えた角
 // ハンドトラッキング時の姿勢補正：垂直な手（＝コントローラーを離した姿勢）に合わせる補正回転（要調整可）
 const HAND_COMP = new THREE.Euler(-Math.PI/2, 0, 0);
 const HAND_COMP_Q = new THREE.Quaternion().setFromEuler(HAND_COMP);
+const TOOL_ROLL = Math.PI*130/180;             // 柄まわりに約130度ロール（先端を小指側→親指/人差し指側へ）
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
