@@ -414,6 +414,7 @@
     <button id="dAsk">🦖 きいてみる</button>
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dSite">🗺 サイト：表示</button>
+    <button id="dReset" style="display:none;">🔄 リセット</button>
     <button id="dDex">📖 図鑑</button>
     <button id="dRecords">🏅 記録</button>
     <button id="dQuit">やめる</button>
@@ -460,12 +461,57 @@ function placeAtStart(){
     if(!customWorldOn() || typeof player==="undefined") return;
     fieldCX=0; fieldCZ=0; fallbackGround.position.set(0,0,0);
     player.position.x=0; player.position.z=WORLD_Z/2; player.rotation.y=0;
+    regenerateCustomSpots();
 }
 // Yリセット：今いる場所＋向きをスタート位置に（フィールドを現在地に再センター）
 function recenterFieldHere(){
     if(!customWorldOn() || typeof player==="undefined") return;
     fieldCX=player.position.x; fieldCZ=player.position.z - WORLD_Z/2;   // 今の位置が z最大の端になる
     fallbackGround.position.set(fieldCX,0,fieldCZ);
+}
+// 発掘ポイントを矩形内にランダム配置（近すぎないように）
+function regenerateCustomSpots(){
+    if(!customWorldOn()){ GAME.customSpots=null; return; }
+    const hx=Math.max(0.4,WORLD_X/2-0.6), hz=Math.max(0.4,WORLD_Z/2-0.6);
+    const minD=Math.max(0.8, Math.min(WORLD_X,WORLD_Z)*0.24);   // 最小間隔
+    const spots=[];
+    for(let i=0;i<8;i++){
+        let best=null, bestN=-1;
+        for(let k=0;k<50;k++){
+            const p=new THREE.Vector3(fieldCX+(Math.random()*2-1)*hx, GROUND_Y, fieldCZ+(Math.random()*2-1)*hz);
+            let nearest=Infinity; for(const s of spots){ nearest=Math.min(nearest, Math.hypot(p.x-s.x,p.z-s.z)); }
+            if(nearest>=minD){ best=p; break; }
+            if(nearest>bestN){ bestN=nearest; best=p; }   // 満たせなくても一番離れた候補
+        }
+        spots.push(best);
+    }
+    GAME.customSpots=spots;
+}
+// リセット時：ワールド矩形＋発掘ポイントを3秒間オーラ表示（VR/AR/スマホ/PC共通）
+let worldAura=null, worldAuraT=0;
+function showWorldAura(){
+    if(worldAura){ stage.remove(worldAura); worldAura=null; }
+    const g=new THREE.Group();
+    if(customWorldOn()){
+        const hx=WORLD_X/2, hz=WORLD_Z/2;
+        const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>new THREE.Vector3(fieldCX+x, GROUND_Y+0.05, fieldCZ+z));
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x66e0ff, transparent:true, opacity:0.9})));
+    }
+    const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:GAME.targets.map(t=>t.pos);
+    for(const s of (spots||[])){ if(!s) continue;
+        const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.04,20), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.6}));
+        ring.position.set(s.x, GROUND_Y+0.05, s.z); g.add(ring);
+        const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.4,10), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.35}));
+        pil.position.set(s.x, GROUND_Y+0.7, s.z); g.add(pil);
+    }
+    stage.add(g); worldAura=g; worldAuraT=3.0;
+}
+function updateWorldAura(dt){
+    if(!worldAura) return;
+    worldAuraT-=dt;
+    const k=Math.max(0,Math.min(1,worldAuraT/3)), pulse=0.6+0.4*Math.sin(performance.now()*0.006);
+    worldAura.traverse(o=>{ if(o.material) o.material.opacity=(o.isLine?0.9:0.55)*k*pulse; });
+    if(worldAuraT<=0){ stage.remove(worldAura); worldAura=null; }
 }
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
@@ -1541,10 +1587,9 @@ function spawnTarget(tier, forcedIdx=null){
     const d = difficulty(tier);
     const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*3, GROUND_Y, ART_ORIG[idx][1]*3)).clone();
     pos.y = GROUND_Y;
-    if(customWorldOn()){   // 矩形ワールド内に散らす（idxベースで決定的）
-        const hx=Math.max(0.5,WORLD_X/2-0.8), hz=Math.max(0.5,WORLD_Z/2-0.8);
-        const ang=idx*2.399963, rad=Math.sqrt((idx+0.5)/8);
-        pos.set(fieldCX+Math.cos(ang)*hx*rad, GROUND_Y, fieldCZ+Math.sin(ang)*hz*rad);
+    if(customWorldOn()){   // 矩形ワールド：ランダム配置（無ければ生成）
+        if(!GAME.customSpots) regenerateCustomSpots();
+        const s=GAME.customSpots && GAME.customSpots[idx]; if(s) pos.copy(s);
     }
     const marker = makeMarker(); marker.position.copy(pos);
     // マイクラ風の「掘れるブロック」＋照準時の枠線
@@ -1945,7 +1990,12 @@ function syncSiteSeg(){ document.querySelectorAll("#segSite button").forEach(x=>
 document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ setSiteVisible(b.dataset.v==="show"); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); });
 { const b=document.getElementById("dSite"); if(b) b.onclick=()=>{ setSiteVisible(!siteVisible); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); }; }
 // ワールドサイズUI（サイト非表示時のみ表示）
-function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); if(o) o.style.display = siteVisible? "none":"block"; }
+function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); if(o) o.style.display = siteVisible? "none":"block"; updateHudReset(); }
+function updateHudReset(){
+    const r=document.getElementById("dReset"); if(r) r.style.display = (GAME.desktop && customWorldOn())? "inline-block":"none";
+    const s=document.getElementById("dSite"); if(s) s.style.display = GAME.desktop? "none":"inline-block";   // ヘッドセットなし時はサイト切替ボタン不要
+}
+{ const r=document.getElementById("dReset"); if(r) r.onclick=()=>{ resetDexAndStandby(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
     if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
@@ -1989,6 +2039,8 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
+    if(typeof updateHudReset==="function") updateHudReset();
+    regenerateCustomSpots();
     setDigTarget(chosenDigTarget);   // 発掘対象を確定（図鑑もこの対象に切替）
     clearDinoReveal();
     closeHologram();
@@ -2155,6 +2207,7 @@ function taBeginCountdown(){
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
     GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.askCount=0; GAME.digScore=0;
+    regenerateCustomSpots(); showWorldAura();                  // 矩形内にランダム再配置＋オーラ
     TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS;
     worldHud.drawCountdown("3","まもなくスタート");
     bubble.say(line("start"), 2200);
@@ -2763,6 +2816,7 @@ renderer.setAnimationLoop(()=>{
     updateDirt(dt);
     updateHearts(dt);
     updateSparkles(dt);
+    updateWorldAura(dt);
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
@@ -2929,19 +2983,23 @@ function restartCollection(){
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     GAME.collectedCount=0; GAME.score=0;
+    regenerateCustomSpots();                                   // 矩形内にランダム再配置
     afterSite(()=>{ clearTargets(); spawnTarget(0); });
+    showWorldAura();
     updateGoal(); showToast("図鑑をリセット。もう一度発掘スタート！");
 }
-// Ｙボタン長押し：図鑑リセット。TAはカウントダウン直前のスタンバイ状態へ
+// Ｙボタン長押し / リセットボタン：図鑑リセット＋ワールド再センター。TAはスタンバイへ
 function resetDexAndStandby(){
     recenterFieldHere();                                       // 今いる場所＋向きを新しいスタート位置に
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     GAME.collectedCount=0; GAME.score=0; GAME.askCount=0;
     digBusy=false; digBusySpot=null; digBusyUntil=0; petBoost=0;
+    regenerateCustomSpots();                                   // 矩形内にランダム再配置
     afterSite(()=>clearTargets());
-    if(GAME.mode==="time"){ TA.state="ready"; worldHud.hide(); if(typeof taClock!=="undefined") taClock.show(false); showToast("図鑑リセット。右トリガーでスタート"); }
-    else { afterSite(()=>spawnTarget(0)); showToast("図鑑をリセットしました"); }
+    if(GAME.mode==="time"){ TA.state="ready"; worldHud.hide(); if(typeof taClock!=="undefined") taClock.show(false); showToast("リセット。スタート待ち"); }
+    else { afterSite(()=>spawnTarget(0)); showToast("リセットしました"); }
+    showWorldAura();                                           // 矩形＋発掘ポイントを3秒オーラ表示
     updateGoal(); updateTAButton();
 }
 function handleVRDig(){
