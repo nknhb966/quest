@@ -1611,6 +1611,11 @@ function clearTargets(){
     GAME.targets.length=0;
     aimedTarget=null;
 }
+// 全8ポイントを同時に出す（サイト表示/非表示に関わらず、どの順でも掘れる）
+function spawnAllTargets(){
+    clearTargets();
+    for(let i=0;i<8;i++){ if(!GAME.doneIdx.has(i)) spawnTarget(i, i); }
+}
 
 /* =====================================================
  * 発掘演出（出土品ポップアウト）
@@ -1739,15 +1744,12 @@ function excavate(t){
             sfxComplete(); showToast("🏆 全8種コンプリート！");
             bubble.say(line("done"), 4000);
             GAME.doneIdx.clear(); GAME.recent.length=0;   // 全部掘ったので発掘済み情報をリセット
-        } else {
-            // 次の出土品（順番は自由。難易度だけ上がる）
-            setTimeout(()=> spawnTarget(GAME.collectedCount), 900);
         }
+        // 全ポイントは最初から出ているので再出現しない（残りをどの順でも掘れる）
     } else { // タイムアタック
         GAME.digScore = (GAME.digScore||0) + 100 + t.tier*40;   // 発掘ポイント（時間ボーナス/減点は終了時に加除）
         updateGoal();
         if(dexFoundCount()>=8){ taFinish(); }   // 全8種を掘り切ったら終了＝残り時間でスコア
-        else if(TA.state==="run") setTimeout(()=>{ if(TA.state==="run") spawnTarget(Math.min(7, (Math.random()*8|0))); }, 600);
     }
     return firstTime;
 }
@@ -2028,7 +2030,7 @@ document.getElementById("dexReset").onclick=()=>{
         clearTargets();
         GAME.collectedCount=0; GAME.score=0;
         GAME.recent.length=0; GAME.doneIdx.clear();
-        afterSite(()=>{ if(GAME.mode==="collect"){ spawnTarget(0); } else { spawnTarget(0); spawnTarget(2); spawnTarget(4); } });
+        afterSite(()=>{ spawnAllTargets(); });
         updateGoal();
     }
     showToast("図鑑と発掘記録をリセットしました");
@@ -2057,7 +2059,7 @@ function startGame(desktop){
     // 初期ターゲット（サイト読込・発掘スポット確定後に配置）
     if(GAME.mode==="collect"){
         TA.state="idle";
-        afterSite(()=>{ clearTargets(); spawnTarget(0); });
+        afterSite(()=>{ clearTargets(); spawnAllTargets(); });
     } else {
         // タイムアタックは「開始待ち」。右トリガー（PC/スマホはボタン）でカウントダウン。
         TA.state="ready";
@@ -2217,7 +2219,7 @@ function taStartRun(){
     TA.state="run";
     GAME.endT=performance.now()+TIME_LIMIT*1000;
     worldHud.hide();
-    afterSite(()=>{ clearTargets(); spawnTarget(0); spawnTarget(2); spawnTarget(4); });
+    afterSite(()=>{ clearTargets(); spawnAllTargets(); });
     chord([523,784,1047],0.05,"triangle",0.5);
     updateGoal(); updateTAButton();
 }
@@ -2984,7 +2986,7 @@ function restartCollection(){
     GAME.recent.length=0; GAME.doneIdx.clear();
     GAME.collectedCount=0; GAME.score=0;
     regenerateCustomSpots();                                   // 矩形内にランダム再配置
-    afterSite(()=>{ clearTargets(); spawnTarget(0); });
+    afterSite(()=>{ clearTargets(); spawnAllTargets(); });
     showWorldAura();
     updateGoal(); showToast("図鑑をリセット。もう一度発掘スタート！");
 }
@@ -2998,7 +3000,7 @@ function resetDexAndStandby(){
     regenerateCustomSpots();                                   // 矩形内にランダム再配置
     afterSite(()=>clearTargets());
     if(GAME.mode==="time"){ TA.state="ready"; worldHud.hide(); if(typeof taClock!=="undefined") taClock.show(false); showToast("リセット。スタート待ち"); }
-    else { afterSite(()=>spawnTarget(0)); showToast("リセットしました"); }
+    else { afterSite(()=>spawnAllTargets()); showToast("リセットしました"); }
     showWorldAura();                                           // 矩形＋発掘ポイントを3秒オーラ表示
     updateGoal(); updateTAButton();
 }
