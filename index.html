@@ -452,8 +452,8 @@ let   fieldYaw      = 0;                  // フィールドの回転（プレ�
 function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カスタム矩形ワールド
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
 function fieldScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(10,Math.min(WORLD_X,WORLD_Z)))/5; }
-function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c-lz*s, z:fieldCZ+lx*s+lz*c}; }
-function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(-fieldYaw), s=Math.sin(-fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
+function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
+function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){
     if(customWorldOn()){                            // 矩形（回転対応）
         const hx=WORLD_X/2, hz=WORLD_Z/2, l=worldToField(p.x,p.z);
@@ -3164,7 +3164,7 @@ function updateDog(dt, now){
     {
         const fwd=new THREE.Vector3(Math.sin(dog.rotation.y),0,Math.cos(dog.rotation.y));
         const toP=new THREE.Vector3(playerPos.x-dog.position.x,0,playerPos.z-dog.position.z);
-        dogAttentive = !digBusy && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>-0.3;   // 正面〜横向きはOK。真後ろ（先を歩く）だけ不可
+        dogAttentive = !digBusy && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>0.5;   // 相棒が正面を向いているときだけ（横向き・背中は不可）
     }
     petBoost=Math.max(0, petBoost - dt*0.02);   // 撫でボーナスはゆっくり減衰
     // 当てる確率のキラキラ（頭上）：100%多め / 80%以上ふつう / 60%以上少し / 未満なし
