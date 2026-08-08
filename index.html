@@ -280,15 +280,15 @@
           <div style="flex:1; min-width:200px;">
             <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">横幅 X：<span id="wxVal">20</span> m</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input id="wxSlider" type="range" min="3" max="50" step="1" value="20" style="flex:1;">
-              <input id="wxNum" type="number" min="3" max="50" step="1" value="20" style="width:64px;">
+              <input id="wxSlider" type="range" min="3" max="30" step="1" value="20" style="flex:1;">
+              <input id="wxNum" type="number" min="3" max="30" step="1" value="20" style="width:64px;">
             </div>
           </div>
           <div style="flex:1; min-width:200px;">
             <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">奥行き Z：<span id="wzVal">20</span> m</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input id="wzSlider" type="range" min="3" max="50" step="1" value="20" style="flex:1;">
-              <input id="wzNum" type="number" min="3" max="50" step="1" value="20" style="width:64px;">
+              <input id="wzSlider" type="range" min="3" max="30" step="1" value="20" style="flex:1;">
+              <input id="wzNum" type="number" min="3" max="30" step="1" value="20" style="width:64px;">
             </div>
           </div>
         </div>
@@ -451,7 +451,7 @@ let   fieldCX       = 0, fieldCZ = 0;     // カスタムワールドの中心
 let   fieldYaw      = 0;                  // フィールドの回転（プレイヤーの向きに合わせる）
 function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カスタム矩形ワールド
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
-function fieldScale(){ const sz=customWorldOn()? Math.min(WORLD_X,WORLD_Z) : FIELD_R*2; return Math.max(0.5, Math.min(1.6, sz/20)); }
+function fieldScale(){ const sz=customWorldOn()? Math.min(WORLD_X,WORLD_Z) : FIELD_R*2; return Math.max(3,Math.min(10,sz))/5; }
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c-lz*s, z:fieldCZ+lx*s+lz*c}; }
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(-fieldYaw), s=Math.sin(-fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){
@@ -471,10 +471,12 @@ function placeAtStart(){
 // Yリセット：今いる場所を新スタートに再センター（rotate=trueなら向きに合わせてフィールドも回転）
 function recenterFieldHere(rotate){
     if(!customWorldOn() || typeof player==="undefined") return;
-    if(rotate) fieldYaw = player.rotation.y;
-    const hz=WORLD_Z/2, s=Math.sin(fieldYaw), c=Math.cos(fieldYaw);
-    fieldCX = player.position.x + s*hz;   // プレイヤーが z最大の端(0,+hz)になるよう中心を設定
-    fieldCZ = player.position.z - c*hz;
+    const cw=camera.getWorldPosition(new THREE.Vector3());                       // 実際のプレイヤー位置（頭）
+    const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); d.y=0;
+    if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
+    if(rotate) fieldYaw=Math.atan2(-d.x,-d.z);                                   // フィールドの前方(-z)を視線方向に
+    const hz=WORLD_Z/2;
+    fieldCX=cw.x + d.x*hz; fieldCZ=cw.z + d.z*hz;                                // 中心は視線方向へ hz（プレイヤーは z最大端）
     fallbackGround.position.set(fieldCX,0,fieldCZ); fallbackGround.rotation.y=fieldYaw;
 }
 // 発掘ポイントを矩形内にランダム配置（近すぎない・回転対応）
@@ -502,9 +504,13 @@ function showWorldAura(){
     if(worldAura){ stage.remove(worldAura); worldAura=null; }
     const g=new THREE.Group();
     if(customWorldOn()){
-        const hx=WORLD_X/2, hz=WORLD_Z/2;
-        const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+0.05, w.z); });
-        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x66e0ff, transparent:true, opacity:0.9})));
+        const hx=WORLD_X/2, hz=WORLD_Z/2, wallH=0.55, th=0.14;
+        const mat=new THREE.MeshBasicMaterial({color:0x7fe8ff, transparent:true, opacity:0.9, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, depthWrite:false});
+        const edges=[[0,-hz,WORLD_X,th],[0,hz,WORLD_X,th],[-hx,0,th,WORLD_Z],[hx,0,th,WORLD_Z]];
+        for(const [ex,ez,ew,ed] of edges){
+            const box=new THREE.Mesh(new THREE.BoxGeometry(ew,wallH,ed), mat);
+            const w=fieldToWorld(ex,ez); box.position.set(w.x, GROUND_Y+wallH/2, w.z); box.rotation.y=fieldYaw; g.add(box);
+        }
     }
     const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:GAME.targets.map(t=>t.pos);
     for(const s of (spots||[])){ if(!s) continue;
@@ -519,7 +525,7 @@ function updateWorldAura(dt){
     if(!worldAura) return;
     worldAuraT-=dt;
     const k=Math.max(0,Math.min(1,worldAuraT/3)), pulse=0.6+0.4*Math.sin(performance.now()*0.006);
-    worldAura.traverse(o=>{ if(o.material) o.material.opacity=(o.isLine?0.9:0.55)*k*pulse; });
+    worldAura.traverse(o=>{ if(o.material) o.material.opacity=0.85*k*pulse; });
     if(worldAuraT<=0){ stage.remove(worldAura); worldAura=null; }
 }
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
@@ -528,7 +534,7 @@ const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高�
 const WALK_SPEED    = 3.5;               // 歩行速度（m/s）
 const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
-const DIG_BLOCK     = 0.85;              // 掘れるブロックの一辺（m）※マイクラ風の当たり判定
+const DIG_BLOCK     = 0.8;               // 掘れるブロックの一辺の基準（m・5mで0.8。フィールド広さで拡縮）
 const DIG_REACH     = 4.0;               // 掘れる距離（m）
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
@@ -1602,14 +1608,15 @@ function spawnTarget(tier, forcedIdx=null){
     }
     const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
     // マイクラ風の「掘れるブロック」＋照準時の枠線
-    const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK, DIG_BLOCK*0.7, DIG_BLOCK),
+    const fs=fieldScale();                       // フィールド広さでブロックも拡縮
+    const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
-    block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35, pos.z); stage.add(block);
+    block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
     const outline=new THREE.LineSegments(
-        new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02, DIG_BLOCK*0.72, DIG_BLOCK*1.02)),
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02*fs, DIG_BLOCK*0.72*fs, DIG_BLOCK*1.02*fs)),
         new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:true}));
     outline.position.copy(block.position); outline.visible=false; stage.add(outline);
-    const t = { idx, tier, pos, diff:d, marker, block, outline, discovered:false, progress:0,
+    const t = { idx, tier, pos, diff:d, marker, block, outline, fs, discovered:false, progress:0,
                 digNeed: Math.max(2, Math.round(d.digNeed * toolMods().digMul)) };
     GAME.targets.push(t);
     GAME.recent.unshift(idx); GAME.recent=GAME.recent.slice(0,8);
@@ -2545,7 +2552,7 @@ function doDig(t){
         const s=0.45+0.55*left;
         t.block.userData.baseS=s;
         t.block.scale.set(s, Math.max(0.25, left), s);
-        t.block.position.y = GROUND_Y + DIG_BLOCK*0.35*Math.max(0.25, left);
+        t.block.position.y = GROUND_Y + DIG_BLOCK*0.35*(t.fs||1)*Math.max(0.25, left);
         if(t.outline){ t.outline.scale.copy(t.block.scale); t.outline.position.copy(t.block.position); }
     }
     if(t.progress>=t.digNeed){ excavate(t); }
@@ -2613,7 +2620,7 @@ let sparkleCd=0;                // 当てる確率キラキラの発生タイマ
 let lastProbes=[];             // 直近の探査デバイス（手/コントローラー）＝撫で判定に使用
 const PET_LINES=["うれしいワン！","もっと なでて ワン♪","えへへ…ワン","がんばるワン！"];
 function currentHitProb(){ let base=0.5; const tg=GAME.targets.find(x=>!x.discovered); if(tg&&tg.diff) base=tg.diff.dogRel; return Math.min(1, base+petBoost); }
-let lastPetLine="", dogSpinT=0;
+let lastPetLine="", dogSpinT=0, dogTailWagT=0;
 function petDog(){
     if(petCooldown>0) return;
     if(digBusy) return;                          // 発掘中はなでない
@@ -2635,8 +2642,11 @@ function petDog(){
             : p>=0.6 ? "なでなで うれしい♪\nもう少しで分かるワン"
             : "うれしいワン！\nまだ 自信ないワン…"; }
     if(petLine!==lastPetLine){ bubble.say(petLine, 2000); lastPetLine=petLine; }
-    // うれしい動作（複数）：くるっと回る＋弾む＋しっぽ
-    dogSpinT=0.7; petWiggle=1.7;
+    // うれしい動作をランダムに（1〜2種）：ジャンプ / くるっと回る / 大きくしっぽ
+    const acts=[()=>{dogCelebrateT=0.9;}, ()=>{dogSpinT=0.7;}, ()=>{dogTailWagT=1.1;}];
+    for(let i=acts.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [acts[i],acts[j]]=[acts[j],acts[i]]; }
+    acts[0](); if(Math.random()<0.55) acts[1]();
+    petWiggle=1.4;
     vibrate(kind===2?170:90, kind===2?0.95:0.5);
     spawnHearts(dog.position, kind===2?4:2);
 }
@@ -3043,10 +3053,10 @@ function handleVRDig(){
         const rhand=rightCtrl.getWorldPosition(new THREE.Vector3());
         const dogW=dog.getWorldPosition(new THREE.Vector3()); dogW.y+=0.35;
         const dDog=rhand.distanceTo(dogW);
-        if(dDog<0.55){
+        if(dDog<0.70){                                                     // 相棒付近（15cm広げた）
             let nearDig=false;
             for(const t of GAME.targets){ if(Math.hypot(rhand.x-t.pos.x, rhand.z-t.pos.z)<0.7){ nearDig=true; break; } }
-            if(nearDig && dDog>=0.30){ showTool=true; GAME.canPet=false; }   // 発掘点が近く相棒に密着でない→道具＋発掘
+            if(nearDig && dDog>=0.45){ showTool=true; GAME.canPet=false; }   // 発掘点が近く相棒に密着でない→道具＋発掘
             else { showTool=false; GAME.canPet=!nearDig; }                    // それ以外→道具非表示（発掘点密着時は撫で不可）
         }
     }
@@ -3161,7 +3171,7 @@ function updateDog(dt, now){
     {
         const fwd=new THREE.Vector3(Math.sin(dog.rotation.y),0,Math.cos(dog.rotation.y));
         const toP=new THREE.Vector3(playerPos.x-dog.position.x,0,playerPos.z-dog.position.z);
-        dogAttentive = !moving && !digBusy && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>0.4;
+        dogAttentive = !digBusy && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>-0.3;   // 正面〜横向きはOK。真後ろ（先を歩く）だけ不可
     }
     petBoost=Math.max(0, petBoost - dt*0.02);   // 撫でボーナスはゆっくり減衰
     // 当てる確率のキラキラ（頭上）：100%多め / 80%以上ふつう / 60%以上少し / 未満なし
@@ -3185,8 +3195,10 @@ function updateDog(dt, now){
         if(body.userData.petals) body.userData.petals.rotation.y += (moving?0.012:0.004);
     }
     const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
-    if(body.userData.tail){ const wag = moving ? Math.sin(_dogWalkPhase*1.3)*0.6 : Math.sin(now*0.009)*0.35;
-        body.userData.tail.rotation.y += (wag - body.userData.tail.rotation.y)*0.2; }   // 歩くとよく振る／待機もゆるく振る
+    if(body.userData.tail){
+        if(dogTailWagT>0){ dogTailWagT-=dt; body.userData.tail.rotation.y = Math.sin(now*0.03)*0.9; }   // 大きくブンブン
+        else { const wag = moving ? Math.sin(_dogWalkPhase*1.3)*0.6 : Math.sin(now*0.009)*0.35;
+            body.userData.tail.rotation.y += (wag - body.userData.tail.rotation.y)*0.2; } }   // 歩くとよく振る／待機もゆるく振る
 
     // なでられて喜ぶ（ゆっくり可愛く）／お祝いジャンプ／接地高さ
     if(petWiggle>0) petWiggle-=dt;
