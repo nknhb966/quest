@@ -278,17 +278,17 @@
         <div class="lbl">ワールドの広さ（サイト非表示時・VR/ARのみ／単位：メートル）</div>
         <div style="display:flex; gap:14px; flex-wrap:wrap;">
           <div style="flex:1; min-width:200px;">
-            <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">横幅 X：<span id="wxVal">20</span> m</div>
+            <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">横幅 X：<span id="wxVal">5</span> m</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input id="wxSlider" type="range" min="3" max="30" step="1" value="20" style="flex:1;">
-              <input id="wxNum" type="number" min="3" max="30" step="1" value="20" style="width:64px;">
+              <input id="wxSlider" type="range" min="3" max="30" step="1" value="5" style="flex:1;">
+              <input id="wxNum" type="number" min="3" max="30" step="1" value="5" style="width:64px;">
             </div>
           </div>
           <div style="flex:1; min-width:200px;">
-            <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">奥行き Z：<span id="wzVal">20</span> m</div>
+            <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">奥行き Z：<span id="wzVal">5</span> m</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input id="wzSlider" type="range" min="3" max="30" step="1" value="20" style="flex:1;">
-              <input id="wzNum" type="number" min="3" max="30" step="1" value="20" style="width:64px;">
+              <input id="wzSlider" type="range" min="3" max="30" step="1" value="5" style="flex:1;">
+              <input id="wzNum" type="number" min="3" max="30" step="1" value="5" style="width:64px;">
             </div>
           </div>
         </div>
@@ -445,13 +445,13 @@ import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFact
 // ワールド単位＝メートル（XR local-floor基準）。プレイヤーは等身大なので全て実寸で扱う。
 const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
-let   WORLD_X       = 20;                 // カスタムワールド（サイト非表示時）の広さX（m）
-let   WORLD_Z       = 20;                 // 同 Z（m）
+let   WORLD_X       = 5;                 // カスタムワールド（サイト非表示時）の広さX（m）
+let   WORLD_Z       = 5;                 // 同 Z（m）
 let   fieldCX       = 0, fieldCZ = 0;     // カスタムワールドの中心
 let   fieldYaw      = 0;                  // フィールドの回転（プレイヤーの向きに合わせる）
 function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カスタム矩形ワールド
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
-function fieldScale(){ const sz=customWorldOn()? Math.min(WORLD_X,WORLD_Z) : FIELD_R*2; return Math.max(3,Math.min(10,sz))/5; }
+function fieldScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(10,Math.min(WORLD_X,WORLD_Z)))/5; }
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c-lz*s, z:fieldCZ+lx*s+lz*c}; }
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(-fieldYaw), s=Math.sin(-fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){
@@ -461,22 +461,19 @@ function clampToField(p){
         const w=fieldToWorld(l.x,l.z); p.x=w.x; p.z=w.z;
     } else { const d=Math.hypot(p.x,p.z); if(d>FIELD_R){ p.x*=FIELD_R/d; p.z*=FIELD_R/d; } }
 }
-// カスタムワールドのスタート位置：x中央・z最大、フィールド側を向く
+// スタート時：フィールド設定（中心/向き）は管理者のグリップ＋Y設定を保持。点だけ配置
 function placeAtStart(){
     if(!customWorldOn() || typeof player==="undefined") return;
-    fieldCX=0; fieldCZ=0; fieldYaw=0; fallbackGround.position.set(0,0,0); fallbackGround.rotation.y=0;
-    player.position.x=0; player.position.z=WORLD_Z/2; player.rotation.y=0;
     regenerateCustomSpots();
 }
-// Yリセット：今いる場所を新スタートに再センター（rotate=trueなら向きに合わせてフィールドも回転）
-function recenterFieldHere(rotate){
+// 基準の位置・向き設定（左手グリップ＋Y長押しのときだけ）：現在地をフィールド中央、向きを-Z軸に
+function recenterFieldHere(){
     if(!customWorldOn() || typeof player==="undefined") return;
-    const cw=camera.getWorldPosition(new THREE.Vector3());                       // 実際のプレイヤー位置（頭）
+    const cw=camera.getWorldPosition(new THREE.Vector3());
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); d.y=0;
     if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
-    if(rotate) fieldYaw=Math.atan2(-d.x,-d.z);                                   // フィールドの前方(-z)を視線方向に
-    const hz=WORLD_Z/2;
-    fieldCX=cw.x + d.x*hz; fieldCZ=cw.z + d.z*hz;                                // 中心は視線方向へ hz（プレイヤーは z最大端）
+    fieldYaw=Math.atan2(-d.x,-d.z);       // フィールドの-z＝プレイヤーの向き
+    fieldCX=cw.x; fieldCZ=cw.z;            // 現在地をフィールド中央に
     fallbackGround.position.set(fieldCX,0,fieldCZ); fallbackGround.rotation.y=fieldYaw;
 }
 // 発掘ポイントを矩形内にランダム配置（近すぎない・回転対応）
@@ -504,13 +501,9 @@ function showWorldAura(){
     if(worldAura){ stage.remove(worldAura); worldAura=null; }
     const g=new THREE.Group();
     if(customWorldOn()){
-        const hx=WORLD_X/2, hz=WORLD_Z/2, wallH=0.55, th=0.14;
-        const mat=new THREE.MeshBasicMaterial({color:0x7fe8ff, transparent:true, opacity:0.9, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, depthWrite:false});
-        const edges=[[0,-hz,WORLD_X,th],[0,hz,WORLD_X,th],[-hx,0,th,WORLD_Z],[hx,0,th,WORLD_Z]];
-        for(const [ex,ez,ew,ed] of edges){
-            const box=new THREE.Mesh(new THREE.BoxGeometry(ew,wallH,ed), mat);
-            const w=fieldToWorld(ex,ez); box.position.set(w.x, GROUND_Y+wallH/2, w.z); box.rotation.y=fieldYaw; g.add(box);
-        }
+        const hx=WORLD_X/2, hz=WORLD_Z/2;
+        const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+0.05, w.z); });
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x66e0ff, transparent:true, opacity:0.9})));
     }
     const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:GAME.targets.map(t=>t.pos);
     for(const s of (spots||[])){ if(!s) continue;
@@ -525,7 +518,7 @@ function updateWorldAura(dt){
     if(!worldAura) return;
     worldAuraT-=dt;
     const k=Math.max(0,Math.min(1,worldAuraT/3)), pulse=0.6+0.4*Math.sin(performance.now()*0.006);
-    worldAura.traverse(o=>{ if(o.material) o.material.opacity=0.85*k*pulse; });
+    worldAura.traverse(o=>{ if(o.material) o.material.opacity=(o.isLine?0.9:0.55)*k*pulse; });
     if(worldAuraT<=0){ stage.remove(worldAura); worldAura=null; }
 }
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
@@ -1655,7 +1648,7 @@ function dinoEmergeLine(dn){
 }
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
-    const inner=dn.build(); makeFit(inner, dinoHByKey(dn.key)*fieldScale()); inner.updateMatrixWorld(true);
+    const inner=dn.build(); makeFit(inner, dinoHByKey(dn.key)*fieldScale()*0.62); inner.updateMatrixWorld(true);   // 世界配置は小さめ（0.62倍）でブロックと釣り合わせる
     const bb=new THREE.Box3().setFromObject(inner);
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
     const cont=new THREE.Group(); cont.add(inner);
@@ -1711,7 +1704,7 @@ function animateDigDinos(now, dt){
 }
 function clearDinoReveal(){
     eggHatch.forEach(e=>{ if(e.egg) stage.remove(e.egg); }); eggHatch.length=0;
-    dinoDigModels.forEach(m=>{ if(m) m.visible=false; });
+    dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });   // 破棄して次回は現在の広さで再生成
 }
 function excavate(t){
     // 図鑑登録
@@ -3019,7 +3012,7 @@ function restartCollection(){
 }
 // Ｙボタン長押し / リセットボタン：図鑑リセット＋ワールド再センター。TAはスタンバイへ
 function resetDexAndStandby(rotate){
-    recenterFieldHere(rotate);                                 // 今いる場所を新スタートに（rotate=true で向きにも合わせる）
+    if(rotate) recenterFieldHere();                            // 左手グリップ＋Yのときだけ基準（中央/向き）を設定
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     GAME.collectedCount=0; GAME.score=0; GAME.askCount=0;
@@ -3078,7 +3071,7 @@ function handleVRDig(){
             if(y && !GAME._prevY){ GAME._yDownAt=performance.now(); GAME._yFired=false; }
             if(y && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し＝リセット
                 GAME._yFired=true; resetDexAndStandby(grip); vibrate(200,0.95); chord([523,784,1047],0.06,"triangle",0.5);
-                showToast(grip?"Y長押し：向きに合わせて再センター":"Y長押し：リセット");
+                showToast(grip?"基準セット：現在地を中央・向きを前方に":"発掘ポイントを再配置しました");
             }
             GAME._prevY=y;
         }
