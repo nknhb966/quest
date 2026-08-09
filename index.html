@@ -1394,18 +1394,18 @@ const dexPanel=(function(){
 })();
 // タイムアタックのカウントダウン/残り時間を「発掘図鑑の近く（左手）」に表示
 const taClock=(function(){
-    const cv=document.createElement("canvas"); cv.width=384; cv.height=128; const c=cv.getContext("2d");
+    const cv=document.createElement("canvas"); cv.width=576; cv.height=128; const c=cv.getContext("2d");   // 幅1.5倍
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true}));
-    spr.scale.set(0.21,0.07,1); spr.position.set(0,0.31,-0.02); spr.visible=false;
+    spr.scale.set(0.315,0.07,1); spr.position.set(0,0.31,-0.02); spr.visible=false;   // 横幅1.5倍
     dexHolder.add(spr);
     let last="";
-    function draw(txt,big){ if(txt===last) return; last=txt; c.clearRect(0,0,384,128);
+    function draw(txt,big){ if(txt===last) return; last=txt; c.clearRect(0,0,576,128);
         c.fillStyle="rgba(18,12,32,0.9)"; c.beginPath();
-        if(c.roundRect) c.roundRect(6,6,372,116,22); else c.rect(6,6,372,116);
+        if(c.roundRect) c.roundRect(6,6,564,116,22); else c.rect(6,6,564,116);
         c.fill(); c.strokeStyle="#d8b46a"; c.lineWidth=4; c.stroke();
-        const fs = big?86 : (txt.length>6?34:52);
-        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+fs+"px sans-serif"; c.fillText(txt,192,66); tex.needsUpdate=true; }
+        const fs = big?86 : (txt.length>8?34:52);
+        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+fs+"px sans-serif"; c.fillText(txt,288,66); tex.needsUpdate=true; }
     return { spr, draw, show(v){ spr.visible=v; } };
 })();
 function updateTAClock(){
@@ -1924,7 +1924,7 @@ function askDog(){
     // タイムアタックの計測中以外は「終わったよ」の反応にする
     if(GAME.mode==="time" && TA.state!=="run"){
         sfxBark();
-        bubble.say(TA.state==="ready" ? line("start") : (dexFoundCount()>=8 ? line("done") : line("again")), 2000);
+        bubble.say(TA.state==="ready" ? "スタートするワン" : (dexFoundCount()>=8 ? line("done") : line("again")), 2000);
         return;
     }
     const t = GAME.targets.find(x=>!x.discovered) || GAME.targets[0];
@@ -2115,7 +2115,7 @@ function startGame(desktop){
     if(desktop) document.body.classList.add("desktop");
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw(); updateTAButton();
-    bubble.say(line("start"), 2600);
+    bubble.say(GAME.mode==="time" ? "スタートするワン" : line("start"), 2600);
     if(IS_TOUCH && desktop){ showToast("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
     unlockAudio();
 }
@@ -2228,12 +2228,10 @@ const worldHud=(function(){
                     ctx.textAlign="right"; ctx.font="bold 23px sans-serif"; ctx.fillText(e?((e.date||"")+(e.time?" "+e.time:"")):"",680,yy);
                 }
             }
-            // 切替ボタン風の帯（VR/AR/スマホ/PC共通）
-            ctx.fillStyle="rgba(255,210,77,0.92)"; ctx.beginPath();
-            if(ctx.roundRect) ctx.roundRect(140,700,488,66,20); else ctx.rect(140,700,488,66); ctx.fill();
-            ctx.fillStyle="#3a2600"; ctx.font="bold 30px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(btnLabel,384,733);
-            ctx.fillStyle="rgba(200,190,240,.7)"; ctx.font="bold 22px sans-serif";
-            ctx.fillText(GAME.desktop?"（下のボタンで切替／スペースで閉じる）":"（右トリガー1回で切替・2回でパネルを消す）",384,800);
+            // 切替の案内（切替はスマホ/PC＝下のボタン、VR/AR＝右トリガー）
+            ctx.fillStyle="rgba(210,200,245,.8)"; ctx.font="bold 27px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.fillText(GAME.desktop ? (resPage===0?"▼ 下のボタンで「全体のスコア」へ":"▼ 下のボタンで「獲得カード」へ")
+                                       : "右トリガー1回で切替 / 2回でパネルを消す", 384, 740);
             tex.needsUpdate=true; mesh.visible=true;
         }
     };
@@ -2323,8 +2321,10 @@ function taAdvance(){
     return false;                                 // run 中は「相棒に聞く」
 }
 function updateResultBtn(){
+    const inResults = GAME.desktop && GAME.mode==="time" && TA.state==="results";
+    const dt=document.getElementById("dTool"); if(dt) dt.style.display = inResults ? "none" : "";   // 結果中は道具ボタンを隠す
     const b=document.getElementById("taCardBtn"); if(!b) return;
-    if(GAME.desktop && GAME.mode==="time" && TA.state==="results"){
+    if(inResults){
         b.style.display="inline-block";
         b.textContent = worldHud.resultPage()===0 ? "▶ 全体のスコアを見る" : "🎴 獲得カードを見る";
     } else b.style.display="none";
