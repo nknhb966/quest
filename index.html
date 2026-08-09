@@ -452,7 +452,7 @@ function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カ�
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
 function fieldScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(10,Math.min(WORLD_X,WORLD_Z)))/5; }
 // 恐竜用：10mを超えてもまだ大きくなり、最大は現状(10m時)の2倍まで（3〜20mでクランプ）
-function dinoScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(20,Math.min(WORLD_X,WORLD_Z)))/5; }
+function dinoScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(18,Math.min(WORLD_X,WORLD_Z)))/5; }
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){
@@ -715,15 +715,16 @@ function updateHandModels(){
         if(c.userData.isHand){ hm.quaternion.premultiply(HAND_COMP_Q); hm.position.copy(HAND_POS_OFF); }   // ずれ補正：外側3cm・プレイヤー側7cm
         else hm.position.set(0,0,0);
     }
-    // 発掘道具：基本姿勢＋（ハンド時のみ）前後軸ロール。位置もモード別（手と同じ平行移動を合成）
+    // 発掘道具：基本姿勢＋（ハンド時のみ）前後軸ロール。位置は道具専用（手の平行移動とは独立）
     toolHolder.quaternion.setFromEuler(TOOL_BASE_E);
-    if(rightCtrl && rightCtrl.userData.isHand){ toolHolder.quaternion.premultiply(HAND_COMP_Q); toolHolder.position.copy(TOOL_POS_HAND).add(HAND_POS_OFF); }
+    if(rightCtrl && rightCtrl.userData.isHand){ toolHolder.quaternion.premultiply(HAND_COMP_Q); toolHolder.position.copy(TOOL_POS_HAND); }
     else toolHolder.position.copy(TOOL_POS_CTRL);
-    // 発掘図鑑ホルダー：ハンド時は世界基準（上向き固定）にして、タイマーが図鑑の上に来るように
-    if(leftCtrl && leftCtrl.userData.isHand) dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(new THREE.Quaternion()).invert());
-    else dexHolder.quaternion.identity();
+    // 発掘図鑑ホルダー：ハンド時は世界基準（上向き固定）＋外側へ平行移動
+    if(leftCtrl && leftCtrl.userData.isHand){ dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(new THREE.Quaternion()).invert()); dexHolder.position.copy(DEX_POS_OFF); }
+    else { dexHolder.quaternion.identity(); dexHolder.position.set(0,0,0); }
 }
-const HAND_POS_OFF = new THREE.Vector3(0.03, 0, 0.07);   // ハンド時のずれ補正（右手：外側+x3cm・プレイヤー側+z7cm）
+const HAND_POS_OFF = new THREE.Vector3(0.07, 0, 0.07);   // ハンド時の手のずれ補正（外側+x7cm・プレイヤー側+z7cm）
+const DEX_POS_OFF  = new THREE.Vector3(-0.07, 0, 0);     // 図鑑を外側（左手なので-x）へ7cm ※要調整
 // 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
 let leftCtrl = controllers[1], rightCtrl = controllers[0]; // 既定（0=右, 1=左）
 const dexHolder  = new THREE.Group();  // 左手のひら側：発掘図鑑
@@ -742,7 +743,7 @@ const TOOL_BASE_Q = new THREE.Quaternion().setFromEuler(TOOL_BASE_E);
 const GRIP_COMP_Q = new THREE.Quaternion();    // ハンド時（グリップ空間）の標準姿勢の微調整（既定＝なし。ズレたらここで補正）
 const HOLO_FLIP_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), Math.PI);  // ハンド時：モデルの上下逆を直す（Z軸180度）
 const TOOL_POS_CTRL = new THREE.Vector3(-0.05,-0.03,-0.05);       // コントローラー時の道具位置
-const TOOL_POS_HAND = new THREE.Vector3(-0.06, 0.02, 0.03);       // ハンド時：位置調整（y=0.02）
+const TOOL_POS_HAND = new THREE.Vector3(-0.06, -0.03, 0.10);      // ハンド時：地面側5cm・内側3cm移動
 let rightHeld=false, lastRightPress=0; // 右トリガー/つまみの保持状態・二回連続判定
 let rightDownAt=0, toolActive=false;   // 押し始め時刻・道具アクティブ（0.22秒保持で有効＝2回押しの一瞬表示を防ぐ）
 function attachAccessories(){
@@ -1691,7 +1692,7 @@ function tickHatch(now, dt){
             sfxCry(); vibrate(220,0.85);
             bubble.say(dinoEmergeLine(dn), 3000);
             digBusyUntil=performance.now()+2000;   // 恐竜登場セリフから2秒後まで
-            showInfoPanel(e.idx, e.pos, e.color, DINO_IMGS[e.idx], (dn.label||"").replace(/^\S+\s*/,""), mul);
+            // 恐竜はフィールドに説明パネルを出さない（手元の発掘図鑑で確認できるため）
             eggHatch.splice(i,1);
         }
     }
@@ -2149,6 +2150,8 @@ const worldHud=(function(){
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:true, toneMapped:false});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.46), mat);
     mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
+    const cardMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.52,0.73), new THREE.MeshBasicMaterial({transparent:true, depthTest:true, toneMapped:false}));
+    cardMesh.position.set(0.98,0.06,0.02); cardMesh.visible=false; mesh.add(cardMesh);   // 結果パネルの右横に獲得カード
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function bg(){ ctx.clearRect(0,0,768,768);
@@ -2156,9 +2159,11 @@ const worldHud=(function(){
         ctx.strokeStyle="#d8b46a"; ctx.lineWidth=6; ctx.stroke(); }
     return {
         mesh,
+        showCard(idx){ try{ cardMesh.material.map=makeTradingCardTex(idx); cardMesh.material.needsUpdate=true; cardMesh.visible=true; }catch(_){ cardMesh.visible=false; } },
+        hideCard(){ cardMesh.visible=false; },
         show(){ mesh.visible=true; }, hide(){ mesh.visible=false; },
         drawCountdown(text, sub){
-            bg();
+            bg(); if(this.hideCard) this.hideCard();
             ctx.textAlign="center"; ctx.textBaseline="middle";
             ctx.fillStyle="#f0d98a"; ctx.font="bold 300px sans-serif"; ctx.fillText(text,384,410);
             if(sub){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="bold 44px sans-serif"; ctx.fillText(sub,384,670); }
@@ -2186,6 +2191,8 @@ const worldHud=(function(){
                 ctx.textAlign="right"; ctx.fillText(score+" pt", rx, y+8);
             }
             ctx.textAlign="center"; ctx.fillStyle="#e6c26a"; ctx.font="bold 34px sans-serif"; ctx.fillText("― TOP 5 ―",384,470);
+            if(calc && calc.card){ ctx.fillStyle=RARITY_COL[calc.card.rarity]||"#fff"; ctx.font="bold 30px sans-serif";
+                ctx.fillText("🎴 獲得カード："+(RARITY_NAME[calc.card.rarity]||""), 384, 438); }
             for(let i=0;i<5;i++){
                 const e=list[i], yy=516+i*44, hit=e&&e.score===score;
                 ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
@@ -2242,6 +2249,13 @@ function taStartRun(){
     chord([523,784,1047],0.05,"triangle",0.5);
     updateGoal(); updateTAButton();
 }
+// カードのレア度：idx0-7（1超激/2激/3レア/4プラチナ/5通常）＝超激1・激1・レア1・プラチナ2・通常3
+const CARD_RARITY=[5,5,5,4,4,3,2,1];
+const RARITY_NAME={1:"超激レア",2:"激レア",3:"レア",4:"プラチナ",5:"通常"};
+const RARITY_COL ={1:"#ff5bd0",2:"#ffd24d",3:"#8fd6ff",4:"#e6ecf5",5:"#c8bfe0"};
+function scoreRarity(score){ if(score>=4000)return 1; if(score>=3000)return 2; if(score>=2200)return 3; if(score>=1400)return 4; return 5; }  // スコア5段階（要調整）
+function acquireCard(score){ const rar=scoreRarity(score); const pool=[]; for(let i=0;i<8;i++) if(CARD_RARITY[i]===rar)pool.push(i);
+    return { idx: pool.length? pool[(Math.random()*pool.length)|0] : (Math.random()*8|0), rarity:rar }; }
 function taFinish(){
     const digPts=GAME.digScore||0;
     const secs=Math.max(0, Math.ceil(GAME.timeLeft));
@@ -2255,7 +2269,9 @@ function taFinish(){
     TA.lockUntil=performance.now()+1500;
     sfxTimeUp();
     const found=dexFoundCount();
-    worldHud.drawResults(score, found, loadTA(), {digPts, secs, timeBonus, asks, askPenalty});
+    const card=acquireCard(score); GAME.lastCard=card;                    // スコアに応じてカード獲得
+    worldHud.drawResults(score, found, loadTA(), {digPts, secs, timeBonus, asks, askPenalty, card});
+    worldHud.showCard(card.idx);
     bubble.say(found>=8 ? line("done") : line("again"), 4000);
     updateGoal(); updateTAButton();
 }
