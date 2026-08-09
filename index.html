@@ -493,7 +493,7 @@ function regenerateCustomSpots(){
 }
 // リセット時：ワールド矩形＋発掘ポイントを3秒間オーラ表示（VR/AR/スマホ/PC共通）
 let worldAura=null, worldAuraT=0;
-function showWorldAura(){
+function showWorldAura(rectOnly){
     if(worldAura){ stage.remove(worldAura); worldAura=null; }
     const g=new THREE.Group();
     if(customWorldOn()){
@@ -504,14 +504,22 @@ function showWorldAura(){
             line.userData.life=7.0; line.userData.baseOp=1.0; g.add(line);   // 矩形は7秒
         }
     }
-    const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:GAME.targets.map(t=>t.pos);
-    for(const s of (spots||[])){ if(!s) continue;
-        const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.04,20), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.6}));
-        ring.position.set(s.x, GROUND_Y+0.05, s.z); ring.userData.life=3.0; ring.userData.baseOp=0.6; g.add(ring);
-        const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.4,10), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.35}));
-        pil.position.set(s.x, GROUND_Y+0.7, s.z); pil.userData.life=3.0; pil.userData.baseOp=0.35; g.add(pil);   // 発掘ポイントは3秒
+    if(!rectOnly){   // 発掘ポイントのヒント（3秒）
+        const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:GAME.targets.map(t=>t.pos);
+        for(const s of (spots||[])){ if(!s) continue;
+            const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.04,20), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.6}));
+            ring.position.set(s.x, GROUND_Y+0.05, s.z); ring.userData.life=3.0; ring.userData.baseOp=0.6; g.add(ring);
+            const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.4,10), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.35}));
+            pil.position.set(s.x, GROUND_Y+0.7, s.z); pil.userData.life=3.0; pil.userData.baseOp=0.35; g.add(pil);   // 発掘ポイントは3秒
+        }
     }
     stage.add(g); worldAura=g; worldAuraT=0;
+}
+// 全発掘を一斉に完了（タイムアタックはクリア扱い）
+function completeAllDigs(){
+    const remaining=[...GAME.targets];
+    for(const t of remaining){ if(t) try{ excavate(t); }catch(_){} }
+    showToast("全発掘 一斉完了！");
 }
 function updateWorldAura(dt){
     if(!worldAura) return;
@@ -1509,7 +1517,7 @@ function updateHologram(){
                if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z=w.userData.sign*(0.22+Math.sin(now*0.004)*0.4); }); }
     }
 }
-function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx) closeHologram(); else buildHologram(idx); }
+function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx){ closeHologram(); sfxLocate(); vibrate(70,0.5); } else buildHologram(idx); }   // 解除時も音＋バイブ
 
 /* =====================================================
  * ゲーム状態
@@ -2165,6 +2173,7 @@ const worldHud=(function(){
         mesh,
         showCard(idx){ try{ cardMesh.material.map=makeTradingCardTex(idx); cardMesh.material.needsUpdate=true; cardMesh.visible=true; }catch(_){ cardMesh.visible=false; } },
         hideCard(){ cardMesh.visible=false; },
+        faceCard(camPos){ if(!cardMesh.visible) return; mesh.updateMatrixWorld(true); cardMesh.lookAt(camPos); },   // カードはプレイヤーを向く
         show(){ mesh.visible=true; }, hide(){ mesh.visible=false; },
         drawCountdown(text, sub){
             bg(); if(this.hideCard) this.hideCard();
@@ -2220,6 +2229,7 @@ function updateWorldHud(){
     if(TA.state==="results"){ const right=new THREE.Vector3(1,0,0).applyQuaternion(camQ); right.y=0; if(right.lengthSq()>1e-4){ right.normalize(); p.addScaledVector(right,-0.65); } }  // 結果時は左に寄せ、右にカードを並べる
     worldHud.mesh.position.lerp(p, 0.18);
     worldHud.mesh.lookAt(cam);
+    worldHud.faceCard(cam);   // カードは各自プレイヤーを向く
 }
 
 function dexFoundCount(){ let n=0; for(let i=0;i<8;i++) if(dexData[i]&&dexData[i].found) n++; return n; }
@@ -3107,6 +3117,16 @@ function handleVRDig(){
                 showToast(grip?"基準セット：現在地を中央・向きを前方に":"発掘ポイントを再配置しました");
             }
             GAME._prevY=y;
+            // Xボタン：短押し=矩形オーラ7秒／長押し=オーラ+ヒント／グリップ+長押し=全発掘一斉完了
+            const x=src.gamepad.buttons[4]?.pressed ?? false;
+            if(x && !GAME._prevX){ GAME._xDownAt=performance.now(); GAME._xFired=false; }
+            if(x && !GAME._xFired && performance.now()-(GAME._xDownAt||0)>800){
+                GAME._xFired=true;
+                if(grip){ completeAllDigs(); vibrate(220,0.95); chord([659,988,1319],0.07,"triangle",0.5); }   // グリップ+X長押し=一斉完了
+                else { showWorldAura(false); vibrate(120,0.7); sfxLocate(); }                                  // X長押し=オーラ+ヒント
+            }
+            if(!x && GAME._prevX && !GAME._xFired){ showWorldAura(true); vibrate(70,0.5); sfxLocate(); }         // 短押し=矩形オーラのみ
+            GAME._prevX=x;
         }
     }
 }
