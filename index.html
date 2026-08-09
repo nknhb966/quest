@@ -303,7 +303,6 @@
     </div>
 
     <div class="row">
-      <button class="ghost" id="openDex">📖 発掘図鑑</button>
       <button class="ghost" id="openHelp">❓ あそび方</button>
       <button class="ghost" id="openRecords">🏅 記録</button>
     </div>
@@ -452,6 +451,8 @@ let   fieldYaw      = 0;                  // フィールドの回転（プレ�
 function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カスタム矩形ワールド
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
 function fieldScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(10,Math.min(WORLD_X,WORLD_Z)))/5; }
+// 恐竜用：10mを超えてもまだ大きくなり、最大は現状(10m時)の2倍まで（3〜20mでクランプ）
+function dinoScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(20,Math.min(WORLD_X,WORLD_Z)))/5; }
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){
@@ -502,24 +503,31 @@ function showWorldAura(){
     const g=new THREE.Group();
     if(customWorldOn()){
         const hx=WORLD_X/2, hz=WORLD_Z/2;
-        const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+0.05, w.z); });
-        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x66e0ff, transparent:true, opacity:0.9})));
+        for(const yoff of [0.05, 0.14]){   // 二重線で少し見やすく
+            const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+yoff, w.z); });
+            const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x8ff0ff, transparent:true, opacity:1}));
+            line.userData.life=7.0; line.userData.baseOp=1.0; g.add(line);   // 矩形は7秒
+        }
     }
     const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:GAME.targets.map(t=>t.pos);
     for(const s of (spots||[])){ if(!s) continue;
         const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.04,20), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.6}));
-        ring.position.set(s.x, GROUND_Y+0.05, s.z); g.add(ring);
+        ring.position.set(s.x, GROUND_Y+0.05, s.z); ring.userData.life=3.0; ring.userData.baseOp=0.6; g.add(ring);
         const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.4,10), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.35}));
-        pil.position.set(s.x, GROUND_Y+0.7, s.z); g.add(pil);
+        pil.position.set(s.x, GROUND_Y+0.7, s.z); pil.userData.life=3.0; pil.userData.baseOp=0.35; g.add(pil);   // 発掘ポイントは3秒
     }
-    stage.add(g); worldAura=g; worldAuraT=3.0;
+    stage.add(g); worldAura=g; worldAuraT=0;
 }
 function updateWorldAura(dt){
     if(!worldAura) return;
-    worldAuraT-=dt;
-    const k=Math.max(0,Math.min(1,worldAuraT/3)), pulse=0.6+0.4*Math.sin(performance.now()*0.006);
-    worldAura.traverse(o=>{ if(o.material) o.material.opacity=(o.isLine?0.9:0.55)*k*pulse; });
-    if(worldAuraT<=0){ stage.remove(worldAura); worldAura=null; }
+    worldAuraT+=dt;
+    const pulse=0.6+0.4*Math.sin(performance.now()*0.006); let anyAlive=false;
+    worldAura.traverse(o=>{ if(!o.material || !o.userData.life) return;
+        const rem=o.userData.life-worldAuraT;
+        if(rem<=0){ o.visible=false; }
+        else { o.visible=true; anyAlive=true; o.material.opacity=(o.userData.baseOp||0.6)*Math.min(1,rem)*pulse; }
+    });
+    if(!anyAlive){ stage.remove(worldAura); worldAura=null; }
 }
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
@@ -704,16 +712,18 @@ function updateHandModels(){
         const hm=c.userData.handModel; if(!hm) continue;
         hm.visible = (c.userData.handedness==="right");
         hm.quaternion.setFromEuler(HM_BASE_E);
-        if(c.userData.isHand) hm.quaternion.premultiply(HAND_COMP_Q);   // 手のひら向かい合わせに補正
+        if(c.userData.isHand){ hm.quaternion.premultiply(HAND_COMP_Q); hm.position.copy(HAND_POS_OFF); }   // ずれ補正：外側3cm・プレイヤー側7cm
+        else hm.position.set(0,0,0);
     }
-    // 発掘道具：基本姿勢＋（ハンド時のみ）前後軸ロール。位置もモード別
+    // 発掘道具：基本姿勢＋（ハンド時のみ）前後軸ロール。位置もモード別（手と同じ平行移動を合成）
     toolHolder.quaternion.setFromEuler(TOOL_BASE_E);
-    if(rightCtrl && rightCtrl.userData.isHand){ toolHolder.quaternion.premultiply(HAND_COMP_Q); toolHolder.position.copy(TOOL_POS_HAND); }
+    if(rightCtrl && rightCtrl.userData.isHand){ toolHolder.quaternion.premultiply(HAND_COMP_Q); toolHolder.position.copy(TOOL_POS_HAND).add(HAND_POS_OFF); }
     else toolHolder.position.copy(TOOL_POS_CTRL);
     // 発掘図鑑ホルダー：ハンド時は世界基準（上向き固定）にして、タイマーが図鑑の上に来るように
     if(leftCtrl && leftCtrl.userData.isHand) dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(new THREE.Quaternion()).invert());
     else dexHolder.quaternion.identity();
 }
+const HAND_POS_OFF = new THREE.Vector3(0.03, 0, 0.07);   // ハンド時のずれ補正（右手：外側+x3cm・プレイヤー側+z7cm）
 // 左右の解決：connected イベントの handedness を信頼（0/1の並びは環境依存のため）
 let leftCtrl = controllers[1], rightCtrl = controllers[0]; // 既定（0=右, 1=左）
 const dexHolder  = new THREE.Group();  // 左手のひら側：発掘図鑑
@@ -1601,7 +1611,7 @@ function spawnTarget(tier, forcedIdx=null){
     }
     const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
     // マイクラ風の「掘れるブロック」＋照準時の枠線
-    const fs=fieldScale();                       // フィールド広さでブロックも拡縮
+    const fs=Math.min(1.25, fieldScale());       // ブロックは一辺 最大1.0m（0.8×1.25）に制限
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
@@ -1648,7 +1658,7 @@ function dinoEmergeLine(dn){
 }
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
-    const inner=dn.build(); makeFit(inner, dinoHByKey(dn.key)*fieldScale()*0.62); inner.updateMatrixWorld(true);   // 世界配置は小さめ（0.62倍）でブロックと釣り合わせる
+    const inner=dn.build(); makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
     const bb=new THREE.Box3().setFromObject(inner);
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
     const cont=new THREE.Group(); cont.add(inner);
@@ -2019,7 +2029,7 @@ function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
   if(c)c.oninput=()=>setWorldZ(+c.value); if(d)d.onchange=()=>setWorldZ(+d.value);
   updateWorldSizeUI(); }
 updateSiteBtn();
-document.getElementById("openDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
+{ const od=document.getElementById("openDex"); if(od) od.onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); }; }
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexReset").onclick=()=>{
@@ -2492,7 +2502,7 @@ function updateDirt(dt){
 
 /* 掘れる条件（距離＋向き）が整ったブロックを判定。整っている間は脈動発光する。 */
 let anyDigReady=false;
-const DIG_VIEW_DEG=42;                 // 画面内とみなす視野角
+const DIG_VIEW_DEG=34;                 // 画面内とみなす視野角（少し厳密に）
 const _dv1=new THREE.Vector3(), _dv2=new THREE.Vector3();
 function updateDigReady(){
     anyDigReady=false;
