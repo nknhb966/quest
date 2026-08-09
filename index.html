@@ -423,6 +423,7 @@
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dSite">🗺 サイト：表示</button>
     <button id="dReset" style="display:none;">🔄 リセット</button>
+    <button id="taCardBtn" style="display:none;">🎴 カードを見る</button>
     <button id="dDex">📖 図鑑</button>
     <button id="dRecords">🏅 記録</button>
     <button id="dQuit">やめる</button>
@@ -2038,6 +2039,7 @@ function updateHudReset(){
     const s=document.getElementById("dSite"); if(s) s.style.display = GAME.desktop? "none":"inline-block";   // ヘッドセットなし時はサイト切替ボタン不要
 }
 { const r=document.getElementById("dReset"); if(r) r.onclick=()=>{ resetDexAndStandby(); }; }
+{ const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ const shown=worldHud.toggleCard(); b.textContent=shown?"📋 結果を見る":"🎴 カードを見る"; }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
     if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
@@ -2170,8 +2172,8 @@ const worldHud=(function(){
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:true, toneMapped:false});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.46), mat);
     mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
-    const cardMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.93,1.30), new THREE.MeshBasicMaterial({transparent:true, depthTest:true, toneMapped:false}));
-    cardMesh.position.set(1.24,0,0.02); cardMesh.visible=false; mesh.add(cardMesh);   // 結果パネルの右横に獲得カード（上下に余白）
+    const cardMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.04,1.46), new THREE.MeshBasicMaterial({transparent:true, depthTest:true, toneMapped:false}));
+    cardMesh.position.set(1.24,0,0.02); cardMesh.visible=false; mesh.add(cardMesh);   // 獲得カード（VRは右横／モバイルは中央でボタン切替）
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function bg(){ ctx.clearRect(0,0,768,768);
@@ -2179,8 +2181,15 @@ const worldHud=(function(){
         ctx.strokeStyle="#d8b46a"; ctx.lineWidth=6; ctx.stroke(); }
     return {
         mesh,
-        showCard(idx){ try{ cardMesh.material.map=makeTradingCardTex(idx); cardMesh.material.needsUpdate=true; cardMesh.visible=true; }catch(_){ cardMesh.visible=false; } },
+        showCard(idx, sideBySide){
+            try{ cardMesh.material.map=makeTradingCardTex(idx); cardMesh.material.needsUpdate=true; }catch(_){ cardMesh.visible=false; return; }
+            cardMesh._side=sideBySide;
+            if(sideBySide){ cardMesh.position.set(1.24,0,0.02); cardMesh.visible=true; }   // VR：右横に常時
+            else { cardMesh.position.set(0,0,0.06); cardMesh.visible=false; }               // モバイル：中央・ボタンで表示
+        },
         hideCard(){ cardMesh.visible=false; },
+        toggleCard(){ if(cardMesh.material.map){ cardMesh.visible=!cardMesh.visible; } return cardMesh.visible; },
+        cardShown(){ return cardMesh.visible; },
         faceCard(camPos){ if(!cardMesh.visible) return; mesh.updateMatrixWorld(true); cardMesh.lookAt(camPos); },   // カードはプレイヤーを向く
         show(){ mesh.visible=true; }, hide(){ mesh.visible=false; },
         drawCountdown(text, sub){
@@ -2211,11 +2220,15 @@ const worldHud=(function(){
                 ctx.textAlign="left"; ctx.fillText("合計", lx, y+8);
                 ctx.textAlign="right"; ctx.fillText(score+" pt", rx, y+8);
             }
-            ctx.textAlign="center"; ctx.fillStyle="#e6c26a"; ctx.font="bold 34px sans-serif"; ctx.fillText("― TOP 5 ―",384,470);
-            if(calc && calc.card){ ctx.fillStyle=RARITY_COL[calc.card.rarity]||"#fff"; ctx.font="bold 30px sans-serif";
-                ctx.fillText("🎴 獲得カード："+(RARITY_NAME[calc.card.rarity]||""), 384, 438); }
+            // 獲得カード（上下に余白をとって読みやすく）
+            if(calc && calc.card){ const cy=418;
+                ctx.fillStyle="rgba(40,30,62,0.6)"; ctx.beginPath();
+                if(ctx.roundRect) ctx.roundRect(140,cy-32,488,64,18); else ctx.rect(140,cy-32,488,64); ctx.fill();
+                ctx.fillStyle=RARITY_COL[calc.card.rarity]||"#fff"; ctx.font="bold 32px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+                ctx.fillText("🎴 獲得カード："+(RARITY_NAME[calc.card.rarity]||""), 384, cy); }
+            ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#e6c26a"; ctx.font="bold 34px sans-serif"; ctx.fillText("― TOP 5 ―",384,490);
             for(let i=0;i<5;i++){
-                const e=list[i], yy=516+i*44, hit=e&&e.score===score;
+                const e=list[i], yy=530+i*42, hit=e&&e.score===score;
                 ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
                 ctx.textAlign="left";   ctx.font="bold 30px sans-serif"; ctx.fillText((i+1)+".", 90, yy);
                 ctx.textAlign="center"; ctx.font="bold 34px sans-serif"; ctx.fillText(e? (e.score+" pt") : "----", 384, yy);
@@ -2234,7 +2247,7 @@ function updateWorldHud(){
     const camQ=camera.getWorldQuaternion(new THREE.Quaternion());
     const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camQ);
     const p=cam.clone().addScaledVector(dir, 2.2);
-    if(TA.state==="results"){ const right=new THREE.Vector3(1,0,0).applyQuaternion(camQ); right.y=0; if(right.lengthSq()>1e-4){ right.normalize(); p.addScaledVector(right,-0.65); } }  // 結果時は左に寄せ、右にカードを並べる
+    if(TA.state==="results" && renderer.xr.isPresenting){ const right=new THREE.Vector3(1,0,0).applyQuaternion(camQ); right.y=0; if(right.lengthSq()>1e-4){ right.normalize(); p.addScaledVector(right,-0.65); } }  // VRは左に寄せ右にカードを並べる
     worldHud.mesh.position.lerp(p, 0.18);
     worldHud.mesh.lookAt(cam);
     worldHud.faceCard(cam);   // カードは各自プレイヤーを向く
@@ -2295,7 +2308,8 @@ function taFinish(){
     const found=dexFoundCount();
     const card=acquireCard(score); GAME.lastCard=card;                    // スコアに応じてカード獲得
     worldHud.drawResults(score, found, loadTA(), {digPts, secs, timeBonus, asks, askPenalty, card});
-    worldHud.showCard(card.idx);
+    worldHud.showCard(card.idx, renderer.xr.isPresenting);   // VRは左右並び／モバイルはボタン切替
+    if(GAME.desktop){ const b=document.getElementById("taCardBtn"); if(b){ b.style.display="inline-block"; b.textContent="🎴 カードを見る"; } }
     bubble.say(found>=8 ? line("done") : line("again"), 4000);
     updateGoal(); updateTAButton();
 }
@@ -2314,6 +2328,9 @@ function taAdvance(){
     return false;                                 // run 中は「相棒に聞く」
 }
 function updateTAButton(){
+    const cb=document.getElementById("taCardBtn");
+    if(cb){ if(GAME.desktop && GAME.mode==="time" && TA.state==="results"){ cb.style.display="inline-block"; }
+        else { cb.style.display="none"; if(worldHud.cardShown && worldHud.cardShown()) worldHud.hideCard(); } }
     const b=document.getElementById("dTA"); if(!b) return;
     const show = GAME.active && GAME.mode==="time" && TA.state!=="run";
     b.style.display = show ? "" : "none";
