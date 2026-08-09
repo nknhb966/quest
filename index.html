@@ -2202,7 +2202,7 @@ const worldHud=(function(){
             if(resPage===0){
                 // ページA：結果ポイント＋獲得カード
                 ctx.fillStyle="#f0d98a"; ctx.font="bold 46px sans-serif"; ctx.fillText(d.found>=8?"🏆 コンプリート！":"⏱ タイムアップ！",384,70);
-                ctx.fillStyle="#ffffff"; ctx.font="bold 96px sans-serif"; ctx.fillText(d.score+" pt",384,158);
+                ctx.fillStyle="#ffffff"; ctx.font="bold 70px sans-serif"; ctx.fillText(d.score+" pt",384,158);
                 if(d.calc&&d.calc.card){
                     ctx.fillStyle=RARITY_COL[d.calc.card.rarity]||"#fff"; ctx.font="bold 34px sans-serif";
                     ctx.fillText("獲得カード："+(RARITY_NAME[d.calc.card.rarity]||""),384,222);
@@ -2650,6 +2650,10 @@ function focusTarget(){
     return best;
 }
 function updateCoach(dt){
+    if(GAME.mode==="time" && TA.state==="ready"){   // スタンバイ中は常時「スタートするワン」（撫でた直後はそのセリフを優先）
+        if(petCooldown<=0) bubble.hold("スタートするワン");
+        return;
+    }
     const focus=focusTarget();
     const camPos=camera.getWorldPosition(new THREE.Vector3());
     const near = focus && Math.hypot(camPos.x-focus.pos.x, camPos.z-focus.pos.z) < DOG_STAY_R;
