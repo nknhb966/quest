@@ -902,6 +902,7 @@ const dog = new THREE.Group();          // 相棒のルート（位置・向き�
  *  脚・尾・翼は別グループ(userData.legs/tail/wings)でアニメを維持。      */
 const VOX=0.10;                         // 立方体サイズ（マイクラ感を保ちつつ特徴が出る粗さ）
 let VOX_CUR=VOX;                          // ③なめらか恐竜のときは細かい解像度にする
+let VOX_VARY=false;                       // ③のとき肌にわずかな陰影（リアル寄せ）
 const EYE=0x141414, WHTE=0xefe3c2;
 const _voxMat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.9, metalness:0.0, side:THREE.DoubleSide});
 function _rgb(hex){ return [((hex>>16)&255)/255, ((hex>>8)&255)/255, (hex&255)/255]; }
@@ -941,6 +942,10 @@ Chunk.prototype.eye=function(x,y,z,r){
   for(let ix=ix0;ix<=ix1;ix++) for(let iy=iy0;iy<=iy1;iy++){
     for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(ix+"|"+iy+"|"+iz)){ this.set(ix,iy,iz,EYE); break; } }  // 最前面を黒に
   }
+  if(VOX_VARY){   // 目のハイライト（上寄りに小さな光）
+    const hix=Math.round((cx+hw*0.4)/this.vox), hiy=iy1;
+    for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(hix+"|"+hiy+"|"+iz)){ this.set(hix,hiy,iz,0xf2f0f6); break; } }
+  }
 };
 Chunk.prototype.build=function(){
   const pos=[],nor=[],col=[],idx=[]; let vi=0; const H=this.vox*0.5, v=this.v;
@@ -954,7 +959,11 @@ Chunk.prototype.build=function(){
     [[0,0,-1],[[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]]],
   ];
   for(const [key,c] of v){ const p=key.split("|"), ix=+p[0],iy=+p[1],iz=+p[2];
-    const cx=ix*this.vox, cy=iy*this.vox, cz=iz*this.vox, rgb=_rgb(c);
+    const cx=ix*this.vox, cy=iy*this.vox, cz=iz*this.vox; let rgb=_rgb(c);
+    if(VOX_VARY && c!==EYE && c!==WHTE){   // 肌にわずかな陰影でリアル寄せ（目・白は保つ）
+        const h=((ix*73856093)^(iy*19349663)^(iz*83492791))>>>0, f=0.93+((h%1000)/1000)*0.14;
+        rgb=[Math.min(1,rgb[0]*f), Math.min(1,rgb[1]*f), Math.min(1,rgb[2]*f)];
+    }
     for(let fi=0;fi<6;fi++){ const n=F[fi][0];
       if(has(ix+n[0],iy+n[1],iz+n[2])) continue;
       const cr=F[fi][1];
@@ -1678,8 +1687,9 @@ function dinoEmergeLine(dn){
 }
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
-    const prevVox=VOX_CUR; if(dinoSmooth) VOX_CUR=VOX*0.5;                 // ③なめらか：解像度2倍（ボクセル数 数倍）
-    const inner=dn.build(); VOX_CUR=prevVox;
+    const prevVox=VOX_CUR, prevVary=VOX_VARY;
+    if(dinoSmooth){ VOX_CUR=VOX/6; VOX_VARY=true; }                       // ③なめらか：解像度6倍（現状比3倍細かく）＋肌に微陰影
+    const inner=dn.build(); VOX_CUR=prevVox; VOX_VARY=prevVary;
     makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
     const bb=new THREE.Box3().setFromObject(inner);
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
