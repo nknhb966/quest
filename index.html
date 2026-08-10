@@ -265,6 +265,7 @@
         <div class="seg" id="segDig">
           <button data-v="artifact" class="on">🏺 出土品</button>
           <button data-v="dino">🦖 恐竜</button>
+          <button data-v="dino2">🦕 恐竜（なめらか）</button>
         </div>
       </div>
       <div class="opt wide">
@@ -591,11 +592,15 @@ let curTarget = "artifact";                 // 発掘対象（発掘図鑑もこ
 let dexData = dexArt;
 function curImgs(){ return curTarget==="dino" ? DINO_IMGS : ART_IMGS; }
 function curName(i){ return curTarget==="dino" ? ((typeof DINOS!=="undefined"&&DINOS[i]? DINOS[i].label : "")||"").replace(/^\S+\s*/,"") : ""; }
+let dinoSmooth=false;   // ③なめらか恐竜（ボクセル数を増やしたマイクラ風薄め）の見た目フラグ
 function setDigTarget(target){
-    curTarget = (target==="dino") ? "dino" : "artifact";
+    const isDino = (target==="dino" || target==="dino2");
+    curTarget = isDino ? "dino" : "artifact";
+    dinoSmooth = (target==="dino2");
     dexData = (curTarget==="dino") ? dexDino : dexArt;
-    chosenDigTarget = curTarget;
+    chosenDigTarget = target;   // dino / dino2 / artifact を保持
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
+    if(typeof dinoDigModels!=="undefined") dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });   // 見た目変更のため作り直す
     if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(typeof updateGoal==="function") updateGoal();
 }
@@ -1671,8 +1676,32 @@ function dinoEmergeLine(dn){
     return `${name}だ！ ${dn.cry}！`;
 }
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
+// ③なめらか恐竜：各ボックスを細かいボクセルに分割し、角を少し落として「マイクラ風を薄めた」見た目に
+function refineDinoModel(root){
+    const boxes=[];
+    root.traverse(o=>{ if(o.isMesh && o.geometry && o.geometry.type==="BoxGeometry" && o.geometry.parameters) boxes.push(o); });
+    const base=0.055, dummy=new THREE.Object3D();
+    for(const m of boxes){
+        const pr=m.geometry.parameters, sx=pr.width, sy=pr.height, sz=pr.depth;
+        const nx=Math.min(4,Math.max(2,Math.round(sx/base))), ny=Math.min(4,Math.max(2,Math.round(sy/base))), nz=Math.min(4,Math.max(2,Math.round(sz/base)));
+        const vx=sx/nx, vy=sy/ny, vz=sz/nz, pos=[];
+        const round = (nx>=3 && ny>=3 && nz>=3);
+        for(let i=0;i<nx;i++)for(let j=0;j<ny;j++)for(let k=0;k<nz;k++){
+            if(round && (i===0||i===nx-1) && (j===0||j===ny-1) && (k===0||k===nz-1)) continue;   // 角の8ボクセルを落とす
+            pos.push([-sx/2+(i+0.5)*vx, -sy/2+(j+0.5)*vy, -sz/2+(k+0.5)*vz]);
+        }
+        if(!pos.length) continue;
+        const geo=new THREE.BoxGeometry(vx*0.9, vy*0.9, vz*0.9);   // わずかに隙間＝細かいボクセル感
+        const inst=new THREE.InstancedMesh(geo, m.material, pos.length);
+        pos.forEach((pp,idx)=>{ dummy.position.set(pp[0],pp[1],pp[2]); dummy.rotation.set(0,0,0); dummy.scale.set(1,1,1); dummy.updateMatrix(); inst.setMatrixAt(idx,dummy.matrix); });
+        inst.instanceMatrix.needsUpdate=true;
+        inst.position.copy(m.position); inst.quaternion.copy(m.quaternion); inst.scale.copy(m.scale);
+        m.parent.add(inst); m.visible=false;
+    }
+}
 function makeDigDino(dn){
-    const inner=dn.build(); makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
+    const inner=dn.build(); if(dinoSmooth) refineDinoModel(inner);   // なめらか恐竜は細かいボクセルに
+    makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
     const bb=new THREE.Box3().setFromObject(inner);
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
     const cont=new THREE.Group(); cont.add(inner);
