@@ -1110,7 +1110,7 @@ function build_fukuisaurus(){
   B.box(-0.22,1.3,0.6, 0.22,1.7,1.0, M);                // 頭
   B.box(-0.24,1.32,0.96, 0.24,1.54,1.34, BK);           // くちばし（ダックビル）
   B.box(-0.16,1.62,0.72, 0.16,1.74,0.98, M);            // 頭頂の小さな盛り上がり
-  B.eye(-0.16,1.5,1.0); B.eye(0.16,1.5,1.0);
+  B.eye(-0.16,1.6,1.0); B.eye(0.16,1.6,1.0);            // くちばし(〜y1.54)より上の頭側に置く（埋もれ防止）
   B.mirrorX(); g.add(B.build());
   voxTail(g,0,1.0,-0.85,1.4,0.42,0.12,M);
   g.userData.legs=[ voxLeg(g,-0.2,0.62,0.45,0.14,0.62,M,D,0), voxLeg(g,0.2,0.62,0.45,0.14,0.62,M,D,Math.PI),
@@ -1717,7 +1717,8 @@ function tickHatch(now, dt){
             const dn=DINOS[e.idx], mul=dinoSizeOf(e.idx);
             let m=dinoDigModels[e.idx];
             if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; }
-            m.visible=true; m.position.set(e.pos.x, GROUND_Y, e.pos.z); m.rotation.set(0,Math.random()*Math.PI*2,0);
+            m.visible=true; m.position.set(e.pos.x, GROUND_Y, e.pos.z);
+            { const cp=camera.getWorldPosition(new THREE.Vector3()); m.rotation.set(0, Math.atan2(cp.x-e.pos.x, cp.z-e.pos.z), 0); }   // 正面(目=+Z)をプレイヤーへ向けてから回転開始
             m.userData.baseY=ARTIFACT_POP_Y-0.05; m.userData.settled=false;
             popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
@@ -1778,7 +1779,7 @@ function excavate(t){
         if(model){
             model.visible=true;
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
-            model.rotation.set(0,Math.random()*Math.PI*2,0);
+            { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
             popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
