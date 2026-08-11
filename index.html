@@ -1747,6 +1747,7 @@ function preloadDinoModels(){
     };
     _preloadTimer=setTimeout(step, 30);
 }
+function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg,0.55); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);
     popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:ARTIFACT_POP_Y-0.25, t:0, dur:0.7, spin:true });
