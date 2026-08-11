@@ -1501,17 +1501,24 @@ const HOLO_AMP_ROLL = 1.5;                        // Roll(z)の倍率
 const HOLO_AMP_PY   = 2.5;                        // Pitch(x)/Yaw(y)の倍率
 const HOLO_NEUTRAL_ROLL = Math.PI/2;              // ニュートラルでの手首roll(約90度)。この分だけroll成分を引く ※要調整
 const HOLO_MODEL_FACE = new THREE.Quaternion();   // ニュートラルでモデルを正面に向ける固定補正 ※要調整
-// モデルの軽量クローン：ジオメトリ・素材を共有し、変形だけ焼き込む（userData非経由でフリーズ回避）
-function cloneModelLight(src){
-    const g=new THREE.Group();
-    src.updateWorldMatrix(true,true);
-    const inv=new THREE.Matrix4().copy(src.matrixWorld).invert();
-    src.traverse(o=>{ if(o.isMesh && o.geometry){
-        const m=new THREE.Mesh(o.geometry, o.material);              // ジオメトリ・素材は共有
-        m.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));   // src基準の変形を焼き込む
-        g.add(m);
-    }});
-    return g;
+// モデルの複製：Threeオブジェクトを含むuserData（脚・尻尾など）を一時退避してからclone
+// （clone時のuserDataのJSON化フリーズを回避。ジオメトリ/素材は共有で軽い。構造は元と同じ）
+function cloneCont(src){
+    const saved=[];
+    src.traverse(o=>{ if(o.userData && Object.keys(o.userData).length){ saved.push([o,o.userData]); o.userData={}; } });   // 全userDataを一時退避（JSONフリーズ回避）
+    let c; try{ c=src.clone(true); } finally { saved.forEach(([o,ud])=>{ o.userData=ud; }); }
+    // src→clone の対応表を作り、userDataの参照（脚・尻尾・model等）をクローン側へ張り替える
+    const sArr=[], cArr=[]; src.traverse(o=>sArr.push(o)); c.traverse(o=>cArr.push(o));
+    const map=new Map(); for(let i=0;i<Math.min(sArr.length,cArr.length);i++) map.set(sArr[i], cArr[i]);
+    for(let i=0;i<sArr.length;i++){
+        const su=sArr[i].userData, cu=cArr[i].userData;
+        for(const k in su){ const v=su[k];
+            if(v && v.isObject3D){ cu[k]=map.get(v)||v; }
+            else if(Array.isArray(v)){ cu[k]=v.map(x=>(x&&x.isObject3D)?(map.get(x)||x):x); }
+            else if(!(v && typeof v==="object")){ cu[k]=v; }   // 数値などはそのままコピー
+        }
+    }
+    return c;
 }
 function buildHologram(idx){
     closeHologram();
@@ -1522,7 +1529,7 @@ function buildHologram(idx){
     let dino=null, art=null;
     if(curTarget==="dino"){ try{
         const cached=dinoDigModels[idx];
-        dino = cached ? cloneModelLight(cached) : makeDigDino(DINOS[idx]);   // キャッシュは軽量クローン（userData非経由でフリーズ回避）
+        dino = cached ? cloneCont(cached) : makeDigDino(DINOS[idx]);   // キャッシュはuserData退避してclone（構造そのまま・フリーズ回避）
         dino.visible=true; makeFit(dino, dinoHoloH(idx));
     }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
