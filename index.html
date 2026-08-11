@@ -457,13 +457,14 @@ const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
 let   WORLD_X       = 5;                 // カスタムワールド（サイト非表示時）の広さX（m）
 let   WORLD_Z       = 5;                 // 同 Z（m）
+let   SITE_X        = 5, SITE_Z = 5;     // サイトモデル表示時の幅×奥行（読み込み時に計測）
 let   fieldCX       = 0, fieldCZ = 0;     // カスタムワールドの中心
 let   fieldYaw      = 0;                  // フィールドの回転（プレイヤーの向きに合わせる）
 function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カスタム矩形ワールド
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
 function fieldScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(10,Math.min(WORLD_X,WORLD_Z)))/5; }
 // 恐竜用：10mを超えてもまだ大きくなり、最大は現状(10m時)の2倍まで（3〜20mでクランプ）
-function dinoScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(18,Math.min(WORLD_X,WORLD_Z)))/5; }
+function dinoScale(){ const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z); return Math.max(3,Math.min(18,sz))/5; }   // サイト表示時はサイトの幅×奥行に合わせる
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){ /* 矩形/円に閉じ込めない：自由に移動できる */ }
@@ -541,6 +542,20 @@ function updateWorldAura(dt){
         else { o.visible=true; anyAlive=true; o.material.opacity=(o.userData.baseOp||0.6)*Math.min(1,rem)*pulse; }
     });
     if(!anyAlive){ stage.remove(worldAura); worldAura=null; }
+}
+// VR/AR＋カスタムワールドのときは、フィールドの矩形境界を常に表示
+let fieldBorder=null;
+function updateFieldBorder(){
+    const show = (typeof renderer!=="undefined") && renderer.xr.isPresenting && customWorldOn();
+    if(!show){ if(fieldBorder) fieldBorder.visible=false; return; }
+    if(!fieldBorder){
+        fieldBorder=new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({color:0x8ff0ff, transparent:true, opacity:0.85, depthTest:false, depthWrite:false}));
+        fieldBorder.renderOrder=999; stage.add(fieldBorder);
+    }
+    const hx=WORLD_X/2, hz=WORLD_Z/2;
+    const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+0.08, w.z); });
+    fieldBorder.geometry.setFromPoints(pts);
+    fieldBorder.visible=true;
 }
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
@@ -841,6 +856,7 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     // 地面を y=0、中心を原点へ
     box = new THREE.Box3().setFromObject(siteRoot);
     const center = box.getCenter(new THREE.Vector3());
+    { const wsz=box.getSize(new THREE.Vector3()); SITE_X=wsz.x; SITE_Z=wsz.z; }   // サイトの幅×奥行（恐竜サイズ調整用）
     world.position.x -= center.x; world.position.z -= center.z; world.position.y -= box.min.y;
     world.updateMatrixWorld(true);
     // 確定した発掘スポットを取得（サイトを下げる前に取る＝発掘点/出土品は元の高さのまま）
@@ -1518,6 +1534,7 @@ function cloneCont(src){
             else if(!(v && typeof v==="object")){ cu[k]=v; }   // 数値などはそのままコピー
         }
     }
+    c.position.set(0,0,0); c.rotation.set(0,0,0);   // 出現時の向き（正面向け＋回転）を消して既定姿勢に（ホログラムは正面から）
     return c;
 }
 function buildHologram(idx){
@@ -1740,7 +1757,7 @@ function dinoEmergeLine(dn){
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
     const prevVox=VOX_CUR, prevVary=VOX_VARY;
-    if(dinoSmooth){ VOX_CUR=VOX/3.5; VOX_VARY=true; }                     // ③なめらか：解像度3.5倍（少し軽く）＋肌に微陰影
+    if(dinoSmooth){ VOX_CUR=VOX/6; VOX_VARY=true; }                       // ③なめらか：解像度6倍＋肌に微陰影
     const inner=dn.build(); VOX_CUR=prevVox; VOX_VARY=prevVary;
     makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
     const bb=new THREE.Box3().setFromObject(inner);
@@ -2142,7 +2159,7 @@ function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
     if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); reloadDinoCache(); }
 function reloadDinoCache(){ if(typeof _dinoCacheB==="undefined") return;   // サイズが変わるので恐竜モデルを両スタイルとも作り直す
-    [_dinoCacheB,_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ stage.remove(m); cache[i]=null; } }));
+    [_dinoCacheB,_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
     if(typeof preloadEverything==="function") preloadEverything(); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
   if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
@@ -2229,6 +2246,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     DOG_FWD=0.6;                                                // 相棒はさらに近め（最短+10cm）から開始
     updateSiteVis(); updatePanelScale();
     placeAtStart();                                            // カスタムワールドは x中央・z最大から開始
+    clearDinoReveal();   // 前回の恐竜・名称ラベルを片付ける
     if(!GAME.active) startGame(false);
 });
 renderer.xr.addEventListener("sessionend", ()=>{
@@ -2238,6 +2256,7 @@ renderer.xr.addEventListener("sessionend", ()=>{
 });
 
 function endGame(toMenu){
+    clearDinoReveal();   // 恐竜・名称ラベルを片付ける（再開時に前回の名称が残らないように）
     if(GAME.mode==="time" && GAME.active && TA.state==="run" && GAME.score>0){ recordTimeAttack(GAME.score); }
     TA.state="idle"; worldHud.hide(); updateTAButton();
     GAME.active=false;
@@ -3009,6 +3028,7 @@ renderer.setAnimationLoop(()=>{
     updateHearts(dt);
     updateSparkles(dt);
     updateWorldAura(dt);
+    updateFieldBorder();
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
