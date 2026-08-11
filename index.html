@@ -1501,6 +1501,18 @@ const HOLO_AMP_ROLL = 1.5;                        // Roll(z)の倍率
 const HOLO_AMP_PY   = 2.5;                        // Pitch(x)/Yaw(y)の倍率
 const HOLO_NEUTRAL_ROLL = Math.PI/2;              // ニュートラルでの手首roll(約90度)。この分だけroll成分を引く ※要調整
 const HOLO_MODEL_FACE = new THREE.Quaternion();   // ニュートラルでモデルを正面に向ける固定補正 ※要調整
+// モデルの軽量クローン：ジオメトリ・素材を共有し、変形だけ焼き込む（userData非経由でフリーズ回避）
+function cloneModelLight(src){
+    const g=new THREE.Group();
+    src.updateWorldMatrix(true,true);
+    const inv=new THREE.Matrix4().copy(src.matrixWorld).invert();
+    src.traverse(o=>{ if(o.isMesh && o.geometry){
+        const m=new THREE.Mesh(o.geometry, o.material);              // ジオメトリ・素材は共有
+        m.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));   // src基準の変形を焼き込む
+        g.add(m);
+    }});
+    return g;
+}
 function buildHologram(idx){
     closeHologram();
     const g=new THREE.Group();
@@ -1510,7 +1522,7 @@ function buildHologram(idx){
     let dino=null, art=null;
     if(curTarget==="dino"){ try{
         const cached=dinoDigModels[idx];
-        dino = cached ? cached.clone(true) : makeDigDino(DINOS[idx]);   // キャッシュがあれば複製（ジオメトリ共有で軽い）
+        dino = cached ? cloneModelLight(cached) : makeDigDino(DINOS[idx]);   // キャッシュは軽量クローン（userData非経由でフリーズ回避）
         dino.visible=true; makeFit(dino, dinoHoloH(idx));
     }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
