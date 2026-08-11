@@ -448,7 +448,6 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRButton} from "three/addons/webxr/VRButton.js";
 import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
-import {mergeVertices} from "three/addons/utils/BufferGeometryUtils.js";   // 見た目を変えずに頂点を溶接して軽量化
 
 /* =====================================================
  * 定数
@@ -909,6 +908,29 @@ const EYE=0x141414, WHTE=0xefe3c2;
 const _voxMat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.9, metalness:0.0, side:THREE.DoubleSide});
 function _rgb(hex){ return [((hex>>16)&255)/255, ((hex>>8)&255)/255, (hex&255)/255]; }
 
+// 位置・法線・色が一致する頂点を溶接（外部依存なし・見た目不変で軽量化）
+function weldGeometry(geo){
+    const pos=geo.getAttribute("position"), nor=geo.getAttribute("normal"), col=geo.getAttribute("color");
+    const oldIdx=geo.getIndex();
+    const map=new Map(), np=[], nn=[], nc=[], ni=[];
+    const remap=(i)=>{
+        const k=Math.round(pos.getX(i)*1e4)+","+Math.round(pos.getY(i)*1e4)+","+Math.round(pos.getZ(i)*1e4)+"|"
+              +nor.getX(i)+","+nor.getY(i)+","+nor.getZ(i)+"|"
+              +Math.round(col.getX(i)*255)+","+Math.round(col.getY(i)*255)+","+Math.round(col.getZ(i)*255);
+        let vi=map.get(k);
+        if(vi===undefined){ vi=np.length/3; map.set(k,vi);
+            np.push(pos.getX(i),pos.getY(i),pos.getZ(i)); nn.push(nor.getX(i),nor.getY(i),nor.getZ(i)); nc.push(col.getX(i),col.getY(i),col.getZ(i)); }
+        return vi;
+    };
+    if(oldIdx){ for(let i=0;i<oldIdx.count;i++) ni.push(remap(oldIdx.getX(i))); }
+    else { for(let i=0;i<pos.count;i++) ni.push(remap(i)); }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute("position",new THREE.Float32BufferAttribute(np,3));
+    g.setAttribute("normal",new THREE.Float32BufferAttribute(nn,3));
+    g.setAttribute("color",new THREE.Float32BufferAttribute(nc,3));
+    g.setIndex(ni);
+    return g;
+}
 function Chunk(){ this.v=new Map(); this.vox=VOX_CUR; }
 Chunk.prototype.set=function(ix,iy,iz,c){ this.v.set(ix+"|"+iy+"|"+iz, c); };
 Chunk.prototype.box=function(x0,y0,z0,x1,y1,z1,c){
@@ -979,7 +1001,7 @@ Chunk.prototype.build=function(){
   geo.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3));
   geo.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
   geo.setIndex(idx);
-  try{ geo=mergeVertices(geo, 1e-4); }catch(_){}   // 位置・法線・色が一致する頂点を溶接（見た目は不変で軽量化）
+  try{ geo=weldGeometry(geo); }catch(_){}   // 位置・法線・色が一致する頂点を溶接（見た目は不変で軽量化）
   geo.computeBoundingSphere();
   return new THREE.Mesh(geo,_voxMat);
 };
