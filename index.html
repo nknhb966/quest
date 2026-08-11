@@ -557,6 +557,7 @@ let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセッ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
 const DOG_DIST_SPEED= 2.2;               // 相棒距離調整の速さ（m/秒）
 const WORLD_BASE_Y = -1.5;               // VR/ARでのワールド高さ基準（最も低い位置）
+const VR_HEIGHT_OFFSET = 0.30;           // VRはARより目線が高いぶん、ワールドを上げてARに合わせる（要調整・符号反転可）
 let worldBaseY=0, worldYAdjust=0;        // 全コンテンツ(stage)の高さ
 function adjustWorldHeight(dy){ if(typeof stage==="undefined") return; worldYAdjust=Math.max(WORLD_BASE_Y-2.0, Math.min(WORLD_BASE_Y+2.0, worldYAdjust+dy)); stage.position.y = worldYAdjust; }
 function adjustDogDist(dd){ DOG_FWD=Math.max(0.5, Math.min(5.5, DOG_FWD+dd)); }
@@ -600,8 +601,7 @@ function setDigTarget(target){
     dexData = (curTarget==="dino") ? dexDino : dexArt;
     chosenDigTarget = target;   // dino / dino2 / artifact を保持
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
-    if(typeof dinoDigModels!=="undefined") dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });   // 見た目変更のため作り直す
-    if(typeof preloadDinoModels==="function") preloadDinoModels();   // 恐竜モードは事前生成しておく
+    if(typeof _dinoCacheB!=="undefined") dinoDigModels = dinoSmooth ? _dinoCacheS : _dinoCacheB;   // 事前生成済みキャッシュに切替
     if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(typeof updateGoal==="function") updateGoal();
 }
@@ -872,8 +872,8 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
     world.updateMatrixWorld(true);
     worldBaseY = world.position.y;        // 高さ調整の基準
     siteReady=true; updateSiteVis();
-    document.body.classList.remove("loading");
-}, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; document.body.classList.remove("loading"); });
+    preloadEverything(()=>{ document.body.classList.remove("loading"); });   // 恐竜①②③を事前生成し終えてから開始可能に
+}, undefined, (e)=>{ console.warn("site load failed", e); siteReady=true; preloadEverything(()=>{ document.body.classList.remove("loading"); }); });
 function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if(siteReady){ clearInterval(iv); cb(); } }, 100); } }
 
 /* ── アーティファクトGLB（8種）を事前ロード（非表示で保持） ── */
@@ -1720,7 +1720,9 @@ function spawnAllTargets(){
  * ===================================================== */
 const popAnims=[];
 // ── 恐竜モードの発掘演出：岩→たまご→孵化→恐竜（鳴き声＋セリフ） ──
-const dinoDigModels=new Array(8).fill(null);
+const _dinoCacheB=new Array(8).fill(null);   // ② 通常（マイクラ風）
+const _dinoCacheS=new Array(8).fill(null);   // ③ なめらか
+let   dinoDigModels=_dinoCacheB;             // 現在のスタイルのキャッシュを指す
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
 // 恐竜の表示サイズ階層（下限0.9〜上限2.1の4段階）。種別ごとに階層を割り当て、生成時にそのサイズで作る
@@ -1753,22 +1755,27 @@ function makeDigDino(dn){
     cont.userData.tailPhase=Math.random()*Math.PI*2;
     return cont;
 }
-// 恐竜モデルの先読み：8体を1体ずつ生成してキャッシュ（出現時のカクつき防止）
+// 恐竜モデルの先読み：②③の全16体を1体ずつ生成してキャッシュ（サイト読み込みと同時／完了までボタン無効）
 let _preloadTimer=null;
-function preloadDinoModels(){
+function preloadEverything(done){
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
-    if(typeof curTarget==="undefined" || curTarget!=="dino" || typeof DINOS==="undefined") return;
-    let i=0;
+    if(typeof DINOS==="undefined"){ if(done) done(); return; }
+    const jobs=[];
+    for(let i=0;i<8;i++) jobs.push({smooth:false, idx:i, cache:_dinoCacheB});
+    for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});
+    let j=0;
     const step=()=>{
         _preloadTimer=null;
-        if(curTarget!=="dino") return;                       // 途中でモードが変わったら中断
-        while(i<8 && dinoDigModels[i]) i++;
-        if(i>=8) return;
-        try{ const m=makeDigDino(DINOS[i]); m.visible=false; stage.add(m); dinoDigModels[i]=m; }catch(_){}
-        i++;
-        if(i<8) _preloadTimer=setTimeout(step, 50);           // 1体ずつ間隔をあけて（フリーズ防止）
+        while(j<jobs.length && jobs[j].cache[jobs[j].idx]) j++;
+        if(j>=jobs.length){ if(done) done(); return; }
+        const job=jobs[j];
+        const prev=dinoSmooth; dinoSmooth=job.smooth;
+        try{ const m=makeDigDino(DINOS[job.idx]); m.visible=false; stage.add(m); job.cache[job.idx]=m; }catch(_){}
+        dinoSmooth=prev;
+        j++;
+        _preloadTimer=setTimeout(step, 25);   // 1体ずつ間隔をあけて（フリーズ防止）
     };
-    _preloadTimer=setTimeout(step, 30);
+    step();
 }
 function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg,0.55); stage.add(egg);
@@ -2134,9 +2141,9 @@ function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
 function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
     if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); reloadDinoCache(); }
-function reloadDinoCache(){ if(typeof dinoDigModels==="undefined") return;   // サイズが変わるので恐竜モデルを作り直す
-    dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });
-    if(typeof preloadDinoModels==="function") preloadDinoModels(); }
+function reloadDinoCache(){ if(typeof _dinoCacheB==="undefined") return;   // サイズが変わるので恐竜モデルを両スタイルとも作り直す
+    [_dinoCacheB,_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ stage.remove(m); cache[i]=null; } }));
+    if(typeof preloadEverything==="function") preloadEverything(); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
   if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
   const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
@@ -2217,7 +2224,8 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     const session=renderer.xr.getSession();
     inAR = !!(session && session.environmentBlendMode && session.environmentBlendMode!=="opaque");   // 実世界パススルー＝AR
     if(inAR){ _savedBg=scene.background; _savedFog=scene.fog; scene.background=null; scene.fog=null; renderer.setClearColor(0x000000,0); }
-    worldYAdjust=WORLD_BASE_Y; stage.position.y=WORLD_BASE_Y;   // VR/ARは低い基準から開始（±2.0mで調整）
+    const baseY = WORLD_BASE_Y + (inAR ? 0 : VR_HEIGHT_OFFSET);   // VRは目線が高いのでARに合わせて調整（要調整）
+    worldYAdjust=baseY; stage.position.y=baseY;   // VR/ARは低い基準から開始（±2.0mで調整）
     DOG_FWD=0.6;                                                // 相棒はさらに近め（最短+10cm）から開始
     updateSiteVis(); updatePanelScale();
     placeAtStart();                                            // カスタムワールドは x中央・z最大から開始
