@@ -1692,7 +1692,7 @@ function dinoEmergeLine(dn){
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
     const prevVox=VOX_CUR, prevVary=VOX_VARY;
-    if(dinoSmooth){ VOX_CUR=VOX/2.5; VOX_VARY=true; }                     // ③なめらか：解像度3.5倍（少し軽く）＋肌に微陰影
+    if(dinoSmooth){ VOX_CUR=VOX/1.5; VOX_VARY=true; }                     // ③なめらか：解像度3.5倍（少し軽く）＋肌に微陰影
     const inner=dn.build(); VOX_CUR=prevVox; VOX_VARY=prevVary;
     makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
     const bb=new THREE.Box3().setFromObject(inner);
