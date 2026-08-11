@@ -448,6 +448,7 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRButton} from "three/addons/webxr/VRButton.js";
 import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
+import {mergeVertices} from "three/addons/utils/BufferGeometryUtils.js";   // 見た目を変えずに頂点を溶接して軽量化
 
 /* =====================================================
  * 定数
@@ -960,8 +961,9 @@ Chunk.prototype.build=function(){
   ];
   for(const [key,c] of v){ const p=key.split("|"), ix=+p[0],iy=+p[1],iz=+p[2];
     const cx=ix*this.vox, cy=iy*this.vox, cz=iz*this.vox; let rgb=_rgb(c);
-    if(VOX_VARY && c!==EYE && c!==WHTE){   // 肌にわずかな陰影でリアル寄せ（目・白は保つ）
-        const h=((ix*73856093)^(iy*19349663)^(iz*83492791))>>>0, f=0.93+((h%1000)/1000)*0.14;
+    if(VOX_VARY && c!==EYE && c!==WHTE){   // 肌の陰影は2×2×2ブロック単位（溶接が効くよう＝軽量化。見た目はほぼ不変）
+        const bx=ix>>1, by=iy>>1, bz=iz>>1;
+        const h=((bx*73856093)^(by*19349663)^(bz*83492791))>>>0, f=0.93+((h%1000)/1000)*0.14;
         rgb=[Math.min(1,rgb[0]*f), Math.min(1,rgb[1]*f), Math.min(1,rgb[2]*f)];
     }
     for(let fi=0;fi<6;fi++){ const n=F[fi][0];
@@ -971,11 +973,13 @@ Chunk.prototype.build=function(){
       idx.push(vi,vi+1,vi+2, vi,vi+2,vi+3); vi+=4;
     }
   }
-  const geo=new THREE.BufferGeometry();
+  let geo=new THREE.BufferGeometry();
   geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
   geo.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3));
   geo.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
-  geo.setIndex(idx); geo.computeBoundingSphere();
+  geo.setIndex(idx);
+  try{ geo=mergeVertices(geo, 1e-4); }catch(_){}   // 位置・法線・色が一致する頂点を溶接（見た目は不変で軽量化）
+  geo.computeBoundingSphere();
   return new THREE.Mesh(geo,_voxMat);
 };
 
