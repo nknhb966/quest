@@ -602,6 +602,7 @@ function setDigTarget(target){
     chosenDigTarget = target;   // dino / dino2 / artifact を保持
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
     if(typeof dinoDigModels!=="undefined") dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });   // 見た目変更のため作り直す
+    if(typeof preloadDinoModels==="function") preloadDinoModels();   // 恐竜モードは事前生成しておく
     if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(typeof updateGoal==="function") updateGoal();
 }
@@ -1692,7 +1693,7 @@ function dinoEmergeLine(dn){
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
     const prevVox=VOX_CUR, prevVary=VOX_VARY;
-    if(dinoSmooth){ VOX_CUR=VOX/1.5; VOX_VARY=true; }                     // ③なめらか：解像度3.5倍（少し軽く）＋肌に微陰影
+    if(dinoSmooth){ VOX_CUR=VOX/3.5; VOX_VARY=true; }                     // ③なめらか：解像度3.5倍（少し軽く）＋肌に微陰影
     const inner=dn.build(); VOX_CUR=prevVox; VOX_VARY=prevVary;
     makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
     const bb=new THREE.Box3().setFromObject(inner);
@@ -1707,7 +1708,23 @@ function makeDigDino(dn){
     cont.userData.tailPhase=Math.random()*Math.PI*2;
     return cont;
 }
-function revealDino(idx, pos, color){
+// 恐竜モデルの先読み：8体を1体ずつ生成してキャッシュ（出現時のカクつき防止）
+let _preloadTimer=null;
+function preloadDinoModels(){
+    if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
+    if(typeof curTarget==="undefined" || curTarget!=="dino" || typeof DINOS==="undefined") return;
+    let i=0;
+    const step=()=>{
+        _preloadTimer=null;
+        if(curTarget!=="dino") return;                       // 途中でモードが変わったら中断
+        while(i<8 && dinoDigModels[i]) i++;
+        if(i>=8) return;
+        try{ const m=makeDigDino(DINOS[i]); m.visible=false; stage.add(m); dinoDigModels[i]=m; }catch(_){}
+        i++;
+        if(i<8) _preloadTimer=setTimeout(step, 50);           // 1体ずつ間隔をあけて（フリーズ防止）
+    };
+    _preloadTimer=setTimeout(step, 30);
+}
     const egg=build_egg(); makeFit(egg,0.55); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);
     popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:ARTIFACT_POP_Y-0.25, t:0, dur:0.7, spin:true });
@@ -2066,10 +2083,13 @@ function updateHudReset(){
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ worldHud.toggleResultsPage(); updateResultBtn(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); reloadDinoCache(); }
 function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); reloadDinoCache(); }
+function reloadDinoCache(){ if(typeof dinoDigModels==="undefined") return;   // サイズが変わるので恐竜モデルを作り直す
+    dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });
+    if(typeof preloadDinoModels==="function") preloadDinoModels(); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
   if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
   const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
