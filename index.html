@@ -1508,7 +1508,11 @@ function buildHologram(idx){
         new THREE.MeshBasicMaterial({map:makeTradingCardTex(idx), transparent:true, opacity:0.98, side:THREE.DoubleSide, toneMapped:false, depthTest:true, depthWrite:false}));
     card.position.set(-0.15,0.34,-0.2); g.add(card);   // 右＋上（見やすく・図鑑と重ならない）
     let dino=null, art=null;
-    if(curTarget==="dino"){ try{ dino=makeDigDino(DINOS[idx]); makeFit(dino, dinoHoloH(idx)); }catch(_){} }
+    if(curTarget==="dino"){ try{
+        const cached=dinoDigModels[idx];
+        dino = cached ? cached.clone(true) : makeDigDino(DINOS[idx]);   // キャッシュがあれば複製（ジオメトリ共有で軽い）
+        dino.visible=true; makeFit(dino, dinoHoloH(idx));
+    }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
     const model = dino || art;
     if(model){
@@ -1796,7 +1800,8 @@ function animateDigDinos(now, dt){
 }
 function clearDinoReveal(){
     eggHatch.forEach(e=>{ if(e.egg) stage.remove(e.egg); }); eggHatch.length=0;
-    dinoDigModels.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); dinoDigModels[i]=null; } });   // 破棄して次回は現在の広さで再生成
+    dinoDigModels.forEach(m=>{ if(m){ m.visible=false;                                   // 隠すだけ＝キャッシュ保持で再生成のカクツキ防止
+        if(m.userData.nameLabel){ stage.remove(m.userData.nameLabel); m.userData.nameLabel=null; } } });   // 名称ラベルは必ず消す
 }
 function excavate(t){
     // 図鑑登録
