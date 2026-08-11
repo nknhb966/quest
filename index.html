@@ -448,6 +448,7 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRButton} from "three/addons/webxr/VRButton.js";
 import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
+import {mergeVertices} from "three/addons/utils/BufferGeometryUtils.js";   // 見た目を変えずに頂点を溶接して軽量化
 
 /* =====================================================
  * 定数
@@ -601,7 +602,6 @@ function setDigTarget(target){
     chosenDigTarget = target;   // dino / dino2 / artifact を保持
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
     if(typeof dinoDigModels!=="undefined") dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });   // 見た目変更のため作り直す
-    if(typeof preloadDinoModels==="function") preloadDinoModels();   // 恐竜モードは事前生成しておく
     if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(typeof updateGoal==="function") updateGoal();
 }
@@ -908,29 +908,6 @@ const EYE=0x141414, WHTE=0xefe3c2;
 const _voxMat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.9, metalness:0.0, side:THREE.DoubleSide});
 function _rgb(hex){ return [((hex>>16)&255)/255, ((hex>>8)&255)/255, (hex&255)/255]; }
 
-// 位置・法線・色が一致する頂点を溶接（外部依存なし・見た目不変で軽量化）
-function weldGeometry(geo){
-    const pos=geo.getAttribute("position"), nor=geo.getAttribute("normal"), col=geo.getAttribute("color");
-    const oldIdx=geo.getIndex();
-    const map=new Map(), np=[], nn=[], nc=[], ni=[];
-    const remap=(i)=>{
-        const k=Math.round(pos.getX(i)*1e4)+","+Math.round(pos.getY(i)*1e4)+","+Math.round(pos.getZ(i)*1e4)+"|"
-              +nor.getX(i)+","+nor.getY(i)+","+nor.getZ(i)+"|"
-              +Math.round(col.getX(i)*255)+","+Math.round(col.getY(i)*255)+","+Math.round(col.getZ(i)*255);
-        let vi=map.get(k);
-        if(vi===undefined){ vi=np.length/3; map.set(k,vi);
-            np.push(pos.getX(i),pos.getY(i),pos.getZ(i)); nn.push(nor.getX(i),nor.getY(i),nor.getZ(i)); nc.push(col.getX(i),col.getY(i),col.getZ(i)); }
-        return vi;
-    };
-    if(oldIdx){ for(let i=0;i<oldIdx.count;i++) ni.push(remap(oldIdx.getX(i))); }
-    else { for(let i=0;i<pos.count;i++) ni.push(remap(i)); }
-    const g=new THREE.BufferGeometry();
-    g.setAttribute("position",new THREE.Float32BufferAttribute(np,3));
-    g.setAttribute("normal",new THREE.Float32BufferAttribute(nn,3));
-    g.setAttribute("color",new THREE.Float32BufferAttribute(nc,3));
-    g.setIndex(ni);
-    return g;
-}
 function Chunk(){ this.v=new Map(); this.vox=VOX_CUR; }
 Chunk.prototype.set=function(ix,iy,iz,c){ this.v.set(ix+"|"+iy+"|"+iz, c); };
 Chunk.prototype.box=function(x0,y0,z0,x1,y1,z1,c){
@@ -1001,7 +978,7 @@ Chunk.prototype.build=function(){
   geo.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3));
   geo.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
   geo.setIndex(idx);
-  try{ geo=weldGeometry(geo); }catch(_){}   // 位置・法線・色が一致する頂点を溶接（見た目は不変で軽量化）
+  try{ geo=mergeVertices(geo, 1e-4); }catch(_){}   // 位置・法線・色が一致する頂点を溶接（見た目は不変で軽量化）
   geo.computeBoundingSphere();
   return new THREE.Mesh(geo,_voxMat);
 };
@@ -1715,7 +1692,7 @@ function dinoEmergeLine(dn){
 // 恐竜モデルを「底面＝原点」のコンテナに包む（種別サイズで生成）
 function makeDigDino(dn){
     const prevVox=VOX_CUR, prevVary=VOX_VARY;
-    if(dinoSmooth){ VOX_CUR=VOX/3.5; VOX_VARY=true; }                     // ③なめらか：解像度3.5倍（少し軽く）＋肌に微陰影
+    if(dinoSmooth){ VOX_CUR=VOX/1.5; VOX_VARY=true; }                     // ③なめらか：解像度3.5倍（少し軽く）＋肌に微陰影
     const inner=dn.build(); VOX_CUR=prevVox; VOX_VARY=prevVary;
     makeFit(inner, dinoHByKey(dn.key)*dinoScale()*0.62); inner.updateMatrixWorld(true);   // 恐竜は専用スケール（10m超も拡大・最大2倍）
     const bb=new THREE.Box3().setFromObject(inner);
@@ -1730,23 +1707,7 @@ function makeDigDino(dn){
     cont.userData.tailPhase=Math.random()*Math.PI*2;
     return cont;
 }
-// 恐竜モデルの先読み：8体を1体ずつ生成してキャッシュ（出現時のカクつき防止）
-let _preloadTimer=null;
-function preloadDinoModels(){
-    if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
-    if(typeof curTarget==="undefined" || curTarget!=="dino" || typeof DINOS==="undefined") return;
-    let i=0;
-    const step=()=>{
-        _preloadTimer=null;
-        if(curTarget!=="dino") return;                       // 途中でモードが変わったら中断
-        while(i<8 && dinoDigModels[i]) i++;
-        if(i>=8) return;
-        try{ const m=makeDigDino(DINOS[i]); m.visible=false; stage.add(m); dinoDigModels[i]=m; }catch(_){}
-        i++;
-        if(i<8) _preloadTimer=setTimeout(step, 50);           // 1体ずつ間隔をあけて（フリーズ防止）
-    };
-    _preloadTimer=setTimeout(step, 30);
-}
+function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg,0.55); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);
     popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:ARTIFACT_POP_Y-0.25, t:0, dur:0.7, spin:true });
@@ -2105,13 +2066,10 @@ function updateHudReset(){
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ worldHud.toggleResultsPage(); updateResultBtn(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); reloadDinoCache(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
 function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); reloadDinoCache(); }
-function reloadDinoCache(){ if(typeof dinoDigModels==="undefined") return;   // サイズが変わるので恐竜モデルを作り直す
-    dinoDigModels.forEach((m,i)=>{ if(m){ stage.remove(m); dinoDigModels[i]=null; } });
-    if(typeof preloadDinoModels==="function") preloadDinoModels(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
   if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
   const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
