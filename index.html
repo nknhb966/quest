@@ -486,19 +486,22 @@ function placeAtStart(){
 }
 // 基準の位置・向き設定（左手グリップ＋Y長押しのときだけ）：現在地をフィールド中央、向きを-Z軸に
 function recenterFieldHere(){
-    if(!customWorldOn() || typeof player==="undefined") return;
+    if(typeof player==="undefined") return;
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); d.y=0;
     if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
     fieldYaw=Math.atan2(-d.x,-d.z);       // フィールドの-z＝プレイヤーの向き
     fieldCX=cw.x; fieldCZ=cw.z;            // 現在地をフィールド中央に
     fallbackGround.position.set(fieldCX,0,fieldCZ); fallbackGround.rotation.y=fieldYaw;
+    GAME.fieldOverride=true;               // サイト表示時も、以降は発掘点をこのフィールドに配置
 }
 // 発掘ポイントを矩形内にランダム配置（近すぎない・回転対応）
 function regenerateCustomSpots(){
-    if(!customWorldOn()){ GAME.customSpots=null; return; }
-    const hx=Math.max(0.4,WORLD_X/2-0.6), hz=Math.max(0.4,WORLD_Z/2-0.6);
-    const minD=Math.max(0.8, Math.min(WORLD_X,WORLD_Z)*0.24);
+    if(!customWorldOn() && !(GAME&&GAME.fieldOverride)){ GAME.customSpots=null; return; }   // サイト表示×grip+Y後はフィールドに配置
+    const wx = customWorldOn()? WORLD_X : Math.max(4, Math.min(8, WORLD_X));   // サイト時は控えめな広さ
+    const wz = customWorldOn()? WORLD_Z : Math.max(4, Math.min(8, WORLD_Z));
+    const hx=Math.max(0.4,wx/2-0.6), hz=Math.max(0.4,wz/2-0.6);
+    const minD=Math.max(0.8, Math.min(wx,wz)*0.24);
     const spots=[];
     for(let i=0;i<8;i++){
         let best=null, bestN=-1;
@@ -869,7 +872,7 @@ function updateSiteVis(){
     if(siteRoot) siteRoot.visible = siteVisible;                 // ARでも表示/非表示どちらでも体験可
     fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
 }
-function setSiteVisible(v){ siteVisible=!!v; updateSiteVis(); }
+function setSiteVisible(v){ siteVisible=!!v; if(GAME) GAME.fieldOverride=false; updateSiteVis(); }
 let _sitePhs=null, _siteNativeMax=1, siteMode='fit';   // siteMode: 'fit'(現状) または倍率1〜5（原寸=1）
 gltfLoader.load(SITE_GLB, (gltf)=>{
     siteRoot = gltf.scene;
@@ -903,6 +906,10 @@ function rescaleSite(){
     else { siteRoot.position.y -= (box.max.y-0.2)/fit; }
     siteRoot.position.y += SITE_Y_OFFSET / fit;
     world.updateMatrixWorld(true);
+    // 仕上げ：表面の代表高さ(中央値)を一定(約-0.15m)に合わせ直す＝倍率に依らず一定の高さに（world.position.yは倍率非依存の平行移動）
+    { const rc2=new THREE.Raycaster(), dn=new THREE.Vector3(0,-1,0), ys=[];
+      for(const [sx,sz] of samples){ rc2.set(new THREE.Vector3(sx,1000,sz),dn); const h=rc2.intersectObject(siteRoot,true)[0]; if(h) ys.push(h.point.y); }
+      if(ys.length){ ys.sort((a,b)=>a-b); const med=ys[Math.floor(ys.length*0.5)]; world.position.y -= (med+0.15); world.updateMatrixWorld(true); } }
     worldBaseY = world.position.y;
     applyWorldParams();   // 歩行速度・相棒距離などをワールドサイズに合わせる
 }
