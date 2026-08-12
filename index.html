@@ -464,7 +464,9 @@ function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カ�
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
 function fieldScale(){ if(!customWorldOn()) return 1.0; return Math.max(3,Math.min(10,Math.min(WORLD_X,WORLD_Z)))/5; }
 // 恐竜用：10mを超えてもまだ大きくなり、最大は現状(10m時)の2倍まで（3〜20mでクランプ）
-function dinoScale(){ const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z); return Math.max(3,Math.min(18,sz))/5; }   // サイト表示時はサイトの幅×奥行に合わせる
+function dinoScale(){ if(customWorldOn()) return Math.max(3,Math.min(18,Math.min(WORLD_X,WORLD_Z)))/5;
+    if(typeof renderer!=="undefined" && renderer.xr.isPresenting) return Math.max(3,Math.min(18,Math.min(SITE_X,SITE_Z)))/5;   // サイト表示×VR/ARのみサイト寸法に合わせる
+    return 1.0; }   // サイト表示×スマホ/PCは従来サイズ
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){ /* 矩形/円に閉じ込めない：自由に移動できる */ }
@@ -507,20 +509,21 @@ let worldAura=null, worldAuraT=0;
 function showWorldAura(rectOnly){
     if(worldAura){ stage.remove(worldAura); worldAura=null; }
     const g=new THREE.Group();
-    if(customWorldOn()){
+    const presenting = (typeof renderer!=="undefined") && renderer.xr.isPresenting;
+    if(customWorldOn() && !presenting){   // VR/ARは常時fieldBorderが出すので、ここでは矩形を出さない（＝grip+Yは発掘ポイントのみ）
         const hx=WORLD_X/2, hz=WORLD_Z/2;
-        for(const yoff of [0.05, 0.14]){   // 二重線で少し見やすく
+        for(const yoff of [0.05, 0.14]){   // 二重線
             const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+yoff, w.z); });
-            const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x8ff0ff, transparent:true, opacity:1, depthTest:false, depthWrite:false}));
-            line.userData.life=7.0; line.userData.baseOp=1.0; g.add(line);   // 矩形は7秒
+            const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x8ff0ff, transparent:true, opacity:1, depthTest:true}));
+            line.userData.life=7.0; line.userData.baseOp=1.0; g.add(line);
         }
     }
     if(!rectOnly){   // 発掘ポイントのヒント（3秒）
         const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:GAME.targets.map(t=>t.pos);
         for(const s of (spots||[])){ if(!s) continue;
-            const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.04,20), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.6}));
+            const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.04,20), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.6, depthTest:true}));
             ring.position.set(s.x, GROUND_Y+0.05, s.z); ring.userData.life=3.0; ring.userData.baseOp=0.6; g.add(ring);
-            const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.4,10), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.35}));
+            const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.4,10), new THREE.MeshBasicMaterial({color:0xffd34d, transparent:true, opacity:0.35, depthTest:true}));
             pil.position.set(s.x, GROUND_Y+0.7, s.z); pil.userData.life=3.0; pil.userData.baseOp=0.35; g.add(pil);   // 発掘ポイントは3秒
         }
     }
@@ -549,12 +552,18 @@ function updateFieldBorder(){
     const show = (typeof renderer!=="undefined") && renderer.xr.isPresenting && customWorldOn();
     if(!show){ if(fieldBorder) fieldBorder.visible=false; return; }
     if(!fieldBorder){
-        fieldBorder=new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({color:0x8ff0ff, transparent:true, opacity:0.85, depthTest:false, depthWrite:false}));
-        fieldBorder.renderOrder=999; stage.add(fieldBorder);
+        fieldBorder=new THREE.Group();
+        for(const yoff of [0.05,0.14]){   // grip+Yのオーラと同じ二重線
+            const ln=new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({color:0x8ff0ff, transparent:true, opacity:1, depthTest:true}));
+            ln.userData.yoff=yoff; fieldBorder.add(ln);
+        }
+        stage.add(fieldBorder);
     }
     const hx=WORLD_X/2, hz=WORLD_Z/2;
-    const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+0.08, w.z); });
-    fieldBorder.geometry.setFromPoints(pts);
+    fieldBorder.children.forEach(ln=>{
+        const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+ln.userData.yoff, w.z); });
+        ln.geometry.setFromPoints(pts);
+    });
     fieldBorder.visible=true;
 }
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
@@ -1534,7 +1543,7 @@ function cloneCont(src){
             else if(!(v && typeof v==="object")){ cu[k]=v; }   // 数値などはそのままコピー
         }
     }
-    c.position.set(0,0,0); c.rotation.set(0,0,0);   // 出現時の向き（正面向け＋回転）を消して既定姿勢に（ホログラムは正面から）
+    c.position.set(0,0,0); c.rotation.set(0,0,0); c.scale.set(1,1,1);   // 出現時の向き/位置/スケール補正を消して既定姿勢に（ホログラムは正面から）
     return c;
 }
 function buildHologram(idx){
@@ -1763,6 +1772,7 @@ function makeDigDino(dn){
     const bb=new THREE.Box3().setFromObject(inner);
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
     const cont=new THREE.Group(); cont.add(inner);
+    cont.userData.builtScale=dinoScale();   // 生成時のスケール（出現時に現在のスケールへ補正するため）
     cont.userData.model=inner;
     cont.userData.legs=inner.userData.legs; cont.userData.tail=inner.userData.tail; cont.userData.wings=inner.userData.wings;
     cont.userData.flying=!!inner.userData.wings;
@@ -1810,6 +1820,7 @@ function tickHatch(now, dt){
             if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; }
             m.visible=true; m.position.set(e.pos.x, GROUND_Y, e.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); m.rotation.set(0, Math.atan2(cp.x-e.pos.x, cp.z-e.pos.z), 0); }   // 正面(目=+Z)をプレイヤーへ向けてから回転開始
+            m.scale.setScalar(dinoScale()/(m.userData.builtScale||1));   // 生成時→現在のスケールへ補正（サイト表示×VR/ARで拡大等）
             m.userData.baseY=ARTIFACT_POP_Y-0.05; m.userData.settled=false;
             popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
