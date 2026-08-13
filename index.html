@@ -490,18 +490,25 @@ function recenterFieldHere(){
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); d.y=0;
     if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
-    fieldYaw=Math.atan2(-d.x,-d.z);       // フィールドの-z＝プレイヤーの向き
-    fieldCX=cw.x; fieldCZ=cw.z;            // 現在地をフィールド中央に
-    fallbackGround.position.set(fieldCX,0,fieldCZ); fallbackGround.rotation.y=fieldYaw;
-    GAME.fieldOverride=true;               // サイト表示時も、以降は発掘点をこのフィールドに配置
+    const yaw=Math.atan2(-d.x,-d.z);       // フィールド/サイトの-z＝プレイヤーの向き（奥）
+    if(customWorldOn()){
+        fieldYaw=yaw; fieldCX=cw.x; fieldCZ=cw.z;            // カスタムワールド：現在地を中央に
+        fallbackGround.position.set(fieldCX,0,fieldCZ); fallbackGround.rotation.y=fieldYaw;
+    } else if(siteRoot){
+        // サイトモデルごと、プレイヤーを中心・向きを-z（奥）に合わせて再配置
+        world.rotation.y = yaw;
+        world.updateMatrixWorld(true);
+        const box=new THREE.Box3().setFromObject(siteRoot); const c=box.getCenter(new THREE.Vector3());
+        world.position.x += (cw.x - c.x); world.position.z += (cw.z - c.z);   // 中心をプレイヤー現在地へ
+        world.updateMatrixWorld(true);
+        if(_sitePhs) _sitePhs.forEach((o,i)=>{ const wp=o.getWorldPosition(new THREE.Vector3()); ARTPOS[i]=new THREE.Vector3(wp.x,GROUND_Y,wp.z); });   // 発掘点を再取得
+    }
 }
 // 発掘ポイントを矩形内にランダム配置（近すぎない・回転対応）
 function regenerateCustomSpots(){
-    if(!customWorldOn() && !(GAME&&GAME.fieldOverride)){ GAME.customSpots=null; return; }   // サイト表示×grip+Y後はフィールドに配置
-    const wx = customWorldOn()? WORLD_X : Math.max(4, Math.min(8, WORLD_X));   // サイト時は控えめな広さ
-    const wz = customWorldOn()? WORLD_Z : Math.max(4, Math.min(8, WORLD_Z));
-    const hx=Math.max(0.4,wx/2-0.6), hz=Math.max(0.4,wz/2-0.6);
-    const minD=Math.max(0.8, Math.min(wx,wz)*0.24);
+    if(!customWorldOn()){ GAME.customSpots=null; return; }   // サイト表示時はサイトの発掘点(ARTPOS)を使用
+    const hx=Math.max(0.4,WORLD_X/2-0.6), hz=Math.max(0.4,WORLD_Z/2-0.6);
+    const minD=Math.max(0.8, Math.min(WORLD_X,WORLD_Z)*0.24);
     const spots=[];
     for(let i=0;i<8;i++){
         let best=null, bestN=-1;
@@ -1572,7 +1579,7 @@ function buildHologram(idx){
         dino = cached ? cloneCont(cached) : makeDigDino(DINOS[idx]);   // キャッシュはuserData退避してclone（構造そのまま・フリーズ回避）
         dino.visible=true; makeFit(dino, dinoHoloH(idx));
     }catch(_){} }
-    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
+    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); }  // 原寸（サイト倍率に依らずオリジナルサイズ）
     const model = dino || art;
     if(model){
         model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
@@ -1730,7 +1737,7 @@ function spawnTarget(tier, forcedIdx=null){
     }
     const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
     // マイクラ風の「掘れるブロック」＋照準時の枠線
-    const fs=Math.min(1.0, fieldScale())*0.6;    // ブロックを小さめに＆ワールド広さで拡縮
+    const fs=Math.min(1.0, fieldScale())*1.2;    // ブロックの一辺を2倍（従来0.6→1.2）。あたり判定もこのブロックで拡大
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
