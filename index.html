@@ -2252,7 +2252,7 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
     document.body.classList.add("playing"); if(desktop) document.body.classList.add("desktop");   // HUD/クロスヘアを確実に表示
-    DIG_REACH = DIG_REACH_BASE * (desktop ? 1.2 : 1);   // ③黄色距離：ワールド連動＋スマホ/PCは1.2倍
+    DIG_REACH = DIG_REACH_BASE * (desktop ? 1 : 1);   // ③黄色距離：ワールド連動＋スマホ/PCは1.2倍
     if(desktop){ pitch=-Math.PI/12; }   // スマホ/PCは水平よりやや下向き（-15度）で開始
     if(typeof updateHudReset==="function") updateHudReset();
     regenerateCustomSpots();
@@ -2811,21 +2811,22 @@ function discoverTarget(t){
 // 照準しているブロックを掘る（脈動発光＝掘れる状態のときだけ）
 function digAimed(){
     const t=aimedTarget;
-    if(!t || !t.digReady) return false;   // ④ブロックが黄色（③）かつ、右手道具が当たり内（aimedTarget）
+    if(!t || !t.digReady) return false;
     doDig(t);
     return true;
 }
 /* 相棒のコーチング：発見済みだけどまだ掘れない時は「近くに寄って」と促す */
 let coachTimer=0, wasDigReady=false;
 function focusTarget(){
-    // 出現中の発掘ポイントのうち、プレイヤーから見て最も近いもの（相棒はこの横に来る）
+    const ready=GAME.targets.find(t=>t.digReady);
+    if(ready) return ready;
     let best=null,bd=1e9;
     const o=camera.getWorldPosition(new THREE.Vector3());
     for(const t of GAME.targets){
+        if(!t.discovered) continue;
         const d=Math.hypot(o.x-t.pos.x, o.z-t.pos.z);
         if(d<bd){ bd=d; best=t; }
     }
-    return best;
 }
 function updateCoach(dt){
     if(GAME.mode==="time" && TA.state==="ready"){   // スタンバイ中は常時「スタートするワン」（撫でた直後はそのセリフを優先）
@@ -3192,25 +3193,27 @@ function updateScan(dt, isVR, now){
     }
     lastProbes = probes;   // 撫で判定（手/コントローラー共通）に使う
 
-    // ①②③の基準＝プレイヤーの0.8m奥（-z）の点。道具（細ピック等）で厳しさ(detectMul)を反映
-    const detRef = camera.getWorldPosition(new THREE.Vector3());
-    { const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); fwd.y=0;
-      if(fwd.lengthSq()>1e-4){ fwd.normalize(); detRef.addScaledVector(fwd,0.8); } }
-    const detMul = (toolMods().detectMul||1);
-    const detectR = DETECT_R*detMul, discoverR = DISCOVER_R*detMul;
     let heat=0;
     for(const t of GAME.targets){
-        const dist=Math.hypot(detRef.x-t.pos.x, detRef.z-t.pos.z);
-        const sig=Math.max(0, 1-dist/detectR);
-        heat=Math.max(heat,sig);
-        if(!t.discovered && dist<discoverR){ discoverTarget(t); }   // ②発見
-        if(dist<detectR){                                          // ①エリア内で音/バイブ（振る必要なし）
-            const interval = THREE.MathUtils.lerp(0.6, 0.09, sig);
+        const dmods=toolMods();
+        const detectR = t.diff.detectR * dmods.detectMul;
+        let bestSig=0, bestProbe=null;
+        for(const pr of probes){
+            const dist=Math.hypot(pr.pos.x-t.pos.x, pr.pos.z-t.pos.z);
+            const sig=Math.max(0, 1-dist/detectR);
+            if(sig>bestSig){ bestSig=sig; bestProbe=pr; }
+        }
+        heat=Math.max(heat,bestSig);
+        // 発見（信号が閾値超え）→マーカー表示（自力で探せる）
+        if(!t.discovered && bestSig>0.72){ discoverTarget(t); }
+        // 振っている＆信号あり→パルス（近いほど速い＝リズム）
+        if(bestProbe && bestProbe.shaking && bestSig>0.05){
+            const interval = THREE.MathUtils.lerp(0.6, 0.09, bestSig); // 秒
             t._pulse = (t._pulse||0) - dt;
             if(t._pulse<=0){
                 t._pulse=interval;
-                if(soundAllowed) sfxScan(sig);
-                vibrate(26, 0.25+0.7*sig);
+                if(soundAllowed) sfxScan(bestSig);
+                if(bestProbe.haptic){ if(bestProbe.handedness) vibrateHand(bestProbe.handedness, 26, 0.25+0.7*bestSig); else vibrate(26,0.25+0.7*bestSig); }
             }
         }
     }
