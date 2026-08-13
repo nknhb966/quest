@@ -627,7 +627,7 @@ function applyWorldParams(){
     const gap = Math.max(0.4, 0.5 * k2);                    // ①②の間隔（③に極端に近づけない）
     DISCOVER_R = DIG_REACH_BASE + gap;                      // ②＝③＋間隔（①と③の中間）
     DETECT_R   = DISCOVER_R + gap;                          // ①＝②＋間隔（厳しめ）
-    DIG_REACH  = DIG_REACH_BASE * ((typeof GAME!=="undefined" && GAME && GAME.desktop)?1.2:1);   // スマホ/PCは1.2倍
+    DIG_REACH  = DIG_REACH_BASE * ((typeof GAME!=="undefined" && GAME && GAME.desktop)?1.0:1);   // スマホ/PCは1.2倍
 }
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -2255,7 +2255,7 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
     document.body.classList.add("playing"); if(desktop) document.body.classList.add("desktop");   // HUD/クロスヘアを確実に表示
-    DIG_REACH = DIG_REACH_BASE * (desktop ? 1.2 : 1);   // ③黄色距離：ワールド連動＋スマホ/PCは1.2倍
+    DIG_REACH = DIG_REACH_BASE * (desktop ? 1.0 : 1);   // ③黄色距離：ワールド連動＋スマホ/PCは1.2倍
     if(desktop){ pitch=-Math.PI/12; }   // スマホ/PCは水平よりやや下向き（-15度）で開始
     if(typeof updateHudReset==="function") updateHudReset();
     regenerateCustomSpots();
@@ -2586,7 +2586,7 @@ addEventListener("mousemove",e=>{
     if(!GAME.desktop || !document.pointerLockElement) return;
     yaw   -= e.movementX*0.0022;
     pitch -= e.movementY*0.0022;
-    pitch = Math.max(-Math.PI/6, Math.min(Math.PI/9, pitch));   // 下30度・上20度
+    pitch = Math.max(-Math.PI/3, Math.min(Math.PI/9, pitch));   // 下30度・上20度
 });
 
 /* =====================================================
