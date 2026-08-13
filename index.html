@@ -3198,7 +3198,7 @@ function updateScan(dt, isVR, now){
     // ①②③の基準＝プレイヤーの0.8m奥（-z）の点。道具（細ピック等）で厳しさ(detectMul)を反映
     const detRef = camera.getWorldPosition(new THREE.Vector3());
     { const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); fwd.y=0;
-      if(fwd.lengthSq()>1e-4){ fwd.normalize(); detRef.addScaledVector(fwd,0.8); } }
+      if(fwd.lengthSq()>1e-4){ fwd.normalize(); detRef.addScaledVector(fwd,0.0); } }
     const detMul = (toolMods().detectMul||1);
     const detectR = DETECT_R*detMul, discoverR = DISCOVER_R*detMul;
     let heat=0;
