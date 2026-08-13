@@ -594,7 +594,9 @@ const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.8;               // 掘れるブロックの一辺の基準（m・5mで0.8。フィールド広さで拡縮）
 let   DIG_REACH     = 4.0;               // 掘れる距離（m）※ワールドサイズで自動調整
-const BASE_DIG_REACH= 4.0;
+const BASE_DIG_REACH= 1.2;
+const DISCOVER_SIG  = 0.72;              // ②発掘場所発見の信号しきい値（後で可変）
+const PROX_SIG      = 0.05;              // ①近接バイブ/音の信号しきい値（後で可変）
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
@@ -1743,6 +1745,7 @@ function spawnTarget(tier, forcedIdx=null){
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
+    block.userData.hitR = DIG_BLOCK*fs*0.7;   // 右手道具の近接当たり判定（ブロックの大きさ内）
     const outline=new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02*fs, DIG_BLOCK*0.72*fs, DIG_BLOCK*1.02*fs)),
         new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:true}));
@@ -2672,11 +2675,16 @@ function aimAt(origin, dir){
 function updateAim(isVR){
     let hit=null;
     if(isVR){
-        const devices=[rightCtrl,leftCtrl].filter(c=>c && c.userData.handedness);
-        for(const c of devices){
-            const o=c.getWorldPosition(new THREE.Vector3());
-            const d=new THREE.Vector3(0,0,-1).applyQuaternion(c.getWorldQuaternion(new THREE.Quaternion()));
-            hit=aimAt(o,d); if(hit) break;
+        // 右手の発掘道具がブロックの大きさ内にあるか（レイは使わない・右手のみ）
+        if(rightCtrl && rightCtrl.userData.handedness){
+            const o=rightCtrl.getWorldPosition(_dv1);
+            let best=null, bestD=Infinity;
+            for(const t of GAME.targets){ if(!t.block || !t.discovered) continue;
+                const c=t.block.getWorldPosition(_dv2);
+                const d=o.distanceTo(c);
+                if(d < (t.block.userData.hitR||0.5) && d<bestD){ bestD=d; best=t; }
+            }
+            hit=best;
         }
     } else if(GAME.desktop){
         // 画面中央から厳密に判定（甘くしない）
@@ -2793,7 +2801,9 @@ function discoverTarget(t){
 // 照準しているブロックを掘る（脈動発光＝掘れる状態のときだけ）
 function digAimed(){
     const t=aimedTarget;
-    if(!t || !t.digReady) return false;
+    if(!t) return false;
+    const presenting=(typeof renderer!=="undefined")&&renderer.xr.isPresenting;
+    if(!presenting && !t.digReady) return false;   // デスクトップは照準（黄色）必須。VRは右手道具の近接でOK
     doDig(t);
     return true;
 }
@@ -3189,9 +3199,9 @@ function updateScan(dt, isVR, now){
         }
         heat=Math.max(heat,bestSig);
         // 発見（信号が閾値超え）→マーカー表示（自力で探せる）
-        if(!t.discovered && bestSig>0.72){ discoverTarget(t); }
+        if(!t.discovered && bestSig>DISCOVER_SIG){ discoverTarget(t); }
         // 振っている＆信号あり→パルス（近いほど速い＝リズム）
-        if(bestProbe && bestProbe.shaking && bestSig>0.05){
+        if(bestProbe && bestProbe.shaking && bestSig>PROX_SIG){
             const interval = THREE.MathUtils.lerp(0.6, 0.09, bestSig); // 秒
             t._pulse = (t._pulse||0) - dt;
             if(t._pulse<=0){
