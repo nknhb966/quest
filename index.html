@@ -285,7 +285,6 @@
           <button data-v="5">5倍</button>
           <button data-v="fit" class="on">現状</button>
         </div>
-      </div>
       <div class="opt wide" id="worldSizeOpt" style="display:none;">
         <div class="lbl">ワールドの広さ（サイト非表示時・VR/ARのみ／単位：メートル）</div>
         <div style="display:flex; gap:14px; flex-wrap:wrap;">
@@ -486,27 +485,17 @@ function placeAtStart(){
 }
 // 基準の位置・向き設定（左手グリップ＋Y長押しのときだけ）：現在地をフィールド中央、向きを-Z軸に
 function recenterFieldHere(){
-    if(typeof player==="undefined") return;
+    if(!customWorldOn() || typeof player==="undefined") return;
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); d.y=0;
     if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
-    const yaw=Math.atan2(-d.x,-d.z);       // フィールド/サイトの-z＝プレイヤーの向き（奥）
-    if(customWorldOn()){
-        fieldYaw=yaw; fieldCX=cw.x; fieldCZ=cw.z;            // カスタムワールド：現在地を中央に
-        fallbackGround.position.set(fieldCX,0,fieldCZ); fallbackGround.rotation.y=fieldYaw;
-    } else if(siteRoot){
-        // サイトモデルごと、プレイヤーを中心・向きを-z（奥）に合わせて再配置
-        world.rotation.y = yaw;
-        world.updateMatrixWorld(true);
-        const box=new THREE.Box3().setFromObject(siteRoot); const c=box.getCenter(new THREE.Vector3());
-        world.position.x += (cw.x - c.x); world.position.z += (cw.z - c.z);   // 中心をプレイヤー現在地へ
-        world.updateMatrixWorld(true);
-        if(_sitePhs) _sitePhs.forEach((o,i)=>{ const wp=o.getWorldPosition(new THREE.Vector3()); ARTPOS[i]=new THREE.Vector3(wp.x,GROUND_Y,wp.z); });   // 発掘点を再取得
-    }
+    fieldYaw=Math.atan2(-d.x,-d.z);       // フィールドの-z＝プレイヤーの向き
+    fieldCX=cw.x; fieldCZ=cw.z;            // 現在地をフィールド中央に
+    fallbackGround.position.set(fieldCX,0,fieldCZ); fallbackGround.rotation.y=fieldYaw;
 }
 // 発掘ポイントを矩形内にランダム配置（近すぎない・回転対応）
 function regenerateCustomSpots(){
-    if(!customWorldOn()){ GAME.customSpots=null; return; }   // サイト表示時はサイトの発掘点(ARTPOS)を使用
+    if(!customWorldOn()){ GAME.customSpots=null; return; }
     const hx=Math.max(0.4,WORLD_X/2-0.6), hz=Math.max(0.4,WORLD_Z/2-0.6);
     const minD=Math.max(0.8, Math.min(WORLD_X,WORLD_Z)*0.24);
     const spots=[];
@@ -594,12 +583,7 @@ const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.8;               // 掘れるブロックの一辺の基準（m・5mで0.8。フィールド広さで拡縮）
 let   DIG_REACH     = 4.0;               // 掘れる距離（m）※ワールドサイズで自動調整
-const BASE_DIG_REACH= 2.0;               // ③（一辺20m＝3倍相当で2.0m）
-const BASE_DETECT_R = 4.0;               // ①（一辺20mで4.0m）
-const BASE_DISCOVER_R=3.0;               // ②（一辺20mで3.0m）
-let   DETECT_R      = 4.0;               // ①近接バイブ/音の範囲（m・ワールドサイズで調整）
-let   DISCOVER_R    = 3.0;               // ②発掘場所発見の距離（m・ワールドサイズで調整）
-let   DIG_REACH_BASE= 2.0;               // ③の基準（デバイス倍率適用前）
+const BASE_DIG_REACH= 4.0;
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
@@ -619,12 +603,7 @@ function applyWorldParams(){
     WALK_SPEED = BASE_WALK * k;          // 広いほど速く／狭いほど遅く
     DOG_FWD    = BASE_DOG_FWD * k;        // 相棒の定位置
     DOG_STAY_R = BASE_DOG_STAY * k;       // 待機範囲
-    const k2 = Math.max(0.3, Math.min(3, (diam||20)/20));   // ①②③用：一辺20m（倍率3倍相当）で1.0
-    DIG_REACH_BASE = Math.max(1.5, BASE_DIG_REACH * k2);    // ③：最小1.5m（原寸/一辺3m）〜20mで2.0m
-    const gap = Math.max(0.4, 0.5 * k2);                    // ①②の間隔（③に極端に近づけない）
-    DISCOVER_R = DIG_REACH_BASE + gap;                      // ②＝③＋間隔（①と③の中間）
-    DETECT_R   = DISCOVER_R + gap;                          // ①＝②＋間隔（厳しめ）
-    DIG_REACH  = DIG_REACH_BASE * ((typeof GAME!=="undefined" && GAME && GAME.desktop)?1.2:1);   // スマホ/PCは1.2倍
+    DIG_REACH  = BASE_DIG_REACH * Math.max(0.5, Math.min(1.5, k));   // 掘れる距離（反応半径）も連動
 }
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -889,7 +868,7 @@ function updateSiteVis(){
     if(siteRoot) siteRoot.visible = siteVisible;                 // ARでも表示/非表示どちらでも体験可
     fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
 }
-function setSiteVisible(v){ siteVisible=!!v; if(GAME) GAME.fieldOverride=false; updateSiteVis(); }
+function setSiteVisible(v){ siteVisible=!!v; updateSiteVis(); }
 let _sitePhs=null, _siteNativeMax=1, siteMode='fit';   // siteMode: 'fit'(現状) または倍率1〜5（原寸=1）
 gltfLoader.load(SITE_GLB, (gltf)=>{
     siteRoot = gltf.scene;
@@ -923,13 +902,6 @@ function rescaleSite(){
     else { siteRoot.position.y -= (box.max.y-0.2)/fit; }
     siteRoot.position.y += SITE_Y_OFFSET / fit;
     world.updateMatrixWorld(true);
-    // 仕上げ：表面の代表高さ(中央値)を一定(約-0.15m)に合わせ直す＝倍率に依らず一定の高さに（world.position.yは倍率非依存の平行移動）
-    { const rc2=new THREE.Raycaster(), dn=new THREE.Vector3(0,-1,0), ys=[];
-      for(const [sx,sz] of samples){ rc2.set(new THREE.Vector3(sx,1000,sz),dn); const h=rc2.intersectObject(siteRoot,true)[0]; if(h) ys.push(h.point.y); }
-      if(ys.length){ ys.sort((a,b)=>a-b); const med=ys[Math.floor(ys.length*0.5)]; world.position.y -= (med+0.15); world.updateMatrixWorld(true); } }
-    // 倍率に応じてサイトモデルだけ下げる（原寸=0、2倍=-0.2…5倍=-0.8m）。発掘点(ARTPOS)は不変
-    const drop = (siteMode==='fit') ? 0 : Math.max(0, (siteMode-1)*0.2);
-    if(drop>0){ siteRoot.position.y -= drop/fit; world.updateMatrixWorld(true); }
     worldBaseY = world.position.y;
     applyWorldParams();   // 歩行速度・相棒距離などをワールドサイズに合わせる
 }
@@ -1592,7 +1564,7 @@ function buildHologram(idx){
         dino = cached ? cloneCont(cached) : makeDigDino(DINOS[idx]);   // キャッシュはuserData退避してclone（構造そのまま・フリーズ回避）
         dino.visible=true; makeFit(dino, dinoHoloH(idx));
     }catch(_){} }
-    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.set(1,1,1); }  // 実寸（オリジナル）：フィット倍率を解除
+    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.multiplyScalar(0.7); }  // ワールド配置サイズ×0.7
     const model = dino || art;
     if(model){
         model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
@@ -1604,7 +1576,7 @@ function buildHologram(idx){
             const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.depthTest=true; c.depthWrite=true; return c; });
             o.material=wasArr?arr:arr[0];
         }});
-        const mg=new THREE.Group(); mg.position.set(0.36,0.0, dino? -0.7 : -0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // 恐竜は奥(-z)へさらに0.5m
+        const mg=new THREE.Group(); mg.position.set(0.36,0.0,-0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // モデルも +20cm奥
     } else g.userData.card=card;
     scene.add(g);
     holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
@@ -1750,11 +1722,10 @@ function spawnTarget(tier, forcedIdx=null){
     }
     const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
     // マイクラ風の「掘れるブロック」＋照準時の枠線
-    const fs=Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍（従来0.6→0.9）。あたり判定もこのブロックで拡大
+    const fs=Math.min(1.0, fieldScale())*0.6;    // ブロックを小さめに＆ワールド広さで拡縮
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
-    block.userData.hitR = DIG_BLOCK*fs*1.1;   // ④右手道具の当たり：一辺×1.1（中心からの半径）かつ③黄色
     const outline=new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02*fs, DIG_BLOCK*0.72*fs, DIG_BLOCK*1.02*fs)),
         new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:true}));
@@ -1918,7 +1889,7 @@ function excavate(t){
             model.visible=true;
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
-            model.scale.setScalar( customWorldOn()? Math.min(1.5, fieldScale()) : (siteMode==='fit'? fieldScale() : siteMode) );   // サイトなしは広さ比例＋上限1.5／サイトは倍率に合わせる
+            model.scale.setScalar( customWorldOn()? fieldScale() : (siteMode==='fit'? fieldScale() : siteMode) );   // サイト倍率に合わせる（原寸→1×、2倍→2×等）
             popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
@@ -2008,7 +1979,12 @@ function placeholderTex(title){
 function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
     imgUrl = (imgUrl===undefined) ? ART_IMGS[idx] : imgUrl;
     sizeMul = sizeMul||1;
-    const px = pos.x, pz = pos.z;                       // 発掘ポイントの真上に配置
+    // プレイヤーから見て「奥（後方）」へずらす：恐竜が手前になり、パネルが読みやすい
+    const back = new THREE.Vector3(pos.x-player.position.x, 0, pos.z-player.position.z);
+    if(back.lengthSq()<1e-4) back.set(0,0,-1);
+    back.normalize();
+    const backDist = 0.7 + sizeMul*0.7;                 // 大きい恐竜ほど後ろへ
+    const px = pos.x + back.x*backDist, pz = pos.z + back.z*backDist;
     const build=(tex, ratio)=>{
         const h=PANEL_BASE_H*fieldScale()*0.5, w=h*ratio;   // 一辺を半分に
         const grp=new THREE.Group();
@@ -2018,7 +1994,7 @@ function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
             new THREE.LineBasicMaterial({color}));
         grp.add(frame);
         grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, w*0.5, h*0.5+0.12));
-        grp.position.set(px, GROUND_Y + (0.9 + sizeMul*0.5)*fieldScale() + h*0.6, pz);   // 発掘ポイントの真上・モデルより上へ
+        grp.position.set(px, 0, pz);
         grp.userData.face=true; grp.userData.idx=idx;
         grp.userData.width=w; grp.userData.height=h; grp.userData.spot=pos.clone(); grp.userData.sizeMul=sizeMul;
         stage.add(grp); infoPanels.push(grp);
@@ -2106,8 +2082,7 @@ function dogCelebrate(){ dogCelebrateT=2.4; }   // ゆっくり数回ジャン�
  * ハプティクス
  * ===================================================== */
 function vibrate(dur, intensity){
-    const s=renderer.xr.getSession();
-    if(!s){ if(navigator.vibrate){ try{ navigator.vibrate(Math.max(35,Math.round(dur*1.6))); }catch(e){} } return; }   // モバイルは端末バイブ（短すぎると体感できないので長め）
+    const s=renderer.xr.getSession(); if(!s) return;
     for(const src of s.inputSources){
         const a=src.gamepad?.hapticActuators;
         if(a&&a.length>0){ try{ a[0].pulse(intensity, dur); }catch(e){} }
@@ -2252,7 +2227,6 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
     document.body.classList.add("playing"); if(desktop) document.body.classList.add("desktop");   // HUD/クロスヘアを確実に表示
-    DIG_REACH = DIG_REACH_BASE * (desktop ? 1.2 : 1);   // ③黄色距離：ワールド連動＋スマホ/PCは1.2倍
     if(desktop){ pitch=-Math.PI/12; }   // スマホ/PCは水平よりやや下向き（-15度）で開始
     if(typeof updateHudReset==="function") updateHudReset();
     regenerateCustomSpots();
@@ -2312,9 +2286,6 @@ renderer.xr.addEventListener("sessionend", ()=>{
 
 function endGame(toMenu){
     clearDinoReveal();   // 恐竜・名称ラベルを片付ける（再開時に前回の名称が残らないように）
-    if(typeof resetDexForRun==="function") resetDexForRun();   // 発掘図鑑（found記録）をクリア
-    if(typeof closeHologram==="function") closeHologram();     // ホログラムも閉じる
-    if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(GAME.mode==="time" && GAME.active && TA.state==="run" && GAME.score>0){ recordTimeAttack(GAME.score); }
     TA.state="idle"; worldHud.hide(); updateTAButton();
     GAME.active=false;
@@ -2685,16 +2656,11 @@ function aimAt(origin, dir){
 function updateAim(isVR){
     let hit=null;
     if(isVR){
-        // 右手の発掘道具がブロックの大きさ内にあるか（レイは使わない・右手のみ）
-        if(rightCtrl && rightCtrl.userData.handedness){
-            const o=rightCtrl.getWorldPosition(_dv1);
-            let best=null, bestD=Infinity;
-            for(const t of GAME.targets){ if(!t.block || !t.discovered) continue;
-                const c=t.block.getWorldPosition(_dv2);
-                const d=o.distanceTo(c);
-                if(d < (t.block.userData.hitR||0.5) && d<bestD){ bestD=d; best=t; }
-            }
-            hit=best;
+        const devices=[rightCtrl,leftCtrl].filter(c=>c && c.userData.handedness);
+        for(const c of devices){
+            const o=c.getWorldPosition(new THREE.Vector3());
+            const d=new THREE.Vector3(0,0,-1).applyQuaternion(c.getWorldQuaternion(new THREE.Quaternion()));
+            hit=aimAt(o,d); if(hit) break;
         }
     } else if(GAME.desktop){
         // 画面中央から厳密に判定（甘くしない）
@@ -2811,17 +2777,19 @@ function discoverTarget(t){
 // 照準しているブロックを掘る（脈動発光＝掘れる状態のときだけ）
 function digAimed(){
     const t=aimedTarget;
-    if(!t || !t.digReady) return false;   // ④ブロックが黄色（③）かつ、右手道具が当たり内（aimedTarget）
+    if(!t || !t.digReady) return false;
     doDig(t);
     return true;
 }
 /* 相棒のコーチング：発見済みだけどまだ掘れない時は「近くに寄って」と促す */
 let coachTimer=0, wasDigReady=false;
 function focusTarget(){
-    // 出現中の発掘ポイントのうち、プレイヤーから見て最も近いもの（相棒はこの横に来る）
+    const ready=GAME.targets.find(t=>t.digReady);
+    if(ready) return ready;
     let best=null,bd=1e9;
     const o=camera.getWorldPosition(new THREE.Vector3());
     for(const t of GAME.targets){
+        if(!t.discovered) continue;
         const d=Math.hypot(o.x-t.pos.x, o.z-t.pos.z);
         if(d<bd){ bd=d; best=t; }
     }
@@ -3192,25 +3160,28 @@ function updateScan(dt, isVR, now){
     }
     lastProbes = probes;   // 撫で判定（手/コントローラー共通）に使う
 
-    // ①②③の基準＝プレイヤーの0.8m奥（-z）の点。道具（細ピック等）で厳しさ(detectMul)を反映
-    const detRef = camera.getWorldPosition(new THREE.Vector3());
-    { const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); fwd.y=0;
-      if(fwd.lengthSq()>1e-4){ fwd.normalize(); detRef.addScaledVector(fwd,0.8); } }
-    const detMul = (toolMods().detectMul||1);
-    const detectR = DETECT_R*detMul, discoverR = DISCOVER_R*detMul;
+    // 各ターゲットについて最大信号を求める
     let heat=0;
     for(const t of GAME.targets){
-        const dist=Math.hypot(detRef.x-t.pos.x, detRef.z-t.pos.z);
-        const sig=Math.max(0, 1-dist/detectR);
-        heat=Math.max(heat,sig);
-        if(!t.discovered && dist<discoverR){ discoverTarget(t); }   // ②発見
-        if(dist<detectR){                                          // ①エリア内で音/バイブ（振る必要なし）
-            const interval = THREE.MathUtils.lerp(0.6, 0.09, sig);
+        const dmods=toolMods();
+        const detectR = t.diff.detectR * dmods.detectMul;
+        let bestSig=0, bestProbe=null;
+        for(const pr of probes){
+            const dist=Math.hypot(pr.pos.x-t.pos.x, pr.pos.z-t.pos.z);
+            const sig=Math.max(0, 1-dist/detectR);
+            if(sig>bestSig){ bestSig=sig; bestProbe=pr; }
+        }
+        heat=Math.max(heat,bestSig);
+        // 発見（信号が閾値超え）→マーカー表示（自力で探せる）
+        if(!t.discovered && bestSig>0.72){ discoverTarget(t); }
+        // 振っている＆信号あり→パルス（近いほど速い＝リズム）
+        if(bestProbe && bestProbe.shaking && bestSig>0.05){
+            const interval = THREE.MathUtils.lerp(0.6, 0.09, bestSig); // 秒
             t._pulse = (t._pulse||0) - dt;
             if(t._pulse<=0){
                 t._pulse=interval;
-                if(soundAllowed) sfxScan(sig);
-                vibrate(26, 0.25+0.7*sig);
+                if(soundAllowed) sfxScan(bestSig);
+                if(bestProbe.haptic){ if(bestProbe.handedness) vibrateHand(bestProbe.handedness, 26, 0.25+0.7*bestSig); else vibrate(26,0.25+0.7*bestSig); }
             }
         }
     }
@@ -3223,11 +3194,10 @@ function updateScan(dt, isVR, now){
             break;
         }
     }
-    // 中央リング（スマホ/PC）：①4m=青／②2.5m=橙／③2m=赤。振らなくても近づくだけで変化
+    // デスクトップの「アツさ」表示
     if(GAME.desktop){
         const el=document.getElementById("heat");
-        const b2 = 1 - DISCOVER_R/DETECT_R, b3 = 1 - DIG_REACH_BASE/DETECT_R;   // ②③のheatしきい値（距離連動）
-        const c = heat>b3? "255,90,50" : heat>b2? "255,180,60" : "120,180,255";   // ③以内=赤 / ②=橙 / ①=青
+        const c = heat>0.82? "255,90,50" : heat>0.4? "255,180,60" : "120,180,255";
         el.style.borderColor=`rgba(${c},${0.15+heat*0.8})`;
         el.style.boxShadow=`0 0 ${heat*40}px ${heat*6}px rgba(${c},${heat*0.5})`;
     }
