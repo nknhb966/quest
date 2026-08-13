@@ -595,8 +595,8 @@ const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット
 const DIG_BLOCK     = 0.8;               // 掘れるブロックの一辺の基準（m・5mで0.8。フィールド広さで拡縮）
 let   DIG_REACH     = 4.0;               // 掘れる距離（m）※ワールドサイズで自動調整
 const BASE_DIG_REACH= 2.0;               // ③ブロックが黄色になる距離（m）※スマホ/PCは2倍
-const DETECT_R      = 4.0;               // ①近くにあることを示すバイブ/音の範囲（m）
-const DISCOVER_R    = 2.5;               // ②発掘場所発見の距離（m）
+const DETECT_R      = 5.0;               // ①近くにあることを示すバイブ/音の範囲（m）
+const DISCOVER_R    = 3.5;               // ②発掘場所発見の距離（m）
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
@@ -1583,7 +1583,7 @@ function buildHologram(idx){
         dino = cached ? cloneCont(cached) : makeDigDino(DINOS[idx]);   // キャッシュはuserData退避してclone（構造そのまま・フリーズ回避）
         dino.visible=true; makeFit(dino, dinoHoloH(idx));
     }catch(_){} }
-    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); }  // 原寸（サイト倍率に依らずオリジナルサイズ）
+    else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.set(1,1,1); }  // 実寸（オリジナル）：フィット倍率を解除
     const model = dino || art;
     if(model){
         model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
@@ -1595,7 +1595,7 @@ function buildHologram(idx){
             const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.depthTest=true; c.depthWrite=true; return c; });
             o.material=wasArr?arr:arr[0];
         }});
-        const mg=new THREE.Group(); mg.position.set(0.36,0.0,-0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // モデルも +20cm奥
+        const mg=new THREE.Group(); mg.position.set(0.36,0.0, dino? -0.7 : -0.2); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // 恐竜は奥(-z)へさらに0.5m
     } else g.userData.card=card;
     scene.add(g);
     holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
@@ -1909,7 +1909,7 @@ function excavate(t){
             model.visible=true;
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
-            model.scale.setScalar( customWorldOn()? fieldScale() : (siteMode==='fit'? fieldScale() : siteMode) );   // サイト倍率に合わせる（原寸→1×、2倍→2×等）
+            model.scale.setScalar( customWorldOn()? Math.min(1.5, fieldScale()) : (siteMode==='fit'? fieldScale() : siteMode) );   // サイトなしは広さ比例＋上限1.5／サイトは倍率に合わせる
             popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
@@ -3220,7 +3220,7 @@ function updateScan(dt, isVR, now){
     // 中央リング（スマホ/PC）：①4m=青／②2.5m=橙／③2m=赤。振らなくても近づくだけで変化
     if(GAME.desktop){
         const el=document.getElementById("heat");
-        const c = heat>0.5? "255,90,50" : heat>0.375? "255,180,60" : "120,180,255";   // 2m以内=赤 / 2.5m=橙 / 4m=青
+        const c = heat>0.6? "255,90,50" : heat>0.3? "255,180,60" : "120,180,255";   // 2m以内=赤 / 3.5m=橙 / 5m=青
         el.style.borderColor=`rgba(${c},${0.15+heat*0.8})`;
         el.style.boxShadow=`0 0 ${heat*40}px ${heat*6}px rgba(${c},${heat*0.5})`;
     }
