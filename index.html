@@ -614,7 +614,6 @@ function applyWorldParams(){
     WALK_SPEED = BASE_WALK * k;          // 広いほど速く／狭いほど遅く
     DOG_FWD    = BASE_DOG_FWD * k;        // 相棒の定位置
     DOG_STAY_R = BASE_DOG_STAY * k;       // 待機範囲
-    DIG_REACH  = BASE_DIG_REACH * Math.max(0.5, Math.min(1.5, k));   // 掘れる距離（反応半径）も連動
 }
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
 // 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
@@ -917,6 +916,9 @@ function rescaleSite(){
     { const rc2=new THREE.Raycaster(), dn=new THREE.Vector3(0,-1,0), ys=[];
       for(const [sx,sz] of samples){ rc2.set(new THREE.Vector3(sx,1000,sz),dn); const h=rc2.intersectObject(siteRoot,true)[0]; if(h) ys.push(h.point.y); }
       if(ys.length){ ys.sort((a,b)=>a-b); const med=ys[Math.floor(ys.length*0.5)]; world.position.y -= (med+0.15); world.updateMatrixWorld(true); } }
+    // 倍率に応じてサイトモデルだけ下げる（原寸=0、2倍=-0.2…5倍=-0.8m）。発掘点(ARTPOS)は不変
+    const drop = (siteMode==='fit') ? 0 : Math.max(0, (siteMode-1)*0.2);
+    if(drop>0){ siteRoot.position.y -= drop/fit; world.updateMatrixWorld(true); }
     worldBaseY = world.position.y;
     applyWorldParams();   // 歩行速度・相棒距離などをワールドサイズに合わせる
 }
@@ -1737,7 +1739,7 @@ function spawnTarget(tier, forcedIdx=null){
     }
     const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
     // マイクラ風の「掘れるブロック」＋照準時の枠線
-    const fs=Math.min(1.0, fieldScale())*1.2;    // ブロックの一辺を2倍（従来0.6→1.2）。あたり判定もこのブロックで拡大
+    const fs=Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍（従来0.6→0.9）。あたり判定もこのブロックで拡大
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
@@ -2237,6 +2239,7 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
     document.body.classList.add("playing"); if(desktop) document.body.classList.add("desktop");   // HUD/クロスヘアを確実に表示
+    DIG_REACH = desktop ? BASE_DIG_REACH*2 : BASE_DIG_REACH;   // 黄色判定距離：全倍率で固定、スマホ/PCは2倍
     if(desktop){ pitch=-Math.PI/12; }   // スマホ/PCは水平よりやや下向き（-15度）で開始
     if(typeof updateHudReset==="function") updateHudReset();
     regenerateCustomSpots();
