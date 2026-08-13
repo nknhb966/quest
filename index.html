@@ -2528,7 +2528,7 @@ function tMove(e){
             joyKnob.style.transform=`translate(${dx}px,${dy}px)`;
         } else if(t.identifier===touchLook.id){
             yaw   -= (t.clientX-touchLook.lx)*0.005;
-            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/6,Math.min(Math.PI/9,pitch));   // 下30度・上20度
+            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/2,Math.min(Math.PI/9,pitch));   // 下30度・上20度
             touchLook.lx=t.clientX; touchLook.ly=t.clientY;
         }
     }
