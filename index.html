@@ -1987,12 +1987,7 @@ function placeholderTex(title){
 function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
     imgUrl = (imgUrl===undefined) ? ART_IMGS[idx] : imgUrl;
     sizeMul = sizeMul||1;
-    // プレイヤーから見て「奥（後方）」へずらす：恐竜が手前になり、パネルが読みやすい
-    const back = new THREE.Vector3(pos.x-player.position.x, 0, pos.z-player.position.z);
-    if(back.lengthSq()<1e-4) back.set(0,0,-1);
-    back.normalize();
-    const backDist = 0.7 + sizeMul*0.7;                 // 大きい恐竜ほど後ろへ
-    const px = pos.x + back.x*backDist, pz = pos.z + back.z*backDist;
+    const px = pos.x, pz = pos.z;                       // 発掘ポイントの真上に配置
     const build=(tex, ratio)=>{
         const h=PANEL_BASE_H*fieldScale()*0.5, w=h*ratio;   // 一辺を半分に
         const grp=new THREE.Group();
@@ -2002,7 +1997,7 @@ function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
             new THREE.LineBasicMaterial({color}));
         grp.add(frame);
         grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, w*0.5, h*0.5+0.12));
-        grp.position.set(px, 0, pz);
+        grp.position.set(px, GROUND_Y + (0.9 + sizeMul*0.5)*fieldScale() + h*0.6, pz);   // 発掘ポイントの真上・モデルより上へ
         grp.userData.face=true; grp.userData.idx=idx;
         grp.userData.width=w; grp.userData.height=h; grp.userData.spot=pos.clone(); grp.userData.sizeMul=sizeMul;
         stage.add(grp); infoPanels.push(grp);
@@ -2294,6 +2289,9 @@ renderer.xr.addEventListener("sessionend", ()=>{
 
 function endGame(toMenu){
     clearDinoReveal();   // 恐竜・名称ラベルを片付ける（再開時に前回の名称が残らないように）
+    if(typeof resetDexForRun==="function") resetDexForRun();   // 発掘図鑑（found記録）をクリア
+    if(typeof closeHologram==="function") closeHologram();     // ホログラムも閉じる
+    if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(GAME.mode==="time" && GAME.active && TA.state==="run" && GAME.score>0){ recordTimeAttack(GAME.score); }
     TA.state="idle"; worldHud.hide(); updateTAButton();
     GAME.active=false;
