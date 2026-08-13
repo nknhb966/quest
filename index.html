@@ -594,9 +594,9 @@ const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.8;               // 掘れるブロックの一辺の基準（m・5mで0.8。フィールド広さで拡縮）
 let   DIG_REACH     = 4.0;               // 掘れる距離（m）※ワールドサイズで自動調整
-const BASE_DIG_REACH= 1.5;               // ③ブロックが黄色になる距離（m）※スマホ/PCは2倍
-const DETECT_R      = 3.0;               // ①近くにあることを示すバイブ/音の範囲（m）
-const DISCOVER_R    = 2.0;               // ②発掘場所発見の距離（m）
+const BASE_DIG_REACH= 2.0;               // ③ブロックが黄色になる距離（m）※スマホ/PCは2倍
+const DETECT_R      = 4.0;               // ①近くにあることを示すバイブ/音の範囲（m）
+const DISCOVER_R    = 2.5;               // ②発掘場所発見の距離（m）
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
@@ -1745,7 +1745,7 @@ function spawnTarget(tier, forcedIdx=null){
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
-    block.userData.hitR = DIG_BLOCK*fs*1.1*0.5;   // ④右手道具の当たり：最初のブロックサイズ×1.1内（中心からの半径）
+    block.userData.hitR = DIG_BLOCK*fs*1.1;   // ④右手道具の当たり：一辺×1.1（中心からの半径）かつ③黄色
     const outline=new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(DIG_BLOCK*1.02*fs, DIG_BLOCK*0.72*fs, DIG_BLOCK*1.02*fs)),
         new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:true}));
@@ -3197,8 +3197,8 @@ function updateScan(dt, isVR, now){
         heat=Math.max(heat,bestSig);
         // ②発掘場所発見＝2m以内
         if(!t.discovered && bestDist<DISCOVER_R){ discoverTarget(t); }
-        // 振っている＆3m以内→パルス（近いほど速い：3m=ゆっくり／2m=普通／1.5m=早め）
-        if(bestProbe && bestProbe.shaking && bestDist<detectR){
+        // エリア内にいるだけで音/バイブ（振る必要なし。近いほど速い：4m=ゆっくり→2.5m=普通→2m=早め）
+        if(bestProbe && bestDist<detectR){
             const interval = THREE.MathUtils.lerp(0.6, 0.09, bestSig); // 秒（近いほど短い＝速い）
             t._pulse = (t._pulse||0) - dt;
             if(t._pulse<=0){
@@ -3217,10 +3217,10 @@ function updateScan(dt, isVR, now){
             break;
         }
     }
-    // デスクトップの「アツさ」表示
+    // 中央リング（スマホ/PC）：①4m=青／②2.5m=橙／③2m=赤。振らなくても近づくだけで変化
     if(GAME.desktop){
         const el=document.getElementById("heat");
-        const c = heat>0.82? "255,90,50" : heat>0.4? "255,180,60" : "120,180,255";
+        const c = heat>0.5? "255,90,50" : heat>0.375? "255,180,60" : "120,180,255";   // 2m以内=赤 / 2.5m=橙 / 4m=青
         el.style.borderColor=`rgba(${c},${0.15+heat*0.8})`;
         el.style.boxShadow=`0 0 ${heat*40}px ${heat*6}px rgba(${c},${heat*0.5})`;
     }
