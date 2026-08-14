@@ -3356,8 +3356,8 @@ function updateDog(dt, now){
 
     let goal, waitingAtHint=false;
     const focus=(typeof focusTarget==="function") ? focusTarget() : null;
-    // 相棒が横に立つ範囲＝その点の「発見距離」ちょうど（手とカメラの差を+0.6mだけ許容）
-    const _fdR = focus ? (focus.diff.detectR * toolMods().detectMul * DETECT_SCALE * (1-DISCOVER_SIG) + 0.6) : 0;
+    // 相棒が横に立つ範囲＝その点の「発見距離」（手→カメラ差ぶんの余裕+1.2mで、ブロック出現と同時に横へ）
+    const _fdR = focus ? (focus.diff.detectR * toolMods().detectMul * DETECT_SCALE * (1-DISCOVER_SIG) + 1.2) : 0;
     const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < _fdR;
     if(focusNear){
         // 発見済みブロックが近くにある間は、必ずその「右どなり」に立つ（ヒント移動より優先）
