@@ -2835,8 +2835,7 @@ function updateCoach(dt){
     }
     const focus=focusTarget();
     const camPos=camera.getWorldPosition(new THREE.Vector3());
-    const _fdR = focus ? (focus.diff.detectR * toolMods().detectMul * DETECT_SCALE * (1-DISCOVER_SIG) + 1.2) : 0;
-    const near = focus && Math.hypot(camPos.x-focus.pos.x, camPos.z-focus.pos.z) < _fdR;   // 相棒の接近と同じ距離＝発見（出現）と同時
+    const near = focus && Math.hypot(camPos.x-focus.pos.x, camPos.z-focus.pos.z) < DOG_STAY_R;   // 旧コード同様（相棒接近と同じ距離）
 
     // 掘れる状態になった瞬間に一言（表示しっぱなしのセリフは解除）
     if(anyDigReady && !wasDigReady){ bubble.release(); bubble.say(line("digNow"), 2000); sfxBark(); coachTimer=4; }
@@ -3357,9 +3356,7 @@ function updateDog(dt, now){
 
     let goal, waitingAtHint=false;
     const focus=(typeof focusTarget==="function") ? focusTarget() : null;
-    // 相棒が横に立つ範囲＝その点の「発見距離」（手→カメラ差ぶんの余裕+1.2mで、ブロック出現と同時に横へ）
-    const _fdR = focus ? (focus.diff.detectR * toolMods().detectMul * DETECT_SCALE * (1-DISCOVER_SIG) + 1.2) : 0;
-    const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < _fdR;
+    const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < DOG_STAY_R;   // 旧コード同様：発見済みなら横へ（DOG_STAY_R≥3.5m＝発見と同時）
     if(focusNear){
         // 発見済みブロックが近くにある間は、必ずその「右どなり」に立つ（ヒント移動より優先）
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
