@@ -594,7 +594,7 @@ const SNAP_DEG      = 30;                 // スナップ回転
 const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
 const DIG_BLOCK     = 0.8;               // 掘れるブロックの一辺の基準（m・5mで0.8。フィールド広さで拡縮）
 let   DIG_REACH     = 4.0;               // 掘れる距離（m）※ワールドサイズで自動調整
-const BASE_DIG_REACH= 3.0;               // ③（一辺20m＝3倍相当で3.0m。近すぎ解消）
+const BASE_DIG_REACH= 4.0;               // ③ 黄色になる距離（固定・5倍相当の最適値。全倍率/広さ共通）
 let   DIG_REACH_BASE= 2.0;               // ③の基準（デバイス倍率適用前）
 let   DETECT_SCALE  = 1.0;               // ①②の距離倍率（一辺20m＝倍率3倍で1.0）
 const DISCOVER_SIG  = 0.72;              // ②発掘場所発見の信号しきい値（パラメータ）
@@ -622,7 +622,7 @@ function applyWorldParams(){
     DOG_STAY_R = Math.max(6.0, BASE_DOG_STAY * k);   // 待機範囲（発見距離＝デスクトップ最大約5.5mを必ず超え、発見＝出現と同時に相棒・セリフが発火）
     const k2 = Math.max(0.3, Math.min(3, (diam||20)/20));   // 一辺20m（倍率3倍相当）で1.0
     DETECT_SCALE = k2;                                      // ①②（旧コードの距離）を倍率/広さで拡縮
-    DIG_REACH_BASE = Math.max(2.0, BASE_DIG_REACH * k2);    // ③：最小2.0m〜20mで3.0m（ちょうどいい距離）
+    DIG_REACH_BASE = BASE_DIG_REACH;                       // ③：倍率/広さで縮小しない（小さくても厳しくならない）＝最適値で固定
     DIG_REACH  = DIG_REACH_BASE;   // ③黄色距離：VR/AR・スマホ・PC 共通（1.0倍）
 }
 const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
