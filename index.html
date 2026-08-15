@@ -292,15 +292,15 @@
           <div style="flex:1; min-width:200px;">
             <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">横幅 X：<span id="wxVal">5</span> m</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input id="wxSlider" type="range" min="3" max="30" step="1" value="5" style="flex:1;">
-              <input id="wxNum" type="number" min="3" max="30" step="1" value="5" style="width:64px;">
+              <input id="wxSlider" type="range" min="3" max="50" step="1" value="5" style="flex:1;">
+              <input id="wxNum" type="number" min="3" max="50" step="1" value="5" style="width:64px;">
             </div>
           </div>
           <div style="flex:1; min-width:200px;">
             <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">奥行き Z：<span id="wzVal">5</span> m</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input id="wzSlider" type="range" min="3" max="30" step="1" value="5" style="flex:1;">
-              <input id="wzNum" type="number" min="3" max="30" step="1" value="5" style="width:64px;">
+              <input id="wzSlider" type="range" min="3" max="50" step="1" value="5" style="flex:1;">
+              <input id="wzNum" type="number" min="3" max="50" step="1" value="5" style="width:64px;">
             </div>
           </div>
         </div>
@@ -1790,9 +1790,15 @@ let   dinoDigModels=_dinoCacheB;             // 現在のスタイルのキャ�
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
 // 恐竜の表示サイズ階層（下限0.9〜上限2.1の4段階）。種別ごとに階層を割り当て、生成時にそのサイズで作る
-const DINO_TIER_H=[0.6, 1.1, 1.8, 3.2];   // 種ごとの相対サイズ（小←→大）を広げて比率をはっきり
+const DINO_TIER_NARROW=[0.9, 1.2, 1.6, 2.1];   // 狭い/低倍率：種の範囲 約2.3倍
+const DINO_TIER_WIDE  =[0.6, 1.1, 1.8, 3.2];   // 広い/高倍率：種の範囲 約5.3倍
 const DINO_TIER={ ptera:0, fukuiraptor:0, tri:1, stego:1, fukuisaurus:1, trex:2, fukuititan:2, brachi:3 };
-function dinoHByKey(key){ const t=DINO_TIER[key]; return DINO_TIER_H[t!==undefined?t:1]; }
+function tierRangeT(){   // 0=狭い(2.3倍) 〜 1=広い(5.3倍)。広さ(横×奥行の小さい方)で補間
+    const diam = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z);
+    return Math.max(0, Math.min(1, (diam-3)/(30-3)));   // 3m=狭 → 30m以上=広
+}
+function dinoHByKey(key){ const t=DINO_TIER[key]!==undefined?DINO_TIER[key]:1; const f=tierRangeT();
+    return DINO_TIER_NARROW[t]*(1-f) + DINO_TIER_WIDE[t]*f; }
 function dinoWorldH(idx){ return dinoHByKey((DINOS[idx]||{}).key); }
 function dinoSizeOf(idx){ return dinoWorldH(idx); }         // パネル/演出用のサイズ指標（＝表示高さ）
 function dinoHoloH(idx){ return dinoWorldH(idx) * 0.24; }   // ホログラムにも同じ比率で反映（最大2.1→約0.5m）
@@ -1867,8 +1873,9 @@ function tickHatch(now, dt){
             // 説明パネルの代わりに、名称だけモデルの下側に表示
             if(m.userData.nameLabel) stage.remove(m.userData.nameLabel);
             const nm=(dn.label||"").replace(/^\S+\s*/,"");
-            const label=makeLabelSprite(nm, e.color, 0.72*fieldScale(), 0);
-            label.position.set(e.pos.x, GROUND_Y+0.22*fieldScale(), e.pos.z);
+            const _lblScale = ((typeof renderer!=="undefined" && renderer.xr.isPresenting) ? fieldScale() : 1.0);   // スマホ/PCは原寸固定
+            const label=makeLabelSprite(nm, e.color, 0.72*_lblScale, 0);
+            label.position.set(e.pos.x, GROUND_Y+0.22*_lblScale, e.pos.z);
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
         }
