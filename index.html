@@ -475,7 +475,11 @@ function customWorldOn(){ return !siteVisible; }   // サイト非表示＝カ�
 // フィールドの広さに応じたサイズ係数（20mで1.0、狭いと小さく、広いとやや大きく・上限1.6）
 function fieldScale(){ const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z); return Math.max(3,Math.min(10,sz))/5; }
 // 恐竜用サイズ係数（3〜18mでクランプ）。サイト表示時もサイト寸法に合わせる
-function dinoScale(){ const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z); return Math.max(3,Math.min(18,sz))/5; }
+function dinoScale(){
+    if(customWorldOn()) return Math.max(3,Math.min(18,Math.min(WORLD_X,WORLD_Z)))/5;   // サイト非表示：広さ連動（種ごとの比率は保持）
+    if(typeof renderer!=="undefined" && renderer.xr.isPresenting) return Math.max(3,Math.min(18,Math.min(SITE_X,SITE_Z)))/5;   // サイト表示×VR/AR：サイト寸法連動
+    return 1.0;   // サイト表示×スマホ/PC：どの倍率でも恐竜は原寸
+}
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
 function clampToField(p){ /* 矩形/円に閉じ込めない：自由に移動できる */ }
@@ -1786,7 +1790,7 @@ let   dinoDigModels=_dinoCacheB;             // 現在のスタイルのキャ�
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
 // 恐竜の表示サイズ階層（下限0.9〜上限2.1の4段階）。種別ごとに階層を割り当て、生成時にそのサイズで作る
-const DINO_TIER_H=[0.9, 1.2, 1.6, 2.1];
+const DINO_TIER_H=[0.6, 1.1, 1.8, 3.2];   // 種ごとの相対サイズ（小←→大）を広げて比率をはっきり
 const DINO_TIER={ ptera:0, fukuiraptor:0, tri:1, stego:1, fukuisaurus:1, trex:2, fukuititan:2, brachi:3 };
 function dinoHByKey(key){ const t=DINO_TIER[key]; return DINO_TIER_H[t!==undefined?t:1]; }
 function dinoWorldH(idx){ return dinoHByKey((DINOS[idx]||{}).key); }
