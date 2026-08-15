@@ -427,6 +427,7 @@
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dSite">🗺 サイト：表示</button>
     <button id="dReset" style="display:none;">🔄 リセット</button>
+    <button id="dShowAll" style="display:none;">✨ 全て表示</button>
     <button id="taCardBtn" style="display:none; background:linear-gradient(#ffd24d,#e6a52a); color:#3a2600; font-weight:bold; font-size:16px; padding:10px 16px; border:2px solid #fff2c0;">🎴 カードを見る</button>
     <button id="dDex">📖 図鑑</button>
     <button id="dRecords">🏅 記録</button>
@@ -2202,10 +2203,12 @@ function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); i
     updateGoal();
   }); }
 function updateHudReset(){
-    const r=document.getElementById("dReset"); if(r) r.style.display = (GAME.desktop && customWorldOn())? "inline-block":"none";
+    const r=document.getElementById("dReset"); if(r) r.style.display = GAME.desktop ? "inline-block":"none";   // サイト表示/非表示ともに表示
+    const sa=document.getElementById("dShowAll"); if(sa) sa.style.display = GAME.desktop ? "inline-block":"none";
     const s=document.getElementById("dSite"); if(s) s.style.display = GAME.desktop? "none":"inline-block";   // ヘッドセットなし時はサイト切替ボタン不要
 }
-{ const r=document.getElementById("dReset"); if(r) r.onclick=()=>{ resetDexAndStandby(); }; }
+{ const r=document.getElementById("dReset"); if(r) r.onclick=()=>{ resetDexAndStandby(true); }; }   // grip+Y相当：中央＋向き(-z)に再センター
+{ const a=document.getElementById("dShowAll"); if(a) a.onclick=()=>{ completeAllDigs(); }; }         // grip+X相当：全発掘一斉完了（全表示）
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ worldHud.toggleResultsPage(); updateResultBtn(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
@@ -2804,7 +2807,7 @@ function discoverTarget(t){
     if(t.discovered) return;
     t.discovered=true; t.marker.visible=true;
     petBoost=0;   // 発掘ポイントに連れて行ってもらったら確率は初期状態（低）に戻す
-    digBusy=true; digBusySpot=t.pos.clone(); digBusyUntil=0;   // 発見〜発掘完了2秒後まで ヒント/撫でを止める
+    digBusy=true; digBusySpot=t.pos.clone(); digBusyUntil=performance.now()+3000;   // 発見直後の案内3秒だけヒント/撫でを止める（掘り始めると延長）
     // 掘れるブロックを実体として見せる（タップ/照準の目標になる）
     if(t.block){ t.block.material.opacity=0.95; t.block.material.transparent=false; }
     sfxLocate(); vibrate(120,0.7);
