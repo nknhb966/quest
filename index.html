@@ -1880,12 +1880,13 @@ function animateDigDinos(now, dt){
         cont.rotation.y += 0.004;                             // ゆっくり回転
         const m=cont.userData.model; if(!m) return;
         const spd=cont.userData.animSpeed||1, off=cont.userData.animPhase||0, ph=now*0.006*spd + off;
+        const sph = (now - (cont.userData.settleAt||now));   // 定位置移行からの経過（バウンスを0から始める）
         if(cont.userData.flying){
             if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z = w.userData.sign*(0.22+Math.sin(now*0.004*spd+off)*0.4); }); // 羽ばたき
-            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.sin(now*0.0016*spd+off)*0.18;   // 上下にゆっくり
+            if(cont.userData.settled) cont.position.y = cont.userData.baseY + (1-Math.cos(sph*0.0016*spd))*0.09;   // 0から連続に上下
         } else {
             if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(ph + p.userData.phase)*0.32; });  // 足踏み
-            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(ph))*0.045;            // 軽く弾む
+            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(sph*0.006*spd))*0.045; // 0から連続に弾む
         }
         if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003*spd + (cont.userData.tailPhase||0))*0.28;   // 尻尾ふり
     });
@@ -2807,9 +2808,13 @@ function discoverTarget(t){
     if(t.discovered) return;
     t.discovered=true; t.marker.visible=true;
     petBoost=0;   // 発掘ポイントに連れて行ってもらったら確率は初期状態（低）に戻す
-    digBusy=true; digBusySpot=t.pos.clone(); digBusyUntil=performance.now()+3000;   // 発見直後の案内3秒だけヒント/撫でを止める（掘り始めると延長）
-    // 掘れるブロックを実体として見せる（タップ/照準の目標になる）
-    if(t.block){ t.block.material.opacity=0.95; t.block.material.transparent=false; }
+    digBusySpot=t.pos.clone();   // 撫で制御は距離のみ（毎フレーム計算）。フラグは立てない
+    // 掘れるブロックを実体として見せる＋正面をプレイヤー側へ
+    if(t.block){ t.block.material.opacity=0.95; t.block.material.transparent=false;
+        const cp=camera.getWorldPosition(new THREE.Vector3());
+        t.block.rotation.y=Math.atan2(cp.x-t.block.position.x, cp.z-t.block.position.z);   // ブロックの正面(+z)をプレイヤーへ
+        if(t.outline) t.outline.rotation.y=t.block.rotation.y;
+    }
     sfxLocate(); vibrate(120,0.7);
     showToast("発掘ポイント発見！ブロックを狙って掘ろう");
 }
@@ -3027,7 +3032,7 @@ renderer.setAnimationLoop(()=>{
         const y = r<0.5 ? THREE.MathUtils.lerp(a.startY,a.peakY, r*2)
                         : THREE.MathUtils.lerp(a.peakY,a.endY,(r-0.5)*2);
         a.obj.position.set(a.x, y, a.z); if(a.spin) a.obj.rotation.y+=0.12;   // たまごのみ回転（恐竜/出土品は正面向きを維持）
-        if(r>=1){ if(a.dino && a.obj.userData) a.obj.userData.settled=true; popAnims.splice(i,1); }
+        if(r>=1){ if(a.dino && a.obj.userData){ a.obj.userData.settled=true; a.obj.userData.settleAt=now; } popAnims.splice(i,1); }
     }
     tickHatch(now, dt);        // 恐竜モード：たまごの揺れ＆孵化
     animateDigDinos(now, dt);  // 出てきた恐竜の足踏み・尻尾ふり・回転・上下
@@ -3423,12 +3428,12 @@ function updateDog(dt, now){
         const want=new THREE.Vector3(dogW.x+away.x*0.5, dogW.y+1.0, dogW.z+away.z*0.5);
         bubbleSpr.position.copy(dog.worldToLocal(want));
     }
-    // 発掘中の解除：完了2秒後、または プレイヤーと相棒の両方が発掘ポイントから離れたら
-    if(digBusy){
+    // 撫で制御は距離のみ：最寄りの発見済みブロックに「相棒が横に立つ距離(DOG_STAY_R)」以内なら撫で不可、離れれば可。出現演出中(digBusyUntil)は不可
+    {
         const now2=performance.now();
-        const pFar=!digBusySpot || Math.hypot(playerPos.x-digBusySpot.x, playerPos.z-digBusySpot.z) > 6;
-        const dFar=!digBusySpot || Math.hypot(dog.position.x-digBusySpot.x, dog.position.z-digBusySpot.z) > 6;
-        if((digBusyUntil>0 && now2>digBusyUntil) || (pFar && dFar)){ digBusy=false; digBusySpot=null; digBusyUntil=0; }
+        let nearBlk=false;
+        for(const t of GAME.targets){ if(t && t.discovered && !t.done && Math.hypot(playerPos.x-t.pos.x, playerPos.z-t.pos.z) < DOG_STAY_R){ nearBlk=true; break; } }
+        digBusy = nearBlk || (digBusyUntil>0 && now2 < digBusyUntil);
     }
     // 相棒が「プレイヤーを向いて待っている」状態か（撫でられる条件）
     {
