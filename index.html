@@ -249,13 +249,6 @@
           <button data-v="time">⏱ タイムアタック</button>
         </div>
       </div>
-      <div class="opt wide">
-        <div class="lbl">最初の発掘道具（あとで切替可）</div>
-        <div class="seg" id="segTool">
-          <button data-v="wide" class="on">🖌 幅広ブラシ（広く探せる/掘り多め）</button>
-          <button data-v="narrow">⛏ 細ピック（狭いが/掘り少なめ）</button>
-        </div>
-      </div>
       <div class="opt wide" id="optBuddy" style="display:none">
         <div class="lbl">相棒</div>
         <div class="seg" id="segBuddy"></div>
@@ -278,12 +271,11 @@
       <div class="opt wide" id="siteSizeOpt">
         <div class="lbl">サイトモデルの大きさ</div>
         <div class="seg" id="segSiteSize">
-          <button data-v="1">原寸</button>
+          <button data-v="1">1倍</button>
           <button data-v="2">2倍</button>
-          <button data-v="3">3倍</button>
+          <button data-v="3" class="on">3倍</button>
           <button data-v="4">4倍</button>
           <button data-v="5">5倍</button>
-          <button data-v="fit" class="on">現状</button>
         </div>
       </div>
       <div class="opt wide" id="worldSizeOpt" style="display:none;">
@@ -893,7 +885,7 @@ function updateSiteVis(){
     fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
 }
 function setSiteVisible(v){ siteVisible=!!v; if(GAME) GAME.fieldOverride=false; updateSiteVis(); }
-let _sitePhs=null, _siteNativeMax=1, siteMode='fit';   // siteMode: 'fit'(現状) または倍率1〜5（原寸=1）
+let _sitePhs=null, _siteNativeMax=1, siteMode=3;   // siteMode: 倍率1〜5（1倍=原寸）。既定3倍
 gltfLoader.load(SITE_GLB, (gltf)=>{
     siteRoot = gltf.scene;
     siteRoot.rotation.y = THREE.MathUtils.degToRad(-90);   // 元と同じ向き
@@ -908,7 +900,7 @@ gltfLoader.load(SITE_GLB, (gltf)=>{
 function rescaleSite(){
     if(!siteRoot || !_sitePhs) return;
     const fitRatio = SITE_FIT_DIAM / _siteNativeMax;
-    const fit = (siteMode==='fit') ? fitRatio : siteMode;   // 現状=fit / 原寸=1 / N×=N
+    const fit = siteMode;   // 1倍=原寸 / N倍=N
     world.position.set(0,0,0); world.scale.setScalar(fit); world.updateMatrixWorld(true);
     let box=new THREE.Box3().setFromObject(siteRoot);
     const center=box.getCenter(new THREE.Vector3());
@@ -931,7 +923,7 @@ function rescaleSite(){
       for(const [sx,sz] of samples){ rc2.set(new THREE.Vector3(sx,1000,sz),dn); const h=rc2.intersectObject(siteRoot,true)[0]; if(h) ys.push(h.point.y); }
       if(ys.length){ ys.sort((a,b)=>a-b); const med=ys[Math.floor(ys.length*0.5)]; world.position.y -= (med+0.15); world.updateMatrixWorld(true); } }
     // 倍率に応じてサイトモデルだけ下げる（原寸=0、2倍=-0.2…5倍=-0.8m）。発掘点(ARTPOS)は不変
-    const drop = (siteMode==='fit') ? 0 : Math.max(0, (siteMode-1)*0.2);
+    const drop = Math.max(0, (siteMode-1)*0.2);
     if(drop>0){ siteRoot.position.y -= drop/fit; world.updateMatrixWorld(true); }
     worldBaseY = world.position.y;
     applyWorldParams();   // 歩行速度・相棒距離などをワールドサイズに合わせる
@@ -1928,7 +1920,7 @@ function excavate(t){
             model.visible=true;
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
-            model.scale.setScalar( customWorldOn()? Math.min(1.5, fieldScale()) : (siteMode==='fit'? fieldScale() : siteMode) );   // サイトなしは広さ比例＋上限1.5／サイトは倍率に合わせる
+            model.scale.setScalar( customWorldOn()? Math.min(1.5, fieldScale()) : siteMode );   // サイトなしは広さ比例＋上限1.5／サイトは倍率に合わせる
             popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
@@ -2203,7 +2195,7 @@ function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); i
     updateHudReset(); }
 { document.querySelectorAll("#segSiteSize button").forEach(b=>b.onclick=()=>{
     document.querySelectorAll("#segSiteSize button").forEach(x=>x.classList.toggle("on", x===b));
-    siteMode = (b.dataset.v==="fit") ? "fit" : (+b.dataset.v);
+    siteMode = +b.dataset.v;   // 倍率1〜5
     rescaleSite();                       // サイトを選択倍率でフィットし直す
     regenerateCustomSpots();             // 発掘点の再配置（カスタム時）
     reloadDinoCache();                   // 恐竜サイズが変わるので作り直す
