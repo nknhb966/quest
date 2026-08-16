@@ -2825,6 +2825,7 @@ function updateBlockGlow(now){
         }
     }
 }
+function doDig(t){
     t.progress += companionStats().power;   // POWER:掘る力
     sfxDig();
     spawnDirt(t.pos, 8);
