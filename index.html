@@ -235,7 +235,7 @@
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
     <h1 class="title">越前国府発掘クエスト</h1>
-    <p class="subtitle">遺跡を歩いて探して、出土品や恐竜を掘り当てよう。相棒の犬と一緒に。</p>
+    <p class="subtitle">遺跡を歩いて探して、出土品や恐竜を掘り当てよう。相棒と一緒に。</p>
 
     <p id="loadingNote"><i></i>遺跡データを読み込み中…（完了すると開始できます）</p>
     <div id="vrbtnwrap"></div>
@@ -257,8 +257,8 @@
         <div class="lbl">発掘する対象</div>
         <div class="seg" id="segDig">
           <button data-v="artifact" class="on">🏺 出土品</button>
-          <button data-v="dino">🦖 恐竜</button>
-          <button data-v="dino2">🦕 恐竜（なめらか）</button>
+          <button data-v="dino">🦖 シンプル恐竜</button>
+          <button data-v="dino2">🦕 恐竜</button>
         </div>
       </div>
       <div class="opt wide">
@@ -311,11 +311,6 @@
       <button class="ghost" id="openRecords">🏅 記録</button>
     </div>
 
-    <p class="hint" id="menuHint">
-      <b>探す</b>：歩いて反応をたどる。<b>掘る</b>：発掘ポイントでコントローラーを振る。<br>
-      <b>恐竜に聞く</b>：右手トリガー（素手なら右手でつまむ）。ヒントは外れることも。<br>
-      くわしくは「あそび方」をどうぞ。
-    </p>
   </div>
 </div>
 
@@ -1947,7 +1942,7 @@ function excavate(t){
         }
         // 全ポイントは最初から出ているので再出現しない（残りをどの順でも掘れる）
     } else { // タイムアタック
-        GAME.digScore = (GAME.digScore||0) + 100 + t.tier*40;   // 発掘ポイント（時間ボーナス/減点は終了時に加除）
+        GAME.digScore = (GAME.digScore||0) + 110 + t.tier*40;   // 発掘ポイント（時間ボーナス/減点は終了時に加除）
         updateGoal();
         if(dexFoundCount()>=8){ taFinish(); }   // 全8種を掘り切ったら終了＝残り時間でスコア
     }
@@ -2330,9 +2325,10 @@ function endGame(toMenu){
 }
 function recordTimeAttack(score){
     const arr=loadTA(); const now=new Date(); const p=n=>String(n).padStart(2,"0");
+    const id=Date.now(); GAME.lastTAId=id;   // 今回の得点のid（TOP5で新記録のみハイライト）
     arr.push({score,
         date:`${now.getFullYear()}/${p(now.getMonth()+1)}/${p(now.getDate())}`,
-        time:`${p(now.getHours())}:${p(now.getMinutes())}`, id:Date.now()});
+        time:`${p(now.getHours())}:${p(now.getMinutes())}`, id});
     arr.sort((a,b)=> (b.score-a.score) || ((b.id||0)-(a.id||0)) ); saveTA(arr.slice(0,5));
 }
 
@@ -2402,7 +2398,7 @@ const worldHud=(function(){
                     ctx.fillStyle="#ffe066"; ctx.font="bold 34px sans-serif"; ctx.textAlign="left"; ctx.fillText("合計",lx,y+8); ctx.textAlign="right"; ctx.fillText(d.score+" pt",rx,y+8);
                 }
                 ctx.textAlign="center"; ctx.fillStyle="#e6c26a"; ctx.font="bold 32px sans-serif"; ctx.fillText("― TOP 5 ―",384,410);
-                for(let i=0;i<5;i++){ const e=d.list[i], yy=452+i*40, hit=e&&e.score===d.score;
+                for(let i=0;i<5;i++){ const e=d.list[i], yy=452+i*40, hit=e&&e.id!==undefined&&e.id===GAME.lastTAId;   // 新記録のみハイライト
                     ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
                     ctx.textAlign="left"; ctx.font="bold 28px sans-serif"; ctx.fillText((i+1)+".",90,yy);
                     ctx.textAlign="center"; ctx.font="bold 32px sans-serif"; ctx.fillText(e?(e.score+" pt"):"----",384,yy);
