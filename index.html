@@ -1382,14 +1382,14 @@ function companionStats(){
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
 registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(), power:3, scope:3, bonus:3 });
-registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dogLines(), power:5, scope:2, bonus:2 });
-registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dogLines(), power:4, scope:3, bonus:3 });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dogLines(), power:3, scope:3, bonus:4 });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dogLines(), power:4, scope:4, bonus:2 });
-registerCompanion("ptera",       { label:"🦅 プテラ",        askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dogLines(), power:2, scope:5, bonus:3 });
-registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:dogLines(), power:3, scope:4, bonus:4 });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:dogLines(), power:3, scope:3, bonus:4 });
-registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:dogLines(), power:4, scope:4, bonus:2 });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:2, bonus:2 });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3 });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:3, bonus:4 });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:4, scope:4, bonus:2 });
+registerCompanion("ptera",       { label:"🦅 プテラ",        askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3 });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:3, scope:4, bonus:4 });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:3, bonus:4 });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:2 });
 setCompanion("dog");
 
 // 吹き出しスプライト
@@ -1783,6 +1783,7 @@ function clearTargets(){
 function spawnAllTargets(){
     clearTargets();
     for(let i=0;i<8;i++){ if(!GAME.doneIdx.has(i)) spawnTarget(i, i); }
+    if(typeof spawnStarPoint==="function" && !GAME.starUsed) spawnStarPoint();   // スターポイント1個（崩したら以後このプレイでは復活しない）
 }
 
 /* =====================================================
@@ -2269,7 +2270,7 @@ document.getElementById("helpClose").onclick=()=>{ document.getElementById("help
 document.getElementById("help").addEventListener("click", e=>{ if(e.target.id==="help") e.currentTarget.classList.remove("open"); });
 
 function startGame(desktop){
-    GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool;
+    GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool; GAME.starUsed=false;
     document.body.classList.add("playing"); if(desktop) document.body.classList.add("desktop");   // HUD/クロスヘアを確実に表示
     DIG_REACH = DIG_REACH_BASE;   // ③黄色距離：VR/AR・スマホ・PC 共通
     if(desktop){ pitch=-Math.PI/12; }   // スマホ/PCは水平よりやや下向き（-15度）で開始
@@ -2330,7 +2331,7 @@ renderer.xr.addEventListener("sessionend", ()=>{
 });
 
 function endGame(toMenu){
-    clearDinoReveal();   // 恐竜・名称ラベルを片付ける（再開時に前回の名称が残らないように）
+    clearDinoReveal(); if(typeof clearStarPoint==="function") clearStarPoint();   // 恐竜・名称ラベルを片付ける（再開時に前回の名称が残らないように）
     if(typeof resetDexForRun==="function") resetDexForRun();   // 発掘図鑑（found記録）をクリア
     if(typeof closeHologram==="function") closeHologram();     // ホログラムも閉じる
     if(typeof refreshDexHTML==="function") refreshDexHTML();
@@ -2722,6 +2723,10 @@ function updateAim(isVR){
         const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
         hit=aimAt(o,d);
     }
+    if(!hit && GAME.star && !GAME.star.done){   // スターポイント
+        if(isVR){ if(rightCtrl && rightCtrl.userData.handedness){ const o=rightCtrl.getWorldPosition(_dv1); if(o.distanceTo(GAME.star.block.getWorldPosition(_dv2)) < (GAME.star.block.userData.hitR||0.5)) hit=GAME.star; } }
+        else if(GAME.desktop && GAME.star.digReady){ hit=GAME.star; }
+    }
     if(GAME.mode==="time" && TA.state!=="run") hit=null;
     aimedTarget=hit;
     GAME.targets.forEach(t=>{ if(t.outline) t.outline.visible=(t===hit && t.discovered); });
@@ -2778,6 +2783,11 @@ function updateDigReady(){
         t.digReady=ready;
         if(ready) anyDigReady=true;
     }
+    if(GAME.star && !GAME.star.done && GAME.star.block){   // スターポイントも黄色判定
+        const c=GAME.star.block.getWorldPosition(_dv2); const to=c.clone().sub(o); const dist=to.length();
+        GAME.star.digReady = allow && dist<=DIG_REACH && to.normalize().dot(d)>=cosMax;
+        if(GAME.star.digReady) anyDigReady=true;
+    }
 }
 // 脈動発光（掘れるサイン）— やわらかい暖色で、しっかり目立つ
 function updateBlockGlow(now){
@@ -2815,7 +2825,52 @@ function doDig(t){
         t.block.position.y = GROUND_Y + DIG_BLOCK*0.35*(t.fs||1)*Math.max(0.25, left);
         if(t.outline){ t.outline.scale.copy(t.block.scale); t.outline.position.copy(t.block.position); }
     }
-    if(t.progress>=t.digNeed){ excavate(t); }
+    if(t.progress>=t.digNeed){
+        if(t.isStar){ triggerSpecial(); clearStarPoint(); }   // スターポイント：崩すと無条件でSPECIAL発動→消滅
+        else excavate(t);
+    }
+}
+// ===== スターポイント（1プレイ1個・開始時から見える・崩すとSPECIAL） =====
+function makeStarSprite(){
+    const cv=document.createElement("canvas"); cv.width=cv.height=128; const g=cv.getContext("2d");
+    g.font="96px serif"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("⭐",64,72);
+    const tex=new THREE.CanvasTexture(cv); tex.anisotropy=4;
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
+    sp.renderOrder=999; return sp;
+}
+function starFieldPos(){
+    const spots=(customWorldOn()&&GAME.customSpots)?GAME.customSpots:ARTPOS;
+    for(let k=0;k<80;k++){
+        let x,z;
+        if(customWorldOn()){ const hx=Math.max(0.5,WORLD_X/2-0.8), hz=Math.max(0.5,WORLD_Z/2-0.8); const w=fieldToWorld((Math.random()*2-1)*hx,(Math.random()*2-1)*hz); x=w.x; z=w.z; }
+        else { const R=Math.max(3,(FIELD_R||8)-2); const r=Math.sqrt(Math.random())*R, a=Math.random()*Math.PI*2; x=Math.cos(a)*r; z=Math.sin(a)*r; }
+        let ok=true;
+        for(const s of (spots||[])){ if(s && Math.hypot(x-s.x,z-s.z)<2.5){ ok=false; break; } }   // 通常発掘点から2.5m以上
+        if(ok) return new THREE.Vector3(x, GROUND_Y, z);
+    }
+    return new THREE.Vector3(2, GROUND_Y, 2);
+}
+function clearStarPoint(){ if(GAME.star){ if(GAME.star.block)stage.remove(GAME.star.block); if(GAME.star.star)stage.remove(GAME.star.star); GAME.star=null; } }
+function spawnStarPoint(){
+    clearStarPoint();
+    const pos=starFieldPos();
+    const fs=Math.min(1.0, fieldScale())*0.9;
+    const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.9*fs, DIG_BLOCK*fs),
+        new THREE.MeshStandardMaterial({color:0xffcf3a, emissive:0xffaa00, emissiveIntensity:0.55, roughness:0.45, metalness:0.35}));
+    block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.45*fs, pos.z);
+    block.userData.hitR=DIG_BLOCK*fs*1.1;
+    stage.add(block);
+    const star=makeStarSprite(); star.scale.setScalar(0.6*Math.max(0.7,fs));
+    star.position.set(pos.x, GROUND_Y+DIG_BLOCK*fs+0.5*fs, pos.z); stage.add(star);
+    GAME.star={ isStar:true, pos:pos.clone(), block, star, fs, progress:0, digNeed:6, discovered:true, digReady:false, done:false };
+}
+function triggerSpecial(){
+    // TODO: 今後SPECIALの中身を実装。今は発動の合図（演出）のみ。
+    spawnDirt(GAME.star.pos, 24); sfxBark();
+    if(typeof chord==="function") chord([784,988,1175,1568],0.14,"triangle",0.5);
+    vibrate(200,0.9);
+    GAME.starUsed=true;   // このプレイでは復活しない
+    showToast("⭐ スターポイント！ SPECIAL 発動！");
 }
 // 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
 function discoverTarget(t){
@@ -3293,6 +3348,7 @@ function restartCollection(){
 // Ｙボタン長押し / リセットボタン：図鑑リセット＋ワールド再センター。TAはスタンバイへ
 function resetDexAndStandby(rotate){
     if(rotate) recenterFieldHere();                            // 左手グリップ＋Yのときだけ基準（中央/向き）を設定
+    GAME.starUsed=false;                                       // リセットでスターポイント復活可能に
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     GAME.collectedCount=0; GAME.score=0; GAME.askCount=0;
