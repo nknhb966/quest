@@ -1325,7 +1325,8 @@ function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def) return null;
     if(!def.body && def.builder){
-        const body=def.builder();
+        const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=VOX; dinoSmooth=false;   // 相棒はブロック調で軽く生成
+        let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
         body.updateMatrixWorld(true);
         if(!body.userData.wings){                       // 飛行タイプ以外は足を接地(y=0)にそろえる
             const bb=new THREE.Box3().setFromObject(body);
@@ -1370,8 +1371,25 @@ function refreshBuddyUI(){
     if(btn) btn.textContent="相棒："+((cur.label||"").split(" ")[0]||"🦖");
 }
 
-// 相棒＝犬（1種のみ。切り替えUIは自動的に隠れる）
-registerCompanion("dog", { label:"🐶 いぬ", askLabel:"🐶 きいてみる", builder:build_dog, body:null, lines:dogLines() });
+// ── 相棒パラメータ（各5段階／相棒ごとに1〜5を持つ）──
+const POWER_LV = [1.0, 1.6, 2.2, 3.0, 4.0];   // POWER：掘る力（1回の発掘で進む量。大きいほど速い）
+const SCOPE_LV = [0.75, 0.9, 1.0, 1.2, 1.5];  // SCOPE：発掘ポイントを発見できる距離の倍率
+const BONUS_LV = [0.6, 0.8, 1.0, 1.3, 1.7];   // BONUS：撫でたときの発見確率アップ率の倍率
+function companionStats(){
+    const c=COMPANIONS[companionKind]||COMPANIONS[DEFAULT_KIND];
+    const g=v=>Math.max(1,Math.min(5, v||3));
+    return { power:POWER_LV[g(c.power)-1], scope:SCOPE_LV[g(c.scope)-1], bonus:BONUS_LV[g(c.bonus)-1] };
+}
+// 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(), power:3, scope:3, bonus:3 });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dogLines(), power:5, scope:2, bonus:2 });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dogLines(), power:4, scope:3, bonus:3 });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dogLines(), power:3, scope:3, bonus:4 });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dogLines(), power:4, scope:4, bonus:2 });
+registerCompanion("ptera",       { label:"🦅 プテラ",        askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dogLines(), power:2, scope:5, bonus:3 });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:dogLines(), power:3, scope:4, bonus:4 });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:dogLines(), power:3, scope:3, bonus:4 });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:dogLines(), power:4, scope:4, bonus:2 });
 setCompanion("dog");
 
 // 吹き出しスプライト
@@ -2785,7 +2803,7 @@ function updateBlockGlow(now){
     }
 }
 function doDig(t){
-    t.progress++;
+    t.progress += companionStats().power;   // POWER:掘る力
     sfxDig();
     spawnDirt(t.pos, 8);
     // 掘るほどブロックが削れていく
@@ -2879,7 +2897,7 @@ function petDog(){
     // 確率アップ：非単調（通常/ラッキー/会心）＋種類別の効果音
     const r=Math.random(); let up, kind;
     if(r<0.10){ up=0.30; kind=2; } else if(r<0.34){ up=0.18; kind=1; } else { up=0.08; kind=0; }
-    petBoost=Math.min(0.85, petBoost+up);
+    petBoost=Math.min(0.85, petBoost+up*companionStats().bonus);   // BONUS:相棒ごとの撫でボーナス倍率
     if(kind===2){ chord([523,659,784,1047],0.10,"triangle",0.5); showToast("会心のなでなで！確率が一気にアップ！"); }
     else if(kind===1){ chord([523,784],0.07,"triangle",0.45); showToast("ラッキー！確率アップ"); }
     else sfxBark();
@@ -3203,7 +3221,7 @@ function updateScan(dt, isVR, now){
     let heat=0;
     for(const t of GAME.targets){
         const dmods=toolMods();
-        const detectR = t.diff.detectR * dmods.detectMul * DETECT_SCALE;   // 旧コードの距離×倍率/広さ連動
+        const detectR = t.diff.detectR * dmods.detectMul * DETECT_SCALE * companionStats().scope;   // 旧コードの距離×倍率/広さ×SCOPE(相棒)
         let bestSig=0, bestProbe=null;
         for(const pr of probes){
             const dist=Math.hypot(pr.pos.x-t.pos.x, pr.pos.z-t.pos.z);
