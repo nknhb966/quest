@@ -2470,6 +2470,7 @@ function taBeginCountdown(){
 }
 function taStartRun(){
     TA.state="run";
+    GAME.starUsed=false;   // タイムアタックの各挑戦でスターを出す
     GAME.endT=performance.now()+TIME_LIMIT*1000;
     worldHud.hide();
     afterSite(()=>{ clearTargets(); spawnAllTargets(); });
@@ -2865,11 +2866,13 @@ function starFieldPos(){
     let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
     for(const s of (ARTPOS||[])){ if(!s)continue; minX=Math.min(minX,s.x);maxX=Math.max(maxX,s.x);minZ=Math.min(minZ,s.z);maxZ=Math.max(maxZ,s.z); }
     const hasBox=isFinite(minX);
+    if(hasBox){ const mx=Math.max(1.0,(maxX-minX)*0.15), mz=Math.max(1.0,(maxZ-minZ)*0.15);   // 内側へ15%（最低1m）
+        if(maxX-minX>2*mx){ minX+=mx; maxX-=mx; } if(maxZ-minZ>2*mz){ minZ+=mz; maxZ-=mz; } }
     for(let k=0;k<120;k++){
         let x,z;
-        if(customWorldOn()){ const hx=Math.max(0.5,WORLD_X/2-0.8), hz=Math.max(0.5,WORLD_Z/2-0.8); const w=fieldToWorld((Math.random()*2-1)*hx,(Math.random()*2-1)*hz); x=w.x; z=w.z; }
-        else if(hasBox){ x=minX+Math.random()*(maxX-minX); z=minZ+Math.random()*(maxZ-minZ); }   // サイト：発掘点の範囲内
-        else { const R=Math.max(2,(FIELD_R||6)-2), r=Math.sqrt(Math.random())*R, a=Math.random()*Math.PI*2; x=Math.cos(a)*r; z=Math.sin(a)*r; }
+        if(customWorldOn()){ const mgx=Math.max(1.0,WORLD_X*0.15), mgz=Math.max(1.0,WORLD_Z*0.15); const hx=Math.max(0.4,WORLD_X/2-mgx), hz=Math.max(0.4,WORLD_Z/2-mgz); const w=fieldToWorld((Math.random()*2-1)*hx,(Math.random()*2-1)*hz); x=w.x; z=w.z; }
+        else if(hasBox){ x=minX+Math.random()*(maxX-minX); z=minZ+Math.random()*(maxZ-minZ); }   // サイト：発掘点範囲の内側
+        else { const R=Math.max(1.5,((FIELD_R||6)-2)*0.8), r=Math.sqrt(Math.random())*R, a=Math.random()*Math.PI*2; x=Math.cos(a)*r; z=Math.sin(a)*r; }
         let ok=true;
         for(const s of (spots||[])){ if(s && Math.hypot(x-s.x,z-s.z)<2.0){ ok=false; break; } }   // 通常発掘点から2m以上
         if(ok) return new THREE.Vector3(x, GROUND_Y, z);
