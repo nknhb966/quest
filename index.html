@@ -1414,15 +1414,15 @@ function updateBuddyStandbyUI(){
         document.body.appendChild(el); }
     el.innerHTML="";
     if(buddyRandom){
-        const lab=document.createElement("div"); lab.textContent="相棒：ランダム"; lab.style.cssText="color:#e6c26a;font:bold 13px sans-serif;width:100%;text-align:right;margin-bottom:2px;"; el.appendChild(lab);
+        const lab=document.createElement("div"); lab.textContent="相棒：ランダム"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;margin-bottom:4px;"; el.appendChild(lab);
         const bag=document.createElement("button"); bag.textContent="🎁 ふくろから出す";
         bag.style.cssText="font:bold 14px sans-serif;padding:6px 14px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;";
         bag.onclick=()=>{ const k=drawRandomCompanion(); showCompanionCard(k, true); updateBuddyStandbyUI(); };
         el.appendChild(bag);
     } else {
-        const lab=document.createElement("div"); lab.textContent="相棒を選ぶ："; lab.style.cssText="color:#e6c26a;font:bold 13px sans-serif;align-self:center;width:100%;text-align:right;margin-bottom:2px;"; el.appendChild(lab);
+        const lab=document.createElement("div"); lab.textContent="相棒を選ぶ"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;margin-bottom:4px;"; el.appendChild(lab);
         COMPANION_ORDER.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
-            const b=document.createElement("button"); b.textContent=c.label||k;
+            const b=document.createElement("button"); b.textContent=(c.label||k).replace(/^\S+\s+/,"");
             b.style.cssText="flex:1 1 96px;min-width:88px;font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
             b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); };
             el.appendChild(b);
@@ -1434,15 +1434,15 @@ function updateBuddyStandbyUI(){
     el.appendChild(start);
     el.style.display="flex";
 }
-registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, era:"—", region:"—", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
-registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
-registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
-registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
-registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
-registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, rarity:"通常", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, rarity:"通常", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, rarity:"通常", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, era:"—", region:"—", dinoFeat:"たよれる相棒のいぬ。", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された大型の竜脚類。長い首と尾を持つ。", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
+registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, rarity:"通常", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, rarity:"通常", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, rarity:"通常", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
 setCompanion("dog");
 // 相棒選択時に情報カードを目の前に表示（開始前）
 function showCompanionCard(k, bag){
@@ -1462,7 +1462,7 @@ function showCompanionCard(k, bag){
       +'<div style="text-align:left;font-size:14px;line-height:1.7">POWER\uff08\u6398\u308b\u529b\uff09\uff1a'+bar(c.power)+'<br>SCOPE\uff08\u767a\u898b\u8ddd\u96e2\uff09\uff1a'+bar(c.scope)+'<br>BONUS\uff08\u6491\u3067\u52b9\u679c\uff09\uff1a'+bar(c.bonus)+'<span style="float:right;color:#e6c26a">\u5408\u8a08 '+total+'</span></div>'
       +'<div style="margin-top:8px;font-size:13px;color:#ffd86a">SPECIAL\u300c'+(sp.name||"-")+'\u300d</div>'
       +'<div style="font-size:11px;color:#cdbf94">'+specialLine+'</div>'
-      +'<div style="margin-top:6px;font-size:11px;color:#bfb488;text-align:left">'+(c.feature||"")+'</div>'
+      +'<div style="margin-top:6px;font-size:11px;color:#cdbf94;text-align:left">'+(c.dinoFeat||"")+'</div>'+'<div style="margin-top:4px;font-size:11px;color:#bfb488;text-align:left">'+(c.feature||"")+'</div>'
       +'<div style="margin-top:6px;font-size:12px;white-space:pre-line;border-top:1px solid #6b5a2e;padding-top:6px">'+(c.cardText||"")+'</div>';
     el.style.opacity="1";
     if(bag){ el.style.transition="none"; el.style.transform="translate(-50%,-50%) scale(0.2) rotate(-8deg)";
@@ -1492,7 +1492,8 @@ function showBuddyCardVR(k){
     g.fillStyle="#cdbf94"; g.font="20px sans-serif";
     g.fillText(k==="dog"?("未発見を発見：約"+sp.discN+"カ所"):("発見 "+sp.discP+"% /"+sp.discN+"　発掘 "+(100-sp.discP)+"% /"+sp.digN),36,436);
     const wrap=(txt,x,y,max,lh)=>{ const cs=(txt||"").split("\n"); let yy=y; for(const ln of cs){ let cur=""; for(const ch of ln){ if(g.measureText(cur+ch).width>max){ g.fillText(cur,x,yy); yy+=lh; cur=ch; } else cur+=ch; } g.fillText(cur,x,yy); yy+=lh; } return yy; };
-    g.fillStyle="#bfb488"; g.font="19px sans-serif"; let yy=wrap(c.feature,36,480,440,26);
+    g.fillStyle="#cdbf94"; g.font="18px sans-serif"; let yy=wrap(c.dinoFeat,36,478,440,24);
+    g.fillStyle="#bfb488"; g.font="18px sans-serif"; yy=wrap(c.feature,36,yy+6,440,24);
     g.fillStyle="#fdf3d5"; g.font="21px sans-serif"; wrap(c.cardText,36,yy+12,440,28);
     const tex=new THREE.CanvasTexture(cv);
     if(!_buddyCardVR){ _buddyCardVR=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.45), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false})); _buddyCardVR.renderOrder=1000; scene.add(_buddyCardVR); }
@@ -1597,9 +1598,20 @@ const dexPanel=(function(){
             if(e&&e.found){
                 ctx.fillStyle="#efe2c4"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
                 if(curTarget==="dino"){
+                    const dk=(typeof DINOS!=="undefined"&&DINOS[i])?DINOS[i].key:null;
+                    const cc=dk?COMPANIONS[dk]:null;
                     ctx.textAlign="center"; ctx.textBaseline="middle";
-                    ctx.fillStyle="rgba(150,120,60,.5)"; ctx.font="bold 40px sans-serif"; ctx.fillText("🦖", x+cw/2, y+chh/2-14);
-                    ctx.fillStyle="#6e5a2e"; ctx.font="bold 22px sans-serif"; ctx.fillText(curName(i), x+cw/2, y+chh/2+22);
+                    ctx.fillStyle="#4a3a18"; ctx.font="bold 20px sans-serif"; ctx.fillText(curName(i), x+cw/2, y+26);
+                    if(cc){
+                        ctx.fillStyle="#a06a1e"; ctx.font="13px sans-serif"; ctx.fillText(cc.rarity||"", x+cw/2, y+48);
+                        const bar=v=>"★".repeat(v||0)+"☆".repeat(5-(v||0));
+                        ctx.textAlign="left"; ctx.fillStyle="#6e5a2e"; ctx.font="13px sans-serif";
+                        ctx.fillText("P "+bar(cc.power), x+10, y+chh-50);
+                        ctx.fillText("S "+bar(cc.scope), x+10, y+chh-32);
+                        ctx.fillText("B "+bar(cc.bonus), x+10, y+chh-14);
+                    } else {
+                        ctx.fillStyle="rgba(150,120,60,.5)"; ctx.font="bold 40px sans-serif"; ctx.fillText("🦖", x+cw/2, y+chh/2+8);
+                    }
                 } else {
                     const im=imgs[i];
                     if(im&&im.complete&&im.naturalWidth){ const s=Math.min(cw/im.naturalWidth,(chh-16)/im.naturalHeight), iw=im.naturalWidth*s, ih=im.naturalHeight*s;
