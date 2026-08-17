@@ -412,7 +412,7 @@
 </div>
 
 <!-- 図鑑ボタン（プレイ中/右上） -->
-<button id="dexBtn">📖 図鑑</button>
+<button id="dexBtn" style="display:none">📖 図鑑</button>
 
 <!-- デスクトップ HUD -->
 <div id="dhud">
@@ -1410,7 +1410,7 @@ function updateBuddyStandbyUI(){
     const show = (typeof GAME!=="undefined" && GAME.desktop && isStandby());
     if(!show){ if(el) el.style.display="none"; return; }
     if(!el){ el=document.createElement("div"); el.id="buddyStandby";
-        el.style.cssText="position:fixed;right:10px;bottom:64px;z-index:9996;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:60vw;background:rgba(20,16,8,0.78);border:2px solid #e6c26a;border-radius:12px;padding:8px 10px;";
+        el.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9996;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:94vw;background:rgba(20,16,8,0.82);border:2px solid #e6c26a;border-radius:12px;padding:8px 10px;";
         document.body.appendChild(el); }
     el.innerHTML="";
     if(buddyRandom){
@@ -2661,9 +2661,9 @@ function updateResultBtn(){
 function updateTAButton(){
     updateResultBtn();
     const b=document.getElementById("dTA"); if(!b) return;
-    const show = GAME.active && GAME.mode==="time" && TA.state!=="run";
+    const show = GAME.active && GAME.mode==="time" && TA.state==="results";   // HUDボタンは結果を閉じる時だけ（スタートはスタンバイUIで）
     b.style.display = show ? "" : "none";
-    b.textContent = TA.state==="results" ? "記録を閉じる" : (TA.state==="countdown" ? "…" : "スタート");
+    b.textContent = "記録を閉じる";
 }
 
 /* HUD更新 */
