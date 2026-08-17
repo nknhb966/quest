@@ -1386,15 +1386,15 @@ function companionStats(){
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
 const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];   // 合計降順（犬先頭）
-registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:3, scope:3, bonus:3, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
-registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
-registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
-registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
-registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
-registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, rarity:"通常", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, rarity:"通常", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, rarity:"通常", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:3, scope:3, bonus:3, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, era:"—", region:"—", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
+registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, rarity:"通常", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, rarity:"通常", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, rarity:"通常", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
 setCompanion("dog");
 // 相棒選択時に情報カードを目の前に表示（開始前）
 function showCompanionCard(k){
@@ -1405,17 +1405,57 @@ function showCompanionCard(k){
         document.body.appendChild(el); }
     const sp=c.special||{};
     const bar=v=>"\u2605".repeat(v||0)+"\u2606".repeat(5-(v||0));
+    const total=(c.power||0)+(c.scope||0)+(c.bonus||0);
     const specialLine=(k==="dog")?("\u672a\u767a\u898b\u3092\u767a\u898b\uff1a\u7d04"+sp.discN+"\u30ab\u6240")
         :("\u767a\u898b "+sp.discP+"% / "+sp.discN+"\u30ab\u6240\u3000\u767a\u6398 "+(100-sp.discP)+"% / "+sp.digN+"\u30ab\u6240");
     el.innerHTML='<div style="font-size:22px;font-weight:bold;margin-bottom:2px">'+(c.label||k)+'</div>'
-      +'<div style="font-size:12px;color:#e6c26a;margin-bottom:8px">'+(c.rarity||"")+'\u3000'+(c.cat||"")+'\u3000'+(c.diet||"")+'</div>'
-      +'<div style="text-align:left;font-size:14px;line-height:1.7">POWER\uff08\u6398\u308b\u529b\uff09\uff1a'+bar(c.power)+'<br>SCOPE\uff08\u767a\u898b\u8ddd\u96e2\uff09\uff1a'+bar(c.scope)+'<br>BONUS\uff08\u6491\u3067\u52b9\u679c\uff09\uff1a'+bar(c.bonus)+'</div>'
+      +'<div style="font-size:12px;color:#e6c26a;margin-bottom:6px">'+(c.rarity||"")+'</div>'
+      +'<div style="text-align:left;font-size:11px;color:#cdbf94;line-height:1.6;margin-bottom:6px">\u5206\u985e\uff1a'+(c.cat||"-")+'\u3000\u98df\u6027\uff1a'+(c.diet||"-")+'<br>\u6642\u4ee3\uff1a'+(c.era||"-")+'\u3000\u5730\u57df\uff1a'+(c.region||"-")+'</div>'
+      +'<div style="text-align:left;font-size:14px;line-height:1.7">POWER\uff08\u6398\u308b\u529b\uff09\uff1a'+bar(c.power)+'<br>SCOPE\uff08\u767a\u898b\u8ddd\u96e2\uff09\uff1a'+bar(c.scope)+'<br>BONUS\uff08\u6491\u3067\u52b9\u679c\uff09\uff1a'+bar(c.bonus)+'<span style="float:right;color:#e6c26a">\u5408\u8a08 '+total+'</span></div>'
       +'<div style="margin-top:8px;font-size:13px;color:#ffd86a">SPECIAL\u300c'+(sp.name||"-")+'\u300d</div>'
       +'<div style="font-size:11px;color:#cdbf94">'+specialLine+'</div>'
-      +'<div style="margin-top:8px;font-size:12px;white-space:pre-line;border-top:1px solid #6b5a2e;padding-top:8px">'+(c.cardText||"")+'</div>';
+      +'<div style="margin-top:6px;font-size:11px;color:#bfb488;text-align:left">'+(c.feature||"")+'</div>'
+      +'<div style="margin-top:6px;font-size:12px;white-space:pre-line;border-top:1px solid #6b5a2e;padding-top:6px">'+(c.cardText||"")+'</div>';
     el.style.opacity="1";
     if(showCompanionCard._t) clearTimeout(showCompanionCard._t);
-    showCompanionCard._t=setTimeout(()=>{ el.style.opacity="0"; }, 4000);
+    showCompanionCard._t=setTimeout(()=>{ el.style.opacity="0"; }, 5000);
+}
+// VR/AR用の相棒カード（ワールド空間・カメラ前方）
+let _buddyCardVR=null, _buddyCardVRHide=0;
+function showBuddyCardVR(k){
+    const c=COMPANIONS[k]; if(!c || typeof scene==="undefined") return;
+    const cv=document.createElement("canvas"); cv.width=512; cv.height=680; const g=cv.getContext("2d");
+    g.fillStyle="#241f13"; g.fillRect(0,0,512,680); g.strokeStyle="#e6c26a"; g.lineWidth=12; g.strokeRect(8,8,496,664);
+    g.textAlign="center"; g.fillStyle="#fdf3d5"; g.font="bold 46px sans-serif"; g.fillText(c.label||k,256,74);
+    g.fillStyle="#e6c26a"; g.font="28px sans-serif"; g.fillText(c.rarity||"",256,116);
+    g.fillStyle="#cdbf94"; g.font="22px sans-serif";
+    g.fillText("分類："+(c.cat||"-")+"　食性："+(c.diet||"-"),256,156);
+    g.fillText("時代："+(c.era||"-")+"　地域："+(c.region||"-"),256,188);
+    const bar=v=>"★".repeat(v||0)+"☆".repeat(5-(v||0));
+    g.textAlign="left"; g.fillStyle="#fdf3d5"; g.font="30px sans-serif";
+    g.fillText("POWER "+bar(c.power),36,250); g.fillText("SCOPE "+bar(c.scope),36,296); g.fillText("BONUS "+bar(c.bonus),36,342);
+    const total=(c.power||0)+(c.scope||0)+(c.bonus||0);
+    g.textAlign="right"; g.fillStyle="#e6c26a"; g.font="26px sans-serif"; g.fillText("合計 "+total,476,250);
+    const sp=c.special||{};
+    g.textAlign="left"; g.fillStyle="#ffd86a"; g.font="26px sans-serif"; g.fillText("SPECIAL「"+(sp.name||"-")+"」",36,404);
+    g.fillStyle="#cdbf94"; g.font="20px sans-serif";
+    g.fillText(k==="dog"?("未発見を発見：約"+sp.discN+"カ所"):("発見 "+sp.discP+"% /"+sp.discN+"　発掘 "+(100-sp.discP)+"% /"+sp.digN),36,436);
+    const wrap=(txt,x,y,max,lh)=>{ const cs=(txt||"").split("\n"); let yy=y; for(const ln of cs){ let cur=""; for(const ch of ln){ if(g.measureText(cur+ch).width>max){ g.fillText(cur,x,yy); yy+=lh; cur=ch; } else cur+=ch; } g.fillText(cur,x,yy); yy+=lh; } return yy; };
+    g.fillStyle="#bfb488"; g.font="19px sans-serif"; let yy=wrap(c.feature,36,480,440,26);
+    g.fillStyle="#fdf3d5"; g.font="21px sans-serif"; wrap(c.cardText,36,yy+12,440,28);
+    const tex=new THREE.CanvasTexture(cv);
+    if(!_buddyCardVR){ _buddyCardVR=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.45), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false})); _buddyCardVR.renderOrder=1000; scene.add(_buddyCardVR); }
+    else { if(_buddyCardVR.material.map) _buddyCardVR.material.map.dispose(); _buddyCardVR.material.map=tex; }
+    _buddyCardVR.visible=true; _buddyCardVRHide=performance.now()+5000;
+}
+function updateBuddyCardVR(){
+    if(!_buddyCardVR) return;
+    if(performance.now()>_buddyCardVRHide){ _buddyCardVR.visible=false; return; }
+    const cw=camera.getWorldPosition(new THREE.Vector3());
+    const q=camera.getWorldQuaternion(new THREE.Quaternion());
+    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
+    _buddyCardVR.position.copy(cw).addScaledVector(fwd,0.7).add(new THREE.Vector3(0,-0.05,0));
+    _buddyCardVR.quaternion.copy(q);
 }
 
 // 吹き出しスプライト
@@ -3272,6 +3312,7 @@ renderer.setAnimationLoop(()=>{
     updateSparkles(dt);
     updateWorldAura(dt);
     updateFieldBorder();
+    if(typeof updateBuddyCardVR==="function") updateBuddyCardVR();
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
@@ -3505,6 +3546,16 @@ function handleVRDig(){
         if(src.handedness==="left" && src.gamepad){
             const y=src.gamepad.buttons[5]?.pressed ?? false;
             const grip=src.gamepad.buttons[1]?.pressed ?? false;   // 左中指グリップ
+            const trig=src.gamepad.buttons[0]?.pressed ?? false;   // 左人差し指トリガー
+            const x=src.gamepad.buttons[4]?.pressed ?? false;
+            const selMode = grip && trig;                          // 相棒選択モード
+            if(selMode){
+                if(!GAME._prevSel){ GAME._buddyIdx=0; setCompanion(COMPANION_ORDER[0]); showBuddyCardVR(COMPANION_ORDER[0]); vibrate(60,0.6); }   // 押した瞬間は必ず犬
+                if(x && !GAME._prevX){ GAME._buddyIdx=(GAME._buddyIdx+1)%COMPANION_ORDER.length; const kk=COMPANION_ORDER[GAME._buddyIdx]; setCompanion(kk); showBuddyCardVR(kk); vibrate(40,0.5); }   // X＝順
+                if(y && !GAME._prevY){ GAME._buddyIdx=(GAME._buddyIdx-1+COMPANION_ORDER.length)%COMPANION_ORDER.length; const kk=COMPANION_ORDER[GAME._buddyIdx]; setCompanion(kk); showBuddyCardVR(kk); vibrate(40,0.5); }   // Y＝逆
+                GAME._prevX=x; GAME._prevY=y; GAME._prevSel=selMode; return;   // 選択中は通常のX/Y動作をしない
+            }
+            GAME._prevSel=selMode;
             if(y && !GAME._prevY){ GAME._yDownAt=performance.now(); GAME._yFired=false; }
             if(y && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し＝リセット
                 GAME._yFired=true; resetDexAndStandby(grip); vibrate(200,0.95); chord([523,784,1047],0.06,"triangle",0.5);
@@ -3512,7 +3563,6 @@ function handleVRDig(){
             }
             GAME._prevY=y;
             // Xボタン：短押し=矩形オーラ7秒／長押し=オーラ+ヒント／グリップ+長押し=全発掘一斉完了
-            const x=src.gamepad.buttons[4]?.pressed ?? false;
             if(x && !GAME._prevX){ GAME._xDownAt=performance.now(); GAME._xFired=false; }
             if(x && !GAME._xFired && performance.now()-(GAME._xDownAt||0)>800){
                 GAME._xFired=true;
