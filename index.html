@@ -1410,7 +1410,7 @@ function updateBuddyStandbyUI(){
     const show = (typeof GAME!=="undefined" && GAME.desktop && isStandby());
     if(!show){ if(el) el.style.display="none"; return; }
     if(!el){ el=document.createElement("div"); el.id="buddyStandby";
-        el.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9996;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:94vw;background:rgba(20,16,8,0.82);border:2px solid #e6c26a;border-radius:12px;padding:8px 10px;";
+        el.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9996;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;width:96vw;box-sizing:border-box;background:rgba(20,16,8,0.82);border:2px solid #e6c26a;border-radius:12px;padding:10px 12px;";
         document.body.appendChild(el); }
     el.innerHTML="";
     if(buddyRandom){
@@ -1423,7 +1423,7 @@ function updateBuddyStandbyUI(){
         const lab=document.createElement("div"); lab.textContent="相棒を選ぶ："; lab.style.cssText="color:#e6c26a;font:bold 13px sans-serif;align-self:center;width:100%;text-align:right;margin-bottom:2px;"; el.appendChild(lab);
         COMPANION_ORDER.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
             const b=document.createElement("button"); b.textContent=c.label||k;
-            b.style.cssText="font:12px sans-serif;padding:4px 8px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
+            b.style.cssText="flex:1 1 96px;min-width:88px;font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
             b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); };
             el.appendChild(b);
         });
