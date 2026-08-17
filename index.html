@@ -655,6 +655,8 @@ function setDigTarget(target){
     dinoSmooth = (target==="dino2");
     dexData = (curTarget==="dino") ? dexDino : dexArt;
     chosenDigTarget = target;   // dino / dino2 / artifact を保持
+    // 相棒ボディをボクセル連動で作り直す（出土品/なめらか恐竜→なめらか、シンプル恐竜→ブロック）
+    if(typeof COMPANIONS!=="undefined"){ for(const kk in COMPANIONS){ const d=COMPANIONS[kk]; if(d && d.body){ if(typeof dog!=="undefined") dog.remove(d.body); d.body=null; } } if(typeof ensureBody==="function") ensureBody(companionKind); }
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
     if(typeof _dinoCacheB!=="undefined") dinoDigModels = dinoSmooth ? _dinoCacheS : _dinoCacheB;   // 事前生成済みキャッシュに切替
     if(typeof refreshDexHTML==="function") refreshDexHTML();
@@ -1325,7 +1327,8 @@ function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def) return null;
     if(!def.body && def.builder){
-        const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=VOX; dinoSmooth=false;   // 相棒はブロック調で軽く生成
+        const smooth = (typeof chosenDigTarget!=="undefined" && chosenDigTarget!=="dino");   // 出土品/なめらか恐竜のときは相棒もなめらか
+        const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
         let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
         body.updateMatrixWorld(true);
         if(!body.userData.wings){                       // 飛行タイプ以外は足を接地(y=0)にそろえる
@@ -1350,18 +1353,19 @@ function line(key){
 }
 // 切り替えUI（相棒が2種類以上あるときだけ表示）
 function refreshBuddyUI(){
-    const keys=Object.keys(COMPANIONS);
+    const order=(typeof COMPANION_ORDER!=="undefined")?COMPANION_ORDER.filter(k=>COMPANIONS[k]):Object.keys(COMPANIONS);
+    const keys=order;
     const seg=document.getElementById("segBuddy"), wrap=document.getElementById("optBuddy"), btn=document.getElementById("dBuddy");
     const many=keys.length>1;
     if(wrap) wrap.style.display = many ? "" : "none";
-    if(btn)  btn.style.display  = many ? "" : "none";
+    if(btn)  btn.style.display  = "none";   // 相棒選択は開始前のみ（ゲーム中HUDボタンは出さない）
     if(seg){
         seg.innerHTML="";
         keys.forEach(k=>{
             const b=document.createElement("button");
             b.dataset.v=k; b.textContent=COMPANIONS[k].label||k;
             if(k===companionKind) b.classList.add("on");
-            b.onclick=()=>setCompanion(k);
+            b.onclick=()=>{ setCompanion(k); showCompanionCard(k); };   // 選択時にカード表示
             seg.appendChild(b);
         });
     }
@@ -1381,16 +1385,38 @@ function companionStats(){
     return { power:POWER_LV[g(c.power)-1], scope:SCOPE_LV[g(c.scope)-1], bonus:BONUS_LV[g(c.bonus)-1] };
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
-registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(), power:3, scope:3, bonus:3 });
-registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, special:{name:"王者の一撃", discP:40, discN:5, digN:4} });
-registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, special:{name:"トリプルホーン", discP:45, discN:4, digN:3} });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, special:{name:"テールスパイク", discP:45, discN:3, digN:3} });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, special:{name:"ハイリーチ", discP:75, discN:5, digN:2} });
-registerCompanion("ptera",       { label:"🦅 プテラ",        askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, special:{name:"スカイサーチ", discP:70, discN:6, digN:2} });
-registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, special:{name:"ハンティング", discP:45, discN:4, digN:4} });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, special:{name:"クイックサーチ", discP:70, discN:3, digN:3} });
-registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, special:{name:"ビッグボディ", discP:60, discN:5, digN:3} });
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:3, scope:3, bonus:3, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
+registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, rarity:"通常", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, rarity:"通常", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, rarity:"通常", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
 setCompanion("dog");
+const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];
+// 相棒選択時に情報カードを目の前に表示（開始前）
+function showCompanionCard(k){
+    const c=COMPANIONS[k]; if(!c) return;
+    let el=document.getElementById("buddyCard");
+    if(!el){ el=document.createElement("div"); el.id="buddyCard";
+        el.style.cssText="position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);z-index:9997;width:280px;max-width:82vw;background:linear-gradient(160deg,#2a2416,#3a2f16);border:3px solid #e6c26a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.5);color:#fdf3d5;padding:16px 18px;font-family:sans-serif;text-align:center;opacity:0;transition:opacity 0.2s;pointer-events:none;";
+        document.body.appendChild(el); }
+    const sp=c.special||{};
+    const bar=v=>"\u2605".repeat(v||0)+"\u2606".repeat(5-(v||0));
+    const specialLine=(k==="dog")?("\u672a\u767a\u898b\u3092\u767a\u898b\uff1a\u7d04"+sp.discN+"\u30ab\u6240")
+        :("\u767a\u898b "+sp.discP+"% / "+sp.discN+"\u30ab\u6240\u3000\u767a\u6398 "+(100-sp.discP)+"% / "+sp.digN+"\u30ab\u6240");
+    el.innerHTML='<div style="font-size:22px;font-weight:bold;margin-bottom:2px">'+(c.label||k)+'</div>'
+      +'<div style="font-size:12px;color:#e6c26a;margin-bottom:8px">'+(c.rarity||"")+'\u3000'+(c.cat||"")+'\u3000'+(c.diet||"")+'</div>'
+      +'<div style="text-align:left;font-size:14px;line-height:1.7">POWER\uff08\u6398\u308b\u529b\uff09\uff1a'+bar(c.power)+'<br>SCOPE\uff08\u767a\u898b\u8ddd\u96e2\uff09\uff1a'+bar(c.scope)+'<br>BONUS\uff08\u6491\u3067\u52b9\u679c\uff09\uff1a'+bar(c.bonus)+'</div>'
+      +'<div style="margin-top:8px;font-size:13px;color:#ffd86a">SPECIAL\u300c'+(sp.name||"-")+'\u300d</div>'
+      +'<div style="font-size:11px;color:#cdbf94">'+specialLine+'</div>'
+      +'<div style="margin-top:8px;font-size:12px;white-space:pre-line;border-top:1px solid #6b5a2e;padding-top:8px">'+(c.cardText||"")+'</div>';
+    el.style.opacity="1";
+    if(showCompanionCard._t) clearTimeout(showCompanionCard._t);
+    showCompanionCard._t=setTimeout(()=>{ el.style.opacity="0"; }, 4000);
+}
 
 // 吹き出しスプライト
 const bubble = (function(){
@@ -2930,7 +2956,10 @@ function triggerSpecial(){
     specialFlash();
     if(typeof chord==="function") chord([784,988,1175,1568,2093],0.16,"triangle",0.6);
     vibrate(300,1.0);
-    showToast(`⭐ SPECIAL「${title}」！ ${done}カ所を${verb}！`, 3200);
+    const msg=`⭐ SPECIAL 発動！\n「${title}」\n${done}カ所を${verb}！`;
+    { const tel=document.getElementById("toast"); if(tel) tel.style.whiteSpace="pre-line"; }
+    showToast(msg, 3200);
+    if(typeof bubble!=="undefined" && bubble.say) bubble.say(msg, 3200);   // VR/ARでも読めるよう相棒バブルにも
 }
 function starBurst(pos){ if(typeof spawnDirt==="function") spawnDirt(pos, 16); }
 function specialFlash(){
@@ -2938,7 +2967,7 @@ function specialFlash(){
     if(!el){ el=document.createElement("div"); el.id="specialFlash";
         el.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9998;background:radial-gradient(circle,rgba(255,225,120,0.7),rgba(255,180,40,0.2) 60%,transparent 75%);opacity:0;"; document.body.appendChild(el); }
     el.style.transition="opacity 0.15s"; el.style.opacity="1";
-    setTimeout(()=>{ el.style.transition="opacity 0.8s"; el.style.opacity="0"; }, 3000);   // 3秒間表示してからフェードアウト
+    setTimeout(()=>{ el.style.transition="opacity 0.8s"; el.style.opacity="0"; }, 1500);   // 1.5秒間表示してからフェードアウト
 }
 // 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
 function discoverTarget(t, silent){
