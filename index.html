@@ -183,7 +183,7 @@
     body.desktop #dhud{ display:flex; }
     #dhud .bar{ pointer-events:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
         background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3); border-radius:12px; padding:9px 14px;
-        font-size:13px; color:#d7ccff; backdrop-filter:blur(6px); max-width:420px; width:auto; }
+        font-size:13px; color:#d7ccff; backdrop-filter:blur(6px); max-width:min(680px,94vw); width:auto; }
     #dhud .bar b{ color:#fff; } #dhud .k{ background:rgba(120,90,220,.35); border:1px solid rgba(180,140,255,.4);
         border-radius:5px; padding:1px 6px; font-weight:700; font-size:12px; }
     #dhud .pill{ pointer-events:auto; background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3);
@@ -1473,8 +1473,8 @@ function showCompanionCard(k, bag){
     if(bag){ el.style.transition="none"; el.style.transform="translate(-50%,-50%) scale(0.2) rotate(-8deg)";
         requestAnimationFrame(()=>{ el.style.transition="transform 0.5s cubic-bezier(.2,1.4,.4,1),opacity 0.2s"; el.style.transform="translate(-50%,-50%) scale(1) rotate(0deg)"; }); }
     else { el.style.transform="translate(-50%,-50%)"; }
-    if(showCompanionCard._t) clearTimeout(showCompanionCard._t);
-    showCompanionCard._t=setTimeout(()=>{ el.style.opacity="0"; el.style.pointerEvents="none"; }, 5000);
+    if(showCompanionCard._t){ clearTimeout(showCompanionCard._t); showCompanionCard._t=null; }
+    if(!bag){ showCompanionCard._t=setTimeout(()=>{ el.style.opacity="0"; el.style.pointerEvents="none"; }, 5000); }   // ランダム(袋)は時間で消さない
 }
 // VR/AR用の相棒カード（ワールド空間・カメラ前方）
 let _buddyCardVR=null, _buddyCardVRHide=0;
@@ -2773,7 +2773,7 @@ addEventListener("mousemove",e=>{
     if(!GAME.desktop || !document.pointerLockElement) return;
     yaw   -= e.movementX*0.0022;
     pitch -= e.movementY*0.0022;
-    pitch = Math.max(-Math.PI/6, Math.min(Math.PI/9, pitch));   // 下30度・上20度
+    pitch = Math.max(-Math.PI/4, Math.min(Math.PI/9, pitch));   // 下45度・上20度
 });
 
 /* =====================================================
@@ -2810,7 +2810,7 @@ function tMove(e){
             joyKnob.style.transform=`translate(${dx}px,${dy}px)`;
         } else if(t.identifier===touchLook.id){
             yaw   -= (t.clientX-touchLook.lx)*0.005;
-            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/6,Math.min(Math.PI/9,pitch));   // 下30度・上20度
+            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/4,Math.min(Math.PI/9,pitch));   // 下45度・上20度
             touchLook.lx=t.clientX; touchLook.ly=t.clientY;
         }
     }
