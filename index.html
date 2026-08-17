@@ -1385,6 +1385,7 @@ function companionStats(){
     return { power:POWER_LV[g(c.power)-1], scope:SCOPE_LV[g(c.scope)-1], bonus:BONUS_LV[g(c.bonus)-1] };
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
+const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];   // 合計降順（犬先頭）
 registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:3, scope:3, bonus:3, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
 registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
 registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
@@ -1395,7 +1396,6 @@ registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:
 registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, rarity:"通常", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
 registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, rarity:"通常", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
 setCompanion("dog");
-const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];
 // 相棒選択時に情報カードを目の前に表示（開始前）
 function showCompanionCard(k){
     const c=COMPANIONS[k]; if(!c) return;
