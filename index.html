@@ -188,7 +188,7 @@
         border-radius:5px; padding:1px 6px; font-weight:700; font-size:12px; }
     #dhud .pill{ pointer-events:auto; background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3);
         border-radius:99px; padding:6px 14px; font-size:13px; color:#d7ccff; }
-    #dhud .mini{ display:flex; gap:8px; }
+    #dhud .mini{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     #dhud button{ pointer-events:auto; border:1px solid rgba(180,140,255,.4); background:rgba(30,20,60,.7);
         color:#c9bcff; border-radius:8px; padding:6px 12px; font-weight:700; cursor:pointer; font-size:13px; }
     #dhud button:hover{ background:rgba(50,32,100,.9); color:#fff; }
@@ -421,7 +421,7 @@
     <span class="mini">
       <span class="k">W A S D</span> 歩く
       <span class="k">マウス</span> 見回す（クリックで視点固定）
-      <span class="k">左クリック</span> 掘る<br>
+      <span class="k">左クリック</span> 掘る<span style="flex-basis:100%;width:100%;height:0"></span>
     </span>
     <button id="dTA" style="display:none">スタート</button>
     <button id="dBuddy" style="display:none">相棒：🦖</button>
