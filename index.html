@@ -2915,11 +2915,13 @@ function triggerSpecial(){
         const n=Math.min(specialCount(3,7), pool.length);
         for(let i=0;i<n;i++){ discoverTarget(pool[i], true); starBurst(pool[i].pos); done++; }
     } else {
-        // ② 恐竜：未発見/発見済みポイントを発掘完了に（合計3〜5、足りなければ残り分だけ）※各種の特性は今後調整
+        // ② 恐竜：未発見ポイントを優先して発掘完了。足りない場合のみ発見済みも。（合計3〜5、足りなければ残り分だけ）※各種の特性は今後調整
         verb="発掘";
-        const pool=shuffleArr(GAME.targets.filter(t=>!t.done));
-        const n=Math.min(specialCount(3,5), pool.length);
-        for(let i=0;i<n;i++){ const t=pool[i]; if(!t.discovered){ t.discovered=true; if(t.marker)t.marker.visible=true; } starBurst(t.pos); excavate(t); done++; }
+        const undisc=shuffleArr(GAME.targets.filter(t=>!t.discovered && !t.done));
+        const disc  =shuffleArr(GAME.targets.filter(t=>t.discovered && !t.done));
+        const ordered=undisc.concat(disc);   // 未発見を先に、足りなければ発見済み
+        const n=Math.min(specialCount(3,5), ordered.length);
+        for(let i=0;i<n;i++){ const t=ordered[i]; if(!t.discovered){ t.discovered=true; if(t.marker)t.marker.visible=true; } starBurst(t.pos); excavate(t); done++; }
     }
     // 明確な演出（画面フラッシュ＋大トースト＋効果音＋振動）
     specialFlash();
@@ -2932,8 +2934,9 @@ function starBurst(pos){ if(typeof spawnDirt==="function") spawnDirt(pos, 16); }
 function specialFlash(){
     let el=document.getElementById("specialFlash");
     if(!el){ el=document.createElement("div"); el.id="specialFlash";
-        el.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9998;background:radial-gradient(circle,rgba(255,225,120,0.85),rgba(255,180,40,0.25) 60%,transparent 75%);opacity:0;transition:opacity 0.15s;"; document.body.appendChild(el); }
-    el.style.opacity="1"; setTimeout(()=>{ el.style.opacity="0"; }, 180);
+        el.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9998;background:radial-gradient(circle,rgba(255,225,120,0.7),rgba(255,180,40,0.2) 60%,transparent 75%);opacity:0;"; document.body.appendChild(el); }
+    el.style.transition="opacity 0.15s"; el.style.opacity="1";        // すぐ点灯
+    setTimeout(()=>{ el.style.transition="opacity 0.8s"; el.style.opacity="0"; }, 3000);   // 3秒間表示してからフェードアウト
 }
 // 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
 function discoverTarget(t, silent){
