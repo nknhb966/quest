@@ -424,6 +424,7 @@
       <span class="k">左クリック</span> 掘る
     </span>
     <span style="flex-basis:100%;width:100%;height:0"></span>
+    <button id="taCardBtn" style="display:none; background:linear-gradient(#ffd24d,#e6a52a); color:#3a2600; font-weight:bold; font-size:16px; padding:10px 16px; border:2px solid #fff2c0;">🎴 カードを見る</button>
     <button id="dTA" style="display:none">スタート</button>
     <button id="dBuddy" style="display:none">相棒：🦖</button>
     <button id="dAsk">🦖 きいてみる</button>
@@ -431,7 +432,6 @@
     <button id="dSite">🗺 サイト：表示</button>
     <button id="dReset" style="display:none;">🔄 リセット</button>
     <button id="dShowAll" style="display:none;">✨ 全て表示</button>
-    <button id="taCardBtn" style="display:none; background:linear-gradient(#ffd24d,#e6a52a); color:#3a2600; font-weight:bold; font-size:16px; padding:10px 16px; border:2px solid #fff2c0;">🎴 カードを見る</button>
     <button id="dDex">📖 図鑑</button>
     <button id="dRecords">🏅 記録</button>
     <button id="dQuit">やめる</button>
@@ -1396,7 +1396,7 @@ function companionStats(){
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
 const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];   // 合計降順（犬先頭）
 let buddyRandom=false;   // ブラウザのトグル：相棒を選ぶ／ランダム
-const RARITY_WEIGHT={ "超激レア":1, "激レア":2, "レア":4, "プチレア":7, "通常":12, "パートナー":12 };   // レア度が高いほど出にくい
+const RARITY_WEIGHT={ "超激レア":1, "激レア":2, "レア":4, "プチレア":7, "ノーマル":12, "パートナー":12 };   // レア度が高いほど出にくい
 function drawRandomCompanion(){
     const keys=COMPANION_ORDER.filter(k=>COMPANIONS[k]);
     const w=keys.map(k=>RARITY_WEIGHT[COMPANIONS[k].rarity]||6);
@@ -1442,27 +1442,28 @@ registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:
 registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, fullName:"フクイティタン", rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された大型の竜脚類。長い首と尾を持つ。", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
 registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, fullName:"トリケラトプス", rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
 registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, fullName:"プテラノドン", rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, fullName:"フクイサウルス", rarity:"通常", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, fullName:"ステゴサウルス", rarity:"通常", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, fullName:"ブラキオサウルス", rarity:"通常", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, fullName:"フクイサウルス", rarity:"ノーマル", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, fullName:"ステゴサウルス", rarity:"ノーマル", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, fullName:"ブラキオサウルス", rarity:"ノーマル", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
 setCompanion("dog");
 // 相棒選択時に情報カードを目の前に表示（開始前）
 function showCompanionCard(k, bag){
     const c=COMPANIONS[k]; if(!c) return;
     let el=document.getElementById("buddyCard");
     if(!el){ el=document.createElement("div"); el.id="buddyCard";
-        el.style.cssText="position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);z-index:9997;width:280px;max-width:82vw;background:linear-gradient(160deg,#2a2416,#3a2f16);border:3px solid #e6c26a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.5);color:#fdf3d5;padding:16px 18px;font-family:sans-serif;text-align:center;opacity:0;transition:opacity 0.2s;pointer-events:none;";
+        el.style.cssText="position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);z-index:9997;width:336px;max-width:90vw;background:linear-gradient(160deg,#2a2416,#3a2f16);border:3px solid #e6c26a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.5);color:#fdf3d5;padding:18px 20px;font-family:sans-serif;text-align:center;opacity:0;transition:opacity 0.2s;pointer-events:none;";
         document.body.appendChild(el); }
     const sp=c.special||{};
     const bar=v=>"\u2605".repeat(v||0)+"\u2606".repeat(5-(v||0));
+    const RSTAR={"超激レア":5,"激レア":4,"レア":3,"プチレア":2,"ノーマル":1,"パートナー":5};
     const total=(c.power||0)+(c.scope||0)+(c.bonus||0);
     const rng=(b,mx)=>Math.max(1,b-1)+"\u301c"+Math.min(mx,b+1);
     const specialLine=(k==="dog")?("\u672a\u767a\u898b\u3092\u767a\u898b\uff1a"+rng(sp.discN,6)+"\u30ab\u6240")
         :("\u767a\u898b "+sp.discP+"% / "+rng(sp.discN,6)+"\u30ab\u6240\u3000\u767a\u6398 "+(100-sp.discP)+"% / "+rng(sp.digN,4)+"\u30ab\u6240");
-    el.innerHTML='<div style="font-size:22px;font-weight:bold;margin-bottom:2px">'+((c.label||k).split(" ")[0]+' '+(c.fullName||c.label||k))+'</div>'
-      +'<div style="font-size:12px;color:#e6c26a;margin-bottom:6px">'+(c.rarity||"")+'</div>'
+    el.innerHTML='<div style="font-size:24px;font-weight:bold;margin-bottom:2px">'+((c.label||k).split(" ")[0]+' '+(c.fullName||c.label||k))+'</div>'
+      +'<div style="font-size:14px;color:#ffd86a;margin-bottom:6px;font-weight:bold">'+(c.rarity||"")+'カード '+bar(RSTAR[c.rarity]||1)+'</div>'
       +'<div style="text-align:left;font-size:11px;color:#cdbf94;line-height:1.6;margin-bottom:6px">\u5206\u985e\uff1a'+(c.cat||"-")+'\u3000\u98df\u6027\uff1a'+(c.diet||"-")+'<br>\u6642\u4ee3\uff1a'+(c.era||"-")+'\u3000\u5730\u57df\uff1a'+(c.region||"-")+'</div>'
-      +'<div style="text-align:left;font-size:14px;line-height:1.7">POWER\uff08\u6398\u308b\u529b\uff09\uff1a'+bar(c.power)+'<br>SCOPE\uff08\u767a\u898b\u8ddd\u96e2\uff09\uff1a'+bar(c.scope)+'<br>BONUS\uff08\u6491\u3067\u52b9\u679c\uff09\uff1a'+bar(c.bonus)+'<span style="float:right;color:#e6c26a">\u5408\u8a08 '+total+'</span></div>'
+      +'<div style="text-align:left;font-size:15px;line-height:1.75">POWER\uff08\u6398\u308b\u529b\uff09\uff1a'+bar(c.power)+'<br>SCOPE\uff08\u767a\u898b\u8ddd\u96e2\uff09\uff1a'+bar(c.scope)+'<br>BONUS\uff08\u6491\u3067\u52b9\u679c\uff09\uff1a'+bar(c.bonus)+'<span style="float:right;color:#e6c26a">\u5408\u8a08 '+total+'</span></div>'
       +'<div style="margin-top:8px;font-size:13px;color:#ffd86a">SPECIAL\u300c'+(sp.name||"-")+'\u300d</div>'
       +'<div style="font-size:11px;color:#cdbf94">'+specialLine+'</div>'
       +'<div style="margin-top:6px;font-size:11px;color:#cdbf94;text-align:left">'+(c.dinoFeat||"")+'</div>'+'<div style="margin-top:4px;font-size:11px;color:#bfb488;text-align:left">'+(c.feature||"")+'</div>'
