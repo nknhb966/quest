@@ -1455,8 +1455,9 @@ function showCompanionCard(k, bag){
     const sp=c.special||{};
     const bar=v=>"\u2605".repeat(v||0)+"\u2606".repeat(5-(v||0));
     const total=(c.power||0)+(c.scope||0)+(c.bonus||0);
-    const specialLine=(k==="dog")?("\u672a\u767a\u898b\u3092\u767a\u898b\uff1a\u7d04"+sp.discN+"\u30ab\u6240")
-        :("\u767a\u898b "+sp.discP+"% / "+sp.discN+"\u30ab\u6240\u3000\u767a\u6398 "+(100-sp.discP)+"% / "+sp.digN+"\u30ab\u6240");
+    const rng=(b,mx)=>Math.max(1,b-1)+"\u301c"+Math.min(mx,b+1);
+    const specialLine=(k==="dog")?("\u672a\u767a\u898b\u3092\u767a\u898b\uff1a"+rng(sp.discN,6)+"\u30ab\u6240")
+        :("\u767a\u898b "+sp.discP+"% / "+rng(sp.discN,6)+"\u30ab\u6240\u3000\u767a\u6398 "+(100-sp.discP)+"% / "+rng(sp.digN,4)+"\u30ab\u6240");
     el.innerHTML='<div style="font-size:22px;font-weight:bold;margin-bottom:2px">'+((c.label||k).split(" ")[0]+' '+(c.fullName||c.label||k))+'</div>'
       +'<div style="font-size:12px;color:#e6c26a;margin-bottom:6px">'+(c.rarity||"")+'</div>'
       +'<div style="text-align:left;font-size:11px;color:#cdbf94;line-height:1.6;margin-bottom:6px">\u5206\u985e\uff1a'+(c.cat||"-")+'\u3000\u98df\u6027\uff1a'+(c.diet||"-")+'<br>\u6642\u4ee3\uff1a'+(c.era||"-")+'\u3000\u5730\u57df\uff1a'+(c.region||"-")+'</div>'
@@ -1494,7 +1495,8 @@ function showBuddyCardVR(k){
     const sp=c.special||{};
     g.textAlign="left"; g.fillStyle="#ffd86a"; g.font="26px sans-serif"; g.fillText("SPECIAL「"+(sp.name||"-")+"」",36,404);
     g.fillStyle="#cdbf94"; g.font="20px sans-serif";
-    g.fillText(k==="dog"?("未発見を発見：約"+sp.discN+"カ所"):("発見 "+sp.discP+"% /"+sp.discN+"　発掘 "+(100-sp.discP)+"% /"+sp.digN),36,436);
+    { const rng=(b,mx)=>Math.max(1,b-1)+"〜"+Math.min(mx,b+1);
+    g.fillText(k==="dog"?("未発見を発見："+rng(sp.discN,6)+"カ所"):("発見 "+sp.discP+"% /"+rng(sp.discN,6)+"　発掘 "+(100-sp.discP)+"% /"+rng(sp.digN,4)),36,436); }
     const wrap=(txt,x,y,max,lh)=>{ const cs=(txt||"").split("\n"); let yy=y; for(const ln of cs){ let cur=""; for(const ch of ln){ if(g.measureText(cur+ch).width>max){ g.fillText(cur,x,yy); yy+=lh; cur=ch; } else cur+=ch; } g.fillText(cur,x,yy); yy+=lh; } return yy; };
     g.fillStyle="#cdbf94"; g.font="18px sans-serif"; let yy=wrap(c.dinoFeat,36,478,440,24);
     g.fillStyle="#bfb488"; g.font="18px sans-serif"; yy=wrap(c.feature,36,yy+6,440,24);
@@ -1597,8 +1599,11 @@ const dexPanel=(function(){
         let found=0; for(let i=0;i<8;i++) if(dexData[i]&&dexData[i].found) found++;
         ctx.fillStyle="#f0d98a"; ctx.font="bold 40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
         ctx.fillText((curTarget==="dino"?"🦖 恐竜図鑑  ":"🏺 発掘図鑑  ")+found+" / 8", 256, 52);
-        for(let i=0;i<8;i++){
-            const R=rectOf(i), x=R.x,y=R.y, e=dexData[i];
+        const DINO_DEX_ORDER=(typeof COMPANION_ORDER!=="undefined"&&typeof DINOS!=="undefined")
+            ? COMPANION_ORDER.filter(k=>k!=="dog").map(k=>DINOS.findIndex(d=>d.key===k)).filter(x=>x>=0) : [0,1,2,3,4,5,6,7];
+        for(let p=0;p<8;p++){
+            const i = (curTarget==="dino" && DINO_DEX_ORDER[p]!==undefined) ? DINO_DEX_ORDER[p] : p;   // 恐竜は相棒順で並べる
+            const R=rectOf(p), x=R.x,y=R.y, e=dexData[i];
             if(e&&e.found){
                 ctx.fillStyle="#efe2c4"; roundRect(ctx,x,y,cw,chh,12); ctx.fill();
                 if(curTarget==="dino"){
@@ -2408,6 +2413,7 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 
 function startGame(desktop){
     GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool; GAME.starUsed=false;
+    if(typeof setCompanion==="function") setCompanion("dog");   // 入った時は必ず犬から
     document.body.classList.add("playing"); if(desktop) document.body.classList.add("desktop");   // HUD/クロスヘアを確実に表示
     DIG_REACH = DIG_REACH_BASE;   // ③黄色距離：VR/AR・スマホ・PC 共通
     if(desktop){ pitch=-Math.PI/12; }   // スマホ/PCは水平よりやや下向き（-15度）で開始
@@ -3208,12 +3214,13 @@ function petDog(){
     // セリフ（前回と同じなら言わず、動作だけ）
     const digable = (GAME.mode==="collect" && GAME.collectedCount<8) || (GAME.mode==="time" && TA.state==="run");
     let petLine;
-    if(!digable){ petLine="うれしいワン！\nなでなで だいすき"; }
+    const pl=line("pet");
+    if(!digable){ petLine=pl+"\nなでなで だいすき"; }
     else { const p=currentHitProb();
-        petLine = p>=0.99 ? "うれしいワン！\nぜったい見つかるワン！"
-            : p>=0.8 ? "うれしいワン！\n見つけられそう！"
-            : p>=0.6 ? "なでなで うれしい♪\nもう少しで分かるワン"
-            : "うれしいワン！\nまだ 自信ないワン…"; }
+        petLine = p>=0.99 ? pl+"\nぜったい 見つかりそう！"
+            : p>=0.8 ? pl+"\n見つけられそう！"
+            : p>=0.6 ? pl+"\nもう少しで 分かりそう"
+            : pl+"\nまだ 自信ないかも…"; }
     if(petLine!==lastPetLine){ bubble.say(petLine, 2000); lastPetLine=petLine; }
     // うれしい動作をランダムに（1〜2種）：ジャンプ / くるっと回る / 大きくしっぽ
     const acts=[()=>{dogCelebrateT=0.9;}, ()=>{dogSpinT=0.7;}, ()=>{dogTailWagT=1.1;}];
