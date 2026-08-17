@@ -1382,14 +1382,14 @@ function companionStats(){
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
 registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(), power:3, scope:3, bonus:3 });
-registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:2, bonus:2 });
-registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3 });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:3, bonus:4 });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:4, scope:4, bonus:2 });
-registerCompanion("ptera",       { label:"🦅 プテラ",        askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3 });
-registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:3, scope:4, bonus:4 });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:3, bonus:4 });
-registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:2 });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, special:{name:"王者の一撃", discP:40, discN:5, digN:4} });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, special:{name:"トリプルホーン", discP:45, discN:4, digN:3} });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, special:{name:"テールスパイク", discP:45, discN:3, digN:3} });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, special:{name:"ハイリーチ", discP:75, discN:5, digN:2} });
+registerCompanion("ptera",       { label:"🦅 プテラ",        askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, special:{name:"スカイサーチ", discP:70, discN:6, digN:2} });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, special:{name:"ハンティング", discP:45, discN:4, digN:4} });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, special:{name:"クイックサーチ", discP:70, discN:3, digN:3} });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, special:{name:"ビッグボディ", discP:60, discN:5, digN:3} });
 setCompanion("dog");
 
 // 吹き出しスプライト
@@ -2895,47 +2895,49 @@ function spawnStarPoint(){
     star.position.set(pos.x, GROUND_Y+DIG_BLOCK*fs+0.5*fs, pos.z); stage.add(star);
     GAME.star={ isStar:true, pos:pos.clone(), block, star, fs, progress:0, digNeed:6, discovered:true, digReady:false, done:false };
 }
-// SPECIALの処理個数：レア度が高いほど多い個数が出やすい（min〜max）
-function specialCount(min,max){
-    const r=Math.random(); let frac;
-    if(r<0.55) frac=Math.random()*0.34;              // 通常：min寄り
-    else if(r<0.85) frac=0.34+Math.random()*0.33;    // レア：中間
-    else frac=0.67+Math.random()*0.33;               // 超レア：max寄り
-    return Math.max(min, Math.min(max, min+Math.floor(frac*(max-min+1))));
-}
+// SPECIALの処理個数：基準値±1（DISCOVERは最大6、DISCOVER_AND_DIGは最大4）
+function specialCount(base,max){ return Math.max(1, Math.min(max, base + (Math.floor(Math.random()*3)-1))); }
 function shuffleArr(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function triggerSpecial(){
     GAME.starUsed=true;   // このプレイでは復活しない
-    const isDog=(companionKind==="dog");
-    let done=0, verb;
-    if(isDog){
-        // ① 犬：未発見ポイントを発見済みに（3〜7、足りなければ残り分だけ）
-        verb="発見";
+    let done=0, verb, title="SPECIAL";
+    if(companionKind==="dog"){
+        // 犬：未発見ポイントを発見済みに（3〜7、足りなければ残り分だけ）
+        verb="発見"; title="お宝センサー";
         const pool=shuffleArr(GAME.targets.filter(t=>!t.discovered && !t.done));
-        const n=Math.min(specialCount(3,7), pool.length);
-        for(let i=0;i<n;i++){ discoverTarget(pool[i], true); starBurst(pool[i].pos); done++; }
+        const n=Math.min(specialCount(5,7), pool.length);   // 5±1（最大7）
+        for(let i=0;i<n && i<pool.length;i++){ discoverTarget(pool[i], true); starBurst(pool[i].pos); done++; }
     } else {
-        // ② 恐竜：未発見ポイントを優先して発掘完了。足りない場合のみ発見済みも。（合計3〜5、足りなければ残り分だけ）※各種の特性は今後調整
-        verb="発掘";
-        const undisc=shuffleArr(GAME.targets.filter(t=>!t.discovered && !t.done));
-        const disc  =shuffleArr(GAME.targets.filter(t=>t.discovered && !t.done));
-        const ordered=undisc.concat(disc);   // 未発見を先に、足りなければ発見済み
-        const n=Math.min(specialCount(3,5), ordered.length);
-        for(let i=0;i<n;i++){ const t=ordered[i]; if(!t.discovered){ t.discovered=true; if(t.marker)t.marker.visible=true; } starBurst(t.pos); excavate(t); done++; }
+        const sp=(COMPANIONS[companionKind]||{}).special || {name:"SPECIAL", discP:50, discN:4, digN:3};
+        title=sp.name;
+        if(Math.random()*100 < sp.discP){
+            // DISCOVER：未発見を発見済みに（個数±1・最大6）
+            verb="発見";
+            const pool=shuffleArr(GAME.targets.filter(t=>!t.discovered && !t.done));
+            const n=Math.min(specialCount(sp.discN,6), pool.length);
+            for(let i=0;i<n && i<pool.length;i++){ discoverTarget(pool[i], true); starBurst(pool[i].pos); done++; }
+        } else {
+            // DISCOVER_AND_DIG：未発見を優先して発掘完了、足りなければ発見済み（個数±1・最大4）
+            verb="発掘";
+            const undisc=shuffleArr(GAME.targets.filter(t=>!t.discovered && !t.done));
+            const disc  =shuffleArr(GAME.targets.filter(t=>t.discovered && !t.done));
+            const ordered=undisc.concat(disc);
+            const n=Math.min(specialCount(sp.digN,4), ordered.length);
+            for(let i=0;i<n && i<ordered.length;i++){ const t=ordered[i]; if(!t.discovered){ t.discovered=true; if(t.marker)t.marker.visible=true; } starBurst(t.pos); excavate(t); done++; }
+        }
     }
-    // 明確な演出（画面フラッシュ＋大トースト＋効果音＋振動）
+    // 明確な演出（画面フラッシュ3秒＋大トースト＋効果音＋振動）
     specialFlash();
     if(typeof chord==="function") chord([784,988,1175,1568,2093],0.16,"triangle",0.6);
     vibrate(300,1.0);
-    showToast(`⭐ SPECIAL 発動！ ${isDog?"🐶":"🦖"} ${done}カ所を${verb}！`, 3200);
+    showToast(`⭐ SPECIAL「${title}」！ ${done}カ所を${verb}！`, 3200);
 }
-// SPECIAL演出：各ポイントに星の弾け＋画面フラッシュ
 function starBurst(pos){ if(typeof spawnDirt==="function") spawnDirt(pos, 16); }
 function specialFlash(){
     let el=document.getElementById("specialFlash");
     if(!el){ el=document.createElement("div"); el.id="specialFlash";
         el.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9998;background:radial-gradient(circle,rgba(255,225,120,0.7),rgba(255,180,40,0.2) 60%,transparent 75%);opacity:0;"; document.body.appendChild(el); }
-    el.style.transition="opacity 0.15s"; el.style.opacity="1";        // すぐ点灯
+    el.style.transition="opacity 0.15s"; el.style.opacity="1";
     setTimeout(()=>{ el.style.transition="opacity 0.8s"; el.style.opacity="0"; }, 3000);   // 3秒間表示してからフェードアウト
 }
 // 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
