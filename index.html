@@ -1423,7 +1423,8 @@ function updateBuddyStandbyUI(){
         const lab=document.createElement("div"); lab.textContent="相棒を選ぶ"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;margin-bottom:4px;"; el.appendChild(lab);
         COMPANION_ORDER.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
             const b=document.createElement("button"); b.textContent=(c.label||k).replace(/^\S+\s+/,"");
-            b.style.cssText="flex:1 1 96px;min-width:88px;font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
+            const flexCss = IS_TOUCH ? "flex:1 1 96px;min-width:88px;" : "flex:0 0 calc(33.3% - 8px);box-sizing:border-box;";   // PCは3×3
+            b.style.cssText=flexCss+"font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
             b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); };
             el.appendChild(b);
         });
@@ -2428,13 +2429,13 @@ function startGame(desktop){
     // 初期ターゲット（サイト読込・発掘スポット確定後に配置）
     if(GAME.mode==="collect"){
         TA.state="idle"; GAME.standby=true;   // コレクションもスタンバイ（開始待ち）から
-        if(desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐", "スタート/スペースで開始（相棒を選べます）"); } else { worldHud.hide(); }
+        if(desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐", "スタート/スペースで開始\n（相棒を選べます）", true); } else { worldHud.hide(); }
         afterSite(()=>{ clearTargets(); });
     } else {
         // タイムアタックは「開始待ち」。右トリガー（PC/スマホはボタン）でカウントダウン。
         TA.state="ready";
         GAME.timeLeft=TIME_LIMIT;
-        if(desktop && !IS_TOUCH){ worldHud.drawCountdown("⏱", "スペース / スタートで開始"); }
+        if(desktop && !IS_TOUCH){ worldHud.drawCountdown("⏱", "スペース / スタートで開始", true); }
         else { worldHud.hide(); }   // VR/ARは発掘図鑑の近くのサインで案内（パネルは出さない）
     }
     document.body.classList.add("playing");
@@ -2520,11 +2521,16 @@ const worldHud=(function(){
     return {
         mesh,
         show(){ mesh.visible=true; }, hide(){ mesh.visible=false; },
-        drawCountdown(text, sub){
-            bg();
+        drawCountdown(text, sub, short){
+            ctx.clearRect(0,0,768,864);
+            const top = short? 210 : 24, bh = short? 452 : 816;   // shortは高さ約2/3
+            ctx.fillStyle="rgba(10,7,26,0.90)"; rr(24,top,720,bh,40); ctx.fill();
+            ctx.strokeStyle="#d8b46a"; ctx.lineWidth=6; ctx.stroke();
             ctx.textAlign="center"; ctx.textBaseline="middle";
-            ctx.fillStyle="#f0d98a"; ctx.font="bold 300px sans-serif"; ctx.fillText(text,384,410);
-            if(sub){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="bold 44px sans-serif"; ctx.fillText(sub,384,670); }
+            ctx.fillStyle="#f0d98a"; ctx.font="bold "+(short?170:300)+"px sans-serif"; ctx.fillText(text,384, top+(short?150:386));
+            if(sub){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="bold 40px sans-serif";
+                const lines=String(sub).split("\n"), sy=top+(short?300:646), lh=52;
+                lines.forEach((ln,i)=>ctx.fillText(ln,384,sy+i*lh)); }
             tex.needsUpdate=true; mesh.visible=true;
         },
         drawResults(score, found, list, calc){ resData={score, found, list, calc}; resPage=0; this.renderResultPage(); },
@@ -3602,7 +3608,7 @@ function resetDexAndStandby(rotate){
     regenerateCustomSpots();                                   // 矩形内にランダム再配置
     afterSite(()=>clearTargets());
     if(GAME.mode==="time"){ TA.state="ready"; worldHud.hide(); if(typeof taClock!=="undefined") taClock.show(false); showToast("リセット。スタート待ち"); }
-    else { GAME.standby=true; if(GAME.desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐","スタート/スペースで開始（相棒を選べます）"); } showToast("リセット。スタート待ち（相棒を選べます）"); }
+    else { GAME.standby=true; if(GAME.desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐","スタート/スペースで開始\n（相棒を選べます）", true); } showToast("リセット。スタート待ち（相棒を選べます）"); }
     updateBuddyStandbyUI();
     showWorldAura();                                           // 矩形＋発掘ポイントを3秒オーラ表示
     updateGoal(); updateTAButton();
