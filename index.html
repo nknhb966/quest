@@ -1357,8 +1357,8 @@ function refreshBuddyUI(){
     const keys=order;
     const seg=document.getElementById("segBuddy"), wrap=document.getElementById("optBuddy"), btn=document.getElementById("dBuddy");
     const many=keys.length>1;
-    if(wrap) wrap.style.display = many ? "" : "none";
-    if(btn)  btn.style.display  = "none";   // 相棒選択は開始前のみ（ゲーム中HUDボタンは出さない）
+    if(wrap) wrap.style.display = "none";   // 相棒選択はブラウザメニューに出さない（プレイ中のスタンバイで選ぶ）
+    if(btn)  btn.style.display  = "none";
     if(seg){
         seg.innerHTML="";
         keys.forEach(k=>{
@@ -1386,7 +1386,26 @@ function companionStats(){
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
 const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];   // 合計降順（犬先頭）
-registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:3, scope:3, bonus:3, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, era:"—", region:"—", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
+// スタンバイ中だけ相棒選択（デスクトップ/スマホ）。VRは grip+トリガー+X/Y
+function isStandby(){ return (typeof GAME!=="undefined" && GAME.active && ((GAME.mode==="time" && typeof TA!=="undefined" && TA.state==="ready") || (GAME.mode!=="time" && GAME.standby))); }
+function updateBuddyStandbyUI(){
+    let el=document.getElementById("buddyStandby");
+    const show = (typeof GAME!=="undefined" && GAME.desktop && isStandby());
+    if(!show){ if(el) el.style.display="none"; return; }
+    if(!el){ el=document.createElement("div"); el.id="buddyStandby";
+        el.style.cssText="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9996;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:94vw;background:rgba(20,16,8,0.72);border:2px solid #e6c26a;border-radius:12px;padding:8px 10px;";
+        document.body.appendChild(el); }
+    el.innerHTML="";
+    const lab=document.createElement("div"); lab.textContent="相棒を選ぶ："; lab.style.cssText="color:#e6c26a;font:bold 13px sans-serif;align-self:center;margin-right:4px;"; el.appendChild(lab);
+    COMPANION_ORDER.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
+        const b=document.createElement("button"); b.textContent=c.label||k;
+        b.style.cssText="font:12px sans-serif;padding:4px 8px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
+        b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); };
+        el.appendChild(b);
+    });
+    el.style.display="flex";
+}
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, era:"—", region:"—", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
 registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
 registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
 registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
@@ -2357,8 +2376,9 @@ function startGame(desktop){
     clearAuras();
     // 初期ターゲット（サイト読込・発掘スポット確定後に配置）
     if(GAME.mode==="collect"){
-        TA.state="idle";
-        afterSite(()=>{ clearTargets(); spawnAllTargets(); });
+        TA.state="idle"; GAME.standby=true;   // コレクションもスタンバイ（開始待ち）から
+        if(desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐", "スタート/スペースで開始（相棒を選べます）"); } else { worldHud.hide(); }
+        afterSite(()=>{ clearTargets(); });
     } else {
         // タイムアタックは「開始待ち」。右トリガー（PC/スマホはボタン）でカウントダウン。
         TA.state="ready";
@@ -2372,6 +2392,7 @@ function startGame(desktop){
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw(); updateTAButton();
     bubble.say(GAME.mode==="time" ? "スタートするワン" : line("start"), 2600);
     if(IS_TOUCH && desktop){ showToast("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
+    if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     unlockAudio();
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
@@ -2524,12 +2545,13 @@ function resetDexForRun(){
     if(typeof dexPanel!=="undefined") dexPanel.draw();
 }
 function taBeginCountdown(){
+    if(typeof updateBuddyStandbyUI==="function"){ }
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
     GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.askCount=0; GAME.digScore=0;
     regenerateCustomSpots(); showWorldAura();                  // 矩形内にランダム再配置＋オーラ
-    TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS;
+    TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS; if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     worldHud.drawCountdown("3","まもなくスタート");
     bubble.say(line("start"), 2200);
     updateGoal(); updateTAButton();
@@ -2570,8 +2592,15 @@ function taFinish(){
     updateGoal(); updateTAButton();
 }
 // 右トリガー（素手なら右手つまむ）で進行
+function startCollectionRun(){   // コレクション：スタンバイ→開始（相棒はスタンバイ中に選択済み）
+    GAME.standby=false; worldHud.hide();
+    GAME.starUsed=false;
+    afterSite(()=>{ clearTargets(); spawnAllTargets(); });
+    if(typeof chord==="function") chord([523,784,1047],0.05,"triangle",0.5);
+    showToast("スタート！ 発掘しよう"); updateGoal(); if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
+}
 function taAdvance(){
-    if(GAME.mode!=="time") return false;
+    if(GAME.mode!=="time"){ if(GAME.standby){ startCollectionRun(); return true; } return false; }
     const now=performance.now();
     if(TA.lockUntil && now<TA.lockUntil) return true;    // 連続入力の取りこぼし防止
     if(TA.state==="ready" || TA.state==="free"){ TA.lockUntil=now+800; taBeginCountdown(); return true; }
@@ -2992,22 +3021,36 @@ function triggerSpecial(){
             for(let i=0;i<n && i<ordered.length;i++){ const t=ordered[i]; if(!t.discovered){ t.discovered=true; if(t.marker)t.marker.visible=true; } starBurst(t.pos); excavate(t); done++; }
         }
     }
-    // 明確な演出（画面フラッシュ3秒＋大トースト＋効果音＋振動）
-    specialFlash();
-    if(typeof chord==="function") chord([784,988,1175,1568,2093],0.16,"triangle",0.6);
-    vibrate(300,1.0);
+    // 明確な演出：DISCOVER=水色、DISCOVER_AND_DIG=金色。対象数ぶん点滅＆鳴らす
+    specialBurst((verb==="発掘")?"dig":"discover", Math.max(1,done));
     const msg=`⭐ SPECIAL 発動！\n「${title}」\n${done}カ所を${verb}！`;
     { const tel=document.getElementById("toast"); if(tel) tel.style.whiteSpace="pre-line"; }
     showToast(msg, 3200);
     if(typeof bubble!=="undefined" && bubble.say) bubble.say(msg, 3200);   // VR/ARでも読めるよう相棒バブルにも
 }
 function starBurst(pos){ if(typeof spawnDirt==="function") spawnDirt(pos, 16); }
-function specialFlash(){
+// SPECIAL演出：モード別の色＋対象数ぶんの点滅と効果音（気持ちよさ優先）
+function specialBurst(mode, count){
+    const dig=(mode==="dig");
+    const col=dig?"rgba(255,200,60,0.85)":"rgba(120,220,255,0.85)";   // 金／水色
+    for(let i=0;i<count;i++){
+        setTimeout(()=>{
+            specialFlash(col);
+            vibrate(dig?150:90, dig?1.0:0.7);
+            if(typeof chord==="function"){
+                if(dig) chord([392,523,659,784],0.12,"sawtooth",0.5);   // 発掘：力強い
+                else    chord([880,1175,1568],0.10,"triangle",0.45);     // 発見：軽やか
+            }
+        }, i*260);   // 1個ごと約0.26秒の連続演出
+    }
+}
+function specialFlash(col){
     let el=document.getElementById("specialFlash");
     if(!el){ el=document.createElement("div"); el.id="specialFlash";
-        el.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9998;background:radial-gradient(circle,rgba(255,225,120,0.7),rgba(255,180,40,0.2) 60%,transparent 75%);opacity:0;"; document.body.appendChild(el); }
-    el.style.transition="opacity 0.15s"; el.style.opacity="1";
-    setTimeout(()=>{ el.style.transition="opacity 0.8s"; el.style.opacity="0"; }, 1500);   // 1.5秒間表示してからフェードアウト
+        el.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:0;"; document.body.appendChild(el); }
+    el.style.background="radial-gradient(circle,"+(col||"rgba(255,225,120,0.8)")+",transparent 72%)";
+    el.style.transition="opacity 0.06s"; el.style.opacity="1";
+    setTimeout(()=>{ el.style.transition="opacity 0.35s"; el.style.opacity="0"; }, 160);
 }
 // 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
 function discoverTarget(t, silent){
@@ -3498,7 +3541,8 @@ function resetDexAndStandby(rotate){
     regenerateCustomSpots();                                   // 矩形内にランダム再配置
     afterSite(()=>clearTargets());
     if(GAME.mode==="time"){ TA.state="ready"; worldHud.hide(); if(typeof taClock!=="undefined") taClock.show(false); showToast("リセット。スタート待ち"); }
-    else { afterSite(()=>spawnAllTargets()); showToast("リセットしました"); }
+    else { GAME.standby=true; if(GAME.desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐","スタート/スペースで開始（相棒を選べます）"); } showToast("リセット。スタート待ち（相棒を選べます）"); }
+    updateBuddyStandbyUI();
     showWorldAura();                                           // 矩形＋発掘ポイントを3秒オーラ表示
     updateGoal(); updateTAButton();
 }
