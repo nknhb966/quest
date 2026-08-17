@@ -1314,7 +1314,7 @@ const DINOS=[
 
 const BUDDY_BASE=0.35; let buddyScale=1, bubbleSpr=null;   // 相棒の基準スケール × ユーザー倍率(1.0〜2.5)
 function applyBuddyScale(){ dog.scale.setScalar(BUDDY_BASE*buddyScale);
-    if(bubbleSpr) bubbleSpr.scale.set(4.8/buddyScale, 1.6/buddyScale, 1); }   // キャラが大きくてもセリフの大きさは一定に
+    if(bubbleSpr) bubbleSpr.scale.set(5.28/buddyScale, 1.6/buddyScale, 1); }   // キャラが大きくてもセリフの大きさは一定に
 stage.add(dog);
 applyBuddyScale();
 dog.position.set(2,GROUND_Y,2);
@@ -1466,13 +1466,13 @@ function showCompanionCard(k, bag){
       +'<div style="margin-top:6px;font-size:12px;white-space:pre-line;border-top:1px solid #6b5a2e;padding-top:6px">'+(c.cardText||"")+'</div>'
       +'<button id="buddyCardClose" style="margin-top:10px;font:bold 13px sans-serif;padding:6px 18px;border-radius:10px;border:2px solid #e6c26a;background:#4a3d17;color:#fff;cursor:pointer;pointer-events:auto;">閉じる</button>';
     el.style.pointerEvents="auto";
-    { const cb=el.querySelector("#buddyCardClose"); if(cb) cb.onclick=()=>{ el.style.opacity="0"; }; }
+    { const cb=el.querySelector("#buddyCardClose"); if(cb) cb.onclick=()=>{ el.style.opacity="0"; el.style.pointerEvents="none"; }; }
     el.style.opacity="1";
     if(bag){ el.style.transition="none"; el.style.transform="translate(-50%,-50%) scale(0.2) rotate(-8deg)";
         requestAnimationFrame(()=>{ el.style.transition="transform 0.5s cubic-bezier(.2,1.4,.4,1),opacity 0.2s"; el.style.transform="translate(-50%,-50%) scale(1) rotate(0deg)"; }); }
     else { el.style.transform="translate(-50%,-50%)"; }
     if(showCompanionCard._t) clearTimeout(showCompanionCard._t);
-    showCompanionCard._t=setTimeout(()=>{ el.style.opacity="0"; }, 5000);
+    showCompanionCard._t=setTimeout(()=>{ el.style.opacity="0"; el.style.pointerEvents="none"; }, 5000);
 }
 // VR/AR用の相棒カード（ワールド空間・カメラ前方）
 let _buddyCardVR=null, _buddyCardVRHide=0;
@@ -1515,12 +1515,12 @@ function updateBuddyCardVR(){
 
 // 吹き出しスプライト
 const bubble = (function(){
-    const W=768, H=256;                      // 横幅を1.5倍（文字サイズは据え置き）
+    const W=845, H=256;                      // 横幅を1.5倍×1.1（文字サイズは据え置き）
     const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:false}));
-    spr.scale.set(4.8/buddyScale,1.6/buddyScale,1); spr.position.set(0,3.3,-1.0); spr.visible=false;   // 少し上＆奥（相棒の後ろ側）へ
+    spr.scale.set(5.28/buddyScale,1.6/buddyScale,1); spr.position.set(0,3.3,-1.0); spr.visible=false;   // 少し上＆奥（相棒の後ろ側）へ
     dog.add(spr); bubbleSpr=spr;
     function draw(text){
         ctx.clearRect(0,0,W,H);
@@ -2470,7 +2470,7 @@ renderer.xr.addEventListener("sessionend", ()=>{
 
 function endGame(toMenu){
     clearDinoReveal(); if(typeof clearStarPoint==="function") clearStarPoint();
-    { const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; const bc=document.getElementById("buddyCard"); if(bc) bc.style.opacity="0"; }   // 恐竜・名称ラベルを片付ける（再開時に前回の名称が残らないように）
+    { const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; const bc=document.getElementById("buddyCard"); if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; } }   // 恐竜・名称ラベルを片付ける（再開時に前回の名称が残らないように）
     if(typeof resetDexForRun==="function") resetDexForRun();   // 発掘図鑑（found記録）をクリア
     if(typeof closeHologram==="function") closeHologram();     // ホログラムも閉じる
     if(typeof refreshDexHTML==="function") refreshDexHTML();
@@ -2597,7 +2597,7 @@ function resetDexForRun(){
     if(typeof dexPanel!=="undefined") dexPanel.draw();
 }
 function taBeginCountdown(){
-    { const bc=document.getElementById("buddyCard"); if(bc) bc.style.opacity="0"; const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
+    { const bc=document.getElementById("buddyCard"); if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; } const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
@@ -2645,7 +2645,7 @@ function taFinish(){
 }
 // 右トリガー（素手なら右手つまむ）で進行
 function startCollectionRun(){   // コレクション：スタンバイ→開始（相棒はスタンバイ中に選択済み）
-    GAME.standby=false; worldHud.hide(); { const bc=document.getElementById("buddyCard"); if(bc) bc.style.opacity="0"; const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
+    GAME.standby=false; worldHud.hide(); { const bc=document.getElementById("buddyCard"); if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; } const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
     GAME.starUsed=false;
     afterSite(()=>{ clearTargets(); spawnAllTargets(); });
     if(typeof chord==="function") chord([523,784,1047],0.05,"triangle",0.5);
