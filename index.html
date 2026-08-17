@@ -1273,7 +1273,7 @@ function dogLines(){
 // 福井生まれ（フクイ〜）の恐竜は福井弁でしゃべる
 function fukuiLines(cry){
     return {
-        start :`ほな いっしょに さがそっさ、${cry}！`,
+        start :`いっしょに さがそっさ、${cry}！`,
         found :`みつけたざ！ ${cry}🎉`,
         here  :`ここ ほってみ、${cry}！`,
         hintOk:`こっちやって！ ついてきねの→`,
@@ -1463,7 +1463,10 @@ function showCompanionCard(k, bag){
       +'<div style="margin-top:8px;font-size:13px;color:#ffd86a">SPECIAL\u300c'+(sp.name||"-")+'\u300d</div>'
       +'<div style="font-size:11px;color:#cdbf94">'+specialLine+'</div>'
       +'<div style="margin-top:6px;font-size:11px;color:#cdbf94;text-align:left">'+(c.dinoFeat||"")+'</div>'+'<div style="margin-top:4px;font-size:11px;color:#bfb488;text-align:left">'+(c.feature||"")+'</div>'
-      +'<div style="margin-top:6px;font-size:12px;white-space:pre-line;border-top:1px solid #6b5a2e;padding-top:6px">'+(c.cardText||"")+'</div>';
+      +'<div style="margin-top:6px;font-size:12px;white-space:pre-line;border-top:1px solid #6b5a2e;padding-top:6px">'+(c.cardText||"")+'</div>'
+      +'<button id="buddyCardClose" style="margin-top:10px;font:bold 13px sans-serif;padding:6px 18px;border-radius:10px;border:2px solid #e6c26a;background:#4a3d17;color:#fff;cursor:pointer;pointer-events:auto;">閉じる</button>';
+    el.style.pointerEvents="auto";
+    { const cb=el.querySelector("#buddyCardClose"); if(cb) cb.onclick=()=>{ el.style.opacity="0"; }; }
     el.style.opacity="1";
     if(bag){ el.style.transition="none"; el.style.transform="translate(-50%,-50%) scale(0.2) rotate(-8deg)";
         requestAnimationFrame(()=>{ el.style.transition="transform 0.5s cubic-bezier(.2,1.4,.4,1),opacity 0.2s"; el.style.transform="translate(-50%,-50%) scale(1) rotate(0deg)"; }); }
@@ -2224,7 +2227,7 @@ function askDog(){
     // タイムアタックの計測中以外は「終わったよ」の反応にする
     if(GAME.mode==="time" && TA.state!=="run"){
         sfxBark();
-        bubble.say(TA.state==="ready" ? "スタートするワン" : (dexFoundCount()>=8 ? line("done") : line("again")), 2000);
+        bubble.say(TA.state==="ready" ? line("start") : (dexFoundCount()>=8 ? line("done") : line("again")), 2000);
         return;
     }
     const t = GAME.targets.find(x=>!x.discovered) || GAME.targets[0];
@@ -2438,8 +2441,8 @@ function startGame(desktop){
     if(desktop) document.body.classList.add("desktop");
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw(); updateTAButton();
-    bubble.say(GAME.mode==="time" ? "スタートするワン" : line("start"), 2600);
-    if(IS_TOUCH && desktop){ showToast("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
+    bubble.say(line("start"), 2600);
+    if(IS_TOUCH && desktop){ showCenterHint("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     unlockAudio();
 }
@@ -2594,7 +2597,7 @@ function resetDexForRun(){
     if(typeof dexPanel!=="undefined") dexPanel.draw();
 }
 function taBeginCountdown(){
-    if(typeof updateBuddyStandbyUI==="function"){ }
+    { const bc=document.getElementById("buddyCard"); if(bc) bc.style.opacity="0"; const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
@@ -2642,7 +2645,7 @@ function taFinish(){
 }
 // 右トリガー（素手なら右手つまむ）で進行
 function startCollectionRun(){   // コレクション：スタンバイ→開始（相棒はスタンバイ中に選択済み）
-    GAME.standby=false; worldHud.hide();
+    GAME.standby=false; worldHud.hide(); { const bc=document.getElementById("buddyCard"); if(bc) bc.style.opacity="0"; const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
     GAME.starUsed=false;
     afterSite(()=>{ clearTargets(); spawnAllTargets(); });
     if(typeof chord==="function") chord([523,784,1047],0.05,"triangle",0.5);
@@ -2723,6 +2726,15 @@ document.getElementById("taModal").addEventListener("click",e=>{ if(e.target.id=
 document.getElementById("dQuit").onclick=()=> endGame(true);
 
 let toastT=null;
+function showCenterHint(msg, ms=4000){
+    let el=document.getElementById("centerHint");
+    if(!el){ el=document.createElement("div"); el.id="centerHint";
+        el.style.cssText="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;max-width:88vw;background:rgba(20,16,8,0.94);border:3px solid #e6c26a;border-radius:16px;color:#fdf3d5;padding:18px 22px;font:bold 16px sans-serif;text-align:center;line-height:1.7;box-shadow:0 12px 44px rgba(0,0,0,0.6);opacity:0;transition:opacity 0.2s;pointer-events:none;white-space:pre-line;";
+        document.body.appendChild(el); }
+    el.textContent=msg; el.style.opacity="1";
+    if(showCenterHint._t) clearTimeout(showCenterHint._t);
+    showCenterHint._t=setTimeout(()=>{ el.style.opacity="0"; }, ms);
+}
 function showToast(msg, ms=2400){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); if(toastT)clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),ms); }
 
 /* =====================================================
@@ -3140,8 +3152,8 @@ function focusTarget(){
     return best;
 }
 function updateCoach(dt){
-    if(GAME.mode==="time" && TA.state==="ready"){   // スタンバイ中は常時「スタートするワン」（撫でた直後はそのセリフを優先）
-        if(petCooldown<=0) bubble.hold("スタートするワン");
+    if((GAME.mode==="time" && TA.state==="ready") || (GAME.mode!=="time" && GAME.standby)){   // スタンバイ中は常時その相棒のスタートのセリフ
+        if(petCooldown<=0) bubble.hold(line("start"));
         return;
     }
     const focus=focusTarget();
