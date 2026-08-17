@@ -1327,7 +1327,7 @@ function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def) return null;
     if(!def.body && def.builder){
-        const smooth = (typeof chosenDigTarget!=="undefined" && chosenDigTarget!=="dino");   // 出土品/なめらか恐竜のときは相棒もなめらか
+        let smooth=false; try{ smooth = (chosenDigTarget!=="dino"); }catch(e){ smooth=false; }   // 出土品/なめらか恐竜→なめらか（初期化前はブロック）
         const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
         let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
         body.updateMatrixWorld(true);
