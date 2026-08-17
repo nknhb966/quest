@@ -183,7 +183,7 @@
     body.desktop #dhud{ display:flex; }
     #dhud .bar{ pointer-events:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
         background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3); border-radius:12px; padding:9px 14px;
-        font-size:13px; color:#d7ccff; backdrop-filter:blur(6px); }
+        font-size:13px; color:#d7ccff; backdrop-filter:blur(6px); max-width:420px; width:auto; }
     #dhud .bar b{ color:#fff; } #dhud .k{ background:rgba(120,90,220,.35); border:1px solid rgba(180,140,255,.4);
         border-radius:5px; padding:1px 6px; font-weight:700; font-size:12px; }
     #dhud .pill{ pointer-events:auto; background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3);
@@ -1410,7 +1410,7 @@ function updateBuddyStandbyUI(){
     const show = (typeof GAME!=="undefined" && GAME.desktop && isStandby());
     if(!show){ if(el) el.style.display="none"; return; }
     if(!el){ el=document.createElement("div"); el.id="buddyStandby";
-        el.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9996;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;width:96vw;box-sizing:border-box;background:rgba(20,16,8,0.82);border:2px solid #e6c26a;border-radius:12px;padding:10px 12px;";
+        el.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9996;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;width:min(680px,94vw);box-sizing:border-box;background:rgba(20,16,8,0.82);border:2px solid #e6c26a;border-radius:12px;padding:10px 12px;";
         document.body.appendChild(el); }
     el.innerHTML="";
     if(buddyRandom){
@@ -2435,7 +2435,7 @@ function startGame(desktop){
         // タイムアタックは「開始待ち」。右トリガー（PC/スマホはボタン）でカウントダウン。
         TA.state="ready";
         GAME.timeLeft=TIME_LIMIT;
-        if(desktop && !IS_TOUCH){ worldHud.drawCountdown("⏱", "スペース / スタートで開始", true); }
+        if(desktop && !IS_TOUCH){ worldHud.drawCountdown("⏱", "スタート/スペースで開始\n（相棒を選べます）", true); }
         else { worldHud.hide(); }   // VR/ARは発掘図鑑の近くのサインで案内（パネルは出さない）
     }
     document.body.classList.add("playing");
