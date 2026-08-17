@@ -1404,7 +1404,7 @@ function drawRandomCompanion(){
     setCompanion(pick); return pick;
 }
 // スタンバイ中だけ相棒選択（デスクトップ/スマホ）。VRは grip+トリガー+X/Y
-function isStandby(){ return (typeof GAME!=="undefined" && GAME.active && ((GAME.mode==="time" && typeof TA!=="undefined" && TA.state==="ready") || (GAME.mode!=="time" && GAME.standby))); }
+function isStandby(){ try{ return (typeof GAME!=="undefined" && GAME.active && ((GAME.mode==="time" && typeof TA!=="undefined" && TA.state==="ready") || (GAME.mode!=="time" && GAME.standby))); }catch(e){ return false; } }
 function updateBuddyStandbyUI(){
     let el=document.getElementById("buddyStandby");
     const show = (typeof GAME!=="undefined" && GAME.desktop && isStandby());
