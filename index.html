@@ -3240,11 +3240,14 @@ function checkPetVR(){
 }
 // PC：画面中央が相棒に当たっていればなでる（厳密判定）
 function tryPetDesktop(){
+    if(typeof dog==="undefined" || !dog) return false;
     const o=camera.getWorldPosition(new THREE.Vector3());
+    const dogW=dog.getWorldPosition(new THREE.Vector3());
+    const to=dogW.clone().sub(o); const dist=to.length();
+    if(dist>PET_REACH) return false;                         // 近くにいる時だけ
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).normalize();
-    _aimRay.set(o,d); _aimRay.far=PET_REACH;
-    if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
-    return false;
+    if(to.clone().normalize().dot(d) < 0.55) return false;   // ざっくり相棒の方を向いていればOK（照準ぴったり不要）
+    petDog(); return true;
 }
 // 画面の座標（NDC）で直接タップしたものを判定（指の太さぶんだけ許容）
 const TAP_SPREAD=0.03;   // 指先ぶんの許容（画面比）
