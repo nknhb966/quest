@@ -1484,7 +1484,8 @@ function showBuddyCardVR(k){
     const cv=document.createElement("canvas"); cv.width=512; cv.height=680; const g=cv.getContext("2d");
     g.fillStyle="#241f13"; g.fillRect(0,0,512,680); g.strokeStyle="#e6c26a"; g.lineWidth=12; g.strokeRect(8,8,496,664);
     g.textAlign="center"; g.fillStyle="#fdf3d5"; g.font="bold 40px sans-serif"; g.fillText((c.label||k).split(" ")[0]+" "+(c.fullName||c.label||k),256,74);
-    g.fillStyle="#e6c26a"; g.font="28px sans-serif"; g.fillText(c.rarity||"",256,116);
+    { const RST={"超激レア":5,"激レア":4,"レア":3,"プチレア":2,"ノーマル":1}; const lv=RST[c.rarity]||1;
+      g.fillStyle="#ffd86a"; g.font="bold 26px sans-serif"; g.fillText((c.rarity||"")+"カード "+"★".repeat(lv)+"☆".repeat(5-lv),256,116); }
     g.fillStyle="#cdbf94"; g.font="22px sans-serif";
     g.fillText("分類："+(c.cat||"-")+"　食性："+(c.diet||"-"),256,156);
     g.fillText("時代："+(c.era||"-")+"　地域："+(c.region||"-"),256,188);
@@ -1503,9 +1504,9 @@ function showBuddyCardVR(k){
     g.fillStyle="#bfb488"; g.font="18px sans-serif"; yy=wrap(c.feature,36,yy+6,440,24);
     g.fillStyle="#fdf3d5"; g.font="21px sans-serif"; wrap(c.cardText,36,yy+12,440,28);
     const tex=new THREE.CanvasTexture(cv);
-    if(!_buddyCardVR){ _buddyCardVR=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.45), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false})); _buddyCardVR.renderOrder=1000; scene.add(_buddyCardVR); }
-    else { if(_buddyCardVR.material.map) _buddyCardVR.material.map.dispose(); _buddyCardVR.material.map=tex; }
-    _buddyCardVR.visible=true; _buddyCardVRHide=performance.now()+5000;
+    if(!_buddyCardVR){ _buddyCardVR=new THREE.Mesh(new THREE.PlaneGeometry(0.51,0.675), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:true})); _buddyCardVR.renderOrder=1000; scene.add(_buddyCardVR); }
+    else { if(_buddyCardVR.material.map) _buddyCardVR.material.map.dispose(); _buddyCardVR.material.map=tex; _buddyCardVR.material.depthTest=true; }
+    _buddyCardVR.visible=true; _buddyCardVRHide=performance.now()+8000;
 }
 function updateBuddyCardVR(){
     if(!_buddyCardVR) return;
@@ -1980,12 +1981,14 @@ function preloadEverything(done){
     const jobs=[];
     for(let i=0;i<8;i++) jobs.push({smooth:false, idx:i, cache:_dinoCacheB});
     for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});
+    if(typeof COMPANION_ORDER!=="undefined") for(const k of COMPANION_ORDER) jobs.push({companion:k});   // 相棒9種のボディも事前生成
     let j=0;
     const step=()=>{
         _preloadTimer=null;
-        while(j<jobs.length && jobs[j].cache[jobs[j].idx]) j++;
+        while(j<jobs.length && jobs[j].cache && jobs[j].cache[jobs[j].idx]) j++;
         if(j>=jobs.length){ if(done) done(); return; }
         const job=jobs[j];
+        if(job.companion){ try{ if(typeof ensureBody==="function") ensureBody(job.companion); }catch(_){}; j++; _preloadTimer=setTimeout(step,25); return; }
         const prev=dinoSmooth; dinoSmooth=job.smooth;
         try{ const m=makeDigDino(DINOS[job.idx]); m.visible=false; stage.add(m); job.cache[job.idx]=m; }catch(_){}
         dinoSmooth=prev;
@@ -3610,6 +3613,7 @@ function onRightPressEdge(){
     }
 }
 function onRightDouble(){
+    if(GAME.mode!=="time" && GAME.standby){ startCollectionRun(); return; }              // コレクションのスタンバイ→開始（右トリガー2回）
     if(GAME.mode==="time" && taAdvance()) return;                                       // 開始/結果閉じ/再挑戦（すべて2回連続）
     if(GAME.mode==="collect" && GAME.collectedCount>=8){ restartCollection(); return; } // コンプリート後の再開
     askDog();                                                                           // 通常＝相棒に聞く
@@ -3685,7 +3689,7 @@ function handleVRDig(){
             const grip=src.gamepad.buttons[1]?.pressed ?? false;   // 左中指グリップ
             const trig=src.gamepad.buttons[0]?.pressed ?? false;   // 左人差し指トリガー
             const x=src.gamepad.buttons[4]?.pressed ?? false;
-            const selMode = grip && trig;                          // 相棒選択モード
+            const selMode = grip && trig && (typeof isStandby==="function" && isStandby());   // 相棒選択はスタンバイ中のみ（スタート後は変更不可）
             if(selMode){
                 if(!GAME._prevSel){ if(buddyRandom){ const kk=drawRandomCompanion(); GAME._buddyIdx=COMPANION_ORDER.indexOf(kk); showBuddyCardVR(kk); vibrate(90,0.8); } else { GAME._buddyIdx=0; setCompanion(COMPANION_ORDER[0]); showBuddyCardVR(COMPANION_ORDER[0]); vibrate(60,0.6); } }   // ランダム時は抽選／通常は犬
                 if(x && !GAME._prevX){ GAME._buddyIdx=(GAME._buddyIdx+1)%COMPANION_ORDER.length; const kk=COMPANION_ORDER[GAME._buddyIdx]; setCompanion(kk); showBuddyCardVR(kk); vibrate(40,0.5); }   // X＝順
