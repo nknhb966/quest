@@ -637,7 +637,7 @@ const ART_FILES  = ["model01_small.glb","model02_small.glb","model03_small.glb",
 const ART_IMGS   = ["40100","40200","40300","40400","40500","40600","40700","40800"]
                     .map(n=>IMG_BASE+n+"_kokufuhakkutsu3.png");
 // 恐竜の説明パネル画像（8種）。※パスは後で共有される予定。空文字のあいだはプレースホルダー表示。
-//   順番は DINOS と同じ：0ティラノ 1トリケラ 2ステゴ 3ブラキオ 4プテラノ 5フクイラプトル 6フクイサウルス 7フクイティタン
+//   順番は DINOS と同じ：0ティラノ 1フクイラプトル 2フクイティタン 3トリケラ 4プテラノ 5フクイサウルス 6ステゴ 7ブラキオ
 const DINO_IMGS  = ["", "", "", "", "", "", "", ""];
 const TIME_LIMIT = 100; // タイムアタック秒数
 
@@ -1082,7 +1082,7 @@ function voxTail(parent,x,y,z,len,w0,w1,col){
   t.add(ch.build()); parent.userData.tail=t; return t;
 }
 
-// 1) ティラノサウルス（大きな頭・小さな前足・太い尾／2足）
+// 1) ティラノサウルス
 function build_trex(){
   const g=new THREE.Group(); const M=0x5a7a44,D=0x39502c,BE=0xa89c6a,C=WHTE;
   const B=new Chunk();
@@ -1100,7 +1100,41 @@ function build_trex(){
   g.userData.legs=[ voxLeg(g,-0.22,0.98,0.02,0.16,0.98,M,D,0), voxLeg(g,0.22,0.98,0.02,0.16,0.98,M,D,Math.PI) ];
   return g;
 }
-// 2) トリケラトプス（フリル板＋3角／4足）
+// 2) フクイラプトル
+function build_fukuiraptor(){
+  const g=new THREE.Group(); const M=0xb0673a,D=0x6e3f20,BE=0xd8a870,C=WHTE,F=0x6e3f20;
+  const B=new Chunk();
+  B.box(-0.24,1.0,-0.55, 0.24,1.42,0.62, M);            // がっしりした胴
+  B.box(-0.2,1.02,-0.2, 0.2,1.18,0.52, BE);
+  B.box(-0.22,1.32,0.55, 0.22,1.78,1.05, M);            // 頭（やや大）
+  B.box(-0.17,1.32,1.0, 0.17,1.58,1.42, M);             // 口先
+  B.box(-0.15,1.32,1.34, 0.15,1.4,1.42, C);             // 歯
+  [-0.32,-0.05,0.22].forEach(z=>B.box(-0.04,1.42,z-0.06, 0.04,1.64,z+0.06, F)); // 背の羽
+  B.box(0.18,1.06,0.44, 0.32,1.28,0.6, M);              // 腕（右／mirror）
+  B.eye(-0.16,1.6,1.02); B.eye(0.16,1.6,1.02);
+  B.mirrorX(); g.add(B.build());
+  voxTail(g,0,1.06,-0.55,1.6,0.3,0.08,M);
+  const legs=[ voxLeg(g,-0.18,0.98,0.05,0.15,0.98,M,D,0), voxLeg(g,0.18,0.98,0.05,0.15,0.98,M,D,Math.PI) ];
+  legs.forEach(p=>{ const ch=new Chunk(); ch.box(-0.05,-0.94,0.16, 0.05,-0.78,0.32, C); p.add(ch.build()); }); // 鎌爪
+  g.userData.legs=legs; return g;
+}
+// 3) フクイティタン
+function build_fukuititan(){
+  const g=new THREE.Group(); const M=0x9a8a63,D=0x6e6244,BE=0xc4b78c;
+  const B=new Chunk();
+  B.box(-0.42,0.95,-1.0, 0.42,1.58,0.6, M);             // 大きな胴
+  B.box(-0.38,0.97,-0.55, 0.38,1.26,0.5, BE);
+  B.box(-0.22,1.35,0.5, 0.22,1.9,1.02, M);              // 首（前上へ）
+  B.box(-0.18,1.72,0.92, 0.18,2.14,1.48, M);
+  B.box(-0.17,2.02,1.4, 0.17,2.34,1.8, M);              // 頭（前方）
+  B.eye(-0.11,2.2,1.76,0.9); B.eye(0.11,2.2,1.76,0.9);
+  B.mirrorX(); g.add(B.build());
+  voxTail(g,0,1.15,-1.0,2.2,0.56,0.14,M);
+  g.userData.legs=[ voxLeg(g,-0.3,0.9,0.48,0.2,0.9,M,D,0), voxLeg(g,0.3,0.9,0.48,0.2,0.9,M,D,Math.PI),
+                    voxLeg(g,-0.3,0.85,-0.65,0.2,0.85,M,D,Math.PI), voxLeg(g,0.3,0.85,-0.65,0.2,0.85,M,D,0) ];
+  return g;
+}
+// 4) トリケラトプス
 function build_tri(){
   const g=new THREE.Group(); const M=0x9a6a42,D=0x6b4828,BE=0xc2a06f,C=0xe6d6b0,BK=0x6e4f28;
   const B=new Chunk();
@@ -1118,39 +1152,7 @@ function build_tri(){
                     voxLeg(g,-0.24,0.66,-0.5,0.15,0.66,M,D,Math.PI), voxLeg(g,0.24,0.66,-0.5,0.15,0.66,M,D,0) ];
   return g;
 }
-// 3) ステゴザウルス（高い背＋板の列＋尾トゲ）
-function build_stego(){
-  const g=new THREE.Group(); const M=0x6a7c52,D=0x47572f,BE=0x9aa47a,P=0xc46a38,C=0xe6d6b0;
-  const B=new Chunk();
-  B.box(-0.3,0.82,-1.0, 0.3,1.34,0.7, M);
-  B.box(-0.26,0.84,-0.6, 0.26,1.06,0.6, BE);
-  B.box(-0.2,0.58,0.65, 0.2,0.9,1.08, M);
-  [-0.6,-0.25,0.1,0.45].forEach((z,i)=>{ const h=(i===1||i===2)?0.42:0.28; B.box(-0.05,1.34,z-0.13, 0.05,1.34+h,z+0.13, P); });
-  B.eye(-0.13,0.78,1.03,0.95); B.eye(0.13,0.78,1.03,0.95);
-  B.mirrorX(); g.add(B.build());
-  const t=voxTail(g,0,1.0,-1.0,0.7,0.4,0.14,M);
-  const tc=new Chunk(); tc.box(0.12,-0.05,-0.6,0.28,0.28,-0.5,C); tc.mirrorX(); t.add(tc.build());
-  g.userData.legs=[ voxLeg(g,-0.24,0.56,0.45,0.15,0.56,M,D,0), voxLeg(g,0.24,0.56,0.45,0.15,0.56,M,D,Math.PI),
-                    voxLeg(g,-0.26,0.78,-0.5,0.16,0.78,M,D,Math.PI), voxLeg(g,0.26,0.78,-0.5,0.16,0.78,M,D,0) ];
-  return g;
-}
-// 4) ブラキオサウルス（高く立ち上がる長い首）
-function build_brachi(){
-  const g=new THREE.Group(); const M=0x6e7768,D=0x4a5244,BE=0x9aa08c;
-  const B=new Chunk();
-  B.box(-0.36,1.0,-0.9, 0.36,1.62,0.5, M);
-  B.box(-0.32,1.02,-0.5, 0.32,1.28,0.45, BE);
-  B.box(-0.17,1.5,0.28, 0.17,2.5,0.66, M);
-  B.box(-0.15,2.4,0.5, 0.15,3.0,0.9, M);
-  B.box(-0.18,2.9,0.85, 0.18,3.28,1.3, M);
-  B.eye(-0.1,3.12,1.28,0.85); B.eye(0.1,3.12,1.28,0.85);
-  B.mirrorX(); g.add(B.build());
-  voxTail(g,0,1.15,-0.9,2.0,0.5,0.14,M);
-  g.userData.legs=[ voxLeg(g,-0.28,0.92,0.5,0.18,0.92,M,D,0), voxLeg(g,0.28,0.92,0.5,0.18,0.92,M,D,Math.PI),
-                    voxLeg(g,-0.28,0.8,-0.7,0.18,0.8,M,D,Math.PI), voxLeg(g,0.28,0.8,-0.7,0.18,0.8,M,D,0) ];
-  return g;
-}
-// 5) プテラノドン（長いくちばし＋クレスト＋板の翼／飛行）
+// 5) プテラノドン
 function build_ptera(){
   const g=new THREE.Group(); const M=0x84796b,D=0x5f574b,ME=0xa89c88,CR=0xc85a34,C=WHTE; const Y=1.4;
   const B=new Chunk();
@@ -1170,25 +1172,7 @@ function build_ptera(){
   g.userData.legs=[ voxLeg(g,-0.1,Y-0.18,-0.05,0.07,0.4,M,D,0), voxLeg(g,0.1,Y-0.18,-0.05,0.07,0.4,M,D,Math.PI) ];
   return g;
 }
-// 6) フクイラプトル（福井の獣脚類・水平の体・背の羽・鎌爪）
-function build_fukuiraptor(){
-  const g=new THREE.Group(); const M=0xb0673a,D=0x6e3f20,BE=0xd8a870,C=WHTE,F=0x6e3f20;
-  const B=new Chunk();
-  B.box(-0.24,1.0,-0.55, 0.24,1.42,0.62, M);            // がっしりした胴
-  B.box(-0.2,1.02,-0.2, 0.2,1.18,0.52, BE);
-  B.box(-0.22,1.32,0.55, 0.22,1.78,1.05, M);            // 頭（やや大）
-  B.box(-0.17,1.32,1.0, 0.17,1.58,1.42, M);             // 口先
-  B.box(-0.15,1.32,1.34, 0.15,1.4,1.42, C);             // 歯
-  [-0.32,-0.05,0.22].forEach(z=>B.box(-0.04,1.42,z-0.06, 0.04,1.64,z+0.06, F)); // 背の羽
-  B.box(0.18,1.06,0.44, 0.32,1.28,0.6, M);              // 腕（右／mirror）
-  B.eye(-0.16,1.6,1.02); B.eye(0.16,1.6,1.02);
-  B.mirrorX(); g.add(B.build());
-  voxTail(g,0,1.06,-0.55,1.6,0.3,0.08,M);
-  const legs=[ voxLeg(g,-0.18,0.98,0.05,0.15,0.98,M,D,0), voxLeg(g,0.18,0.98,0.05,0.15,0.98,M,D,Math.PI) ];
-  legs.forEach(p=>{ const ch=new Chunk(); ch.box(-0.05,-0.94,0.16, 0.05,-0.78,0.32, C); p.add(ch.build()); }); // 鎌爪
-  g.userData.legs=legs; return g;
-}
-// 7) フクイサウルス（福井の鳥脚類・くちばし／2〜4足）
+// 6) フクイサウルス
 function build_fukuisaurus(){
   const g=new THREE.Group(); const M=0x7f8a4e,D=0x556031,BE=0xb6bd82,BK=0x6e6a3a;
   const B=new Chunk();
@@ -1204,20 +1188,36 @@ function build_fukuisaurus(){
                     voxLeg(g,-0.22,0.78,-0.5,0.16,0.78,M,D,Math.PI), voxLeg(g,0.22,0.78,-0.5,0.16,0.78,M,D,0) ];
   return g;
 }
-// 8) フクイティタン（福井の竜脚類・前方へ伸びる太い首／4足）
-function build_fukuititan(){
-  const g=new THREE.Group(); const M=0x9a8a63,D=0x6e6244,BE=0xc4b78c;
+// 7) ステゴザウルス
+function build_stego(){
+  const g=new THREE.Group(); const M=0x6a7c52,D=0x47572f,BE=0x9aa47a,P=0xc46a38,C=0xe6d6b0;
   const B=new Chunk();
-  B.box(-0.42,0.95,-1.0, 0.42,1.58,0.6, M);             // 大きな胴
-  B.box(-0.38,0.97,-0.55, 0.38,1.26,0.5, BE);
-  B.box(-0.22,1.35,0.5, 0.22,1.9,1.02, M);              // 首（前上へ）
-  B.box(-0.18,1.72,0.92, 0.18,2.14,1.48, M);
-  B.box(-0.17,2.02,1.4, 0.17,2.34,1.8, M);              // 頭（前方）
-  B.eye(-0.11,2.2,1.76,0.9); B.eye(0.11,2.2,1.76,0.9);
+  B.box(-0.3,0.82,-1.0, 0.3,1.34,0.7, M);
+  B.box(-0.26,0.84,-0.6, 0.26,1.06,0.6, BE);
+  B.box(-0.2,0.58,0.65, 0.2,0.9,1.08, M);
+  [-0.6,-0.25,0.1,0.45].forEach((z,i)=>{ const h=(i===1||i===2)?0.42:0.28; B.box(-0.05,1.34,z-0.13, 0.05,1.34+h,z+0.13, P); });
+  B.eye(-0.13,0.78,1.03,0.95); B.eye(0.13,0.78,1.03,0.95);
   B.mirrorX(); g.add(B.build());
-  voxTail(g,0,1.15,-1.0,2.2,0.56,0.14,M);
-  g.userData.legs=[ voxLeg(g,-0.3,0.9,0.48,0.2,0.9,M,D,0), voxLeg(g,0.3,0.9,0.48,0.2,0.9,M,D,Math.PI),
-                    voxLeg(g,-0.3,0.85,-0.65,0.2,0.85,M,D,Math.PI), voxLeg(g,0.3,0.85,-0.65,0.2,0.85,M,D,0) ];
+  const t=voxTail(g,0,1.0,-1.0,0.7,0.4,0.14,M);
+  const tc=new Chunk(); tc.box(0.12,-0.05,-0.6,0.28,0.28,-0.5,C); tc.mirrorX(); t.add(tc.build());
+  g.userData.legs=[ voxLeg(g,-0.24,0.56,0.45,0.15,0.56,M,D,0), voxLeg(g,0.24,0.56,0.45,0.15,0.56,M,D,Math.PI),
+                    voxLeg(g,-0.26,0.78,-0.5,0.16,0.78,M,D,Math.PI), voxLeg(g,0.26,0.78,-0.5,0.16,0.78,M,D,0) ];
+  return g;
+}
+// 8) ブラキオサウルス
+function build_brachi(){
+  const g=new THREE.Group(); const M=0x6e7768,D=0x4a5244,BE=0x9aa08c;
+  const B=new Chunk();
+  B.box(-0.36,1.0,-0.9, 0.36,1.62,0.5, M);
+  B.box(-0.32,1.02,-0.5, 0.32,1.28,0.45, BE);
+  B.box(-0.17,1.5,0.28, 0.17,2.5,0.66, M);
+  B.box(-0.15,2.4,0.5, 0.15,3.0,0.9, M);
+  B.box(-0.18,2.9,0.85, 0.18,3.28,1.3, M);
+  B.eye(-0.1,3.12,1.28,0.85); B.eye(0.1,3.12,1.28,0.85);
+  B.mirrorX(); g.add(B.build());
+  voxTail(g,0,1.15,-0.9,2.0,0.5,0.14,M);
+  g.userData.legs=[ voxLeg(g,-0.28,0.92,0.5,0.18,0.92,M,D,0), voxLeg(g,0.28,0.92,0.5,0.18,0.92,M,D,Math.PI),
+                    voxLeg(g,-0.28,0.8,-0.7,0.18,0.8,M,D,Math.PI), voxLeg(g,0.28,0.8,-0.7,0.18,0.8,M,D,0) ];
   return g;
 }
 
@@ -1304,13 +1304,13 @@ function dinoLines(cry){
 }
 const DINOS=[
     {key:"trex",        label:"🦖 ティラノサウルス", cry:"ガオー",   build:build_trex},
+    {key:"fukuiraptor", label:"🦖 フクイラプトル",   cry:"ガオォ",   build:build_fukuiraptor},
+    {key:"fukuititan",  label:"🦕 フクイティタン",   cry:"ずしーん", build:build_fukuititan},
     {key:"tri",         label:"🦕 トリケラトプス",   cry:"ブモォ",   build:build_tri},
+    {key:"ptera",       label:"🕊 プテラノドン",     cry:"ピギャー", build:build_ptera},
+    {key:"fukuisaurus", label:"🦕 フクイサウルス",   cry:"モーゥ",   build:build_fukuisaurus},
     {key:"stego",       label:"🦕 ステゴザウルス",   cry:"のっしり", build:build_stego},
     {key:"brachi",      label:"🦕 ブラキオサウルス", cry:"にょろん", build:build_brachi},
-    {key:"ptera",       label:"🕊 プテラノドン",     cry:"ピギャー", build:build_ptera},
-    {key:"fukuiraptor", label:"🦖 フクイラプトル",   cry:"ガオォ",   build:build_fukuiraptor},
-    {key:"fukuisaurus", label:"🦕 フクイサウルス",   cry:"モーゥ",   build:build_fukuisaurus},
-    {key:"fukuititan",  label:"🦕 フクイティタン",   cry:"ずしーん", build:build_fukuititan},
 ];
 
 const BUDDY_BASE=0.35; let buddyScale=1, bubbleSpr=null;   // 相棒の基準スケール × ユーザー倍率(1.0〜2.5)
@@ -1436,7 +1436,7 @@ function updateBuddyStandbyUI(){
     el.appendChild(start);
     el.style.display="flex";
 }
-registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, fullName:"いぬ", rarity:"パートナー", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, era:"—", region:"—", dinoFeat:"たよれる相棒のいぬ。", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, fullName:"いぬ", rarity:"ノーマル", cat:"あいぼう", diet:"なんでも", special:{name:"お宝センサー", discP:100, discN:5, digN:0}, era:"—", region:"—", dinoFeat:"たよれる相棒のいぬ。", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
 registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, fullName:"ティラノサウルス", rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
 registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, fullName:"フクイラプトル", rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
 registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, fullName:"フクイティタン", rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された大型の竜脚類。長い首と尾を持つ。", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
