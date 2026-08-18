@@ -1082,7 +1082,6 @@ function voxTail(parent,x,y,z,len,w0,w1,col){
   t.add(ch.build()); parent.userData.tail=t; return t;
 }
 
-// 1) ティラノサウルス
 function build_trex(){
   const g=new THREE.Group(); const M=0x5a7a44,D=0x39502c,BE=0xa89c6a,C=WHTE;
   const B=new Chunk();
@@ -1100,7 +1099,6 @@ function build_trex(){
   g.userData.legs=[ voxLeg(g,-0.22,0.98,0.02,0.16,0.98,M,D,0), voxLeg(g,0.22,0.98,0.02,0.16,0.98,M,D,Math.PI) ];
   return g;
 }
-// 2) フクイラプトル
 function build_fukuiraptor(){
   const g=new THREE.Group(); const M=0xb0673a,D=0x6e3f20,BE=0xd8a870,C=WHTE,F=0x6e3f20;
   const B=new Chunk();
@@ -1118,7 +1116,6 @@ function build_fukuiraptor(){
   legs.forEach(p=>{ const ch=new Chunk(); ch.box(-0.05,-0.94,0.16, 0.05,-0.78,0.32, C); p.add(ch.build()); }); // 鎌爪
   g.userData.legs=legs; return g;
 }
-// 3) フクイティタン
 function build_fukuititan(){
   const g=new THREE.Group(); const M=0x9a8a63,D=0x6e6244,BE=0xc4b78c;
   const B=new Chunk();
@@ -1134,7 +1131,6 @@ function build_fukuititan(){
                     voxLeg(g,-0.3,0.85,-0.65,0.2,0.85,M,D,Math.PI), voxLeg(g,0.3,0.85,-0.65,0.2,0.85,M,D,0) ];
   return g;
 }
-// 4) トリケラトプス
 function build_tri(){
   const g=new THREE.Group(); const M=0x9a6a42,D=0x6b4828,BE=0xc2a06f,C=0xe6d6b0,BK=0x6e4f28;
   const B=new Chunk();
@@ -1152,7 +1148,6 @@ function build_tri(){
                     voxLeg(g,-0.24,0.66,-0.5,0.15,0.66,M,D,Math.PI), voxLeg(g,0.24,0.66,-0.5,0.15,0.66,M,D,0) ];
   return g;
 }
-// 5) プテラノドン
 function build_ptera(){
   const g=new THREE.Group(); const M=0x84796b,D=0x5f574b,ME=0xa89c88,CR=0xc85a34,C=WHTE; const Y=1.4;
   const B=new Chunk();
@@ -1172,7 +1167,6 @@ function build_ptera(){
   g.userData.legs=[ voxLeg(g,-0.1,Y-0.18,-0.05,0.07,0.4,M,D,0), voxLeg(g,0.1,Y-0.18,-0.05,0.07,0.4,M,D,Math.PI) ];
   return g;
 }
-// 6) フクイサウルス
 function build_fukuisaurus(){
   const g=new THREE.Group(); const M=0x7f8a4e,D=0x556031,BE=0xb6bd82,BK=0x6e6a3a;
   const B=new Chunk();
@@ -1188,7 +1182,6 @@ function build_fukuisaurus(){
                     voxLeg(g,-0.22,0.78,-0.5,0.16,0.78,M,D,Math.PI), voxLeg(g,0.22,0.78,-0.5,0.16,0.78,M,D,0) ];
   return g;
 }
-// 7) ステゴザウルス
 function build_stego(){
   const g=new THREE.Group(); const M=0x6a7c52,D=0x47572f,BE=0x9aa47a,P=0xc46a38,C=0xe6d6b0;
   const B=new Chunk();
@@ -1204,7 +1197,6 @@ function build_stego(){
                     voxLeg(g,-0.26,0.78,-0.5,0.16,0.78,M,D,Math.PI), voxLeg(g,0.26,0.78,-0.5,0.16,0.78,M,D,0) ];
   return g;
 }
-// 8) ブラキオサウルス
 function build_brachi(){
   const g=new THREE.Group(); const M=0x6e7768,D=0x4a5244,BE=0x9aa08c;
   const B=new Chunk();
@@ -2631,16 +2623,25 @@ function taStartRun(){
     updateGoal(); updateTAButton();
 }
 // カードのレア度：idx0-7（1超激/2激/3レア/4プラチナ/5通常）＝超激1・激1・レア1・プラチナ2・通常3
-// index小＝レア度高。相棒のレア度文字列を使用（DINOSと同順）
+// index小＝レア度高（恐竜も出土品も同アルゴリズム）。獲得カードは犬を含めない（＝DINOS/出土品のみ）
 const RARITY_COL ={"超激レア":"#ff5bd0","激レア":"#ffd24d","レア":"#8fd6ff","プチレア":"#b0f0c0","ノーマル":"#c8bfe0"};
-function cardRarityOf(idx){ const k=(typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null; return (k&&COMPANIONS[k])?COMPANIONS[k].rarity:"ノーマル"; }
+const ART_RARITY =["超激レア","激レア","レア","プチレア","プチレア","ノーマル","ノーマル","ノーマル"];   // 出土品8種のindex別レア度
+function cardRarityOf(idx){
+    if(curTarget==="dino"){ const k=(typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null; return (k&&COMPANIONS[k])?COMPANIONS[k].rarity:"ノーマル"; }
+    return ART_RARITY[idx] || "ノーマル";
+}
+function scoreRarity(score){   // 従来どおりのしきい値
+    if(score>=4000) return "超激レア";
+    if(score>=3000) return "激レア";
+    if(score>=2200) return "レア";
+    if(score>=1400) return "プチレア";
+    return "ノーマル";
+}
 function acquireCard(score){
-    const N=(typeof DINOS!=="undefined")?DINOS.length:8;
-    const digMax=N*110 + 40*N*(N-1)/2;              // 発掘満点の目安（種類数非依存）
-    const t=Math.max(0,Math.min(1, score/(digMax*1.6)));   // スコア割合（時間ボーナス込みの概算）。1で最高
-    const center=(1-t)*(N-1);                       // t=1→index0(最レア), t=0→index N-1
-    let idx=Math.round(center + (Math.random()*2-1)*(N*0.18));   // 少しランダム
-    idx=Math.max(0,Math.min(N-1, idx));
+    const N=(curTarget==="dino" && typeof DINOS!=="undefined") ? DINOS.length : 8;
+    const rar=scoreRarity(score);
+    const pool=[]; for(let i=0;i<N;i++){ if(cardRarityOf(i)===rar) pool.push(i); }
+    const idx = pool.length ? pool[(Math.random()*pool.length)|0] : (Math.random()*N|0);
     return { idx, rarity: cardRarityOf(idx) };
 }
 function taFinish(){
