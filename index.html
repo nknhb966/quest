@@ -1517,20 +1517,19 @@ function showBuddyCardVR(k){
     g.fillStyle="#bfb488"; g.font="18px sans-serif"; yy=wrap(c.feature,36,yy+6,440,24);
     g.fillStyle="#fdf3d5"; g.font="21px sans-serif"; const yy2=wrap(c.cardText,36,yy+12,440,28);
     g.fillStyle="#4a3d17"; g.fillRect(146,632,220,40); g.strokeStyle="#e6c26a"; g.lineWidth=3; g.strokeRect(146,632,220,40);
-    g.fillStyle="#fff"; g.font="bold 22px sans-serif"; g.textAlign="center"; g.fillText("閉じる（右手で指す）",256,652);
+    g.fillStyle="#fff"; g.font="bold 22px sans-serif"; g.textAlign="center"; g.fillText("閉じる",256,652);
     const tex=new THREE.CanvasTexture(cv);
-    if(!_buddyCardVR){ _buddyCardVR=new THREE.Mesh(new THREE.PlaneGeometry(0.51,0.675), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:true})); _buddyCardVR.renderOrder=1000; scene.add(_buddyCardVR); }
+    if(!_buddyCardVR){ _buddyCardVR=new THREE.Mesh(new THREE.PlaneGeometry(0.51,0.775), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:true})); _buddyCardVR.renderOrder=1000; scene.add(_buddyCardVR); }
     else { if(_buddyCardVR.material.map) _buddyCardVR.material.map.dispose(); _buddyCardVR.material.map=tex; _buddyCardVR.material.depthTest=true; }
-    _buddyCardVR.visible=true; _buddyCardVRHide=performance.now()+8000;
+    _buddyCardVR.visible=true;   // 閉じる/スタートまで表示
 }
 function updateBuddyCardVR(){
-    if(!_buddyCardVR) return;
-    if(performance.now()>_buddyCardVRHide){ _buddyCardVR.visible=false; return; }
+    if(!_buddyCardVR || !_buddyCardVR.visible) return;                 // 自動では消さない（閉じるボタン/スタートまで表示）
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const q=camera.getWorldQuaternion(new THREE.Quaternion());
     const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
-    _buddyCardVR.position.copy(cw).addScaledVector(fwd,0.9).add(new THREE.Vector3(0,-0.25,0));   // 0.2m奥・0.2m下
-    _buddyCardVR.quaternion.copy(q);
+    _buddyCardVR.position.copy(cw).addScaledVector(fwd,0.9).add(new THREE.Vector3(0,-0.15,0));   // 0.2m奥・0.1m下（前回より0.1m上げ）
+    _buddyCardVR.quaternion.copy(q);                                    // 常にプレイヤー（カメラ）に正対
 }
 // VRランダムボタン（スタンバイ中・カメラ前方右下）
 let _buddyRandomBtn=null;
@@ -1543,13 +1542,13 @@ function makeBuddyRandomBtnTex(){
 function updateBuddyRandomBtn(){
     const show = renderer.xr.isPresenting && (typeof isStandby==="function" && isStandby());
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
-    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.2,0.075), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }
+    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }   // 1.5倍
     _buddyRandomBtn.visible=true;
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const q=camera.getWorldQuaternion(new THREE.Quaternion());
     const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
     const right=new THREE.Vector3(1,0,0).applyQuaternion(q);
-    _buddyRandomBtn.position.copy(cw).addScaledVector(fwd,0.75).addScaledVector(right,0.28).add(new THREE.Vector3(0,-0.28,0));
+    _buddyRandomBtn.position.copy(cw).addScaledVector(fwd,0.75).addScaledVector(right,-0.32).add(new THREE.Vector3(0,-0.22,0));   // 左側
     _buddyRandomBtn.quaternion.copy(q);
 }
 
@@ -2140,6 +2139,8 @@ function excavate(t){
             sfxComplete(); showToast("🏆 全8種コンプリート！");
             bubble.say(line("done"), 4000);
             GAME.doneIdx.clear(); GAME.recent.length=0;   // 全部掘ったので発掘済み情報をリセット
+            if(typeof clearStarPoint==="function") clearStarPoint();   // 残っていればスターを消す
+            GAME.complete=true;                                        // 相棒は反応しなくなる
         }
         // 全ポイントは最初から出ているので再出現しない（残りをどの順でも掘れる）
     } else { // タイムアタック
@@ -2273,6 +2274,7 @@ let dogCelebrateT=0;
 const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
 // 犬に「聞く」＝場所ヒント。信頼度に応じて当たり/はずれ。教えた場所へ行って少し待つ。
 function askDog(){
+    if(GAME.complete) return;   // コンプリート後は反応しない
     if(!GAME.active) return;
     // タイムアタックの計測中以外は「終わったよ」の反応にする
     if(GAME.mode==="time" && TA.state!=="run"){
@@ -2456,7 +2458,7 @@ document.getElementById("helpClose").onclick=()=>{ document.getElementById("help
 document.getElementById("help").addEventListener("click", e=>{ if(e.target.id==="help") e.currentTarget.classList.remove("open"); });
 
 function startGame(desktop){
-    GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool; GAME.starUsed=false;
+    GAME.active=true; GAME.desktop=desktop; GAME.mode=chosenMode; GAME.tool=chosenTool; GAME.starUsed=false; GAME.complete=false;
     if(typeof setCompanion==="function") setCompanion("dog");   // 入った時は必ず犬から
     document.body.classList.add("playing"); if(desktop) document.body.classList.add("desktop");   // HUD/クロスヘアを確実に表示
     DIG_REACH = DIG_REACH_BASE;   // ③黄色距離：VR/AR・スマホ・PC 共通
@@ -2656,6 +2658,7 @@ function resetDexForRun(){
     if(typeof dexPanel!=="undefined") dexPanel.draw();
 }
 function taBeginCountdown(){
+    if(typeof _buddyCardVR!=="undefined"&&_buddyCardVR) _buddyCardVR.visible=false;
     { const bc=document.getElementById("buddyCard"); if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; } const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
     resetDexForRun(); clearRunWorld();
     GAME.recent.length=0; GAME.doneIdx.clear();
@@ -2706,7 +2709,7 @@ function taFinish(){
     const score=Math.max(0, digPts + timeBonus - askPenalty);
     GAME.score=score; TA.lastScore=score;
     if(score>0) recordTimeAttack(score);
-    clearTargets();
+    clearTargets(); if(typeof clearStarPoint==="function") clearStarPoint();
     TA.state="results";
     TA.lockUntil=performance.now()+1500;
     sfxTimeUp();
@@ -2719,7 +2722,7 @@ function taFinish(){
 }
 // 右トリガー（素手なら右手つまむ）で進行
 function startCollectionRun(){   // コレクション：スタンバイ→開始（相棒はスタンバイ中に選択済み）
-    GAME.standby=false; worldHud.hide(); { const bc=document.getElementById("buddyCard"); if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; } const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
+    GAME.standby=false; GAME.complete=false; worldHud.hide(); if(typeof _buddyCardVR!=="undefined"&&_buddyCardVR) _buddyCardVR.visible=false; { const bc=document.getElementById("buddyCard"); if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; } const bs=document.getElementById("buddyStandby"); if(bs) bs.style.display="none"; }
     GAME.starUsed=false;
     afterSite(()=>{ clearTargets(); spawnAllTargets(); });
     if(typeof chord==="function") chord([523,784,1047],0.05,"triangle",0.5);
@@ -3263,6 +3266,7 @@ const PET_LINES=["うれしいワン！","もっと なでて ワン♪","えへ
 function currentHitProb(){ let base=0.5; const tg=GAME.targets.find(x=>!x.discovered); if(tg&&tg.diff) base=tg.diff.dogRel; return Math.min(1, base+petBoost); }
 let lastPetLine="", dogSpinT=0, dogTailWagT=0;
 function petDog(){
+    if(GAME.complete) return;   // コンプリート後は反応しない
     if(petCooldown>0) return;
     if(digBusy) return;                          // 発掘中はなでない
     petCooldown=1.6;
