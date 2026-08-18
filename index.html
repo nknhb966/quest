@@ -1514,7 +1514,7 @@ function updateBuddyCardVR(){
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const q=camera.getWorldQuaternion(new THREE.Quaternion());
     const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
-    _buddyCardVR.position.copy(cw).addScaledVector(fwd,0.7).add(new THREE.Vector3(0,-0.05,0));
+    _buddyCardVR.position.copy(cw).addScaledVector(fwd,0.9).add(new THREE.Vector3(0,-0.25,0));   // 0.2m奥・0.2m下
     _buddyCardVR.quaternion.copy(q);
 }
 
@@ -1659,7 +1659,12 @@ const taClock=(function(){
     return { spr, draw, show(v){ spr.visible=v; } };
 })();
 function updateTAClock(){
-    if(!renderer.xr.isPresenting || GAME.mode!=="time"){ taClock.show(false); return; }
+    if(!renderer.xr.isPresenting){ taClock.show(false); return; }
+    if(GAME.mode!=="time"){   // コレクション：スタンバイ中は開始サインを表示（TAと同様）
+        if(GAME.active && GAME.standby){ taClock.draw("右トリガー2回で開始",false); taClock.show(true); }
+        else taClock.show(false);
+        return;
+    }
     const s=TA.state;
     if(s==="countdown"){ const n=Math.max(1,Math.ceil((TA.cdEnd-performance.now())/1000)); taClock.draw(String(n),true); taClock.show(true); }
     else if(s==="run"){ taClock.draw("⏱ "+Math.max(0,Math.ceil(GAME.timeLeft))+"s",false); taClock.show(true); }
@@ -2609,7 +2614,10 @@ function clearRunWorld(){
     clearAuras(); popAnims.length=0;
 }
 function resetDexForRun(){
-    dexData={}; saveDex(dexData); refreshDexHTML();
+    for(const k in dexDino) delete dexDino[k];   // 実体を空に（変数差し替えだと残るため）
+    for(const k in dexArt)  delete dexArt[k];
+    dexData = (curTarget==="dino") ? dexDino : dexArt;
+    refreshDexHTML();
     if(typeof dexPanel!=="undefined") dexPanel.draw();
 }
 function taBeginCountdown(){
