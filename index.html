@@ -2100,7 +2100,7 @@ function excavate(t){
         }
         // 全ポイントは最初から出ているので再出現しない（残りをどの順でも掘れる）
     } else { // タイムアタック
-        GAME.digScore = (GAME.digScore||0) + 110 + t.tier*40;   // 発掘ポイント（時間ボーナス/減点は終了時に加除）
+        GAME.digScore = (GAME.digScore||0) + 110 + ((DINOS.length-1) - t.tier)*40;   // index小(レア度高)ほど高得点。種類数に依存しない
         updateGoal();
         if(dexFoundCount()>=8){ taFinish(); }   // 全8種を掘り切ったら終了＝残り時間でスコア
     }
@@ -2546,14 +2546,14 @@ const worldHud=(function(){
         renderResultPage(){
             if(!resData) return; const d=resData;
             bg(); ctx.textAlign="center"; ctx.textBaseline="middle";
-            const btnLabel = resPage===0 ? "▶ 全体のスコアを見る" : ("🎴 獲得カード："+(d.calc&&d.calc.card?(RARITY_NAME[d.calc.card.rarity]||""):""));
+            const btnLabel = resPage===0 ? "▶ 全体のスコアを見る" : ("🎴 獲得カード："+(d.calc&&d.calc.card?(d.calc.card.rarity||""):""));
             if(resPage===0){
                 // ページA：結果ポイント＋獲得カード
                 ctx.fillStyle="#f0d98a"; ctx.font="bold 46px sans-serif"; ctx.fillText(d.found>=8?"🏆 コンプリート！":"⏱ タイムアップ！",384,70);
                 ctx.fillStyle="#ffffff"; ctx.font="bold 70px sans-serif"; ctx.fillText(d.score+" pt",384,158);
                 if(d.calc&&d.calc.card){
                     ctx.fillStyle=RARITY_COL[d.calc.card.rarity]||"#fff"; ctx.font="bold 34px sans-serif";
-                    ctx.fillText("獲得カード："+(RARITY_NAME[d.calc.card.rarity]||""),384,222);
+                    ctx.fillText("獲得カード："+(d.calc.card.rarity||""),384,222);
                     try{ const t=makeTradingCardTex(d.calc.card.idx); ctx.drawImage(t.image, 234, 258, 300, 420); }catch(_){}
                 }
             } else {
@@ -2631,12 +2631,18 @@ function taStartRun(){
     updateGoal(); updateTAButton();
 }
 // カードのレア度：idx0-7（1超激/2激/3レア/4プラチナ/5通常）＝超激1・激1・レア1・プラチナ2・通常3
-const CARD_RARITY=[5,5,5,4,4,3,2,1];
-const RARITY_NAME={1:"超激レア",2:"激レア",3:"レア",4:"プラチナ",5:"通常"};
-const RARITY_COL ={1:"#ff5bd0",2:"#ffd24d",3:"#8fd6ff",4:"#e6ecf5",5:"#c8bfe0"};
-function scoreRarity(score){ if(score>=4000)return 1; if(score>=3000)return 2; if(score>=2200)return 3; if(score>=1400)return 4; return 5; }  // スコア5段階（要調整）
-function acquireCard(score){ const rar=scoreRarity(score); const pool=[]; for(let i=0;i<8;i++) if(CARD_RARITY[i]===rar)pool.push(i);
-    return { idx: pool.length? pool[(Math.random()*pool.length)|0] : (Math.random()*8|0), rarity:rar }; }
+// index小＝レア度高。相棒のレア度文字列を使用（DINOSと同順）
+const RARITY_COL ={"超激レア":"#ff5bd0","激レア":"#ffd24d","レア":"#8fd6ff","プチレア":"#b0f0c0","ノーマル":"#c8bfe0"};
+function cardRarityOf(idx){ const k=(typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null; return (k&&COMPANIONS[k])?COMPANIONS[k].rarity:"ノーマル"; }
+function acquireCard(score){
+    const N=(typeof DINOS!=="undefined")?DINOS.length:8;
+    const digMax=N*110 + 40*N*(N-1)/2;              // 発掘満点の目安（種類数非依存）
+    const t=Math.max(0,Math.min(1, score/(digMax*1.6)));   // スコア割合（時間ボーナス込みの概算）。1で最高
+    const center=(1-t)*(N-1);                       // t=1→index0(最レア), t=0→index N-1
+    let idx=Math.round(center + (Math.random()*2-1)*(N*0.18));   // 少しランダム
+    idx=Math.max(0,Math.min(N-1, idx));
+    return { idx, rarity: cardRarityOf(idx) };
+}
 function taFinish(){
     const digPts=GAME.digScore||0;
     const secs=Math.max(0, Math.ceil(GAME.timeLeft));
