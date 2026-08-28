@@ -671,7 +671,7 @@ const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高�
 let   WALK_SPEED    = 3.5;               // 歩行速度（m/s）※ワールドサイズで自動調整
 const BASE_WALK=3.5, BASE_DOG_FWD=3.4, BASE_DOG_STAY=7.0;   // 現状(約34m)基準
 const SNAP_DEG      = 30;                 // スナップ回転
-const DOG_SIDE      = 0.15;              // 犬の定位置：横オフセット（m）中央寄り
+const DOG_SIDE      = 0.0;               // 犬の定位置：正面（横オフセットなし）
 const DIG_BLOCK     = 0.8;               // 掘れるブロックの一辺の基準（m・5mで0.8。フィールド広さで拡縮）
 let   DIG_REACH     = 4.0;               // 掘れる距離（m）※ワールドサイズで自動調整
 const BASE_DIG_REACH= 4.0;               // ③ 黄色になる距離（固定・5倍相当の最適値。全倍率/広さ共通）
@@ -791,7 +791,7 @@ let curTarget = "artifact";                 // 発掘対象（発掘図鑑もこ
 let dexData = dexArt;
 function curImgs(){ return curTarget==="dino" ? DINO_IMGS : ART_IMGS; }
 function curName(i){ return curTarget==="dino" ? ((typeof DINOS!=="undefined"&&DINOS[i]? DINOS[i].label : "")||"").replace(/^\S+\s*/,"") : ""; }
-let dinoSmooth=false;   // ③なめらか恐竜（ボクセル数を増やしたマイクラ風薄め）の見た目フラグ
+let dinoSmooth=false;   // ③なめらか恐竜（ボクセル数を増やして粗さを薄めた）の見た目フラグ
 function setDigTarget(target){
     const isDino = (target==="dino" || target==="dino2");
     curTarget = isDino ? "dino" : "artifact";
@@ -1096,11 +1096,11 @@ const texLoader = new THREE.TextureLoader();
  * ===================================================== */
 const dog = new THREE.Group();          // 相棒のルート（位置・向きはこれを動かす）
 
-/* ── 3Dドット（マイクラ風ボクセル）ビルダー ───────────────────────
+/* ── 3Dドット（ボクセル）ビルダー ───────────────────────
  *  大きめの立方体で頭は大きなキューブ・胴/脚/尾は直方体という
  *  Minecraftのモブ風。左右対称(mirrorX)を強制し、恐竜の特徴を表現。
  *  脚・尾・翼は別グループ(userData.legs/tail/wings)でアニメを維持。      */
-const VOX=0.10;                         // 立方体サイズ（マイクラ感を保ちつつ特徴が出る粗さ）
+const VOX=0.10;                         // 立方体サイズ（ボクセルの粗さを保ちつつ特徴が出る粗さ）
 let VOX_CUR=VOX;                          // ③なめらか恐竜のときは細かい解像度にする
 let VOX_VARY=false;                       // ③のとき肌にわずかな陰影（リアル寄せ）
 const EYE=0x141414, WHTE=0xefe3c2;
@@ -1390,7 +1390,7 @@ function build_dog(){
                     voxLeg(g,-0.15,0.66,-0.38,0.12,0.66,M,C,Math.PI), voxLeg(g,0.15,0.66,-0.38,0.12,0.66,M,C,0) ];
   return g;
 }
-// 恐竜のたまご（マイクラのドラゴンエッグ風）
+// 恐竜のたまご（ドラゴンエッグ風ボクセル）
 function build_egg(){
   const g=new THREE.Group(); const M=0x33305a,S=0x6a5fa0,L=0x9f95d0;
   const B=new Chunk();
@@ -1766,7 +1766,7 @@ const bubble = (function(){
  * ===================================================== */
 function buildToolModel(kind){
     const g=new THREE.Group();
-    const wood=new THREE.MeshStandardMaterial({color:0x8a5a2b, roughness:0.95});   // マイクラの棒
+    const wood=new THREE.MeshStandardMaterial({color:0x8a5a2b, roughness:0.95});   // 木の棒
     const iron=new THREE.MeshStandardMaterial({color:0xd8dde3, roughness:0.85});   // 鉄
     const dark=new THREE.MeshStandardMaterial({color:0x9aa2ab, roughness:0.9});
     const stick=new THREE.Mesh(new THREE.BoxGeometry(0.024,0.024,0.24), wood); stick.position.set(0,0,-0.12); g.add(stick);   // 柄
@@ -2113,7 +2113,7 @@ function spawnTarget(tier, forcedIdx=null){
         const s=GAME.siteSpots && GAME.siteSpots[idx]; if(s) pos.copy(s);
     }
     const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
-    // マイクラ風の「掘れるブロック」＋照準時の枠線
+    // ボクセルの「掘れるブロック」＋照準時の枠線
     const fs=Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍（従来0.6→0.9）。あたり判定もこのブロックで拡大
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
@@ -2146,7 +2146,7 @@ function spawnAllTargets(){
  * ===================================================== */
 const popAnims=[];
 // ── 恐竜モードの発掘演出：岩→たまご→孵化→恐竜（鳴き声＋セリフ） ──
-const _dinoCacheB=new Array(8).fill(null);   // ② 通常（マイクラ風）
+const _dinoCacheB=new Array(8).fill(null);   // ② 通常（ボクセル）
 const _dinoCacheS=new Array(8).fill(null);   // ③ なめらか
 let   dinoDigModels=_dinoCacheB;             // 現在のスタイルのキャッシュを指す
 const eggHatch=[];
@@ -2396,14 +2396,15 @@ function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
     sizeMul = sizeMul||1;
     const px = pos.x, pz = pos.z;                       // 発掘ポイントの真上に配置
     const build=(tex, ratio)=>{
-        const h=PANEL_BASE_H*fieldScale()*0.5, w=h*ratio;   // 一辺を半分に
+        const h=PANEL_BASE_H*fieldScale()*0.5*0.4, w=h*ratio;   // 現状の0.4倍
         const grp=new THREE.Group();
         const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
         grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat));
         const frame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(w*1.04, h*1.04)),
             new THREE.LineBasicMaterial({color}));
         grp.add(frame);
-        grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, w*0.5, h*0.5+0.12));
+        const _lblW=(PANEL_BASE_H*fieldScale()*0.5)*ratio*0.5*0.5;   // 現状(縮小前w=旧h*ratio)の半分
+        grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, _lblW, h*0.5+0.12*0.4));   // No.は半分・パネルに近接
         grp.position.set(px, GROUND_Y + (0.9 + sizeMul*0.5)*fieldScale() + h*0.6, pz);   // 発掘ポイントの真上・モデルより上へ
         grp.userData.face=true; grp.userData.idx=idx;
         grp.userData.width=w; grp.userData.height=h; grp.userData.spot=pos.clone(); grp.userData.sizeMul=sizeMul;
@@ -2448,7 +2449,7 @@ function updatePanelScale(){
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
         const h=(p.userData.height||PANEL_BASE_H)*s;
-        p.position.y = ARTIFACT_POP_Y + 0.7 + h*0.5 + (((p.userData.sizeMul||1)-1)*0.4);   // 後方配置＋大きい恐竜だけ少し上げる
+        p.position.y = ARTIFACT_POP_Y + 0.7/3 + h*0.5 + (((p.userData.sizeMul||1)-1)*0.4);   // 線を1/3に（出土品へ近づける）
     });
 }
 
@@ -2826,6 +2827,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     if(!GAME.active) startGame(false);
 });
 renderer.xr.addEventListener("sessionend", ()=>{
+    GAME.moveLock=false;   // 退室でフィールド固定を解除
     if(inAR){ scene.background=_savedBg; scene.fog=_savedFog; renderer.setClearColor(0x000000,1); }
     inAR=false; worldYAdjust=0; stage.position.y=0;             // デスクトップは通常の高さへ
     updateSiteVis(); updatePanelScale(); endGame(true);
@@ -3220,7 +3222,7 @@ function scoreRarity(score){   // 従来どおりのしきい値
 }
 function acquireCard(score){
     let idx;
-    if(!rarityOn){ idx = pickRandomUnowned(); }        // レア度なし：未獲得からランダム
+    if(!rarityOn){ idx = pickFromDugThisRun(); }        // レア度なし：その回に掘れた対象からランダム（無ければ全対象）
     else { idx = pickByRarityUnowned(scoreRarity(score)); }   // レア度あり：基準→下位の未獲得
     return { idx, rarity: cardRarityOf(idx) };
 }
@@ -3238,7 +3240,7 @@ function taFinish(){
     sfxTimeUp();
     const found=dexFoundCount();
     const card=acquireCard(score); GAME.lastCard=card;                    // スコアに応じてカード獲得
-    if(typeof cardRevealFX==="function") setTimeout(()=>cardRevealFX(card.rarity), 250);   // 獲得演出
+    if(typeof cardRevealFX==="function") setTimeout(()=>cardRevealFX(rarityOn?scoreRarity(score):card.rarity), 250);   // 演出はスコア帯基準（レア度なしは別途激レア固定）
     GAME.dogLvMsg = dogLevelUpOnClear(scoreRarity(score));   // 犬レベルアップ表示
     { const tg=(GAME.digTarget)?GAME.digTarget:curTarget; const bk=buddyKeyForCard(tg, card.idx); if(bk) unlockBuddy(bk); }   // 相棒候補に追加（重複しない）
     { const tg=(GAME.digTarget)?GAME.digTarget:curTarget; cardImage(tg, card.idx, ()=>{ if(TA.state==="results") worldHud.renderResultPage(); }); }
@@ -3265,11 +3267,11 @@ function collectionFinish(){   // ④コレクションのクリア（全8種）
     GAME.complete=true;
     GAME.dogLvMsg = dogLevelUpOnClear(collectRarityByTime(sec));   // 犬レベルアップ表示
     let card;
-    if(!rarityOn){ const idx=pickRandomUnowned(); card={ idx, rarity: cardRarityOf(idx) }; }        // レア度なし：未獲得からランダム
+    if(!rarityOn){ const idx=pickFromDugThisRun(); card={ idx, rarity: cardRarityOf(idx) }; }        // レア度なし：その回に掘れた対象からランダム（無ければ全対象）
     else { const idx=pickByRarityUnowned(collectRarityByTime(sec)); card={ idx, rarity: cardRarityOf(idx) }; }   // レア度あり：基準→下位の未獲得
     GAME.lastCard = card;
     { const bk=buddyKeyForCard((curTarget==="dino")?"dino":"artifact", card.idx); if(bk) unlockBuddy(bk); }   // 相棒候補に追加（重複しない）
-    if(typeof cardRevealFX==="function") setTimeout(()=>cardRevealFX(card.rarity), 250);   // 獲得演出
+    if(typeof cardRevealFX==="function") setTimeout(()=>cardRevealFX(rarityOn?collectRarityByTime(sec):card.rarity), 250);   // 演出はタイム帯基準（レア度なしは別途激レア固定）
     { const tg=(curTarget==="dino")?"dino":"artifact"; cardImage(tg, card.idx, ()=>{ if(GAME.complete) worldHud.renderCollectPage(); }); }
     if(typeof worldHud!=="undefined" && worldHud.drawCollectResult) worldHud.drawCollectResult(GAME.lastColTime, loadCol(), card);
     if(typeof updateWorldHud==="function") updateWorldHud();   // 突入直後に前方へ即配置
@@ -3290,6 +3292,13 @@ function cardCount(){ return (curTarget==="dino" && typeof DINOS!=="undefined")?
 function allOwned(){ const N=cardCount(); for(let i=0;i<N;i++){ if(!cardOwned(i)) return false; } return true; }
 const RARITY_ORDER=["超激レア","激レア","レア","プチレア","ノーマル"];   // 上位→下位
 // レア度なし：未獲得からランダム（全獲得済みなら全カードから）
+// レア度なし：その回に発掘した対象からランダム（1枚も無ければ全対象から）
+function pickFromDugThisRun(){
+    const N=cardCount(); const dug=[];
+    for(let i=0;i<N;i++){ if(dexData[i] && dexData[i].found) dug.push(i); }
+    if(dug.length) return dug[(Math.random()*dug.length)|0];
+    return (Math.random()*N)|0;
+}
 function pickRandomUnowned(){
     const N=cardCount(); const un=[]; for(let i=0;i<N;i++){ if(!cardOwned(i)) un.push(i); }
     if(un.length) return un[(Math.random()*un.length)|0];
@@ -3541,7 +3550,7 @@ function digOnly(){
 }
 
 /* =====================================================
- * マイクラ風の当たり判定（照準したブロックだけ掘れる）＋ 土しぶき
+ * ボクセルの当たり判定（照準したブロックだけ掘れる）＋ 土しぶき
  * ===================================================== */
 let aimedTarget=null;
 const _aimRay=new THREE.Raycaster();
@@ -4162,6 +4171,7 @@ renderer.setAnimationLoop(()=>{
 let snapCooldown=0;
 function handleVRLocomotion(dt){
     const s=renderer.xr.getSession(); if(!s) return;
+    if(GAME.moveLock) return;   // フィールド固定中は移動・回転を一切しない
     let moveX=0,moveY=0,turn=0, rGrip=false, rStickX=0, rStickY=0;
     for(const src of s.inputSources){
         const gp=src.gamepad; if(!gp) continue;
@@ -4403,7 +4413,12 @@ function handleVRDig(){
             }
             GAME._prevSel=selMode;
             if(y && !GAME._prevY){ GAME._yDownAt=performance.now(); GAME._yFired=false; }
-            if(y && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し＝リセット
+            // 人差し指トリガー＋中指グリップ＋Y長押し＝フィールド固定のトグル（移動・回転を止める）
+            if(y && trig && grip && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){
+                GAME._yFired=true; GAME.moveLock=!GAME.moveLock;
+                vibrate(220,0.95); chord(GAME.moveLock?[392,523,659]:[659,523,392],0.06,"triangle",0.5);
+                showToast(GAME.moveLock?"フィールド固定：移動・回転をロックしました":"フィールド固定を解除しました");
+            } else if(y && !trig && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し（トリガー無し）＝リセット
                 GAME._yFired=true; resetDexAndStandby(grip); vibrate(200,0.95); chord([523,784,1047],0.06,"triangle",0.5);
                 showToast(grip?"基準セット：現在地を中央・向きを前方に":"発掘ポイントを再配置しました");
             }
