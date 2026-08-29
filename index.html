@@ -4678,12 +4678,14 @@ function updateDog(dt, now){
     const focus=(typeof focusTarget==="function") ? focusTarget() : null;
     const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < DOG_STAY_R;   // 旧コード同様：発見済みなら横へ（DOG_STAY_R≥3.5m＝発見と同時）
     if(focusNear){
+        dog.userData.atBlock=true;   // 発見済みブロックの横に立っている（頭は下げない＝掘り優先）
         // 発見済みブロックが近くにある間は、必ずその「右どなり」に立つ（ヒント移動より優先）
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         const q=camQuat();
         const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
         goal=new THREE.Vector3(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 1.0);
     } else if(dog.userData.hintActive && dog.userData.hintPos){
+        dog.userData.atBlock=false;
         goal=dog.userData.hintPos.clone(); goal.y=0;
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.8){   // ヒント地点に到着 → 少し待つ
@@ -4693,6 +4695,7 @@ function updateDog(dt, now){
             if(now>dog.userData.hintWaitUntil){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         }
     } else {
+        dog.userData.atBlock=false;
         // 定位置＝視線の前方（＋少し横）。後ろ向きに動いても画面内の前方に居続ける。
         const q=camQuat();
         const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
@@ -4796,7 +4799,7 @@ function updateDog(dt, now){
       if(head){
         // 探す（嗅ぐ）のは「探知音が鳴る かつ 発見ポイントに付いていない かつ 喜んでいない」ときだけ
         const sig=(GAME&&GAME.active&&!GAME.complete)?(GAME.sniffSig||0):0;
-        const atBlock = !!(dog.userData && dog.userData.hintActive);   // 発見ポイントへ向かう/横に付いている
+        const atBlock = !!(dog.userData && dog.userData.atBlock);   // 発見済みブロックの横に立っている
         const celebrating = (typeof dogCelebrateT!=="undefined" && dogCelebrateT>0);
         const active = sig>0.02 && !atBlock && !celebrating;           // 掘ることを優先：付いている/喜んでいる間は嗅がない
         const target = active ? THREE.MathUtils.degToRad(38) : 0;      // 一律に深く頭を下げる（+＝鼻先を下へ）
