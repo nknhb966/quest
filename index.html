@@ -549,10 +549,10 @@ function fieldScale(){ const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : M
 // 恐竜用サイズ係数（3〜18mでクランプ）。サイト表示時もサイト寸法に合わせる
 function dinoScale(){
     let base;
-    if(customWorldOn()) base=Math.max(3,Math.min(18,Math.min(WORLD_X,WORLD_Z)))/5;   // サイト非表示：広さ連動
-    else if(typeof renderer!=="undefined" && renderer.xr.isPresenting) base=Math.max(3,Math.min(18,Math.min(SITE_X,SITE_Z)))/5;   // サイト表示×VR/AR
+    if(customWorldOn()) base=Math.max(3,Math.min(WORLD_X,WORLD_Z))/5;   // サイト非表示：広さ連動（上限なし・下限3）
+    else if(typeof renderer!=="undefined" && renderer.xr.isPresenting) base=Math.max(3,Math.min(SITE_X,SITE_Z))/5;   // サイト表示×VR/AR（上限なし・下限3）
     else base=1.0;   // サイト表示×スマホ/PC
-    return base*0.5;   // 卵から生まれる恐竜は半分サイズ
+    return base*0.75;   // 卵から生まれる恐竜は原寸の0.75倍
 }
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
@@ -670,7 +670,7 @@ function updateFieldBorder(){
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
 const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高さ（少し低め。パネルもこれに追従）
-function popY(){ return ARTIFACT_POP_Y - ((typeof renderer!=="undefined" && renderer.xr.isPresenting) ? 0.30 : 0); }   // VR/ARのみ30cm下げる
+function popY(){ return ARTIFACT_POP_Y; }   // 発掘済みの落ち着き高さ（VR/AR/PC共通）
 let   WALK_SPEED    = 3.5;               // 歩行速度（m/s）※ワールドサイズで自動調整
 const BASE_WALK=3.5, BASE_DOG_FWD=3.4, BASE_DOG_STAY=7.0;   // 現状(約34m)基準
 const SNAP_DEG      = 30;                 // スナップ回転
