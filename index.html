@@ -2407,9 +2407,9 @@ function animateDigDinos(now, dt){
                 const dx=camW.x-ox, dz=camW.z-oz; const dd=Math.hypot(dx,dz);
                 if(dd>1e-3){
                     const ux=dx/dd, uz=dz/dd;   // C→プレイヤー方向
-                    let s=(headDxz - idealDxz);   // 頭が理想より遠→寄る／近すぎ→引く（頭基準で正確）
-                    const R=L*(DINO_FACE.approachMul||0.5);
-                    s=Math.max(-R, Math.min(R, s));   // 前後対称・半径内。理想距離で0＝最大俯角ちょうど
+                    let s=(headDxz - idealDxz);   // 頭が理想より遠ければ寄る（近すぎても引かない）
+                    const R=L*(DINO_FACE.approachMul||0.4);
+                    s=Math.max(0, Math.min(s, R));   // 寄る方向のみ・半径内。理想距離(最大俯角)で0＝それ以上寄らない
                     s*=faceAmt;
                     goalX=ox+ux*s; goalZ=oz+uz*s;
                 }
