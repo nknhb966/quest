@@ -3079,7 +3079,7 @@ const worldHud=(function(){
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     try{ tex.colorSpace = THREE.SRGBColorSpace; }catch(_){ try{ tex.encoding = THREE.sRGBEncoding; }catch(__){} }   // カード色の退色を防ぐ
-    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:true, toneMapped:false});
+    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:true, toneMapped:false, alphaTest:0.01});   // 透明帯は描画スキップ（背景グリッドを隠さない）
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.098), mat);
     mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
     const cardMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.04,1.46), new THREE.MeshBasicMaterial({transparent:true, depthTest:true, toneMapped:false}));
