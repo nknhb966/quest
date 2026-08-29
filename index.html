@@ -1228,11 +1228,12 @@ Chunk.prototype.build=function(){
 
 // ===== 恐竜「気づく→対面→覗き込む→戻る」パラメータ（調整しやすく定数化）=====
 const DINO_FACE = {
-    noticeMul: 1.2,     // 気づく距離＝体長×これ
+    noticeMul: 1.6,     // 気づく距離＝体長×これ
     peekMul:   0.4,     // 覗き込み距離＝体長×これ
     frontDeg:  90,      // 正面から左右この角度以内なら認識
     pitchDeg:  42,      // 覗き込み時に首を前下方へ倒す固定俯角（度・上限の基準）
     pitchBias: 18,      // 顔がピボットより前下にある分の補正（度）。プレイヤーを正しく見るため加算
+    approachMul: 0.3,   // 気づいたらプレイヤーへ寄る量＝体長×これ（プレイヤーとの最終距離感）
     turnEase:  2.2,     // body向き・首の補間速度（大きいほど速い）
     spinStopEase: 2.5,  // 展示回転を止める/戻す補間速度
 };
@@ -2312,7 +2313,8 @@ function tickHatch(now, dt){
             m.position.set(cX, GROUND_Y, cZ);   // 本体中心C（回転中心もここ）
             const footY=dinoFootY();   // 恐竜の足元（VR/ARは床から1.6m）
             m.userData.baseY=footY; m.userData.settled=false;
-            m.userData.homeX=cX; m.userData.homeZ=cZ;   // アイドル回転の中心＝C
+            m.userData.homeX=cX; m.userData.homeZ=cZ;   // アイドル回転の中心＝C（毎フレーム更新）
+            m.userData.origX=cX; m.userData.origZ=cZ;   // 気づく前の定位置（離れたら戻る先）
             m.userData.bodyLen=depth;   // 体長（前後長・スケール反映済み）＝対面判定の基準
             popAnims.push({ obj:m, x:cX, z:cZ, startY:GROUND_Y, peakY:footY+0.45, endY:footY, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
@@ -2371,6 +2373,23 @@ function animateDigDinos(now, dt){
             const desired=Math.atan2(camW.x-cx, camW.z-cz);   // +Zをプレイヤーへ
             let d=desired-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
             cont.rotation.y += d*Math.min(1, dt*DINO_FACE.turnEase)*faceAmt;
+        }
+
+        // ── 気づいたらプレイヤーへ体長×0.3ゆっくり寄る／離れたら元位置へ戻る ──
+        {
+            const ox=cont.userData.origX??cont.position.x, oz=cont.userData.origZ??cont.position.z;
+            let goalX=ox, goalZ=oz;
+            if(_isXR && camW && faceAmt>0.01){
+                const L=Math.max(0.6, cont.userData.bodyLen||2);
+                const step=L*(DINO_FACE.approachMul||0.3)*faceAmt;   // 寄る量（対面度で寄せる＝離れると自然に戻る）
+                const dx=camW.x-ox, dz=camW.z-oz; const dd=Math.hypot(dx,dz);
+                if(dd>1e-3){ goalX=ox + dx/dd*step; goalZ=oz + dz/dd*step; }   // 元位置からプレイヤー方向へ寄った点（プレイヤー追従）
+            }
+            const cxNow=cont.userData.homeX??cont.position.x, czNow=cont.userData.homeZ??cont.position.z;
+            const k=Math.min(1, dt*1.6);   // ゆっくり移動
+            const nx=cxNow+(goalX-cxNow)*k, nz=czNow+(goalZ-czNow)*k;
+            cont.position.x=nx; cont.position.z=nz;
+            cont.userData.homeX=nx; cont.userData.homeZ=nz;   // 回転中心も移動後Cに追従
         }
 
         // ── 首・頭：プレイヤーへ俯角追従（上限＝固定俯角。左右は振らない）VR/ARのみ ──
