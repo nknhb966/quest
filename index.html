@@ -1227,7 +1227,7 @@ Chunk.prototype.build=function(){
 
 // ===== 恐竜「気づく→対面→覗き込む→戻る」パラメータ（調整しやすく定数化）=====
 const DINO_FACE = {
-    noticeMul: 0.9,     // 気づく距離＝体長×これ
+    noticeMul: 1.5,     // 気づく距離＝体長×これ
     peekMul:   0.4,     // 覗き込み距離＝体長×これ
     frontDeg:  90,      // 正面から左右この角度以内なら認識
     pitchDeg:  42,      // 覗き込み時に首を前下方へ倒す固定俯角（度）
@@ -1272,7 +1272,7 @@ function build_trex(){
   H.box(-0.26,1.55,1.44, 0.26,1.64,1.52, C);            // 歯
   if(!dinoSmooth) H.box(-0.38,2.06,0.56, 0.38,2.2,0.86, M);
   H.eye(-0.2,1.95,1.05,1.35); H.eye(0.2,1.95,1.05,1.35);
-  attachHead(g, 0, 1.55, 0.48, H);                      // 首の付け根をピボットに
+  attachHead(g, 0, 1.55, 0.48, H); g.userData.peekMul=1.5;   // 頭が高い＝深めに覗き込む
   voxTail(g,0,1.22,-0.35,1.7,0.52,0.14,M);
   g.userData.legs=[ voxLeg(g,-0.22,0.98,0.02,0.16,0.98,M,D,0), voxLeg(g,0.22,0.98,0.02,0.16,0.98,M,D,Math.PI) ];
   return g;
@@ -1290,7 +1290,7 @@ function build_fukuiraptor(){
   H.box(-0.17,1.32,1.0, 0.17,1.58,1.42, M);             // 口先
   H.box(-0.15,1.32,1.34, 0.15,1.4,1.42, C);             // 歯
   H.eye(-0.16,1.6,1.02); H.eye(0.16,1.6,1.02);
-  attachHead(g, 0, 1.32, 0.55, H);
+  attachHead(g, 0, 1.32, 0.55, H); g.userData.peekMul=1.5;   // 頭が高い
   voxTail(g,0,1.06,-0.55,1.6,0.3,0.08,M);
   const legs=[ voxLeg(g,-0.18,0.98,0.05,0.15,0.98,M,D,0), voxLeg(g,0.18,0.98,0.05,0.15,0.98,M,D,Math.PI) ];
   legs.forEach(p=>{ const ch=new Chunk(); ch.box(-0.05,-0.94,0.16, 0.05,-0.78,0.32, C); p.add(ch.build()); }); // 鎌爪
@@ -1302,14 +1302,14 @@ function build_fukuititan(){
   const B=new Chunk();
   B.box(-0.42,1.0,-1.0, 0.42,1.65,0.55, M);             // 大きな胴
   B.box(-0.38,1.02,-0.55, 0.38,1.34,0.5, BE);           // 腹
-  B.box(-0.24,1.55,0.35, 0.24,2.05,0.75, M);            // 首下部（肩から立ち上がる）
-  B.box(-0.2,1.95,0.5, 0.2,2.6,0.9, M);                 // 首中部
   B.mirrorX(); g.add(B.build());
   const H=new Chunk();
+  H.box(-0.24,1.55,0.35, 0.24,2.05,0.75, M);            // 首下部
+  H.box(-0.2,1.95,0.5, 0.2,2.6,0.9, M);                 // 首中部
   H.box(-0.16,2.5,0.68, 0.16,3.1,1.02, M);              // 首上部
   H.box(-0.17,3.0,0.9, 0.17,3.36,1.32, M);              // 小さな頭
   H.eye(-0.11,3.2,1.3,0.85); H.eye(0.11,3.2,1.3,0.85);
-  attachHead(g, 0, 2.5, 0.68, H);                       // 首中部の上をピボットに
+  attachHead(g, 0, 1.55, 0.55, H);                      // 首の付け根（根元）をピボットに
   voxTail(g,0,1.2,-1.0,2.3,0.56,0.13,M);                // 長い尾
   g.userData.legs=[ voxLeg(g,-0.32,1.02,0.55,0.21,1.02,M,D,0), voxLeg(g,0.32,1.02,0.55,0.21,1.02,M,D,Math.PI),
                     voxLeg(g,-0.32,0.84,-0.7,0.2,0.84,M,D,Math.PI), voxLeg(g,0.32,0.84,-0.7,0.2,0.84,M,D,0) ];
@@ -1372,7 +1372,7 @@ function build_fukuisaurus(){
   H.box(-0.22,1.74,1.08, 0.22,1.94,1.42, BK);           // くちばし
   H.box(-0.15,1.98,0.72, 0.15,2.12,0.98, M);            // 頭頂
   H.eye(-0.18,1.96,1.08); H.eye(0.18,1.96,1.08);
-  attachHead(g, 0, 1.42, 0.4, H);
+  attachHead(g, 0, 1.42, 0.4, H); g.userData.peekMul=1.5;   // 頭が高い
   voxTail(g,0,1.0,-0.65,1.7,0.42,0.1,M);                // 長い尾（カウンターバランス）
   g.userData.legs=[ voxLeg(g,-0.2,0.98,-0.32,0.18,0.98,M,D,0), voxLeg(g,0.2,0.98,-0.32,0.18,0.98,M,D,Math.PI) ]; // 強い後ろ足（2本＝二足）
   return g;
@@ -1401,13 +1401,13 @@ function build_brachi(){
   const B=new Chunk();
   B.box(-0.36,1.0,-0.9, 0.36,1.62,0.5, M);              // 大きな胴
   B.box(-0.32,1.02,-0.5, 0.32,1.28,0.45, BE);
-  B.box(-0.17,1.5,0.28, 0.17,2.5,0.66, M);              // なが〜い首（下部）
   B.mirrorX(); g.add(B.build());
   const H=new Chunk();
+  H.box(-0.17,1.5,0.28, 0.17,2.5,0.66, M);              // なが〜い首（下部）
   H.box(-0.15,2.4,0.5, 0.15,3.0,0.9, M);                // 首上部
   H.box(-0.18,2.9,0.85, 0.18,3.28,1.3, M);              // 小さな頭
   H.eye(-0.1,3.12,1.28,0.85); H.eye(0.1,3.12,1.28,0.85);
-  attachHead(g, 0, 2.4, 0.5, H);
+  attachHead(g, 0, 1.5, 0.28, H);                       // 首の付け根（根元）をピボットに
   voxTail(g,0,1.15,-0.9,2.0,0.5,0.14,M);                // 長い尾
   g.userData.legs=[ voxLeg(g,-0.28,0.92,0.5,0.18,0.92,M,D,0), voxLeg(g,0.28,0.92,0.5,0.18,0.92,M,D,Math.PI),
                     voxLeg(g,-0.28,0.8,-0.7,0.18,0.8,M,D,Math.PI), voxLeg(g,0.28,0.8,-0.7,0.18,0.8,M,D,0) ];
@@ -2372,7 +2372,8 @@ function animateDigDinos(now, dt){
 
         // ── 首・頭：覗き込み（固定俯角へ補間）──
         if(m.userData.head){
-            const peek = THREE.MathUtils.degToRad(DINO_FACE.pitchDeg)*faceAmt;   // 前下方へ倒す（頭を下げて覗き込む）
+            const pmul=m.userData.peekMul||1;   // 頭が高い種は深めに覗き込む
+            const peek = THREE.MathUtils.degToRad(DINO_FACE.pitchDeg)*faceAmt*pmul;   // 前下方へ倒す（頭を下げて覗き込む）
             m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
         }
 
