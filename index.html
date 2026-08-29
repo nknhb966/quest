@@ -1921,7 +1921,6 @@ const taClock=(function(){
 })();
 function updateTAClock(){
     if(!renderer.xr.isPresenting){ taClock.show(false); return; }
-    if(window._DBGH && GAME._heightReady===false){ taClock.draw(window._DBGH,false); taClock.show(true); return; }   // ★一時デバッグ
     if(GAME._heightReady===false){ taClock.draw("高さ調整中…",false); taClock.show(true); return; }   // 安定するまで開始不可
     if(GAME.mode!=="time"){   // コレクション：スタンバイ/カウントダウン/リザルトのサイン
         if(GAME.active && GAME.standby){ taClock.draw("右トリガー2回で開始",false); taClock.show(true); }
@@ -3019,23 +3018,15 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
         const baseY = cy - GROUND_BELOW_EYE;   // 地面を目線の一定距離下へ
         worldYAdjust=baseY; stage.position.y=baseY; return cy; };
     applyHeight();
-    // ── camYが十分な高さで安定するまで高さを追従補正し、それまでゲーム開始を不可にする ──
-    GAME._heightReady=false; GAME._hStableStart=0;
-    (function stabilize(){
+    // ── 入室後、トラッキング確定を待ってから高さを確定（camYの正常値は環境で異なるため時間で待つ）──
+    GAME._heightReady=false;
+    { const t0=performance.now(); const WAIT=1500;   // トラッキング確定待ち（フレーム非依存）
+      (function stabilize(){
         if(!renderer.xr.isPresenting) return;
-        const cy=applyHeight();
-        window._DBGH="camY="+cy.toFixed(2)+" need>="+(GROUND_BELOW_EYE*0.5).toFixed(2)+" AR="+(inAR?1:0);   // ★一時デバッグ
-        const tallEnough = cy >= GROUND_BELOW_EYE*0.5;   // 目線が基準の半分以上＝トラッキング確定（値はGROUND_BELOW_EYEから算出）
-        const nowT=performance.now();
-        if(tallEnough){
-            if(!GAME._hStableStart) GAME._hStableStart=nowT;
-            // 十分な高さが一定時間継続したら確定（頭の微動は許容。時間はフレーム非依存）
-            if(nowT-GAME._hStableStart >= 700){ applyHeight(); GAME._heightReady=true; return; }
-        } else {
-            GAME._hStableStart=0;   // 高さが落ちたらやり直し
-        }
+        applyHeight();   // 待っている間も追従（確定後の値に収束）
+        if(performance.now()-t0 >= WAIT){ applyHeight(); GAME._heightReady=true; return; }   // 経過後の値で確定
         requestAnimationFrame(stabilize);
-    })();
+      })(); }
     DOG_FWD=0.6;
     updateSiteVis(); updatePanelScale();
     placeAtStart();
@@ -3044,7 +3035,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
 });
 renderer.xr.addEventListener("sessionend", ()=>{
     GAME.moveLock=false;   // 退室でフィールド固定を解除
-    GAME._heightReady=false; GAME._hStableStart=0;   // 高さ確定フラグをリセット
+    GAME._heightReady=false;   // 高さ確定フラグをリセット
     if(inAR){ scene.background=_savedBg; scene.fog=_savedFog; renderer.setClearColor(0x000000,1); }
     inAR=false; worldYAdjust=0; stage.position.y=0;             // デスクトップは通常の高さへ
     updateSiteVis(); updatePanelScale(); endGame(true);
