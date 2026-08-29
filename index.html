@@ -1427,16 +1427,18 @@ function build_dog(){
   const B=new Chunk();
   B.box(-0.22,0.66,-0.5, 0.22,1.08,0.42, M);            // 胴
   B.box(-0.19,0.66,-0.12, 0.19,0.9,0.42, C);            // 胸〜腹（クリーム）
-  B.box(-0.26,0.98,0.34, 0.26,1.46,0.9, M);             // 頭
-  B.box(-0.19,0.98,0.5, 0.19,1.18,0.9, C);              // ほほ（クリーム）
-  B.box(-0.15,0.96,0.84, 0.15,1.18,1.2, C);             // マズル
-  B.box(-0.12,0.94,1.14, 0.12,1.07,1.24, N);            // 鼻
-  B.box(-0.02,1.05,1.06, 0.02,1.12,1.22, N);            // 鼻筋
-  B.box(-0.16,1.06,1.04, 0.16,1.12,1.14, D);            // 口
-  B.box(-0.3,1.4,0.42, -0.14,1.82,0.6, M);              // 耳L（mirrorで右も）
-  B.box(-0.28,1.42,0.46, -0.16,1.7,0.58, D);            // 耳の内側（影）
-  B.eye(-0.15,1.24,0.9,1.0); B.eye(0.15,1.24,0.9,1.0);
   B.mirrorX(); g.add(B.build());
+  const H=new Chunk();
+  H.box(-0.26,0.98,0.34, 0.26,1.46,0.9, M);             // 頭
+  H.box(-0.19,0.98,0.5, 0.19,1.18,0.9, C);              // ほほ（クリーム）
+  H.box(-0.15,0.96,0.84, 0.15,1.18,1.2, C);             // マズル
+  H.box(-0.12,0.94,1.14, 0.12,1.07,1.24, N);            // 鼻
+  H.box(-0.02,1.05,1.06, 0.02,1.12,1.22, N);            // 鼻筋
+  H.box(-0.16,1.06,1.04, 0.16,1.12,1.14, D);            // 口
+  H.box(-0.3,1.4,0.42, -0.14,1.82,0.6, M);              // 耳L（mirrorで右も）
+  H.box(-0.28,1.42,0.46, -0.16,1.7,0.58, D);            // 耳の内側（影）
+  H.eye(-0.15,1.24,0.9,1.0); H.eye(0.15,1.24,0.9,1.0);
+  attachHead(g, 0, 1.0, 0.36, H);                       // 首の付け根（頭の手前下）をピボットに
   // 立ち上がってカールした尻尾（左右に振る）
   const tail=new THREE.Group(); tail.position.set(0,1.0,-0.5); g.add(tail);
   const tc=new Chunk();
@@ -4478,7 +4480,7 @@ function updateScan(dt, isVR, now){
     }
     lastProbes = probes;   // 撫で判定（手/コントローラー共通）に使う
 
-    let heat=0;
+    let heat=0, sniffSig=0;
     for(const t of GAME.targets){
         const dmods=toolMods();
         const detectR = t.diff.detectR * dmods.detectMul * DETECT_SCALE * companionStats().scope;   // 旧コードの距離×倍率/広さ×SCOPE(相棒)
@@ -4489,6 +4491,7 @@ function updateScan(dt, isVR, now){
             if(sig>bestSig){ bestSig=sig; bestProbe=pr; }
         }
         heat=Math.max(heat,bestSig);
+        if(!t.discovered && bestSig>PROX_SIG) sniffSig=Math.max(sniffSig, bestSig);   // 未発見ポイントの探知強度＝相棒が探す度合い
         // ②発見（信号が閾値超え）
         if(!t.discovered && bestSig>DISCOVER_SIG){ discoverTarget(t); }
         // ①信号あり→パルス（近いほど速い＝リズム）。振らなくても距離に応じて鳴る
@@ -4511,6 +4514,7 @@ function updateScan(dt, isVR, now){
             break;
         }
     }
+    GAME.sniffSig = sniffSig;   // 相棒が探す度合い（未発見ポイントの探知強度）
     // 中央リング（スマホ/PC）：①4m=青／②2.5m=橙／③2m=赤。振らなくても近づくだけで変化
     if(GAME.desktop){
         const el=document.getElementById("heat");
@@ -4785,6 +4789,18 @@ function updateDog(dt, now){
         dog.position.y=GROUND_Y+DOG_Y+Math.abs(Math.sin(petWiggle*6.5))*0.08;        // 小さくぴょこぴょこ
     }
     else dog.position.y=GROUND_Y+DOG_Y+bob;
+
+    // ── 探す動作：未発見ポイントが近い（探知音が鳴る）とき、頭を下げて鼻を地面へ（全環境・全相棒）──
+    { const body=(typeof activeBody==="function")?activeBody():null;
+      const head=body&&body.userData?body.userData.head:null;
+      if(head){
+        const sig=(GAME&&GAME.active&&!GAME.complete)?(GAME.sniffSig||0):0;
+        const target = THREE.MathUtils.degToRad(38)*Math.min(1,sig*1.2);   // 頭を下げる（+＝鼻先を下へ、恐竜と同符号）。信号が強いほど深く
+        const wob = sig>0.02 ? Math.sin(now*0.012)*0.05*sig : 0;            // 匂いを嗅ぐ小刻みな動き
+        const want=target+wob;
+        head.rotation.x += (want - head.rotation.x)*Math.min(1, dt*6);       // なめらかに追従／戻り
+      }
+    }
 }
 
 /* =====================================================
