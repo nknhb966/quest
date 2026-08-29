@@ -4794,12 +4794,15 @@ function updateDog(dt, now){
     { const body=(typeof activeBody==="function")?activeBody():null;
       const head=body&&body.userData?body.userData.head:null;
       if(head){
+        // 探す（嗅ぐ）のは「探知音が鳴る かつ 発見ポイントに付いていない かつ 喜んでいない」ときだけ
         const sig=(GAME&&GAME.active&&!GAME.complete)?(GAME.sniffSig||0):0;
-        const active = sig>0.02;                                           // 探知したら一律（強さで角度は変えない）
-        const target = active ? THREE.MathUtils.degToRad(38) : 0;          // 一律に深く頭を下げる（+＝鼻先を下へ）
-        const wob = active ? Math.sin(now*0.012*0.8)*(0.05*1.5) : 0;       // 嗅ぐ動き：角度1.5倍・速さ0.8倍
+        const atBlock = !!(dog.userData && dog.userData.hintActive);   // 発見ポイントへ向かう/横に付いている
+        const celebrating = (typeof dogCelebrateT!=="undefined" && dogCelebrateT>0);
+        const active = sig>0.02 && !atBlock && !celebrating;           // 掘ることを優先：付いている/喜んでいる間は嗅がない
+        const target = active ? THREE.MathUtils.degToRad(38) : 0;      // 一律に深く頭を下げる（+＝鼻先を下へ）
+        const wob = active ? Math.sin(now*0.012*0.8)*(0.05*1.5) : 0;   // 嗅ぐ動き：角度1.5倍・速さ0.8倍
         const want=target+wob;
-        head.rotation.x += (want - head.rotation.x)*Math.min(1, dt*6);       // なめらかに追従／戻り
+        head.rotation.x += (want - head.rotation.x)*Math.min(1, dt*6);   // なめらかに追従／戻り
       }
     }
 }
