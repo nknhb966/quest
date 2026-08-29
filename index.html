@@ -3756,11 +3756,12 @@ function fieldRange(){   // フィールドの有効範囲（各軸80%枠＝端�
     if(customWorldOn()){
         return { custom:true, hx:Math.max(0.4, WORLD_X*0.5*0.8), hz:Math.max(0.4, WORLD_Z*0.5*0.8) };   // 幅・奥行きの80%
     }
-    // サイト表示：サイト実寸（SITE_X/SITE_Z）の80%枠（ARTPOSの中心に合わせる）
-    let cx=0, cz=0, cnt=0;
-    for(const s of (ARTPOS||[])){ if(!s)continue; cx+=s.x; cz+=s.z; cnt++; }
-    if(cnt){ cx/=cnt; cz/=cnt; }
-    const hx=Math.max(0.4, SITE_X*0.5*0.8), hz=Math.max(0.4, SITE_Z*0.5*0.8);
+    // サイト表示：ARTPOS（出土品の実分布）のバウンディングボックスを基準に各軸80%枠
+    let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+    for(const s of (ARTPOS||[])){ if(!s)continue; minX=Math.min(minX,s.x);maxX=Math.max(maxX,s.x);minZ=Math.min(minZ,s.z);maxZ=Math.max(maxZ,s.z); }
+    if(!isFinite(minX)) return { custom:true, hx:3, hz:3 };
+    const cx=(minX+maxX)/2, cz=(minZ+maxZ)/2;
+    const hx=Math.max(0.4, (maxX-minX)/2*0.8), hz=Math.max(0.4, (maxZ-minZ)/2*0.8);   // 実分布の80%
     return { custom:false, minX:cx-hx, maxX:cx+hx, minZ:cz-hz, maxZ:cz+hz };
 }
 function fieldRandomPoint(){   // 上の範囲内でランダム（必ずフィールド内）
