@@ -1225,6 +1225,15 @@ Chunk.prototype.build=function(){
   return new THREE.Mesh(geo,_voxMat);
 };
 
+// ===== 恐竜「気づく→対面→覗き込む→戻る」パラメータ（調整しやすく定数化）=====
+const DINO_FACE = {
+    noticeMul: 0.9,     // 気づく距離＝体長×これ
+    peekMul:   0.4,     // 覗き込み距離＝体長×これ
+    frontDeg:  60,      // 正面から左右この角度以内なら認識
+    pitchDeg:  42,      // 覗き込み時に首を前下方へ倒す固定俯角（度）
+    turnEase:  2.2,     // body向き・首の補間速度（大きいほど速い）
+    spinStopEase: 2.5,  // 展示回転を止める/戻す補間速度
+};
 function voxLeg(parent,x,hipY,z,w,len,col,dark,phase){
   const p=new THREE.Group(); p.position.set(x,hipY,z); parent.add(p);
   const ch=new Chunk();
@@ -1247,14 +1256,20 @@ function build_trex(){
   const B=new Chunk();
   B.box(-0.3,0.95,-0.35, 0.3,1.62,0.5, M);              // 胴
   B.box(-0.27,0.98,-0.28, 0.27,1.32,0.46, BE);
-  B.box(-0.36,1.55,0.48, 0.36,2.18,1.05, M);            // 大きな頭
-  B.box(-0.3,1.56,1.0, 0.3,1.9,1.52, M);                // 口先（強いアゴ）
-  B.box(-0.28,1.5,1.02, 0.28,1.66,1.48, D);
-  B.box(-0.26,1.55,1.44, 0.26,1.64,1.52, C);            // 歯
-  if(!dinoSmooth) B.box(-0.38,2.06,0.56, 0.38,2.2,0.86, M);   // 頭頂の張り出し（③では耳に見えるので出さない）
   B.box(0.2,1.16,0.5, 0.36,1.46,0.66, M); B.box(0.2,1.16,0.62, 0.36,1.32,0.82, C);  // 前足＋手（右／mirrorで左も）
-  B.eye(-0.2,1.95,1.05,1.35); B.eye(0.2,1.95,1.05,1.35);
   B.mirrorX(); g.add(B.build());
+  // 頭・首は別Group（ピボット＝首の付け根 nx,ny,nz）。形状座標は元のまま、Group位置を引いてローカル化
+  const nx=0, ny=1.55, nz=0.48;   // 首の付け根（胴の上・頭の手前下）
+  const head=new THREE.Group(); head.position.set(nx,ny,nz);
+  const H=new Chunk();
+  H.box(-0.36,1.55,0.48, 0.36,2.18,1.05, M);            // 大きな頭
+  H.box(-0.3,1.56,1.0, 0.3,1.9,1.52, M);                // 口先（強いアゴ）
+  H.box(-0.28,1.5,1.02, 0.28,1.66,1.48, D);
+  H.box(-0.26,1.55,1.44, 0.26,1.64,1.52, C);            // 歯
+  if(!dinoSmooth) H.box(-0.38,2.06,0.56, 0.38,2.2,0.86, M);   // 頭頂の張り出し
+  H.eye(-0.2,1.95,1.05,1.35); H.eye(0.2,1.95,1.05,1.35);
+  H.mirrorX(); const hm=H.build(); hm.position.set(-nx,-ny,-nz); head.add(hm);   // ピボット分オフセット＝見た目は元位置
+  g.add(head); g.userData.head=head; g.userData.headRest={x:0,y:0,z:0};   // 首の基準姿勢
   voxTail(g,0,1.22,-0.35,1.7,0.52,0.14,M);              // 太い尾
   g.userData.legs=[ voxLeg(g,-0.22,0.98,0.02,0.16,0.98,M,D,0), voxLeg(g,0.22,0.98,0.02,0.16,0.98,M,D,Math.PI) ];
   return g;
@@ -2202,7 +2217,7 @@ function makeDigDino(dn){
     const cont=new THREE.Group(); cont.add(inner);
     cont.userData.builtScale=dinoScale();   // 生成時のスケール（出現時に現在のスケールへ補正するため）
     cont.userData.model=inner;
-    cont.userData.legs=inner.userData.legs; cont.userData.tail=inner.userData.tail; cont.userData.wings=inner.userData.wings;
+    cont.userData.legs=inner.userData.legs; cont.userData.tail=inner.userData.tail; cont.userData.wings=inner.userData.wings; cont.userData.head=inner.userData.head;
     cont.userData.flying=!!inner.userData.wings;
     cont.userData.sizeMul=dinoHByKey(dn.key);
     cont.userData.animPhase=Math.random()*Math.PI*2;        // 足踏みの位相を個体ごとにバラす
@@ -2278,6 +2293,7 @@ function tickHatch(now, dt){
             m.position.set(cX, GROUND_Y, cZ);   // 本体中心C（回転中心もここ）
             m.userData.baseY=popY()-0.05; m.userData.settled=false;
             m.userData.homeX=cX; m.userData.homeZ=cZ;   // アイドル回転の中心＝C
+            m.userData.bodyLen=depth;   // 体長（前後長・スケール反映済み）＝対面判定の基準
             popAnims.push({ obj:m, x:cX, z:cZ, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:popY()-0.05, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
             bubble.say(dinoEmergeLine(dn), 3000);
@@ -2295,19 +2311,57 @@ function tickHatch(now, dt){
 }
 // 出てきた恐竜のアイドル動作（足踏み＝個体ごとにバラす／尻尾ふり／ゆっくり回転）
 function animateDigDinos(now, dt){
+    const camW=(typeof camera!=="undefined")? camera.getWorldPosition(new THREE.Vector3()) : null;
     dinoDigModels.forEach(cont=>{ if(!cont||!cont.visible) return;
-        cont.rotation.y += 0.004;                             // ゆっくり回転
         const m=cont.userData.model; if(!m) return;
         const spd=cont.userData.animSpeed||1, off=cont.userData.animPhase||0, ph=now*0.006*spd + off;
-        const sph = (now - (cont.userData.settleAt||now));   // 定位置移行からの経過（バウンスを0から始める）
-        if(cont.userData.flying){
-            if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z = w.userData.sign*(0.22+Math.sin(now*0.004*spd+off)*0.4); }); // 羽ばたき
-            if(cont.userData.settled) cont.position.y = cont.userData.baseY + (1-Math.cos(sph*0.0016*spd))*0.09;   // 0から連続に上下
-        } else {
-            if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(ph + p.userData.phase)*0.32; });  // 足踏み
-            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(sph*0.006*spd))*0.045; // 0から連続に弾む
+        const sph = (now - (cont.userData.settleAt||now));
+
+        // ── 気づく／対面 判定 ──
+        let facing=false, faceAmt=cont.userData._faceAmt||0;
+        if(camW && cont.userData.settled){
+            const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
+            const dx=camW.x-cx, dz=camW.z-cz; const dist=Math.hypot(dx,dz);
+            const L=Math.max(0.6, cont.userData.bodyLen||2);
+            const notice=L*DINO_FACE.noticeMul;
+            // 恐竜の正面方向（+Zローカルをworldへ）＝cont.rotation.y
+            const fwd=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), cont.rotation.y);
+            const toP=new THREE.Vector3(dx,0,dz); const pd=toP.length();
+            let ang=999; if(pd>1e-3){ toP.normalize(); ang=Math.acos(THREE.MathUtils.clamp(fwd.dot(toP),-1,1))*180/Math.PI; }
+            facing = (dist<=notice) && (ang<=DINO_FACE.frontDeg);
         }
-        if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003*spd + (cont.userData.tailPhase||0))*0.28;   // 尻尾ふり
+        // 対面度合いを補間（0=展示 / 1=対面）
+        const target = facing?1:0;
+        faceAmt += (target-faceAmt)*Math.min(1, dt*DINO_FACE.turnEase);
+        cont.userData._faceAmt=faceAmt;
+
+        // ── 展示回転：対面度が上がるほど止める ──
+        const spin = 0.004*(1-faceAmt);
+        cont.rotation.y += spin;
+
+        // ── 対面時：body向きをプレイヤーへ補間（faceAmtで寄せる）──
+        if(camW && faceAmt>0.01){
+            const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
+            const desired=Math.atan2(camW.x-cx, camW.z-cz);   // +Zをプレイヤーへ
+            let d=desired-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
+            cont.rotation.y += d*Math.min(1, dt*DINO_FACE.turnEase)*faceAmt;
+        }
+
+        // ── 首・頭：覗き込み（固定俯角へ補間）──
+        if(m.userData.head){
+            const peek = -THREE.MathUtils.degToRad(DINO_FACE.pitchDeg)*faceAmt;   // 前下方へ倒す（+Z前方をX軸回転で下げる）
+            m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
+        }
+
+        // ── 既存アニメ（脚・尾・翼・上下）──
+        if(cont.userData.flying){
+            if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z = w.userData.sign*(0.22+Math.sin(now*0.004*spd+off)*0.4); });
+            if(cont.userData.settled) cont.position.y = cont.userData.baseY + (1-Math.cos(sph*0.0016*spd))*0.09;
+        } else {
+            if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(ph + p.userData.phase)*0.32; });
+            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(sph*0.006*spd))*0.045;
+        }
+        if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003*spd + (cont.userData.tailPhase||0))*0.28;
     });
 }
 function clearDinoReveal(){
