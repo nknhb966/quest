@@ -548,11 +548,15 @@ function customWorldOn(){ return !siteVisible || _siteFailed; }   // サイト�
 function fieldScale(){ const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z); return Math.max(3,Math.min(10,sz))/5; }
 // 恐竜用サイズ係数（3〜18mでクランプ）。サイト表示時もサイト寸法に合わせる
 function dinoScale(){
-    let base;
-    if(customWorldOn()) base=Math.max(3,Math.min(WORLD_X,WORLD_Z))/5;   // サイト非表示：広さ連動（上限なし・下限3）
-    else if(typeof renderer!=="undefined" && renderer.xr.isPresenting) base=Math.max(3,Math.min(SITE_X,SITE_Z))/5;   // サイト表示×VR/AR（上限なし・下限3）
-    else base=1.0;   // サイト表示×スマホ/PC
+    // 全環境：サイト非表示＝ワールド広さ連動／サイト表示＝サイト寸法連動（下限3・上限なし）
+    const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z);
+    const base = Math.max(3, sz)/5;
     return base*0.75;   // 卵から生まれる恐竜は原寸の0.75倍
+}
+function artScale(){
+    // 出土品も全環境でサイト/ワールド寸法に比例（下限3・上限なし）
+    const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z);
+    return Math.max(3, sz)/5;
 }
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
@@ -2264,7 +2268,7 @@ function tickHatch(now, dt){
             // 説明パネルの代わりに、名称だけモデルの下側に表示
             if(m.userData.nameLabel) stage.remove(m.userData.nameLabel);
             const nm=(dn.label||"").replace(/^\S+\s*/,"");
-            const _lblScale = ((typeof renderer!=="undefined" && renderer.xr.isPresenting) ? fieldScale() : 1.0);   // スマホ/PCは原寸固定
+            const _lblScale = fieldScale();   // 全環境でフィールド寸法に連動
             const label=makeLabelSprite(nm, e.color, 0.54*_lblScale, 0);   // 名称パネル（現状の1.5倍）
             label.position.set(e.pos.x, GROUND_Y+0.22*_lblScale, e.pos.z);
             stage.add(label); m.userData.nameLabel=label;
@@ -2320,7 +2324,7 @@ function excavate(t){
             model.visible=true;
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
-            model.scale.setScalar( customWorldOn()? Math.min(1.5, fieldScale()) : siteMode );   // サイトなしは広さ比例＋上限1.5／サイトは倍率に合わせる
+            model.scale.setScalar( artScale() );   // 全環境：サイト/ワールド寸法に比例
             popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:popY(), t:0, dur:1.0 });
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
@@ -2620,7 +2624,7 @@ let digPosRandom=true;    // サイト表示×恐竜系の発掘場所（true=�
 // サイト表示時：エリア内に互いに離れた8点をランダム生成（サイト非表示時の発掘点と同様の距離確保）
 function regenerateSiteRandomSpots(){
     const pts=[]; const R=fieldRange();
-    // 最小間隔：エリアの短辺の20%目安（2m下限）
+    // 最小間隔：範囲の短辺の20%目安（1.6m下限）
     let span; if(R.custom) span=Math.min(R.hx,R.hz)*2; else span=Math.min(R.maxX-R.minX, R.maxZ-R.minZ);
     const minDist=Math.max(1.6, span*0.20);
     for(let i=0;i<8;i++){ let best=null;
@@ -3752,12 +3756,13 @@ function fieldRange(){   // フィールドの有効範囲（端15%内側）。{
         const mgx=Math.max(1.0,WORLD_X*0.15), mgz=Math.max(1.0,WORLD_Z*0.15);
         return { custom:true, hx:Math.max(0.4,WORLD_X/2-mgx), hz:Math.max(0.4,WORLD_Z/2-mgz) };
     }
-    let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
-    for(const s of (ARTPOS||[])){ if(!s)continue; minX=Math.min(minX,s.x);maxX=Math.max(maxX,s.x);minZ=Math.min(minZ,s.z);maxZ=Math.max(maxZ,s.z); }
-    if(!isFinite(minX)) return { custom:true, hx:3, hz:3 };
-    const mx=Math.max(1.0,(maxX-minX)*0.15), my=Math.max(1.0,(maxZ-minZ)*0.15);
-    if(maxX-minX>2*mx){ minX+=mx; maxX-=mx; } if(maxZ-minZ>2*my){ minZ+=my; maxZ-=my; }
-    return { custom:false, minX,maxX,minZ,maxZ };
+    // サイト表示：サイト実寸（SITE_X/SITE_Z）を基準に各軸15%内側（ARTPOSの中心に合わせる）
+    let cx=0, cz=0, cnt=0;
+    for(const s of (ARTPOS||[])){ if(!s)continue; cx+=s.x; cz+=s.z; cnt++; }
+    if(cnt){ cx/=cnt; cz/=cnt; }
+    const hx=Math.max(0.4, SITE_X/2 - Math.max(1.0, SITE_X*0.15));
+    const hz=Math.max(0.4, SITE_Z/2 - Math.max(1.0, SITE_Z*0.15));
+    return { custom:false, minX:cx-hx, maxX:cx+hx, minZ:cz-hz, maxZ:cz+hz };
 }
 function fieldRandomPoint(){   // 上の範囲内でランダム（必ずフィールド内）
     const R=fieldRange();
