@@ -2178,7 +2178,7 @@ function spawnTarget(tier, forcedIdx=null){
     // ボクセルの「掘れるブロック」＋照準時の枠線
     const fs=Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍（従来0.6→0.9）。あたり判定もこのブロックで拡大
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
-        new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0}));
+        new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0, depthWrite:false}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
     block.userData.hitR = DIG_BLOCK*fs*1.1;   // ④右手道具の当たり：一辺×1.1（中心からの半径）かつ③黄色
     const outline=new THREE.LineSegments(
@@ -4046,7 +4046,7 @@ function discoverTarget(t, silent){
     petBoost=0;   // 発掘ポイントに連れて行ってもらったら確率は初期状態（低）に戻す
     digBusySpot=t.pos.clone();   // 撫で制御は距離のみ（毎フレーム計算）。フラグは立てない
     // 掘れるブロックを実体として見せる＋正面をプレイヤー側へ
-    if(t.block){ t.block.material.opacity=0.95; t.block.material.transparent=false;
+    if(t.block){ t.block.material.opacity=0.95; t.block.material.transparent=false; t.block.material.depthWrite=true; t.block.material.needsUpdate=true;
         const cp=camera.getWorldPosition(new THREE.Vector3());
         t.block.rotation.y=Math.atan2(cp.x-t.block.position.x, cp.z-t.block.position.z);   // ブロックの正面(+z)をプレイヤーへ
         if(t.outline) t.outline.rotation.y=t.block.rotation.y;
