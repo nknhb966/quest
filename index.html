@@ -330,9 +330,9 @@
       <div class="opt wide" id="siteSizeOpt">
         <div class="lbl">サイトモデルの大きさ</div>
         <div class="seg" id="segSiteSize">
-          <button data-v="1">1倍</button>
+          <button data-v="1" class="on">1倍</button>
           <button data-v="2">2倍</button>
-          <button data-v="3" class="on">3倍</button>
+          <button data-v="3">3倍</button>
           <button data-v="4">4倍</button>
           <button data-v="5">5倍</button>
         </div>
@@ -548,9 +548,11 @@ function customWorldOn(){ return !siteVisible || _siteFailed; }   // サイト�
 function fieldScale(){ const sz = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z); return Math.max(3,Math.min(10,sz))/5; }
 // 恐竜用サイズ係数（3〜18mでクランプ）。サイト表示時もサイト寸法に合わせる
 function dinoScale(){
-    if(customWorldOn()) return Math.max(3,Math.min(18,Math.min(WORLD_X,WORLD_Z)))/5;   // サイト非表示：広さ連動（種ごとの比率は保持）
-    if(typeof renderer!=="undefined" && renderer.xr.isPresenting) return Math.max(3,Math.min(18,Math.min(SITE_X,SITE_Z)))/5;   // サイト表示×VR/AR：サイト寸法連動
-    return 1.0;   // サイト表示×スマホ/PC：どの倍率でも恐竜は原寸
+    let base;
+    if(customWorldOn()) base=Math.max(3,Math.min(18,Math.min(WORLD_X,WORLD_Z)))/5;   // サイト非表示：広さ連動
+    else if(typeof renderer!=="undefined" && renderer.xr.isPresenting) base=Math.max(3,Math.min(18,Math.min(SITE_X,SITE_Z)))/5;   // サイト表示×VR/AR
+    else base=1.0;   // サイト表示×スマホ/PC
+    return base*0.5;   // 卵から生まれる恐竜は半分サイズ
 }
 function fieldToWorld(lx,lz){ const c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:fieldCX+lx*c+lz*s, z:fieldCZ-lx*s+lz*c}; }   // three.js Ry と一致
 function worldToField(x,z){ const dx=x-fieldCX, dz=z-fieldCZ, c=Math.cos(fieldYaw), s=Math.sin(fieldYaw); return {x:dx*c-dz*s, z:dx*s+dz*c}; }
@@ -668,6 +670,7 @@ function updateFieldBorder(){
 const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
 const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高さ（少し低め。パネルもこれに追従）
+function popY(){ return ARTIFACT_POP_Y - ((typeof renderer!=="undefined" && renderer.xr.isPresenting) ? 0.30 : 0); }   // VR/ARのみ30cm下げる
 let   WALK_SPEED    = 3.5;               // 歩行速度（m/s）※ワールドサイズで自動調整
 const BASE_WALK=3.5, BASE_DOG_FWD=3.4, BASE_DOG_STAY=7.0;   // 現状(約34m)基準
 const SNAP_DEG      = 30;                 // スナップ回転
@@ -1027,7 +1030,7 @@ function updateSiteVis(){
     fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
 }
 function setSiteVisible(v){ siteVisible=!!v; if(GAME) GAME.fieldOverride=false; updateSiteVis(); }
-let _sitePhs=null, _siteNativeMax=1, siteMode=3;   // siteMode: 倍率1〜5（1倍=原寸）。既定3倍
+let _sitePhs=null, _siteNativeMax=1, siteMode=1;   // siteMode: 倍率1〜5（1倍=原寸）。既定1倍
 gltfLoader.load(SITE_GLB, (gltf)=>{
     siteRoot = gltf.scene;
     siteRoot.rotation.y = THREE.MathUtils.degToRad(-90);   // 元と同じ向き
@@ -2225,7 +2228,7 @@ function preloadEverything(done){
 function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg,0.55); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);
-    popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:ARTIFACT_POP_Y-0.25, t:0, dur:0.7, spin:true });
+    popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:popY()-0.25, t:0, dur:0.7, spin:true });
     eggHatch.push({ egg, idx, pos:pos.clone(), color, at:performance.now()+1300, wob:0 });
 }
 function tickHatch(now, dt){
@@ -2239,8 +2242,8 @@ function tickHatch(now, dt){
             m.visible=true; m.position.set(e.pos.x, GROUND_Y, e.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); m.rotation.set(0, Math.atan2(cp.x-e.pos.x, cp.z-e.pos.z), 0); }   // 正面(目=+Z)をプレイヤーへ向けてから回転開始
             m.scale.setScalar(dinoScale()/(m.userData.builtScale||1));   // 生成時→現在のスケールへ補正（サイト表示×VR/ARで拡大等）
-            m.userData.baseY=ARTIFACT_POP_Y-0.05; m.userData.settled=false;
-            popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:ARTIFACT_POP_Y-0.05, t:0, dur:1.0, dino:true });
+            m.userData.baseY=popY()-0.05; m.userData.settled=false;
+            popAnims.push({ obj:m, x:e.pos.x, z:e.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.4, endY:popY()-0.05, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
             bubble.say(dinoEmergeLine(dn), 3000);
             digBusyUntil=performance.now()+2000;   // 恐竜登場セリフから2秒後まで
@@ -2248,7 +2251,7 @@ function tickHatch(now, dt){
             if(m.userData.nameLabel) stage.remove(m.userData.nameLabel);
             const nm=(dn.label||"").replace(/^\S+\s*/,"");
             const _lblScale = ((typeof renderer!=="undefined" && renderer.xr.isPresenting) ? fieldScale() : 1.0);   // スマホ/PCは原寸固定
-            const label=makeLabelSprite(nm, e.color, 0.72*_lblScale, 0);
+            const label=makeLabelSprite(nm, e.color, 0.36*_lblScale, 0);   // 名称パネルも半分
             label.position.set(e.pos.x, GROUND_Y+0.22*_lblScale, e.pos.z);
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
@@ -2304,7 +2307,7 @@ function excavate(t){
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
             model.scale.setScalar( customWorldOn()? Math.min(1.5, fieldScale()) : siteMode );   // サイトなしは広さ比例＋上限1.5／サイトは倍率に合わせる
-            popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:ARTIFACT_POP_Y, t:0, dur:1.0 });
+            popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:popY(), t:0, dur:1.0 });
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
     }
@@ -2362,7 +2365,7 @@ function addAura(idx, pos, sizeMul){
     // ふんわり光る球状のオーラ（中心は抜けているので出土品がはっきり見える）
     const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:auraTex, color, transparent:true,
         opacity:0.7, blending:THREE.AdditiveBlending, depthWrite:false, depthTest:true}));
-    glow.scale.set(1.7*sizeMul,1.7*sizeMul,1); glow.position.y=ARTIFACT_POP_Y + (sizeMul-1)*0.5;
+    glow.scale.set(1.7*sizeMul,1.7*sizeMul,1); glow.position.y=popY() + (sizeMul-1)*0.5;
     glow.renderOrder=-1;                       // 出土品より先に描く＝手前で白飛びさせない
     g.add(glow);
     // 足元の光の輪
@@ -2396,15 +2399,18 @@ function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
     sizeMul = sizeMul||1;
     const px = pos.x, pz = pos.z;                       // 発掘ポイントの真上に配置
     const build=(tex, ratio)=>{
-        const h=PANEL_BASE_H*fieldScale()*0.5*0.4, w=h*ratio;   // 現状の0.4倍
+        const isXR = renderer.xr.isPresenting;
+        const panelMul = isXR ? 0.4 : 1.0;   // VR/ARのみ0.4倍、PC/スマホは従来
+        const h=PANEL_BASE_H*fieldScale()*0.5*panelMul, w=h*ratio;
         const grp=new THREE.Group();
         const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false});
         grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat));
         const frame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(w*1.04, h*1.04)),
             new THREE.LineBasicMaterial({color}));
         grp.add(frame);
-        const _lblW=(PANEL_BASE_H*fieldScale()*0.5)*ratio*0.5*0.5;   // 現状(縮小前w=旧h*ratio)の半分
-        grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, _lblW, h*0.5+0.12*0.4));   // No.は半分・パネルに近接
+        const _lblMul = isXR ? 0.5 : 1.0;   // No.ラベル：VR/ARは半分
+        const _lblW=(PANEL_BASE_H*fieldScale()*0.5)*ratio*0.5*_lblMul;
+        grp.add(makeLabelSprite("No."+String(idx+1).padStart(2,"0"), color, _lblW, h*0.5+0.12*panelMul));
         grp.position.set(px, GROUND_Y + (0.9 + sizeMul*0.5)*fieldScale() + h*0.6, pz);   // 発掘ポイントの真上・モデルより上へ
         grp.userData.face=true; grp.userData.idx=idx;
         grp.userData.width=w; grp.userData.height=h; grp.userData.spot=pos.clone(); grp.userData.sizeMul=sizeMul;
@@ -2449,7 +2455,8 @@ function updatePanelScale(){
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
         const h=(p.userData.height||PANEL_BASE_H)*s;
-        p.position.y = ARTIFACT_POP_Y + 0.7/3 + h*0.5 + (((p.userData.sizeMul||1)-1)*0.4);   // 線を1/3に（出土品へ近づける）
+        const lift = isVR ? 0.7/3 : 0.7;   // VR/ARは線1/3、PC/スマホは従来
+        p.position.y = popY() + lift + h*0.5 + (((p.userData.sizeMul||1)-1)*0.4);
     });
 }
 
@@ -2492,19 +2499,29 @@ function dogCelebrate(){ dogCelebrateT=2.4; }   // ゆっくり数回ジャン�
 /* =====================================================
  * ハプティクス
  * ===================================================== */
+function _pulseGamepad(gp, dur, intensity){
+    if(!gp) return false;
+    try{ const a=gp.hapticActuators;
+        if(a && a.length>0){
+            if(typeof a[0].pulse==="function"){ a[0].pulse(intensity, dur); return true; }
+            if(typeof a[0].playEffect==="function"){ a[0].playEffect("dual-rumble",{duration:dur,strongMagnitude:intensity,weakMagnitude:intensity}); return true; }
+        }
+    }catch(e){}
+    try{ if(gp.vibrationActuator && typeof gp.vibrationActuator.playEffect==="function"){ gp.vibrationActuator.playEffect("dual-rumble",{duration:dur,strongMagnitude:intensity,weakMagnitude:intensity}); return true; } }catch(e){}
+    return false;
+}
 function vibrate(dur, intensity){
     const s=renderer.xr.getSession();
-    if(!s){ if(navigator.vibrate){ try{ navigator.vibrate(Math.max(35,Math.round(dur*1.6))); }catch(e){} } return; }   // モバイルは端末バイブ（短すぎると体感できないので長め）
-    for(const src of s.inputSources){
-        const a=src.gamepad?.hapticActuators;
-        if(a&&a.length>0){ try{ a[0].pulse(intensity, dur); }catch(e){} }
-    }
+    if(!s){ if(navigator.vibrate){ try{ navigator.vibrate(Math.max(35,Math.round(dur*1.6))); }catch(e){} } return; }
+    let any=false;
+    for(const src of s.inputSources){ if(_pulseGamepad(src.gamepad, dur, intensity)) any=true; }
+    if(!any && navigator.vibrate){ try{ navigator.vibrate(Math.max(35,Math.round(dur*1.6))); }catch(e){} }   // フォールバック（Android等）
 }
 function vibrateHand(handedness, dur, intensity){
-    const s=renderer.xr.getSession(); if(!s) return;
-    for(const src of s.inputSources){
-        if(src.handedness===handedness){ const a=src.gamepad?.hapticActuators; if(a&&a.length>0){ try{a[0].pulse(intensity,dur);}catch(e){} } }
-    }
+    const s=renderer.xr.getSession(); if(!s){ if(navigator.vibrate){ try{navigator.vibrate(Math.max(30,Math.round(dur*1.5)));}catch(e){} } return; }
+    let any=false;
+    for(const src of s.inputSources){ if(src.handedness===handedness){ if(_pulseGamepad(src.gamepad, dur, intensity)) any=true; } }
+    if(!any && navigator.vibrate){ try{ navigator.vibrate(Math.max(30,Math.round(dur*1.5))); }catch(e){} }   // フォールバック
 }
 
 /* =====================================================
@@ -4092,7 +4109,7 @@ renderer.setAnimationLoop(()=>{
         const spot=p.userData.spot; if(!spot) return;
         const h=(p.userData.height||PANEL_BASE_H)*p.scale.y;
         const pos=link.geometry.attributes.position;
-        pos.setXYZ(0, spot.x, ARTIFACT_POP_Y+0.15, spot.z);       // 出土品側
+        pos.setXYZ(0, spot.x, popY()+0.15, spot.z);       // 出土品側
         pos.setXYZ(1, p.position.x, p.position.y-h*0.5, p.position.z); // パネル下端
         pos.needsUpdate=true; link.geometry.computeBoundingSphere();
     });
@@ -4101,6 +4118,8 @@ renderer.setAnimationLoop(()=>{
     GAME.targets.forEach(t=>{
         if(t.discovered){ t.marker.visible=true; t.marker.userData.ring.rotation.z+=0.02; }
     });
+
+    if(isVR){ handleFieldLock(); }   // フィールド固定トグルは全フェーズで判定
 
     if(GAME.active){
         // ── 移動（VR：左スティック / デスクトップ：WASD） ──
@@ -4169,6 +4188,23 @@ renderer.setAnimationLoop(()=>{
 /* VR移動：左スティックで前後左右、右スティックXでスナップ回転
    右中指グリップ押下中は、右スティック 上下＝ワールド高さ／左右＝相棒との距離 を調整 */
 let snapCooldown=0;
+function handleFieldLock(){   // 全フェーズ：左トリガー＋中指グリップ＋Y長押しでフィールド固定をトグル
+    const s=renderer.xr.getSession(); if(!s) return;
+    for(const src of s.inputSources){
+        if(src.handedness!=="left" || !src.gamepad) continue;
+        const y=src.gamepad.buttons[5]?.pressed ?? false;
+        const grip=src.gamepad.buttons[1]?.pressed ?? false;
+        const trig=src.gamepad.buttons[0]?.pressed ?? false;
+        if(y && trig && grip){
+            if(!GAME._flDown){ GAME._flDown=performance.now(); GAME._flFired=false; }
+            if(!GAME._flFired && performance.now()-(GAME._flDown||0)>800){
+                GAME._flFired=true; GAME.moveLock=!GAME.moveLock;
+                vibrate(220,0.95); chord(GAME.moveLock?[392,523,659]:[659,523,392],0.06,"triangle",0.5);
+                showToast(GAME.moveLock?"フィールド固定：移動・回転をロックしました":"フィールド固定を解除しました");
+            }
+        } else { GAME._flDown=0; GAME._flFired=false; }
+    }
+}
 function handleVRLocomotion(dt){
     const s=renderer.xr.getSession(); if(!s) return;
     if(GAME.moveLock) return;   // フィールド固定中は移動・回転を一切しない
@@ -4263,8 +4299,8 @@ function updateScan(dt, isVR, now){
         heat=Math.max(heat,bestSig);
         // ②発見（信号が閾値超え）
         if(!t.discovered && bestSig>DISCOVER_SIG){ discoverTarget(t); }
-        // ①振っている＆信号あり→パルス（近いほど速い＝リズム）
-        if(bestProbe && bestProbe.shaking && bestSig>PROX_SIG){
+        // ①信号あり→パルス（近いほど速い＝リズム）。振らなくても距離に応じて鳴る
+        if(bestProbe && bestSig>PROX_SIG){
             const interval = THREE.MathUtils.lerp(0.6, 0.09, bestSig); // 秒
             t._pulse = (t._pulse||0) - dt;
             if(t._pulse<=0){
@@ -4413,12 +4449,7 @@ function handleVRDig(){
             }
             GAME._prevSel=selMode;
             if(y && !GAME._prevY){ GAME._yDownAt=performance.now(); GAME._yFired=false; }
-            // 人差し指トリガー＋中指グリップ＋Y長押し＝フィールド固定のトグル（移動・回転を止める）
-            if(y && trig && grip && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){
-                GAME._yFired=true; GAME.moveLock=!GAME.moveLock;
-                vibrate(220,0.95); chord(GAME.moveLock?[392,523,659]:[659,523,392],0.06,"triangle",0.5);
-                showToast(GAME.moveLock?"フィールド固定：移動・回転をロックしました":"フィールド固定を解除しました");
-            } else if(y && !trig && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し（トリガー無し）＝リセット
+            if(y && !trig && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し（トリガー無し）＝リセット
                 GAME._yFired=true; resetDexAndStandby(grip); vibrate(200,0.95); chord([523,784,1047],0.06,"triangle",0.5);
                 showToast(grip?"基準セット：現在地を中央・向きを前方に":"発掘ポイントを再配置しました");
             }
