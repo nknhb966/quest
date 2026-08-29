@@ -1228,10 +1228,11 @@ Chunk.prototype.build=function(){
 
 // ===== 恐竜「気づく→対面→覗き込む→戻る」パラメータ（調整しやすく定数化）=====
 const DINO_FACE = {
-    noticeMul: 0.9,     // 気づく距離＝体長×これ
+    noticeMul: 1.2,     // 気づく距離＝体長×これ
     peekMul:   0.4,     // 覗き込み距離＝体長×これ
     frontDeg:  90,      // 正面から左右この角度以内なら認識
-    pitchDeg:  42,      // 覗き込み時に首を前下方へ倒す固定俯角（度）
+    pitchDeg:  42,      // 覗き込み時に首を前下方へ倒す固定俯角（度・上限の基準）
+    pitchBias: 18,      // 顔がピボットより前下にある分の補正（度）。プレイヤーを正しく見るため加算
     turnEase:  2.2,     // body向き・首の補間速度（大きいほど速い）
     spinStopEase: 2.5,  // 展示回転を止める/戻す補間速度
 };
@@ -2375,15 +2376,16 @@ function animateDigDinos(now, dt){
         // ── 首・頭：プレイヤーへ俯角追従（上限＝固定俯角。左右は振らない）VR/ARのみ ──
         if(m.userData.head){
             const pmul=m.userData.peekMul||1;
-            const maxPeek = THREE.MathUtils.degToRad(DINO_FACE.pitchDeg)*pmul;   // これ以上は下げない上限
+            const maxPeek = THREE.MathUtils.degToRad((DINO_FACE.pitchDeg+ (DINO_FACE.pitchBias||0))*pmul);
             let peek=0;
             if(_isXR && camW && faceAmt>0.01){
                 const head=m.userData.head;
                 const hp=head.getWorldPosition(new THREE.Vector3());        // 首ピボットのワールド位置
                 const dxz=Math.hypot(camW.x-hp.x, camW.z-hp.z);
-                const dy=hp.y-camW.y;                                        // 頭がプレイヤー目線より高い分
-                let want=Math.atan2(dy, Math.max(0.05,dxz));                 // プレイヤーへ向ける俯角（下向き正）
-                if(want<0) want=0;                                          // 見上げはしない
+                const dy=hp.y-camW.y;
+                // 顔（鼻先）は首ピボットより前方かつ下にあるため、ピボット基準の角度に補正を加えて顔をプレイヤーへ向ける
+                let want=Math.atan2(dy, Math.max(0.05,dxz)) + THREE.MathUtils.degToRad(DINO_FACE.pitchBias||18);
+                if(want<0) want=0;
                 peek=Math.min(want, maxPeek)*faceAmt;                       // 上限クランプ＋対面度で寄せる
             }
             m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
