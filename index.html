@@ -4795,8 +4795,9 @@ function updateDog(dt, now){
       const head=body&&body.userData?body.userData.head:null;
       if(head){
         const sig=(GAME&&GAME.active&&!GAME.complete)?(GAME.sniffSig||0):0;
-        const target = THREE.MathUtils.degToRad(38)*Math.min(1,sig*1.2);   // 頭を下げる（+＝鼻先を下へ、恐竜と同符号）。信号が強いほど深く
-        const wob = sig>0.02 ? Math.sin(now*0.012)*0.05*sig : 0;            // 匂いを嗅ぐ小刻みな動き
+        const active = sig>0.02;                                           // 探知したら一律（強さで角度は変えない）
+        const target = active ? THREE.MathUtils.degToRad(38) : 0;          // 一律に深く頭を下げる（+＝鼻先を下へ）
+        const wob = active ? Math.sin(now*0.012*0.8)*(0.05*1.5) : 0;       // 嗅ぐ動き：角度1.5倍・速さ0.8倍
         const want=target+wob;
         head.rotation.x += (want - head.rotation.x)*Math.min(1, dt*6);       // なめらかに追従／戻り
       }
