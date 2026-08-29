@@ -1234,7 +1234,7 @@ const DINO_FACE = {
     frontDeg:  90,      // 正面から左右この角度以内なら認識
     pitchDeg:  42,      // 覗き込み時に首を前下方へ倒す固定俯角（度・上限の基準）
     pitchBias: 18,      // 顔がピボットより前下にある分の補正（度）。プレイヤーを正しく見るため加算
-    approachMul: 0.5,   // 前後移動の半径＝前後長×これ（気づく前Cを中心・前後対称）
+    approachMul: 0.4,   // 前後移動の半径＝前後長×これ（気づく前Cを中心・前後対称）
     turnEase:  2.2,     // body向き・首の補間速度（大きいほど速い）
     spinStopEase: 2.5,  // 展示回転を止める/戻す補間速度
 };
@@ -3018,23 +3018,21 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
         const baseY = cy - GROUND_BELOW_EYE;   // 地面を目線の一定距離下へ
         worldYAdjust=baseY; stage.position.y=baseY; return cy; };
     applyHeight();
-    // ── camYが安定するまで高さを追従補正し、安定するまでゲーム開始を不可にする ──
-    GAME._heightReady=false;
+    // ── camYが十分な高さで安定するまで高さを追従補正し、それまでゲーム開始を不可にする ──
+    GAME._heightReady=false; GAME._hStableStart=0;
     (function stabilize(){
-        GAME._hSamples = GAME._hSamples||[];
+        if(!renderer.xr.isPresenting) return;
         const cy=applyHeight();
-        GAME._hSamples.push(cy); if(GAME._hSamples.length>12) GAME._hSamples.shift();   // 直近12フレーム
-        // 安定条件：(1)十分な立位高さ＝目線が地面-目線距離の一定割合以上 (2)直近の変動が小さい
-        const arr=GAME._hSamples;
-        const mn=Math.min(...arr), mx=Math.max(...arr);
-        const spread=mx-mn;
-        const tallEnough = cy >= GROUND_BELOW_EYE*0.5;        // 目線が基準の半分以上（値はGROUND_BELOW_EYEから算出）
-        const steady = arr.length>=8 && spread <= GROUND_BELOW_EYE*0.05;   // 変動が基準の5%以内
-        if(renderer.xr.isPresenting && !(tallEnough && steady)){
-            requestAnimationFrame(stabilize);
-        } else if(renderer.xr.isPresenting){
-            applyHeight(); GAME._heightReady=true;   // 確定
+        const tallEnough = cy >= GROUND_BELOW_EYE*0.5;   // 目線が基準の半分以上＝トラッキング確定（値はGROUND_BELOW_EYEから算出）
+        const nowT=performance.now();
+        if(tallEnough){
+            if(!GAME._hStableStart) GAME._hStableStart=nowT;
+            // 十分な高さが一定時間継続したら確定（頭の微動は許容。時間はフレーム非依存）
+            if(nowT-GAME._hStableStart >= 700){ applyHeight(); GAME._heightReady=true; return; }
+        } else {
+            GAME._hStableStart=0;   // 高さが落ちたらやり直し
         }
+        requestAnimationFrame(stabilize);
     })();
     DOG_FWD=0.6;
     updateSiteVis(); updatePanelScale();
@@ -3044,7 +3042,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
 });
 renderer.xr.addEventListener("sessionend", ()=>{
     GAME.moveLock=false;   // 退室でフィールド固定を解除
-    GAME._heightReady=false; GAME._hSamples=null;   // 高さ確定フラグをリセット
+    GAME._heightReady=false; GAME._hStableStart=0;   // 高さ確定フラグをリセット
     if(inAR){ scene.background=_savedBg; scene.fog=_savedFog; renderer.setClearColor(0x000000,1); }
     inAR=false; worldYAdjust=0; stage.position.y=0;             // デスクトップは通常の高さへ
     updateSiteVis(); updatePanelScale(); endGame(true);
