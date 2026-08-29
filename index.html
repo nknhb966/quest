@@ -1009,6 +1009,18 @@ try{
 const gltfLoader = new GLTFLoader();
 let siteReady=false;
 document.body.classList.add("loading");   // 読み込み完了までゲーム開始を無効化
+// メニューのパラメータ変更中も一時的にロック（入室前のみ）。fnの処理後、数フレーム待って解除。
+let _paramLoadDepth=0;
+function withParamLoading(fn){
+    if(GAME.active){ try{ fn&&fn(); }catch(e){ console.warn(e); } return; }   // 入室後は対象外
+    _paramLoadDepth++; document.body.classList.add("loading");
+    // 表示を確実に出すため次フレームで実処理
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{
+        try{ fn&&fn(); }catch(e){ console.warn(e); }
+        // モデル再生成やリスケール後、数フレーム待ってから解除
+        setTimeout(()=>{ _paramLoadDepth=Math.max(0,_paramLoadDepth-1); const stillLoadingInit=(typeof siteReady!=="undefined" && siteReady===false); if(_paramLoadDepth===0 && !stillLoadingInit) document.body.classList.remove("loading"); }, 120);
+    }); });
+}
 const world = new THREE.Group(); stage.add(world);
 const ARTPOS = new Array(8).fill(null);   // 各出土品の確定ワールド座標（地面）
 let siteRoot=null, siteVisible=true, inAR=false;
@@ -1738,8 +1750,10 @@ const bubble = (function(){
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:false}));
-    spr.scale.set(5.28/buddyScale,1.6/buddyScale,1); spr.position.set(0,3.3,-1.0); spr.visible=false;   // 少し上＆奥（相棒の後ろ側）へ
+    const _baseSX=5.28/buddyScale, _baseSY=1.6/buddyScale;
+    spr.scale.set(_baseSX,_baseSY,1); spr.position.set(0,3.3,-1.0); spr.visible=false;   // 少し上＆奥（相棒の後ろ側）へ
     dog.add(spr); bubbleSpr=spr;
+    function applyBubbleScale(){ const m=(typeof renderer!=="undefined" && renderer.xr.isPresenting)?0.75:1.0; spr.scale.set(_baseSX*m,_baseSY*m,1); }
     function draw(text){
         ctx.clearRect(0,0,W,H);
         ctx.fillStyle="rgba(255,252,244,0.96)";
@@ -1756,9 +1770,9 @@ const bubble = (function(){
     }
     let hideT=null, holdText=null;
     return {
-        say(text,ms=2200){ holdText=null; draw(text); spr.visible=true; if(hideT)clearTimeout(hideT); hideT=setTimeout(()=>spr.visible=false, ms); },
+        say(text,ms=2200){ holdText=null; draw(text); applyBubbleScale(); spr.visible=true; if(hideT)clearTimeout(hideT); hideT=setTimeout(()=>spr.visible=false, ms); },
         // 条件が変わるまで消えないセリフ
-        hold(text){ if(holdText===text && spr.visible) return; holdText=text; draw(text); spr.visible=true; if(hideT){ clearTimeout(hideT); hideT=null; } },
+        hold(text){ if(holdText===text && spr.visible) return; holdText=text; draw(text); applyBubbleScale(); spr.visible=true; if(hideT){ clearTimeout(hideT); hideT=null; } },
         release(){ if(holdText!==null){ holdText=null; spr.visible=false; } },
         get holding(){ return holdText!==null; }
     };
@@ -2251,7 +2265,7 @@ function tickHatch(now, dt){
             if(m.userData.nameLabel) stage.remove(m.userData.nameLabel);
             const nm=(dn.label||"").replace(/^\S+\s*/,"");
             const _lblScale = ((typeof renderer!=="undefined" && renderer.xr.isPresenting) ? fieldScale() : 1.0);   // スマホ/PCは原寸固定
-            const label=makeLabelSprite(nm, e.color, 0.36*_lblScale, 0);   // 名称パネルも半分
+            const label=makeLabelSprite(nm, e.color, 0.54*_lblScale, 0);   // 名称パネル（現状の1.5倍）
             label.position.set(e.pos.x, GROUND_Y+0.22*_lblScale, e.pos.z);
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
@@ -2675,19 +2689,21 @@ function onDigTargetChosen(v){
     updateRecoVisibility();
 }
 document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segReco button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); recoOn=(b.dataset.v==="on");
-    if(recoOn){ applyAutoForTarget(chosenDigTarget); }   // オンにしたら現在の対象で①の値を強制セット
-    updateRecoVisibility();
+    withParamLoading(()=>{
+        if(recoOn){ applyAutoForTarget(chosenDigTarget); }   // オンにしたら現在の対象で①の値を強制セット
+        updateRecoVisibility();
+    });
 });
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
 document.querySelectorAll("#segCardShow button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segCardShow button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); cardShown=(b.dataset.v==="on"); });
 document.querySelectorAll("#segDigPos button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDigPos button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); digPosRandom=(b.dataset.v==="random"); });
-document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); onDigTargetChosen(b.dataset.v); });
+document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); withParamLoading(()=>{ onDigTargetChosen(b.dataset.v); }); });
 // サイトモデル 表示/非表示（メニュー＋HUD）
 function updateSiteBtn(){ const b=document.getElementById("dSite"); if(b) b.textContent="🗺 サイト："+(siteVisible?"表示":"非表示"); }
 function syncSiteSeg(){ document.querySelectorAll("#segSite button").forEach(x=>x.classList.toggle("on", (x.dataset.v==="show")===siteVisible)); }
 document.querySelectorAll("#segRarity button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segRarity button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); rarityOn=(b.dataset.v==="on"); });
 document.querySelectorAll("#segBuddyPool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segBuddyPool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); buddyMode=(b.dataset.v==="unlock")?"unlock":"all"; });
-document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ setSiteVisible(b.dataset.v==="show"); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); });
+document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ withParamLoading(()=>{ setSiteVisible(b.dataset.v==="show"); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); }); });
 { const b=document.getElementById("dSite"); if(b) b.onclick=()=>{ setSiteVisible(!siteVisible); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); }; }
 // ワールドサイズUI（サイト非表示時のみ表示）
 function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); if(o) o.style.display = siteVisible? "none":"block";
@@ -2713,10 +2729,12 @@ function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); i
 { document.querySelectorAll("#segSiteSize button").forEach(b=>b.onclick=()=>{
     document.querySelectorAll("#segSiteSize button").forEach(x=>x.classList.toggle("on", x===b));
     siteMode = +b.dataset.v;   // 倍率1〜5
-    rescaleSite();                       // サイトを選択倍率でフィットし直す
-    regenerateCustomSpots();             // 発掘点の再配置（カスタム時）
-    reloadDinoCache();                   // 恐竜サイズが変わるので作り直す
-    updateGoal();
+    withParamLoading(()=>{
+        rescaleSite();                       // サイトを選択倍率でフィットし直す
+        regenerateCustomSpots();             // 発掘点の再配置（カスタム時）
+        reloadDinoCache();                   // 恐竜サイズが変わるので作り直す
+        updateGoal();
+    });
   }); }
 function updateHudReset(){
     const r=document.getElementById("dReset"); if(r) r.style.display = GAME.desktop ? "inline-block":"none";   // サイト表示/非表示ともに表示
@@ -2728,10 +2746,16 @@ function updateHudReset(){
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ if(GAME.mode!=="time" && GAME.complete) worldHud.toggleCollectPage(); else worldHud.toggleResultsPage(); updateResultBtn(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); reloadDinoCache(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); }
 function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); reloadDinoCache(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); }
+let _worldReloadT=null;
+function scheduleWorldReload(){ if(GAME.active){ reloadDinoCache(); return; }
+    document.body.classList.add("loading");   // 変更中はロック
+    if(_worldReloadT) clearTimeout(_worldReloadT);
+    _worldReloadT=setTimeout(()=>{ withParamLoading(()=>{ reloadDinoCache(); }); }, 250);   // 連続変更が落ち着いてから再生成
+}
 function reloadDinoCache(){ if(typeof _dinoCacheB==="undefined") return;   // サイズが変わるので恐竜モデルを両スタイルとも作り直す
     [_dinoCacheB,_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
     if(typeof preloadEverything==="function") preloadEverything(); }
