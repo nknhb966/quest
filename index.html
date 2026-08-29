@@ -677,6 +677,9 @@ const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(
 const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高さ（少し低め。パネルもこれに追従）
 function popY(){ return ARTIFACT_POP_Y; }   // 発掘済みの落ち着き高さ（VR/AR/PC共通）
 const GROUND_BELOW_EYE = 1.5;            // 目線から地面までの距離（高さの基準。安定判定にも使用）
+function applyXRHeight(){ if(typeof camera==="undefined"||typeof stage==="undefined") return 0;
+    const cy=camera.getWorldPosition(new THREE.Vector3()).y;
+    const baseY=cy-GROUND_BELOW_EYE; worldYAdjust=baseY; stage.position.y=baseY; return cy; }
 function dinoFootY(){ return (typeof renderer!=="undefined" && renderer.xr.isPresenting) ? 1.5 : (popY()-0.05); }   // 恐竜の足元：VR/ARは床から1.5m、PC/スマホは従来
 let   WALK_SPEED    = 3.5;               // 歩行速度（m/s）※ワールドサイズで自動調整
 const BASE_WALK=3.5, BASE_DOG_FWD=3.4, BASE_DOG_STAY=7.0;   // 現状(約34m)基準
@@ -3014,19 +3017,12 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     if(!isAR){ try{ isAR = !!(session && session.environmentBlendMode && session.environmentBlendMode!=="opaque"); }catch(_){} }
     inAR = isAR;
     if(inAR){ _savedBg=scene.background; _savedFog=scene.fog; scene.background=null; scene.fog=null; renderer.setClearColor(0x000000,0); }
-    const applyHeight=()=>{ const cy=camera.getWorldPosition(new THREE.Vector3()).y;
-        const baseY = cy - GROUND_BELOW_EYE;   // 地面を目線の一定距離下へ
-        worldYAdjust=baseY; stage.position.y=baseY; return cy; };
+    const applyHeight=()=>applyXRHeight();
     applyHeight();
-    // ── 入室後、トラッキング確定を待ってから高さを確定（camYの正常値は環境で異なるため時間で待つ）──
-    GAME._heightReady=false;
-    { const t0=performance.now(); const WAIT=1500;   // トラッキング確定待ち（フレーム非依存）
-      (function stabilize(){
-        if(!renderer.xr.isPresenting) return;
-        applyHeight();   // 待っている間も追従（確定後の値に収束）
-        if(performance.now()-t0 >= WAIT){ applyHeight(); GAME._heightReady=true; return; }   // 経過後の値で確定
-        requestAnimationFrame(stabilize);
-      })(); }
+    // ── 入室後、トラッキング確定を待ってから高さを確定（XR中はrAFが回らないためsetTimeout＋メインループ追従）──
+    GAME._heightReady=false; GAME._heightApplyUntil=performance.now()+1500;   // この時刻まで毎フレームapplyHeight（メインループで実行）
+    applyHeight();
+    setTimeout(()=>{ if(renderer.xr.isPresenting){ applyHeight(); GAME._heightReady=true; } }, 1500);   // 1.5秒後に確定
     DOG_FWD=0.6;
     updateSiteVis(); updatePanelScale();
     placeAtStart();
@@ -4348,6 +4344,7 @@ renderer.setAnimationLoop(()=>{
         }
     }
     updateWorldHud();
+    if(renderer.xr.isPresenting && GAME._heightApplyUntil && performance.now()<GAME._heightApplyUntil){ applyXRHeight(); }   // 入室後の高さ追従
     if(typeof updateRevealFX3D==="function") updateRevealFX3D();   // カード獲得3D演出（XR対応）
     if(GAME.desktop){ const want=(GAME.active && typeof gamePhase==="function"&&gamePhase()==="standby");
         if(want){ const key=dogOnly?("dog|"+dogLevelUp+"|"+dogStats.join(",")):(buddyRandom?"rnd|"+companionKind+"|"+buddyMode:"pick|"+companionKind+"|"+buddyMode)+"|"+buddyCandidates().join(",");
