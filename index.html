@@ -1921,6 +1921,7 @@ const taClock=(function(){
 })();
 function updateTAClock(){
     if(!renderer.xr.isPresenting){ taClock.show(false); return; }
+    if(window._DBGH && GAME._heightReady===false){ taClock.draw(window._DBGH,false); taClock.show(true); return; }   // ★一時デバッグ
     if(GAME._heightReady===false){ taClock.draw("高さ調整中…",false); taClock.show(true); return; }   // 安定するまで開始不可
     if(GAME.mode!=="time"){   // コレクション：スタンバイ/カウントダウン/リザルトのサイン
         if(GAME.active && GAME.standby){ taClock.draw("右トリガー2回で開始",false); taClock.show(true); }
@@ -3023,6 +3024,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     (function stabilize(){
         if(!renderer.xr.isPresenting) return;
         const cy=applyHeight();
+        window._DBGH="camY="+cy.toFixed(2)+" need>="+(GROUND_BELOW_EYE*0.5).toFixed(2)+" AR="+(inAR?1:0);   // ★一時デバッグ
         const tallEnough = cy >= GROUND_BELOW_EYE*0.5;   // 目線が基準の半分以上＝トラッキング確定（値はGROUND_BELOW_EYEから算出）
         const nowT=performance.now();
         if(tallEnough){
