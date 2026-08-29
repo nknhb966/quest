@@ -1233,8 +1233,7 @@ const DINO_FACE = {
     frontDeg:  90,      // 正面から左右この角度以内なら認識
     pitchDeg:  42,      // 覗き込み時に首を前下方へ倒す固定俯角（度・上限の基準）
     pitchBias: 18,      // 顔がピボットより前下にある分の補正（度）。プレイヤーを正しく見るため加算
-    approachMul: 0.5,   // 寄る量＝移動半径＝体長×これ（気づく前Cを中心とした円）
-    retreatMul: 1.2,    // 引く方向の移動半径＝体長×これ（足元でも引けるよう大きめ）
+    approachMul: 0.5,   // 寄る量＝移動半径＝体長×これ（気づく前Cを中心とした円・寄る方向のみ）
     turnEase:  2.2,     // body向き・首の補間速度（大きいほど速い）
     spinStopEase: 2.5,  // 展示回転を止める/戻す補間速度
 };
@@ -2383,35 +2382,34 @@ function animateDigDinos(now, dt){
             cont.rotation.y += d*Math.min(1, dt*DINO_FACE.turnEase)*faceAmt;
         }
 
-        // ── 気づいたら「気づく前Cを中心・半径 体長×0.5」の円内でプレイヤーと最大俯角で覗ける距離を保つ ──
+        // ── 気づいたらプレイヤーへ寄る（後退なし・最大俯角で頭打ち・出現後5秒は移動しない）──
         {
             const ox=cont.userData.origX??cont.position.x, oz=cont.userData.origZ??cont.position.z;
             let goalX=ox, goalZ=oz;
-            if(_isXR && camW && faceAmt>0.01 && m.userData.head){
+            const sinceSettle = now - (cont.userData.settleAt||now);
+            const canMove = cont.userData.settled && sinceSettle>=5000;   // 出現後5秒は移動しない
+            if(_isXR && camW && faceAmt>0.01 && m.userData.head && canMove){
                 const L=Math.max(0.6, cont.userData.bodyLen||2);
-                // 最大俯角で覗ける理想の水平距離：head高さとプレイヤー目線から算出
                 const hp=m.userData.head.getWorldPosition(new THREE.Vector3());
                 const pmul=m.userData.peekMul||1;
                 const longNeck=!!m.userData.longNeck;
                 const maxDegM = longNeck ? 88 : (DINO_FACE.pitchDeg+(DINO_FACE.pitchBias||0))*pmul;
                 const maxA=THREE.MathUtils.degToRad(maxDegM);
                 const dyH=Math.max(0.05, hp.y-camW.y);
-                let idealDxz=dyH/Math.tan(Math.max(0.08,maxA));   // この水平距離ならちょうど最大俯角
-                if(longNeck){ idealDxz += 0.3*L; }   // 長首は手前を狙う分、距離目標を広げる（後退して合わせる）
-                // 現在のプレイヤー水平位置と元位置Cの関係
+                let idealDxz=dyH/Math.tan(Math.max(0.08,maxA));   // 最大俯角で覗ける水平距離
+                if(longNeck){ idealDxz += 0.3*L; }
                 const dx=camW.x-ox, dz=camW.z-oz; const dd=Math.hypot(dx,dz);
                 if(dd>1e-3){
                     const ux=dx/dd, uz=dz/dd;   // C→プレイヤー方向
                     let s=(dd - idealDxz);
-                    const Rin =L*(DINO_FACE.approachMul||0.5);        // 寄る方向の半径
-                    const Rout=L*(DINO_FACE.retreatMul||1.2);        // 引く方向の半径（大きめ＝足元でも引ける）
-                    s = s>=0 ? Math.min(s, Rin) : Math.max(s, -Rout);
-                    s*=faceAmt;                       // 対面度で寄せる（離れると元へ戻る）
+                    const Rin=L*(DINO_FACE.approachMul||0.5);
+                    s=Math.max(0, Math.min(s, Rin));   // 寄る方向のみ（後退なし）・半径内。最大俯角に達したら0＝それ以上寄らない
+                    s*=faceAmt;
                     goalX=ox+ux*s; goalZ=oz+uz*s;
                 }
             }
             const cxNow=cont.userData.homeX??cont.position.x, czNow=cont.userData.homeZ??cont.position.z;
-            const k=Math.min(1, dt*1.6);   // ゆっくり移動
+            const k=Math.min(1, dt*1.6);
             const nx=cxNow+(goalX-cxNow)*k, nz=czNow+(goalZ-czNow)*k;
             cont.position.x=nx; cont.position.z=nz;
             cont.userData.homeX=nx; cont.userData.homeZ=nz;   // 回転中心も移動後Cに追従
