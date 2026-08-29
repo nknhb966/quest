@@ -676,7 +676,7 @@ const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m
 const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
 const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高さ（少し低め。パネルもこれに追従）
 function popY(){ return ARTIFACT_POP_Y; }   // 発掘済みの落ち着き高さ（VR/AR/PC共通）
-function dinoFootY(){ return (typeof renderer!=="undefined" && renderer.xr.isPresenting) ? 1.6 : (popY()-0.05); }   // 恐竜の足元：VR/ARは床から1.6m、PC/スマホは従来
+function dinoFootY(){ return (typeof renderer!=="undefined" && renderer.xr.isPresenting) ? 1.5 : (popY()-0.05); }   // 恐竜の足元：VR/ARは床から1.5m、PC/スマホは従来
 let   WALK_SPEED    = 3.5;               // 歩行速度（m/s）※ワールドサイズで自動調整
 const BASE_WALK=3.5, BASE_DOG_FWD=3.4, BASE_DOG_STAY=7.0;   // 現状(約34m)基準
 const SNAP_DEG      = 30;                 // スナップ回転
@@ -2322,7 +2322,7 @@ function tickHatch(now, dt){
             const nm=(dn.label||"").replace(/^\S+\s*/,"");
             const _lblScale = fieldScale();   // 全環境でフィールド寸法に連動
             const label=makeLabelSprite(nm, e.color, 0.54*_lblScale, 0);   // 名称パネル（現状の1.5倍）
-            label.position.set(cX, dinoFootY()+0.22*_lblScale, cZ);   // 本体中心Cの下（恐竜足元基準）
+            label.position.set(cX, GROUND_Y+0.22*_lblScale, cZ);   // 本体中心Cの下（地面基準・元の位置）
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
         }
@@ -2336,14 +2336,14 @@ function animateDigDinos(now, dt){
         const spd=cont.userData.animSpeed||1, off=cont.userData.animPhase||0, ph=now*0.006*spd + off;
         const sph = (now - (cont.userData.settleAt||now));
 
-        // ── 気づく／対面 判定 ──
+        // ── 気づく／対面 判定（VR/ARのみ。PC/スマホは気づかない）──
+        const _isXR=(typeof renderer!=="undefined" && renderer.xr.isPresenting);
         let facing=false, faceAmt=cont.userData._faceAmt||0;
-        if(camW && cont.userData.settled){
+        if(_isXR && camW && cont.userData.settled){
             const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
             const dx=camW.x-cx, dz=camW.z-cz; const dist=Math.hypot(dx,dz);
             const L=Math.max(0.6, cont.userData.bodyLen||2);
             const notice=L*DINO_FACE.noticeMul;
-            // 恐竜の正面方向（+Zローカルをworldへ）＝cont.rotation.y
             const fwd=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), cont.rotation.y);
             const toP=new THREE.Vector3(dx,0,dz); const pd=toP.length();
             let ang=999; if(pd>1e-3){ toP.normalize(); ang=Math.acos(THREE.MathUtils.clamp(fwd.dot(toP),-1,1))*180/Math.PI; }
@@ -2372,11 +2372,20 @@ function animateDigDinos(now, dt){
             cont.rotation.y += d*Math.min(1, dt*DINO_FACE.turnEase)*faceAmt;
         }
 
-        // ── 首・頭：覗き込み（固定俯角へ補間）──
+        // ── 首・頭：プレイヤーへ俯角追従（上限＝固定俯角。左右は振らない）VR/ARのみ ──
         if(m.userData.head){
-            const isXR=(typeof renderer!=="undefined" && renderer.xr.isPresenting);
-            const pmul=m.userData.peekMul||1;   // 頭が高い種は深めに覗き込む
-            const peek = isXR ? THREE.MathUtils.degToRad(DINO_FACE.pitchDeg)*faceAmt*pmul : 0;   // VR/ARのみ覗き込み（PC/スマホは向き変更のみ）
+            const pmul=m.userData.peekMul||1;
+            const maxPeek = THREE.MathUtils.degToRad(DINO_FACE.pitchDeg)*pmul;   // これ以上は下げない上限
+            let peek=0;
+            if(_isXR && camW && faceAmt>0.01){
+                const head=m.userData.head;
+                const hp=head.getWorldPosition(new THREE.Vector3());        // 首ピボットのワールド位置
+                const dxz=Math.hypot(camW.x-hp.x, camW.z-hp.z);
+                const dy=hp.y-camW.y;                                        // 頭がプレイヤー目線より高い分
+                let want=Math.atan2(dy, Math.max(0.05,dxz));                 // プレイヤーへ向ける俯角（下向き正）
+                if(want<0) want=0;                                          // 見上げはしない
+                peek=Math.min(want, maxPeek)*faceAmt;                       // 上限クランプ＋対面度で寄せる
+            }
             m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
         }
 
