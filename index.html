@@ -2332,7 +2332,8 @@ function tickHatch(now, dt){
             m.userData.bodyLen=depth;   // 体長（前後長・スケール反映済み）＝対面判定の基準
             popAnims.push({ obj:m, x:cX, z:cZ, startY:GROUND_Y, peakY:footY+0.45, endY:footY, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
-            bubble.say(dinoEmergeLine(dn), 3000);
+            bubble.say(dinoEmergeLine(dn), 3000, true);   // 発掘結果セリフ＝最優先
+            GAME.dogHappyUntil = performance.now()+3000;   // 恐竜名セリフ中は下位セリフ・移動・嗅ぎ・撫でを抑制
             digBusyUntil=performance.now()+2000;   // 恐竜登場セリフから2秒後まで
             // 説明パネルの代わりに、名称だけモデルの下側に表示
             if(m.userData.nameLabel) stage.remove(m.userData.nameLabel);
@@ -2508,7 +2509,7 @@ function excavate(t){
         updateGoal();
         if(GAME.collectedCount>=8){
             sfxComplete(); showToast("🏆 全8種コンプリート！");
-            bubble.say(line("done"), 4000);
+            bubble.say(line("done"), 4000, true); GAME.dogHappyUntil = performance.now()+4000;
             GAME.doneIdx.clear(); GAME.recent.length=0;   // 全部掘ったので発掘済み情報をリセット
             if(typeof collectionFinish==="function") collectionFinish();   // ④：クリアタイム記録＋時間別カード＋リザルト
         }
@@ -3455,7 +3456,7 @@ function taFinish(){
     worldHud.drawResults(score, found, loadTA(), {digPts, secs, timeBonus, asks, askPenalty, card});   // 2ページ（ポイント+カード/全体スコア）
     if(typeof updateWorldHud==="function") updateWorldHud();   // 突入直後に前方へ即配置
     if(typeof updateResultBtn==="function") updateResultBtn();
-    bubble.say(found>=8 ? line("done") : line("again"), 4000);
+    bubble.say(found>=8 ? line("done") : line("again"), 4000, true); GAME.dogHappyUntil = performance.now()+4000;
     updateGoal(); updateTAButton();
 }
 // 右トリガー（素手なら右手つまむ）で進行
