@@ -2462,7 +2462,7 @@ function clearDinoReveal(){
     dinoDigModels.forEach(m=>{ if(m){ m.visible=false;                                   // 隠すだけ＝キャッシュ保持で再生成のカクツキ防止
         if(m.userData.nameLabel){ stage.remove(m.userData.nameLabel); m.userData.nameLabel=null; } } });   // 名称ラベルは必ず消す
 }
-function excavate(t){
+function excavate(t, byPlayer){
     // 図鑑登録
     const firstTime = !dexData[t.idx]?.found;
     const now=new Date();
@@ -2475,6 +2475,7 @@ function excavate(t){
     sfxExcavate(); vibrate(400,1.0);
     bubble.say(line("found"), 2600, true);
     GAME.dogHappyUntil = performance.now()+2600;   // 喜びセリフを言い終わるまで：嗅がない・移動しない・他セリフを言わない
+    if(byPlayer){ dog.userData.rushTo={x:t.pos.x, z:t.pos.z}; dog.userData.focusStart=performance.now(); }   // 手動発掘：その場所の横へ急いで移動（上位セリフ中でも移動を許可）
     digBusyUntil=performance.now()+2000;   // 「見つけたワン！」から2秒後まで
     dogCelebrate();
 
@@ -3916,7 +3917,7 @@ function doDig(t){
     }
     if(t.progress>=t.digNeed){
         if(t.isStar){ triggerSpecial(); clearStarPoint(); }   // スターポイント：崩すと無条件でSPECIAL発動→消滅
-        else excavate(t);
+        else excavate(t, true);   // プレイヤーの手動発掘
     }
 }
 function fieldRange(){   // フィールドの有効範囲（各軸80%枠＝端から10%内側）。{custom, minX,maxX,minZ,maxZ}(site) or {hx,hz}(custom)
@@ -4683,6 +4684,17 @@ function updateDog(dt, now){
     const dogHappy = (GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil);   // 喜びセリフ中はその場・他セリフ抑制
 
     let goal, waitingAtHint=false;
+    // 手動発掘した場所の横へ急行（上位セリフ中でも移動を許可＝①の挙動）
+    let rushing=false;
+    if(dog.userData.rushTo){
+        const q=camQuat();
+        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        goal=new THREE.Vector3(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 1.0);
+        const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
+        if(d2<0.3){ dog.userData.rushTo=null; }   // 横に到着したら解除→その場で発掘セリフを言って留まる
+        else { rushing=true; }
+    }
+    if(!rushing){
     const focus=(typeof focusTarget==="function") ? focusTarget() : null;
     const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < DOG_STAY_R;   // 旧コード同様：発見済みなら横へ（DOG_STAY_R≥3.5m＝発見と同時）
     if(focusNear){
@@ -4711,13 +4723,19 @@ function updateDog(dt, now){
         const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
         goal=new THREE.Vector3().copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
     }
+    }   // end if(!rushing)
 
     const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
     const dist=to.length();
     const prevX=dog.position.x, prevZ=dog.position.z;
-    if(dist>0.05 && !dogHappy){   // 喜びセリフ中はその場に留まる
+    if(dist>0.05 && (!dogHappy || rushing)){   // 喜びセリフ中はその場（ただしrushing＝手動発掘への急行は許可）
         let rate=3.0+speed*0.6, maxSpeed=6.0;
-        if(dog.userData.hintActive){
+        if(rushing){
+            // 手動発掘した場所の横へ急行：発見時と同じ1.8倍速＋加速立ち上がり
+            const ramp=Math.min(1,(now-(dog.userData.focusStart||now))/800);
+            rate=2.0*1.8*ramp;
+            maxSpeed=(2.2*ramp+0.2)*1.8;
+        } else if(dog.userData.hintActive){
             // ヒント移動は、ゆっくり動き出す（0.8秒かけて加速）＋最高速を抑える
             const ramp=Math.min(1,(now-(dog.userData.hintStart||now))/800);
             rate=2.0*ramp;
