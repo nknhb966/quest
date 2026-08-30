@@ -4017,7 +4017,9 @@ function triggerSpecial(){
     const msg=`⭐ SPECIAL 発動！\n「${title}」\n${done}カ所を${verb}！`;
     { const tel=document.getElementById("toast"); if(tel) tel.style.whiteSpace="pre-line"; }
     showToast(msg, 3200);
-    if(typeof bubble!=="undefined" && bubble.say) bubble.say(msg, 3200);   // VR/ARでも読めるよう相棒バブルにも
+    if(typeof bubble!=="undefined" && bubble.say) bubble.say(msg, 3200, true);   // VR/ARでも読めるよう相棒バブルにも（喜びセリフ＝forceで確実表示）
+    GAME.dogHappyUntil = performance.now()+3200;   // 言い終わるまで：嗅がない・移動しない・他セリフを言わない・撫でられない
+    if(typeof dogCelebrate==="function") dogCelebrate();
 }
 function starBurst(pos){ if(typeof spawnDirt==="function") spawnDirt(pos, 16); }
 // SPECIAL演出：モード別の色＋対象数ぶんの点滅と効果音（気持ちよさ優先）
