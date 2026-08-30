@@ -4723,10 +4723,10 @@ function updateDog(dt, now){
             rate=2.0*ramp;
             maxSpeed=2.2*ramp+0.2;
         } else if(dog.userData.atBlock){
-            // 発見時にブロック横へ向かう移動：ヒント移動の1.2倍速＋加速立ち上がり
+            // 発見時にブロック横へ向かう移動：ヒント移動の1.8倍速＋加速立ち上がり
             const ramp=Math.min(1,(now-(dog.userData.focusStart||now))/800);
-            rate=2.0*1.2*ramp;
-            maxSpeed=(2.2*ramp+0.2)*1.2;
+            rate=2.0*1.8*ramp;
+            maxSpeed=(2.2*ramp+0.2)*1.8;
         }
         const follow=1-Math.exp(-dt*rate);
         let nx=THREE.MathUtils.lerp(dog.position.x, goal.x, follow);
