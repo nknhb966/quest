@@ -4682,6 +4682,7 @@ function updateDog(dt, now){
     const focus=(typeof focusTarget==="function") ? focusTarget() : null;
     const focusNear = focus && Math.hypot(playerPos.x-focus.pos.x, playerPos.z-focus.pos.z) < DOG_STAY_R;   // 旧コード同様：発見済みなら横へ（DOG_STAY_R≥3.5m＝発見と同時）
     if(focusNear){
+        if(!dog.userData.atBlock) dog.userData.focusStart=now;   // 発見移動の加速立ち上がり開始
         dog.userData.atBlock=true;   // 発見済みブロックの横に立っている（頭は下げない＝掘り優先）
         // 発見済みブロックが近くにある間は、必ずその「右どなり」に立つ（ヒント移動より優先）
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
@@ -4717,6 +4718,11 @@ function updateDog(dt, now){
             const ramp=Math.min(1,(now-(dog.userData.hintStart||now))/800);
             rate=2.0*ramp;
             maxSpeed=2.2*ramp+0.2;
+        } else if(dog.userData.atBlock){
+            // 発見時にブロック横へ向かう移動：ヒント移動の1.2倍速＋加速立ち上がり
+            const ramp=Math.min(1,(now-(dog.userData.focusStart||now))/800);
+            rate=2.0*1.2*ramp;
+            maxSpeed=(2.2*ramp+0.2)*1.2;
         }
         const follow=1-Math.exp(-dt*rate);
         let nx=THREE.MathUtils.lerp(dog.position.x, goal.x, follow);
