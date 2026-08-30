@@ -4086,6 +4086,9 @@ function focusTarget(){
     return best;
 }
 function updateCoach(dt){
+    // 掘り当てなどの喜びセリフ（found/done/again 等・force表示）を言っている間は、
+    // コーチングの hold()（「近くに来て」等）で上書きしない。hold() は dogHappyUntil を見ないため必ずここで止める。
+    if(typeof GAME!=="undefined" && GAME.dogHappyUntil && performance.now() < GAME.dogHappyUntil) return;
     if((GAME.mode==="time" && TA.state==="ready") || (GAME.mode!=="time" && GAME.standby)){   // スタンバイ中は常時その相棒のスタートのセリフ
         if(petCooldown<=0) bubble.hold(line("start"));
         return;
