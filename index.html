@@ -4122,6 +4122,7 @@ function currentHitProb(){ let base=0.5; const tg=GAME.targets.find(x=>!x.discov
 let lastPetLine="", dogSpinT=0, dogTailWagT=0;
 function petDog(){
     if(GAME.complete) return;   // コンプリート後は反応しない
+    if(GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil) return;   // 喜びセリフ中は撫でられない（掘り優先）
     if(petCooldown>0) return;
     if(digBusy) return;                          // 発掘中はなでない
     petCooldown=1.6;
