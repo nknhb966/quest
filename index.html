@@ -4361,6 +4361,7 @@ let scanPulseAccum=0;
 let prevTriggers=[false,false];
 
 renderer.setAnimationLoop(()=>{
+    if(window.__mvPreviewPause) return;   // 「発掘モデル表示」プレビュー中はゲーム描画を止め、メモリを空ける（追加機能）
     const now=performance.now();
     const dt=Math.min(0.05,(now-lastTime)/1000); lastTime=now;
     const isVR=renderer.xr.isPresenting;
@@ -5107,20 +5108,103 @@ addEventListener("resize",()=>{
 
     function setNote(t){ if(noteEl){ noteEl.textContent=t||""; noteEl.style.display=t?"block":"none"; } }
 
+    // ===== 出土品「きれい」＝フルGLBの巨大テクスチャ(8192²)を安全サイズへ縮小して表示（元ファイルは無改変） =====
+    function parseGLB(buf){
+        const dv=new DataView(buf); const total=dv.getUint32(8,true);
+        let off=12, json=null, bin=null;
+        while(off<total){
+            const clen=dv.getUint32(off,true), ctype=dv.getUint32(off+4,true); off+=8;
+            if(ctype===0x4E4F534A){ json=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,off,clen))); }
+            else if(ctype===0x004E4942){ bin=buf.slice(off,off+clen); }
+            off+=clen;
+        }
+        return {json,bin};
+    }
+    function buildGLB(json,bin){
+        const jb=new TextEncoder().encode(JSON.stringify(json));
+        const jpad=(4-(jb.length%4))%4;
+        const jsonBytes=new Uint8Array(jb.length+jpad); jsonBytes.set(jb); for(let i=0;i<jpad;i++) jsonBytes[jb.length+i]=0x20;
+        let binBytes=bin?new Uint8Array(bin):new Uint8Array(0);
+        const bpad=(4-(binBytes.length%4))%4;
+        if(bpad){ const t=new Uint8Array(binBytes.length+bpad); t.set(binBytes); binBytes=t; }
+        const hasBin=binBytes.length>0;
+        const total=12+8+jsonBytes.length+(hasBin?8+binBytes.length:0);
+        const out=new ArrayBuffer(total), dv=new DataView(out); let o=0;
+        dv.setUint32(0,0x46546C67,true); dv.setUint32(4,2,true); dv.setUint32(8,total,true); o=12;
+        dv.setUint32(o,jsonBytes.length,true); dv.setUint32(o+4,0x4E4F534A,true); o+=8;
+        new Uint8Array(out,o,jsonBytes.length).set(jsonBytes); o+=jsonBytes.length;
+        if(hasBin){ dv.setUint32(o,binBytes.length,true); dv.setUint32(o+4,0x004E4942,true); o+=8; new Uint8Array(out,o,binBytes.length).set(binBytes); }
+        return out;
+    }
+    async function exportRoot(root){
+        const GLTFExporter=await getExporter(); const ex=new GLTFExporter();
+        root.updateMatrixWorld(true); root.traverse(o=>{ o.visible=true; });
+        return await new Promise((res,rej)=> ex.parse(root,(r)=>{ try{ res(URL.createObjectURL(new Blob([r],{type:"model/gltf-binary"}))); }catch(e){ rej(e);} }, rej, {binary:true,onlyVisible:false}));
+    }
+    async function loadArtifactHiRes(base, smallFile, MAX){
+        MAX = MAX||2048;
+        const fullUrl = base + smallFile.replace("_small","");
+        const resp = await fetch(fullUrl); if(!resp.ok) throw new Error("fetch "+resp.status);
+        const buf = await resp.arrayBuffer();
+        const {json,bin}=parseGLB(buf);
+        if(!json) throw new Error("bad glb");
+        // 1) テクスチャ画像を縮小（8Kを一気にGPUへ送らない）
+        let tex=null;
+        if(json.images && json.images[0] && json.images[0].bufferView!=null && bin){
+            const im=json.images[0], bv=json.bufferViews[im.bufferView];
+            const start=bv.byteOffset||0, ln=bv.byteLength;
+            const blob=new Blob([new Uint8Array(bin,start,ln)], {type: im.mimeType||"image/jpeg"});
+            let bmp;
+            try{ bmp=await createImageBitmap(blob,{resizeWidth:MAX,resizeHeight:MAX,resizeQuality:"high"}); }
+            catch(_){ bmp=await createImageBitmap(blob); }
+            const w=Math.min(MAX,bmp.width), h=Math.min(MAX,bmp.height);
+            const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+            cv.getContext("2d").drawImage(bmp,0,0,w,h); if(bmp.close) bmp.close();
+            tex=new THREE.CanvasTexture(cv);
+            if("colorSpace" in tex){ tex.colorSpace=THREE.SRGBColorSpace; } else { try{ tex.encoding=THREE.sRGBEncoding; }catch(_){ } }
+            tex.flipY=false; tex.needsUpdate=true;
+        }
+        // 2) テクスチャ参照を外したGLBを作り、GLTFLoaderに8Kをデコードさせずジオメトリだけ読む
+        const gj=JSON.parse(JSON.stringify(json));
+        if(gj.materials) gj.materials.forEach(m=>{ if(m.pbrMetallicRoughness){ delete m.pbrMetallicRoughness.baseColorTexture; delete m.pbrMetallicRoughness.metallicRoughnessTexture; } delete m.normalTexture; delete m.occlusionTexture; delete m.emissiveTexture; });
+        delete gj.textures; delete gj.images; delete gj.samplers;
+        const stripped=buildGLB(gj,bin);
+        const gltf=await new Promise((res,rej)=> gltfLoader.parse(stripped,"",res,rej));
+        const root=gltf.scene || (gltf.scenes&&gltf.scenes[0]);
+        if(!root) throw new Error("no scene");
+        // 3) 縮小テクスチャを貼り直して再書き出し
+        if(tex){ root.traverse(o=>{ if(o.isMesh && o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(mm=>{ mm.map=tex; if(mm.color&&mm.color.setRGB) mm.color.setRGB(1,1,1); mm.needsUpdate=true; }); } }); }
+        return await exportRoot(root);
+    }
+
     async function showModel(idx){
         const target = curDigTarget();
         const isDino = (target==="dino" || target==="dino2");
         setNote("読み込み中…");
         viewer.setAttribute("exposure", "1.0");
 
-        // 出土品：ファイル名を直接指定して読み込む（軽い=_small / きれい=フル、同一パス）
+        // 出土品：軽い=_small はそのまま／きれい=フルは8Kで落ちるため2048へ縮小して表示（元ファイルは無改変）
         if(!isDino){
             const base  = (typeof ART_BASE!=="undefined") ? ART_BASE : "";
             const small = (typeof ART_FILES!=="undefined" && ART_FILES[idx]) ? ART_FILES[idx] : ("model0"+(idx+1)+"_small.glb");
-            const file  = (artQuality==="full") ? small.replace("_small","") : small;
-            if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
-            viewer.setAttribute("src", base+file);
-            setNote("");
+            if(artQuality==="full"){
+                setNote("読み込み中…（高精細）");
+                try{
+                    const url = await loadArtifactHiRes(base, small, 2048);
+                    if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+                    lastBlobUrl = url;
+                    viewer.setAttribute("src", url);
+                    setNote("");
+                }catch(err){
+                    if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
+                    viewer.setAttribute("src", base+small);
+                    setNote("高精細版はこの端末の制限で表示できないため、軽い版を表示しています。");
+                }
+            }else{
+                if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
+                viewer.setAttribute("src", base+small);
+                setNote("");
+            }
             updateAR();
             return;
         }
@@ -5160,6 +5244,7 @@ addEventListener("resize",()=>{
 
     function openModal(){
         _dinoFactorCache = {};   // ワールド設定/スタイル変更に備え、恐竜の共通倍率を測り直す
+        window.__mvPreviewPause = true;   // プレビュー中はゲーム描画を停止（メモリ確保）
         buildOptions();
         updateToggles();
         modal.style.display="flex";
@@ -5167,6 +5252,7 @@ addEventListener("resize",()=>{
     }
     function closeModal(){
         modal.style.display="none";
+        window.__mvPreviewPause = false;  // ゲーム描画を再開
         viewer.removeAttribute("src");
         if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
     }
