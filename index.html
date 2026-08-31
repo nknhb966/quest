@@ -370,6 +370,8 @@
       <button class="ghost" id="openRecords">🏅 記録</button>
     </div>
 
+    <!-- 発掘モデル表示ボタンは画面最下部に固定配置（このメニューの外・下部の追加ブロックに実体を置く） -->
+
   </div>
 </div>
 
@@ -521,15 +523,17 @@
 <style>
     #mvOpenBtn{
         position:fixed; left:50%; transform:translateX(-50%);
-        bottom:max(12px, env(safe-area-inset-bottom)); z-index:9000;
-        display:none; align-items:center; gap:8px;
-        padding:12px 22px; border:none; border-radius:26px; cursor:pointer;
-        font-size:15px; font-weight:800; letter-spacing:1px; color:#fff;
+        bottom:max(12px, env(safe-area-inset-bottom)); z-index:30;
+        display:none; width:min(620px,94vw);
+        padding:15px 0; border:none; border-radius:12px; cursor:pointer;
+        font-size:16px; font-weight:800; letter-spacing:1px; color:#fff;
         background:linear-gradient(135deg,#7c3aed,#1d4ed8);
-        box-shadow:0 6px 22px rgba(80,60,200,.5), inset 0 1px 0 rgba(255,255,255,.18);
+        box-shadow:0 0 26px rgba(120,80,255,.5), inset 0 1px 0 rgba(255,255,255,.15);
     }
-    #mvOpenBtn:active{ transform:translateX(-50%) scale(.97); }
-    body.loading #mvOpenBtn{ display:none !important; }
+    #mvOpenBtn:active{ transform:translateX(-50%) scale(.99); }
+    body.loading #mvOpenBtn{ opacity:.5; pointer-events:none; filter:grayscale(.4); }
+    /* 固定ボタンぶんの余白（最下部の「あそび方／記録」等が隠れないように） */
+    .menu-inner{ padding-bottom:88px; }
 
     #mvModal{
         position:fixed; inset:0; z-index:12000; display:none;
@@ -572,8 +576,8 @@
         <div id="mvNote"></div>
         <model-viewer id="mvViewer"
             camera-controls touch-action="none"
-            ar ar-modes="webxr scene-viewer quick-look" ar-scale="auto"
-            shadow-intensity="1" exposure="1.0" interaction-prompt="none"
+            ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed"
+            tone-mapping="neutral" shadow-intensity="1" exposure="1.0" interaction-prompt="none"
             alt="発掘モデル"></model-viewer>
         <div class="mvhint">ドラッグで回転／ピンチ・ホイールで拡大縮小／2本指ドラッグ（右ドラッグ）で移動</div>
     </div>
@@ -4994,6 +4998,8 @@ addEventListener("resize",()=>{
         const exporter = new GLTFExporter();
         const clone = obj.clone(true);
         clone.position.set(0,0,0);
+        clone.rotation.set(0,0,0);
+        clone.scale.set(1,1,1);   // 出土品はゲーム表示用のフィット拡大を解除し、GLBの“元のサイズ(実寸)”で書き出す（AR実寸対策）。恐竜はルートscaleが元々1なので影響なし
         clone.traverse(o=>{ o.visible = true; });
         return await new Promise((resolve,reject)=>{
             exporter.parse(clone, (result)=>{
@@ -5047,11 +5053,12 @@ addEventListener("resize",()=>{
     viewer.addEventListener("load", updateAR);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
 
-    // 「発掘モデル表示」ボタンはタイトルメニュー表示中だけ出す（読み込み中・プレイ中・自モーダル中は隠す）
+    // 「発掘モデル表示」ボタンは画面最下部に固定。タイトルメニュー表示中のみ表示し、
+    // 読み込み中(body.loading)・プレイ中(#menu非表示)・プレビュー表示中は隠す。
     function menuVisible(){ return menuEl && getComputedStyle(menuEl).display!=="none"; }
     function syncOpenBtn(){
         const show = menuVisible() && modal.style.display!=="flex" && !document.body.classList.contains("loading");
-        openBtn.style.display = show ? "inline-flex" : "none";
+        openBtn.style.display = show ? "block" : "none";
     }
     if(menuEl){ new MutationObserver(syncOpenBtn).observe(menuEl, {attributes:true, attributeFilter:["style","class"]}); }
     new MutationObserver(syncOpenBtn).observe(document.body, {attributes:true, attributeFilter:["class"]});
