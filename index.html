@@ -370,7 +370,8 @@
       <button class="ghost" id="openRecords">🏅 記録</button>
     </div>
 
-    <!-- 発掘モデル表示ボタンは画面最下部に固定配置（このメニューの外・下部の追加ブロックに実体を置く） -->
+    <!-- 発掘モデル表示（タイトルメニュー最下部・あそび方／記録の次の行） -->
+    <button id="mvOpenBtn">🔍 発掘モデル表示</button>
 
   </div>
 </div>
@@ -522,18 +523,14 @@
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 <style>
     #mvOpenBtn{
-        position:fixed; left:50%; transform:translateX(-50%);
-        bottom:max(12px, env(safe-area-inset-bottom)); z-index:30;
-        display:none; width:min(620px,94vw);
+        display:block; width:100%; margin:14px 0 2px;
         padding:15px 0; border:none; border-radius:12px; cursor:pointer;
         font-size:16px; font-weight:800; letter-spacing:1px; color:#fff;
         background:linear-gradient(135deg,#7c3aed,#1d4ed8);
         box-shadow:0 0 26px rgba(120,80,255,.5), inset 0 1px 0 rgba(255,255,255,.15);
     }
-    #mvOpenBtn:active{ transform:translateX(-50%) scale(.99); }
+    #mvOpenBtn:active{ transform:scale(.99); }
     body.loading #mvOpenBtn{ opacity:.5; pointer-events:none; filter:grayscale(.4); }
-    /* 固定ボタンぶんの余白（最下部の「あそび方／記録」等が隠れないように） */
-    .menu-inner{ padding-bottom:88px; }
 
     #mvModal{
         position:fixed; inset:0; z-index:12000; display:none;
@@ -562,7 +559,6 @@
     #mvNote{ display:none; text-align:center; color:#c9bcff; font-size:13px; letter-spacing:1px; }
     .mvhint{ text-align:center; font-size:12px; color:rgba(190,178,225,.62); letter-spacing:.5px; }
 </style>
-<button id="mvOpenBtn">🔍 発掘モデル表示</button>
 <div id="mvModal">
     <div class="mvbox" role="dialog" aria-modal="true" aria-label="発掘モデル表示">
         <div class="mvhead">
@@ -576,7 +572,7 @@
         <div id="mvNote"></div>
         <model-viewer id="mvViewer"
             camera-controls touch-action="none"
-            ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed"
+            ar ar-modes="webxr scene-viewer quick-look" ar-scale="auto"
             tone-mapping="neutral" shadow-intensity="1" exposure="1.0" interaction-prompt="none"
             alt="発掘モデル"></model-viewer>
         <div class="mvhint">ドラッグで回転／ピンチ・ホイールで拡大縮小／2本指ドラッグ（右ドラッグ）で移動</div>
@@ -4993,14 +4989,42 @@ addEventListener("resize",()=>{
     }
 
     // Object3D → GLB(blob URL)。元モデルは非表示なので clone を表示状態にして書き出す
-    async function objToBlobUrl(obj){
+    //   opts.unlit          : 頂点カラーをそのまま出すアンリット材質へ置換（恐竜の退色対策）
+    //   opts.normalizeHeight: 書き出し高さ(m)を固定（恐竜のAR巨大化対策。出土品は実寸のまま）
+    async function objToBlobUrl(obj, opts){
+        opts = opts || {};
         const GLTFExporter = await getExporter();
         const exporter = new GLTFExporter();
         const clone = obj.clone(true);
         clone.position.set(0,0,0);
         clone.rotation.set(0,0,0);
-        clone.scale.set(1,1,1);   // 出土品はゲーム表示用のフィット拡大を解除し、GLBの“元のサイズ(実寸)”で書き出す（AR実寸対策）。恐竜はルートscaleが元々1なので影響なし
+        clone.scale.set(1,1,1);   // ゲーム表示用の拡大を解除（出土品はGLB実寸へ／恐竜は次段で高さ正規化）
         clone.traverse(o=>{ o.visible = true; });
+        // 恐竜：ライティングで色が薄く見えるので、頂点カラーをそのまま表示するアンリット材質へ置換（AR/プレビュー共通で鮮やか）
+        if(opts.unlit){
+            clone.traverse(o=>{
+                if(o.isMesh && o.material){
+                    const src=o.material;
+                    o.material=new THREE.MeshBasicMaterial({
+                        vertexColors: !!src.vertexColors,
+                        color: (src.color && src.color.clone) ? src.color.clone() : new THREE.Color(0xffffff),
+                        map: src.map||null,
+                        side: (src.side!==undefined)?src.side:THREE.FrontSide,
+                        transparent: !!src.transparent,
+                        opacity: (src.opacity!==undefined)?src.opacity:1
+                    });
+                }
+            });
+        }
+        // 恐竜：ARで大きすぎるため、指定の高さ(既定20cm)へ正規化
+        if(opts.normalizeHeight){
+            clone.updateMatrixWorld(true);
+            const box=new THREE.Box3().setFromObject(clone);
+            const size=box.getSize(new THREE.Vector3());
+            const h=size.y || Math.max(size.x,size.z) || 0.001;
+            const s=opts.normalizeHeight/h;
+            if(isFinite(s) && s>0) clone.scale.setScalar(s);
+        }
         return await new Promise((resolve,reject)=>{
             exporter.parse(clone, (result)=>{
                 try{ resolve(URL.createObjectURL(new Blob([result], {type:"model/gltf-binary"}))); }
@@ -5012,11 +5036,13 @@ addEventListener("resize",()=>{
     function setNote(t){ if(noteEl){ noteEl.textContent=t||""; noteEl.style.display=t?"block":"none"; } }
 
     async function showModel(idx){
-        const obj = getObject(curDigTarget(), idx);
+        const target = curDigTarget();
+        const isDino = (target==="dino" || target==="dino2");
+        const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
         setNote("読み込み中…");
         try{
-            const url = await objToBlobUrl(obj);
+            const url = await objToBlobUrl(obj, isDino ? { unlit:true, normalizeHeight:0.20 } : null);
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
             viewer.setAttribute("src", url);
@@ -5036,14 +5062,12 @@ addEventListener("resize",()=>{
     function openModal(){
         buildOptions();
         modal.style.display="flex";
-        syncOpenBtn();
         if(curList.length){ sel.value="0"; showModel(0); }
     }
     function closeModal(){
         modal.style.display="none";
         viewer.removeAttribute("src");
         if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
-        syncOpenBtn();
     }
 
     openBtn.addEventListener("click", openModal);
@@ -5052,17 +5076,7 @@ addEventListener("resize",()=>{
     if(arBtn) arBtn.addEventListener("click", ()=>{ try{ viewer.activateAR(); }catch(_){ } });
     viewer.addEventListener("load", updateAR);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
-
-    // 「発掘モデル表示」ボタンは画面最下部に固定。タイトルメニュー表示中のみ表示し、
-    // 読み込み中(body.loading)・プレイ中(#menu非表示)・プレビュー表示中は隠す。
-    function menuVisible(){ return menuEl && getComputedStyle(menuEl).display!=="none"; }
-    function syncOpenBtn(){
-        const show = menuVisible() && modal.style.display!=="flex" && !document.body.classList.contains("loading");
-        openBtn.style.display = show ? "block" : "none";
-    }
-    if(menuEl){ new MutationObserver(syncOpenBtn).observe(menuEl, {attributes:true, attributeFilter:["style","class"]}); }
-    new MutationObserver(syncOpenBtn).observe(document.body, {attributes:true, attributeFilter:["class"]});
-    syncOpenBtn();
+    // ボタンは #menu 内にあるため、タイトルメニュー表示中だけ自然に表示される（プレイ中は #menu が非表示）
 })();
 </script>
 </body>
