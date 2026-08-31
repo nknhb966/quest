@@ -558,6 +558,13 @@
         border-radius:12px; --poster-color:transparent; }
     #mvNote{ display:none; text-align:center; color:#c9bcff; font-size:13px; letter-spacing:1px; }
     .mvhint{ text-align:center; font-size:12px; color:rgba(190,178,225,.62); letter-spacing:.5px; }
+    #mvToggleRow{ justify-content:center; }
+    .mvlabel{ font-size:13px; font-weight:800; color:#c9bcff; letter-spacing:1px; }
+    .mvseg{ display:inline-flex; border:1px solid rgba(180,140,255,.45); border-radius:11px; overflow:hidden; background:#120a2a; }
+    .mvseg button{ padding:8px 18px; border:none; background:transparent; color:#b9a9ee;
+        font-size:14px; font-weight:800; letter-spacing:1px; cursor:pointer; transition:background .15s, color .15s; }
+    .mvseg button + button{ border-left:1px solid rgba(180,140,255,.28); }
+    .mvseg button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
 </style>
 <div id="mvModal">
     <div class="mvbox" role="dialog" aria-modal="true" aria-label="発掘モデル表示">
@@ -568,6 +575,18 @@
         <div class="mvctl">
             <select id="mvSelect"><option>読み込み中...</option></select>
             <button id="mvARBtn">📱 ARで見る</button>
+        </div>
+        <div class="mvctl" id="mvToggleRow">
+            <span class="mvlabel" id="mvArtLabel">画質</span>
+            <div class="mvseg" id="mvArtSeg">
+                <button data-q="small" class="on">軽い</button>
+                <button data-q="full">きれい</button>
+            </div>
+            <span class="mvlabel" id="mvDinoLabel">サイズ</span>
+            <div class="mvseg" id="mvDinoSeg">
+                <button data-s="fit" class="on">小さい</button>
+                <button data-s="raw">大きい</button>
+            </div>
         </div>
         <div id="mvNote"></div>
         <model-viewer id="mvViewer"
@@ -4936,9 +4955,17 @@ addEventListener("resize",()=>{
     const closeBtn= document.getElementById("mvCloseBtn");
     const noteEl  = document.getElementById("mvNote");
     const menuEl  = document.getElementById("menu");
+    const artSeg  = document.getElementById("mvArtSeg");
+    const dinoSeg = document.getElementById("mvDinoSeg");
+    const artLabel= document.getElementById("mvArtLabel");
+    const dinoLabel=document.getElementById("mvDinoLabel");
     if(!openBtn || !modal || !sel || !viewer) return;
 
     let ExporterClass=null, lastBlobUrl=null, curList=[];
+    let artQuality="small";   // 出土品の画質：small(軽い) / full(きれい)
+    let dinoSize="fit";       // 恐竜のサイズ：fit(補正後=小さい) / raw(補正前=大きい)
+
+    function curIdx(){ return parseInt(sel.value,10)||0; }
 
     // GLTFExporter は必要時に動的import（失敗してもゲーム本体には影響しない）
     async function getExporter(){
@@ -5083,14 +5110,27 @@ addEventListener("resize",()=>{
     async function showModel(idx){
         const target = curDigTarget();
         const isDino = (target==="dino" || target==="dino2");
+        setNote("読み込み中…");
+        viewer.setAttribute("exposure", "1.0");
+
+        // 出土品：ファイル名を直接指定して読み込む（軽い=_small / きれい=フル、同一パス）
+        if(!isDino){
+            const base  = (typeof ART_BASE!=="undefined") ? ART_BASE : "";
+            const small = (typeof ART_FILES!=="undefined" && ART_FILES[idx]) ? ART_FILES[idx] : ("model0"+(idx+1)+"_small.glb");
+            const file  = (artQuality==="full") ? small.replace("_small","") : small;
+            if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
+            viewer.setAttribute("src", base+file);
+            setNote("");
+            updateAR();
+            return;
+        }
+
+        // 恐竜：既存の生成モデルをGLB化（色はテクスチャ焼き込み）。サイズは fit(補正) or raw(等倍)
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
-        setNote("読み込み中…");
-        // テクスチャ焼き込みで正しい色になるため露出は標準に統一（プレビューとARの見えを近づける）
-        try{ viewer.setAttribute("exposure", "1.0"); }catch(_){}
         try{
-            const opts = isDino ? { scaleFactor: dinoCommonFactor(target==="dino2"), bakeVoxelColors:true } : null;
-            const url = await objToBlobUrl(obj, opts);
+            const factor = (dinoSize==="raw") ? 1 : dinoCommonFactor(target==="dino2");
+            const url = await objToBlobUrl(obj, { scaleFactor:factor, bakeVoxelColors:true });
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
             viewer.setAttribute("src", url);
@@ -5102,6 +5142,17 @@ addEventListener("resize",()=>{
         updateAR();
     }
 
+    // 対象に応じてトグルの表示を切替（出土品=画質／恐竜=サイズ）、選択状態を反映
+    function updateToggles(){
+        const isDino = (function(){ const t=curDigTarget(); return t==="dino"||t==="dino2"; })();
+        if(artLabel)  artLabel.style.display  = isDino ? "none" : "inline";
+        if(artSeg)    artSeg.style.display    = isDino ? "none" : "inline-flex";
+        if(dinoLabel) dinoLabel.style.display = isDino ? "inline" : "none";
+        if(dinoSeg)   dinoSeg.style.display   = isDino ? "inline-flex" : "none";
+        if(artSeg)  artSeg.querySelectorAll("button").forEach(b=> b.classList.toggle("on", b.dataset.q===artQuality));
+        if(dinoSeg) dinoSeg.querySelectorAll("button").forEach(b=> b.classList.toggle("on", b.dataset.s===dinoSize));
+    }
+
     function updateAR(){
         const ok = !!(viewer && viewer.canActivateAR && viewer.getAttribute("src"));
         if(arBtn) arBtn.style.display = ok ? "inline-block" : "none";
@@ -5110,6 +5161,7 @@ addEventListener("resize",()=>{
     function openModal(){
         _dinoFactorCache = {};   // ワールド設定/スタイル変更に備え、恐竜の共通倍率を測り直す
         buildOptions();
+        updateToggles();
         modal.style.display="flex";
         if(curList.length){ sel.value="0"; showModel(0); }
     }
@@ -5121,10 +5173,16 @@ addEventListener("resize",()=>{
 
     openBtn.addEventListener("click", openModal);
     if(closeBtn) closeBtn.addEventListener("click", closeModal);
-    sel.addEventListener("change", ()=>{ showModel(parseInt(sel.value,10)||0); });
+    sel.addEventListener("change", ()=>{ showModel(curIdx()); });
     if(arBtn) arBtn.addEventListener("click", ()=>{ try{ viewer.activateAR(); }catch(_){ } });
     viewer.addEventListener("load", updateAR);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
+    // トグル：出土品の画質（軽い/きれい）
+    if(artSeg) artSeg.addEventListener("click", (e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.q) return;
+        artQuality=b.dataset.q; updateToggles(); showModel(curIdx()); });
+    // トグル：恐竜のサイズ（小さい=補正後 / 大きい=補正前）
+    if(dinoSeg) dinoSeg.addEventListener("click", (e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.s) return;
+        dinoSize=b.dataset.s; updateToggles(); showModel(curIdx()); });
     // ボタンは #menu 内にあるため、タイトルメニュー表示中だけ自然に表示される（プレイ中は #menu が非表示）
 })();
 </script>
