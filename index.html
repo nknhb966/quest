@@ -515,6 +515,70 @@
 <div id="heat"></div>
 <div id="crosshair"></div>
 <div id="joystick"><i></i></div>
+
+<!-- ▼▼ 追加：発掘モデル表示（model-viewer プレビュー）。既存コードは変更せず追加のみ ▼▼ -->
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+    #mvOpenBtn{
+        position:fixed; left:50%; transform:translateX(-50%);
+        bottom:max(12px, env(safe-area-inset-bottom)); z-index:9000;
+        display:none; align-items:center; gap:8px;
+        padding:12px 22px; border:none; border-radius:26px; cursor:pointer;
+        font-size:15px; font-weight:800; letter-spacing:1px; color:#fff;
+        background:linear-gradient(135deg,#7c3aed,#1d4ed8);
+        box-shadow:0 6px 22px rgba(80,60,200,.5), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    #mvOpenBtn:active{ transform:translateX(-50%) scale(.97); }
+    body.loading #mvOpenBtn{ display:none !important; }
+
+    #mvModal{
+        position:fixed; inset:0; z-index:12000; display:none;
+        align-items:center; justify-content:center; padding:12px;
+        background:rgba(3,2,10,.92);
+    }
+    .mvbox{
+        width:min(900px,96vw); max-height:94vh; max-height:94dvh; overflow:hidden;
+        display:flex; flex-direction:column; gap:10px;
+        background:linear-gradient(150deg,#160f0a,#0c1024);
+        border:1px solid rgba(180,140,255,.35); border-radius:16px; padding:14px;
+    }
+    .mvhead{ display:flex; align-items:center; gap:10px; }
+    .mvhead h2{ margin:0; flex:1; font-size:clamp(16px,2.4vw,21px); color:#e6c26a; letter-spacing:2px; }
+    .mvclose{ border:1px solid rgba(210,180,120,.45); background:rgba(14,9,30,.72); color:#e6c26a;
+        border-radius:9px; padding:7px 13px; font-weight:800; cursor:pointer; }
+    .mvctl{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    #mvSelect{ flex:1 1 220px; min-width:0; font-size:15px; padding:9px 10px; border-radius:9px;
+        border:1px solid rgba(180,140,255,.4); background:#120a2a; color:#eae4ff; }
+    #mvARBtn{ display:none; padding:9px 16px; border:none; border-radius:22px; cursor:pointer;
+        font-weight:800; color:#fff; background:linear-gradient(135deg,#7c3aed,#1d4ed8);
+        box-shadow:0 4px 16px rgba(80,60,200,.5); }
+    #mvViewer{ width:100%; flex:1 1 auto; min-height:52vh; height:60vh; max-height:74vh;
+        background:radial-gradient(ellipse at 50% 40%, #1a1436 0%, #0a0716 70%);
+        border-radius:12px; --poster-color:transparent; }
+    #mvNote{ display:none; text-align:center; color:#c9bcff; font-size:13px; letter-spacing:1px; }
+    .mvhint{ text-align:center; font-size:12px; color:rgba(190,178,225,.62); letter-spacing:.5px; }
+</style>
+<button id="mvOpenBtn">🔍 発掘モデル表示</button>
+<div id="mvModal">
+    <div class="mvbox" role="dialog" aria-modal="true" aria-label="発掘モデル表示">
+        <div class="mvhead">
+            <h2>発掘モデル表示</h2>
+            <button id="mvCloseBtn" class="mvclose">✕ 閉じる</button>
+        </div>
+        <div class="mvctl">
+            <select id="mvSelect"><option>読み込み中...</option></select>
+            <button id="mvARBtn">📱 ARで見る</button>
+        </div>
+        <div id="mvNote"></div>
+        <model-viewer id="mvViewer"
+            camera-controls touch-action="none"
+            ar ar-modes="webxr scene-viewer quick-look" ar-scale="auto"
+            shadow-intensity="1" exposure="1.0" interaction-prompt="none"
+            alt="発掘モデル"></model-viewer>
+        <div class="mvhint">ドラッグで回転／ピンチ・ホイールで拡大縮小／2本指ドラッグ（右ドラッグ）で移動</div>
+    </div>
+</div>
+<!-- ▲▲ 追加ここまで ▲▲ -->
 <div id="toast"></div>
 
 <script type="importmap">
@@ -4852,6 +4916,147 @@ addEventListener("resize",()=>{
     camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
     renderer.setSize(innerWidth,innerHeight);
 });
+
+/* =====================================================
+ * 【追加】発掘モデル表示（model-viewer プレビュー）
+ *   ・「発掘する対象」(chosenDigTarget: artifact/dino/dino2) に応じて一覧を切替
+ *   ・表示するモデルはセレクトで選択
+ *   ・URLからの読み込みはせず、既存の読み込み/生成済みモデル
+ *     （出土品: artModels[idx] ／ 恐竜: _dinoCacheB,_dinoCacheS[idx]）を
+ *     GLTFExporter で GLB(blob) 化して model-viewer に渡す
+ *   ・スマホ等でAR可能なときだけARボタンを表示してアクティベート
+ *   既存のロジックは変更せず、この追加ブロックだけで完結させる。
+ * ===================================================== */
+(function initModelViewerPreview(){
+    const openBtn = document.getElementById("mvOpenBtn");
+    const modal   = document.getElementById("mvModal");
+    const sel     = document.getElementById("mvSelect");
+    const viewer  = document.getElementById("mvViewer");
+    const arBtn   = document.getElementById("mvARBtn");
+    const closeBtn= document.getElementById("mvCloseBtn");
+    const noteEl  = document.getElementById("mvNote");
+    const menuEl  = document.getElementById("menu");
+    if(!openBtn || !modal || !sel || !viewer) return;
+
+    let ExporterClass=null, lastBlobUrl=null, curList=[];
+
+    // GLTFExporter は必要時に動的import（失敗してもゲーム本体には影響しない）
+    async function getExporter(){
+        if(ExporterClass) return ExporterClass;
+        const mod = await import("three/addons/exporters/GLTFExporter.js");
+        ExporterClass = mod.GLTFExporter;
+        return ExporterClass;
+    }
+
+    // 現在の「発掘する対象」（artifact / dino / dino2）
+    function curDigTarget(){
+        try{ if(typeof chosenDigTarget!=="undefined" && chosenDigTarget) return chosenDigTarget; }catch(_){}
+        try{ if(typeof GAME!=="undefined" && GAME && GAME.digTarget) return GAME.digTarget; }catch(_){}
+        return "artifact";
+    }
+
+    // 既存データから対象の THREE.Object3D を取得（無ければ生成／無ければ null）
+    function getObject(target, idx){
+        if(target==="dino" || target==="dino2"){
+            const smooth = (target==="dino2");
+            const cache = smooth ? (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null)
+                                 : (typeof _dinoCacheB!=="undefined"?_dinoCacheB:null);
+            let m = cache && cache[idx];
+            if(!m && typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[idx]){
+                const prev = (typeof dinoSmooth!=="undefined") ? dinoSmooth : false;
+                try{ dinoSmooth = smooth; m = makeDigDino(DINOS[idx]); }
+                finally{ try{ dinoSmooth = prev; }catch(_){ } }
+            }
+            return m || null;
+        }
+        return (typeof artModels!=="undefined" && artModels[idx]) ? artModels[idx] : null;
+    }
+
+    // 対象に合わせて選択肢を作り直す
+    function buildOptions(){
+        const target = curDigTarget();
+        const isDino = (target==="dino" || target==="dino2");
+        const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8) : 8;
+        curList = []; sel.innerHTML = "";
+        for(let i=0;i<n;i++){
+            const opt=document.createElement("option");
+            opt.value=String(i);
+            opt.textContent = isDino
+                ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
+                : ("出土品 No."+String(i+1).padStart(2,"0"));
+            sel.appendChild(opt); curList.push(i);
+        }
+    }
+
+    // Object3D → GLB(blob URL)。元モデルは非表示なので clone を表示状態にして書き出す
+    async function objToBlobUrl(obj){
+        const GLTFExporter = await getExporter();
+        const exporter = new GLTFExporter();
+        const clone = obj.clone(true);
+        clone.position.set(0,0,0);
+        clone.traverse(o=>{ o.visible = true; });
+        return await new Promise((resolve,reject)=>{
+            exporter.parse(clone, (result)=>{
+                try{ resolve(URL.createObjectURL(new Blob([result], {type:"model/gltf-binary"}))); }
+                catch(e){ reject(e); }
+            }, (err)=>reject(err), { binary:true, onlyVisible:false });
+        });
+    }
+
+    function setNote(t){ if(noteEl){ noteEl.textContent=t||""; noteEl.style.display=t?"block":"none"; } }
+
+    async function showModel(idx){
+        const obj = getObject(curDigTarget(), idx);
+        if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
+        setNote("読み込み中…");
+        try{
+            const url = await objToBlobUrl(obj);
+            if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+            lastBlobUrl = url;
+            viewer.setAttribute("src", url);
+            setNote("");
+        }catch(e){
+            setNote("このモデルは表示に失敗しました。");
+            viewer.removeAttribute("src");
+        }
+        updateAR();
+    }
+
+    function updateAR(){
+        const ok = !!(viewer && viewer.canActivateAR && viewer.getAttribute("src"));
+        if(arBtn) arBtn.style.display = ok ? "inline-block" : "none";
+    }
+
+    function openModal(){
+        buildOptions();
+        modal.style.display="flex";
+        syncOpenBtn();
+        if(curList.length){ sel.value="0"; showModel(0); }
+    }
+    function closeModal(){
+        modal.style.display="none";
+        viewer.removeAttribute("src");
+        if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
+        syncOpenBtn();
+    }
+
+    openBtn.addEventListener("click", openModal);
+    if(closeBtn) closeBtn.addEventListener("click", closeModal);
+    sel.addEventListener("change", ()=>{ showModel(parseInt(sel.value,10)||0); });
+    if(arBtn) arBtn.addEventListener("click", ()=>{ try{ viewer.activateAR(); }catch(_){ } });
+    viewer.addEventListener("load", updateAR);
+    modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
+
+    // 「発掘モデル表示」ボタンはタイトルメニュー表示中だけ出す（読み込み中・プレイ中・自モーダル中は隠す）
+    function menuVisible(){ return menuEl && getComputedStyle(menuEl).display!=="none"; }
+    function syncOpenBtn(){
+        const show = menuVisible() && modal.style.display!=="flex" && !document.body.classList.contains("loading");
+        openBtn.style.display = show ? "inline-flex" : "none";
+    }
+    if(menuEl){ new MutationObserver(syncOpenBtn).observe(menuEl, {attributes:true, attributeFilter:["style","class"]}); }
+    new MutationObserver(syncOpenBtn).observe(document.body, {attributes:true, attributeFilter:["class"]});
+    syncOpenBtn();
+})();
 </script>
 </body>
 </html>
