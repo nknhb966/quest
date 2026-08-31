@@ -580,7 +580,8 @@
             <span class="mvlabel" id="mvArtLabel">画質</span>
             <div class="mvseg" id="mvArtSeg">
                 <button data-q="small" class="on">軽い</button>
-                <button data-q="full">きれい</button>
+                <button data-q="mid">普通</button>
+                <button data-q="hi">きれい</button>
             </div>
             <span class="mvlabel" id="mvDinoLabel">サイズ</span>
             <div class="mvseg" id="mvDinoSeg">
@@ -4963,7 +4964,7 @@ addEventListener("resize",()=>{
     if(!openBtn || !modal || !sel || !viewer) return;
 
     let ExporterClass=null, lastBlobUrl=null, curList=[];
-    let artQuality="small";   // 出土品の画質：small(軽い) / full(きれい)
+    let artQuality="small";   // 出土品の画質：small(軽い=1024) / mid(普通=2048) / hi(きれい=3072)。既定は軽い
     let dinoSize="fit";       // 恐竜のサイズ：fit(補正後=小さい) / raw(補正前=大きい)
 
     function curIdx(){ return parseInt(sel.value,10)||0; }
@@ -5183,14 +5184,15 @@ addEventListener("resize",()=>{
         setNote("読み込み中…");
         viewer.setAttribute("exposure", "1.0");
 
-        // 出土品：軽い=_small はそのまま／きれい=フルは8Kで落ちるため2048へ縮小して表示（元ファイルは無改変）
+        // 出土品：軽い=_small(1024)そのまま／普通=2048・きれい=3072 は8Kを縮小して表示（元ファイルは無改変）
         if(!isDino){
             const base  = (typeof ART_BASE!=="undefined") ? ART_BASE : "";
             const small = (typeof ART_FILES!=="undefined" && ART_FILES[idx]) ? ART_FILES[idx] : ("model0"+(idx+1)+"_small.glb");
-            if(artQuality==="full"){
+            if(artQuality==="mid" || artQuality==="hi"){
+                const MAX = (artQuality==="hi") ? 3072 : 2048;
                 setNote("読み込み中…（高精細）");
                 try{
-                    const url = await loadArtifactHiRes(base, small, 2048);
+                    const url = await loadArtifactHiRes(base, small, MAX);
                     if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
                     lastBlobUrl = url;
                     viewer.setAttribute("src", url);
