@@ -5015,6 +5015,44 @@ addEventListener("resize",()=>{
         return k;
     }
 
+    // 恐竜の頂点カラーを「パレットテクスチャ＋UV」に焼き込む。
+    //   iOSのクイックルックはGLB→USDZ変換で頂点カラー(COLOR_0)を反映できず真っ白になるため、
+    //   使用色を1行パレット化してUVで参照し、baseColorテクスチャとして持たせる（AR/プレビュー共通で着色）。
+    //   ※ 共有ジオメトリを壊さないよう、ジオメトリはクローンしてから改変する。
+    function bakeVoxelColorTexture(root){
+        const meshes=[];
+        root.traverse(o=>{ if(o.isMesh && o.geometry && o.geometry.getAttribute && o.geometry.getAttribute("color")) meshes.push(o); });
+        if(!meshes.length) return;
+        const q=(x)=>Math.max(0,Math.min(255,Math.round(x*255)));
+        const key=(r,g,b)=>((r<<16)|(g<<8)|b);
+        const map=new Map(), pal=[];
+        for(const m of meshes){
+            const col=m.geometry.getAttribute("color");
+            for(let i=0;i<col.count;i++){ const k=key(q(col.getX(i)),q(col.getY(i)),q(col.getZ(i)));
+                if(!map.has(k)){ map.set(k,pal.length); pal.push(k); } }
+        }
+        const N=Math.max(1,pal.length), H=2;
+        const cv=document.createElement("canvas"); cv.width=N; cv.height=H;
+        const ctx=cv.getContext("2d");
+        for(let i=0;i<N;i++){ const k=pal[i]; ctx.fillStyle="rgb("+((k>>16)&255)+","+((k>>8)&255)+","+(k&255)+")"; ctx.fillRect(i,0,1,H); }
+        const tex=new THREE.CanvasTexture(cv);
+        if("colorSpace" in tex){ tex.colorSpace=THREE.SRGBColorSpace; } else { try{ tex.encoding=THREE.sRGBEncoding; }catch(_){ } }
+        tex.flipY=false;
+        tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.NearestFilter; tex.generateMipmaps=false;
+        tex.wrapS=THREE.ClampToEdgeWrapping; tex.wrapT=THREE.ClampToEdgeWrapping; tex.needsUpdate=true;
+        const mat=new THREE.MeshStandardMaterial({ map:tex, roughness:0.85, metalness:0.0, side:THREE.DoubleSide });
+        for(const m of meshes){
+            const g=m.geometry.clone();   // 共有ジオメトリを壊さない
+            const col=g.getAttribute("color"), uv=new Float32Array(col.count*2);
+            for(let i=0;i<col.count;i++){ const idx=map.get(key(q(col.getX(i)),q(col.getY(i)),q(col.getZ(i))));
+                uv[i*2]=(idx+0.5)/N; uv[i*2+1]=0.5; }
+            g.setAttribute("uv", new THREE.BufferAttribute(uv,2));
+            g.deleteAttribute("color");
+            m.geometry=g;
+            m.material=mat;
+        }
+    }
+
     // Object3D → GLB(blob URL)。元モデルは非表示なので clone を表示状態にして書き出す
     //   opts.scaleFactor: 書き出し全体に掛ける倍率（恐竜は全種共通の倍率＝サイズ比率を保つ）
     async function objToBlobUrl(obj, opts){
@@ -5030,6 +5068,8 @@ addEventListener("resize",()=>{
         if(opts.scaleFactor && isFinite(opts.scaleFactor) && opts.scaleFactor>0){
             clone.scale.setScalar(opts.scaleFactor);
         }
+        // 恐竜：iOS(クイックルック)で白くならないよう、頂点カラーをテクスチャに焼き込む
+        if(opts.bakeVoxelColors){ try{ bakeVoxelColorTexture(clone); }catch(_){ } }
         return await new Promise((resolve,reject)=>{
             exporter.parse(clone, (result)=>{
                 try{ resolve(URL.createObjectURL(new Blob([result], {type:"model/gltf-binary"}))); }
@@ -5046,10 +5086,10 @@ addEventListener("resize",()=>{
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
         setNote("読み込み中…");
-        // 恐竜は既定ライティングだと色が沈むので露出を下げて発色を濃くする（材質は変えずAR変換を壊さない）。出土品は標準。
-        try{ viewer.setAttribute("exposure", isDino ? "0.62" : "1.0"); }catch(_){}
+        // テクスチャ焼き込みで正しい色になるため露出は標準に統一（プレビューとARの見えを近づける）
+        try{ viewer.setAttribute("exposure", "1.0"); }catch(_){}
         try{
-            const opts = isDino ? { scaleFactor: dinoCommonFactor(target==="dino2") } : null;
+            const opts = isDino ? { scaleFactor: dinoCommonFactor(target==="dino2"), bakeVoxelColors:true } : null;
             const url = await objToBlobUrl(obj, opts);
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
