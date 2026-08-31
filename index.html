@@ -4988,9 +4988,35 @@ addEventListener("resize",()=>{
         }
     }
 
+    // 恐竜の共通縮小率：一番大きい種が DINO_MAX_H(m) になるよう「全種に同じ倍率」をかける。
+    //   → 種ごとの“大きさの比率”を保ったままAR/プレビュー表示できる（巨大化だけ抑える）。
+    const DINO_MAX_H = 0.30;
+    let _dinoFactorCache = {};
+    function dinoCommonFactor(smooth){
+        const key = smooth ? "s" : "b";
+        if(_dinoFactorCache[key]) return _dinoFactorCache[key];
+        const cache = smooth ? (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null)
+                             : (typeof _dinoCacheB!=="undefined"?_dinoCacheB:null);
+        const n = (typeof DINOS!=="undefined") ? DINOS.length : 8;
+        let maxH = 0;
+        for(let i=0;i<n;i++){
+            let m = cache && cache[i];
+            if(!m && typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[i]){
+                const prev=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+                try{ dinoSmooth=smooth; m=makeDigDino(DINOS[i]); }finally{ try{ dinoSmooth=prev; }catch(_){ } }
+            }
+            if(m){ try{ m.updateMatrixWorld(true);
+                const b=new THREE.Box3().setFromObject(m); const s=b.getSize(new THREE.Vector3());
+                if(isFinite(s.y)) maxH=Math.max(maxH, s.y);
+            }catch(_){ } }
+        }
+        const k = (maxH>0) ? (DINO_MAX_H/maxH) : 1;
+        _dinoFactorCache[key]=k;
+        return k;
+    }
+
     // Object3D → GLB(blob URL)。元モデルは非表示なので clone を表示状態にして書き出す
-    //   opts.unlit          : 頂点カラーをそのまま出すアンリット材質へ置換（恐竜の退色対策）
-    //   opts.normalizeHeight: 書き出し高さ(m)を固定（恐竜のAR巨大化対策。出土品は実寸のまま）
+    //   opts.scaleFactor: 書き出し全体に掛ける倍率（恐竜は全種共通の倍率＝サイズ比率を保つ）
     async function objToBlobUrl(obj, opts){
         opts = opts || {};
         const GLTFExporter = await getExporter();
@@ -4998,32 +5024,11 @@ addEventListener("resize",()=>{
         const clone = obj.clone(true);
         clone.position.set(0,0,0);
         clone.rotation.set(0,0,0);
-        clone.scale.set(1,1,1);   // ゲーム表示用の拡大を解除（出土品はGLB実寸へ／恐竜は次段で高さ正規化）
+        clone.scale.set(1,1,1);   // ゲーム表示用の拡大を解除（出土品はGLB実寸へ／恐竜はこの後で共通倍率を適用）
         clone.traverse(o=>{ o.visible = true; });
-        // 恐竜：ライティングで色が薄く見えるので、頂点カラーをそのまま表示するアンリット材質へ置換（AR/プレビュー共通で鮮やか）
-        if(opts.unlit){
-            clone.traverse(o=>{
-                if(o.isMesh && o.material){
-                    const src=o.material;
-                    o.material=new THREE.MeshBasicMaterial({
-                        vertexColors: !!src.vertexColors,
-                        color: (src.color && src.color.clone) ? src.color.clone() : new THREE.Color(0xffffff),
-                        map: src.map||null,
-                        side: (src.side!==undefined)?src.side:THREE.FrontSide,
-                        transparent: !!src.transparent,
-                        opacity: (src.opacity!==undefined)?src.opacity:1
-                    });
-                }
-            });
-        }
-        // 恐竜：ARで大きすぎるため、指定の高さ(既定20cm)へ正規化
-        if(opts.normalizeHeight){
-            clone.updateMatrixWorld(true);
-            const box=new THREE.Box3().setFromObject(clone);
-            const size=box.getSize(new THREE.Vector3());
-            const h=size.y || Math.max(size.x,size.z) || 0.001;
-            const s=opts.normalizeHeight/h;
-            if(isFinite(s) && s>0) clone.scale.setScalar(s);
+        // 恐竜：全種そろって同じ倍率をかけ、モデル本来の“大きさの比率”を保ったままAR表示（巨大化だけ抑える）
+        if(opts.scaleFactor && isFinite(opts.scaleFactor) && opts.scaleFactor>0){
+            clone.scale.setScalar(opts.scaleFactor);
         }
         return await new Promise((resolve,reject)=>{
             exporter.parse(clone, (result)=>{
@@ -5041,8 +5046,11 @@ addEventListener("resize",()=>{
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
         setNote("読み込み中…");
+        // 恐竜は既定ライティングだと色が沈むので露出を下げて発色を濃くする（材質は変えずAR変換を壊さない）。出土品は標準。
+        try{ viewer.setAttribute("exposure", isDino ? "0.62" : "1.0"); }catch(_){}
         try{
-            const url = await objToBlobUrl(obj, isDino ? { unlit:true, normalizeHeight:0.20 } : null);
+            const opts = isDino ? { scaleFactor: dinoCommonFactor(target==="dino2") } : null;
+            const url = await objToBlobUrl(obj, opts);
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
             viewer.setAttribute("src", url);
@@ -5060,6 +5068,7 @@ addEventListener("resize",()=>{
     }
 
     function openModal(){
+        _dinoFactorCache = {};   // ワールド設定/スタイル変更に備え、恐竜の共通倍率を測り直す
         buildOptions();
         modal.style.display="flex";
         if(curList.length){ sel.value="0"; showModel(0); }
