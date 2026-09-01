@@ -1618,23 +1618,9 @@ const COMPANIONS={};
 let companionKind=DEFAULT_KIND;
 function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 // 実際のボクセル生成は「その相棒が必要になったとき」に一度だけ行う（起動を軽く保つ）
-let _dogNatH=null;
-function dogNaturalH(){   // 犬の自然な高さ（相棒スケールの下限基準）。単独生成して計測しキャッシュ
-    if(_dogNatH!=null) return _dogNatH;
-    try{
-        const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=VOX; dinoSmooth=false;
-        let b; try{ b=build_dog(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
-        b.updateMatrixWorld(true); const bb=new THREE.Box3().setFromObject(b);
-        const h=bb.max.y-bb.min.y; _dogNatH=(isFinite(h)&&h>0)?h:1;
-    }catch(_){ _dogNatH=1; }
-    return _dogNatH;
-}
-function scaleBuddyIfDino(key, body){   // 恐竜の相棒は3/5サイズ。ただし犬より小さくしない（下限＝犬の高さ）
+function scaleBuddyIfDino(key, body){   // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
     if(key==="dog") return;
-    body.updateMatrixWorld(true);
-    const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
-    const sf=Math.max(0.6, dogNaturalH()/H0);
-    body.scale.setScalar(sf);
+    body.scale.setScalar(0.6);
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
@@ -1643,12 +1629,10 @@ function ensureBody(key){
     if(!def[slot]){
         const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
         let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
-        scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくしない）
+        scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
         body.updateMatrixWorld(true);
-        if(!body.userData.wings){                       // 飛行タイプ以外は足を接地(y=0)にそろえる
-            const bb=new THREE.Box3().setFromObject(body);
-            if(isFinite(bb.min.y)) body.position.y -= bb.min.y;
-        }
+        { const bb=new THREE.Box3().setFromObject(body);  // 全相棒とも足を接地(y=0)＝相棒プテラノドンも他と同じ高さ
+          if(isFinite(bb.min.y)) body.position.y -= bb.min.y; }
         body.visible=false; dog.add(body); def[slot]=body;
     }
     return def[slot];
@@ -1662,9 +1646,9 @@ function preloadCompanionBody(key, smooth){   // プリロード用：指定ボ�
     const slot=smooth?"bodyS":"bodyB"; if(def[slot]) return;
     const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
     let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
-    scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくしない）
+    scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
     body.updateMatrixWorld(true);
-    if(!body.userData.wings){ const bb=new THREE.Box3().setFromObject(body); if(isFinite(bb.min.y)) body.position.y-=bb.min.y; }
+    { const bb=new THREE.Box3().setFromObject(body); if(isFinite(bb.min.y)) body.position.y-=bb.min.y; }   // 全相棒とも足を接地（相棒プテラノドンも他と同じ高さ）
     body.visible=false; dog.add(body); def[slot]=body;
 }
 function activeBody(){ return ensureBody(companionKind) || ensureBody(DEFAULT_KIND); }
@@ -2466,7 +2450,7 @@ function animateDigDinos(now, dt){
             const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
             const dx=camW.x-cx, dz=camW.z-cz; const dist=Math.hypot(dx,dz);
             const L=Math.max(0.6, cont.userData.bodyLen||2);
-            const notice=L*DINO_FACE.noticeMul*(cont.userData.flying?2:1);   // 飛行種（プテラノドン）は覗き見スコープ2倍
+            const notice=L*DINO_FACE.noticeMul*(cont.userData.flying?3:1);   // 飛行種（プテラノドン）は覗き見スコープ3倍
             const fwd=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), cont.rotation.y);
             const toP=new THREE.Vector3(dx,0,dz); const pd=toP.length();
             let ang=999; if(pd>1e-3){ toP.normalize(); ang=Math.acos(THREE.MathUtils.clamp(fwd.dot(toP),-1,1))*180/Math.PI; }
