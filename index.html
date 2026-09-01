@@ -1618,9 +1618,9 @@ const COMPANIONS={};
 let companionKind=DEFAULT_KIND;
 function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 // 実際のボクセル生成は「その相棒が必要になったとき」に一度だけ行う（起動を軽く保つ）
-function scaleBuddyIfDino(key, body){   // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
+function scaleBuddyIfDino(key, body){   // 恐竜の相棒は0.8倍（犬より小さくなってもよい）
     if(key==="dog") return;
-    body.scale.setScalar(0.6);
+    body.scale.setScalar(0.8);
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
@@ -4673,6 +4673,7 @@ function restartCollection(){
 function resetDexAndStandby(rotate){
     if(typeof resetUnlocked==="function") resetUnlocked();   // リセットで獲得候補を犬だけに
     if(typeof resetDogStats==="function") resetDogStats();   // 犬ステータス初期化
+    if(typeof setCompanion==="function") setCompanion("dog"); // リセット時は相棒を犬に戻す
     if(rotate) recenterFieldHere();                            // 左手グリップ＋Yのときだけ基準（中央/向き）を設定
     GAME.starUsed=false;                                       // リセットでスターポイント復活可能に
     resetDexForRun(); clearRunWorld();
