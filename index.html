@@ -256,7 +256,6 @@
         <div class="seg" id="segDig">
           <button data-v="artifact" class="on">🏺 出土品</button>
           <button data-v="dino">🦖 シンプル恐竜</button>
-          <button data-v="dino2">🦕 恐竜</button>
           <button data-v="dino3">🦕 恐竜（実寸）</button>
         </div>
       </div>
@@ -889,19 +888,17 @@ let curTarget = "artifact";                 // 発掘対象（発掘図鑑もこ
 let dexData = dexArt;
 function curImgs(){ return curTarget==="dino" ? DINO_IMGS : ART_IMGS; }
 function curName(i){ return curTarget==="dino" ? ((typeof DINOS!=="undefined"&&DINOS[i]? DINOS[i].label : "")||"").replace(/^\S+\s*/,"") : ""; }
-let dinoSmooth=false;   // ③なめらか恐竜（ボクセル数を増やして粗さを薄めた）の見た目フラグ
-let dinoRealSize=false; // 恐竜（実寸）モード（dino3）：実寸の高さ×倍率でサイズ決定。見た目はなめらか
+let dinoSmooth=false;   // 見た目フラグ：dino3(恐竜実寸)=なめらか／dino(シンプル恐竜)=ボクセル。サイズは両方とも実寸
 function setDigTarget(target){
-    const isDino = (target==="dino" || target==="dino2" || target==="dino3");
+    const isDino = (target==="dino" || target==="dino3");
     curTarget = isDino ? "dino" : "artifact";
-    dinoSmooth = (target==="dino2" || target==="dino3");   // dino3もなめらか見た目
-    dinoRealSize = (target==="dino3");
+    dinoSmooth = (target==="dino3");   // dino3=なめらか、dino=ボクセル
     dexData = (curTarget==="dino") ? dexDino : dexArt;
-    chosenDigTarget = target;   // dino / dino2 / dino3 / artifact を保持
+    chosenDigTarget = target;   // dino / dino3 / artifact を保持
     // 相棒はボクセル版を切替（両版は事前生成済みなので再生成しない＝一瞬固まらない）
     if(typeof refreshBuddyBodies==="function") refreshBuddyBodies();
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
-    if(typeof _dinoCacheB!=="undefined") dinoDigModels = (target==="dino3") ? _dinoCacheR : (dinoSmooth ? _dinoCacheS : _dinoCacheB);   // 事前生成済みキャッシュに切替（実寸は専用キャッシュ）
+    if(typeof _dinoCacheB!=="undefined") dinoDigModels = dinoSmooth ? _dinoCacheS : _dinoCacheB;   // 事前生成済みキャッシュに切替（dino3=なめらか, dino=ボクセル）
     if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(typeof updateGoal==="function") updateGoal();
 }
@@ -2298,46 +2295,28 @@ function spawnAllTargets(){
  * ===================================================== */
 const popAnims=[];
 // ── 恐竜モードの発掘演出：岩→たまご→孵化→恐竜（鳴き声＋セリフ） ──
-const _dinoCacheB=new Array(8).fill(null);   // ② 通常（ボクセル）
-const _dinoCacheS=new Array(8).fill(null);   // ③ なめらか
-const _dinoCacheR=new Array(8).fill(null);   // 恐竜（実寸）dino3：なめらか＋実寸サイズ（事前生成。出現時のスケール補正で広さに追従）
+const _dinoCacheB=new Array(8).fill(null);   // シンプル恐竜（ボクセル・実寸）
+const _dinoCacheS=new Array(8).fill(null);   // 恐竜（実寸）＝なめらか・実寸
 let   dinoDigModels=_dinoCacheB;             // 現在のスタイルのキャッシュを指す
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
-// 恐竜の表示サイズ階層（下限0.9〜上限2.1の4段階）。種別ごとに階層を割り当て、生成時にそのサイズで作る
-const DINO_TIER_NARROW=[0.9, 1.2, 1.6, 2.1];   // 狭い/低倍率：種の範囲 約2.3倍
-const DINO_TIER_WIDE  =[0.9, 1.4, 2.1, 3.15];  // 広い/高倍率：最小0.9・種の範囲 約3.5倍（全体大きめ）
-const DINO_TIER={ ptera:0, fukuiraptor:0, tri:1, stego:1, fukuisaurus:1, trex:2, fukuititan:2, brachi:3 };
-function tierRangeT(){   // 0=狭い(2.3倍) 〜 1=広い(5.3倍)。広さ(横×奥行の小さい方)で補間
-    const diam = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z);
-    return Math.max(0, Math.min(1, (diam-3)/(30-3)));   // 3m=狭 → 30m以上=広
-}
-function eggSize(){
-    // 卵の直径＝8種の身長中央値×dinoScale×0.3（ただし現状サイズ0.55を上限）
-    const hs=[]; for(let i=0;i<8;i++) hs.push(dinoWorldH(i));
-    hs.sort((a,b)=>a-b); const med=(hs[3]+hs[4])/2;   // 8個の中央値
-    return Math.min(0.55, med*dinoScale()*0.3);
-}
-function dinoHByKey(key){ const t=DINO_TIER[key]!==undefined?DINO_TIER[key]:1; const f=tierRangeT();
-    return DINO_TIER_NARROW[t]*(1-f) + DINO_TIER_WIDE[t]*f; }
-function dinoWorldH(idx){ return dinoHByKey((DINOS[idx]||{}).key); }
-// ===== 恐竜（実寸）dino3 用：実物大の高さと倍率 =====
+// ===== 恐竜サイズ（全種・実物大ベース）。シンプル恐竜／恐竜（実寸）とも同じ実寸サイズ・比率・基準 =====
 const REAL_H={ ptera:1.8, fukuiraptor:2.0, fukuisaurus:2.6, tri:3.0, trex:4.0, stego:4.0, fukuititan:6.0, brachi:9.5 };
 const REAL_H_MAX=9.5;
-function dinoRealScale(){   // 実寸モードの倍率 S（表示高さ＝実寸×S）
-    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/20);   // 短辺20mで1.0＝実寸／下限0.2／間は比例／20m超は1超で比例
-    return (siteMode||1)/2;   // サイト表示：siteMode=2で1.0＝実寸、他は比例
+function realH(key){ return (REAL_H[key]!==undefined?REAL_H[key]:3.0); }
+function dinoRealScale(){   // 表示倍率 S（表示高さ＝実寸×S）
+    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/30);   // 短辺30mで1.0＝実寸／下限0.2／間は比例／30m超は1超で比例
+    return (siteMode||1)/3;   // サイト表示：siteMode=3で1.0＝実寸、他は比例
 }
-function dinoCurScale(){ return dinoRealSize ? dinoRealScale() : dinoScale(); }   // 現モードのスケール基準
-function dinoTargetHeight(key){   // 生成時の目標高さ（m）
-    if(dinoRealSize) return (REAL_H[key]!==undefined?REAL_H[key]:3.0) * dinoRealScale();
-    return dinoHByKey(key) * dinoScale() * 0.62;
+function dinoCurScale(){ return dinoRealScale(); }
+function dinoTargetHeight(key){ return realH(key) * dinoRealScale(); }        // 生成時の目標高さ（m）
+function dinoSizeOf(idx){ return realH((DINOS[idx]||{}).key); }               // 演出用のサイズ指標（＝実寸高さ）
+function dinoHoloH(idx){ return realH((DINOS[idx]||{}).key)/REAL_H_MAX*0.6; }  // ホログラムは実寸の高さ比（最大種→0.6m）
+function eggSize(){   // 卵の直径＝実寸身長の中央値(3.5m)×倍率×0.3（上限0.55）
+    const hs=Object.keys(REAL_H).map(k=>REAL_H[k]).sort((a,b)=>a-b);
+    const med=(hs[3]+hs[4])/2;
+    return Math.min(0.55, med*dinoRealScale()*0.3);
 }
-function dinoSizeOf(idx){ return dinoWorldH(idx); }         // パネル/演出用のサイズ指標（＝表示高さ）
-function dinoHoloH(idx){
-    if(dinoRealSize){ const k=(DINOS[idx]||{}).key; return (REAL_H[k]!==undefined?REAL_H[k]:3.0)/REAL_H_MAX*0.6; }   // 実寸モードは高さ“比”を実寸で（最大種→0.6m）
-    return dinoWorldH(idx) * 0.24;
-}   // ホログラムにも同じ比率で反映（最大2.1→約0.5m）
 function dinoEmergeLine(dn){
     const name=(dn.label||"").replace(/^\S+\s*/,"");
     if((dn.key||"").indexOf("fukui")===0) return `${name}やざ！ ${dn.cry}！`;   // 福井弁
@@ -2356,7 +2335,7 @@ function makeDigDino(dn){
     cont.userData.model=inner;
     cont.userData.legs=inner.userData.legs; cont.userData.tail=inner.userData.tail; cont.userData.wings=inner.userData.wings; cont.userData.head=inner.userData.head;
     cont.userData.flying=!!inner.userData.wings;
-    cont.userData.sizeMul=dinoHByKey(dn.key);
+    cont.userData.sizeMul=realH(dn.key);
     cont.userData.animPhase=Math.random()*Math.PI*2;        // 足踏みの位相を個体ごとにバラす
     cont.userData.animSpeed=0.85+Math.random()*0.4;         // 速さも少し変える
     cont.userData.tailPhase=Math.random()*Math.PI*2;
@@ -2368,9 +2347,8 @@ function preloadEverything(done){
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
     if(typeof DINOS==="undefined"){ if(done) done(); return; }
     const jobs=[];
-    for(let i=0;i<8;i++) jobs.push({smooth:false, idx:i, cache:_dinoCacheB});
-    for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});
-    for(let i=0;i<8;i++) jobs.push({smooth:true, real:true, idx:i, cache:_dinoCacheR});   // 恐竜（実寸）も事前生成＝体験中に生成しないのでカクつかない
+    for(let i=0;i<8;i++) jobs.push({smooth:false, idx:i, cache:_dinoCacheB});   // シンプル恐竜（ボクセル）
+    for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});   // 恐竜（実寸）＝なめらか
     if(typeof COMPANION_ORDER!=="undefined") for(const k of COMPANION_ORDER){ jobs.push({companion:k, smooth:false}); jobs.push({companion:k, smooth:true}); }   // 相棒9種×両ボクセル版
     // カード画像も事前読み込み（恐竜 card00〜card08／出土品 card01〜card08）
     jobs.push({card:CARD_DIR_DINO+"card00.png"});
@@ -2389,9 +2367,9 @@ function preloadEverything(done){
             return;
         }
         if(job.companion){ try{ if(typeof preloadCompanionBody==="function") preloadCompanionBody(job.companion, job.smooth); }catch(_){}; j++; _preloadTimer=setTimeout(step,25); return; }
-        const prev=dinoSmooth, prevR=dinoRealSize; dinoSmooth=job.smooth; dinoRealSize=!!job.real;   // B/S=非実寸、R=実寸で生成
+        const prev=dinoSmooth; dinoSmooth=job.smooth;   // B=ボクセル / S=なめらか（サイズは常に実寸）
         try{ const m=makeDigDino(DINOS[job.idx]); m.visible=false; stage.add(m); job.cache[job.idx]=m; }catch(_){}
-        dinoSmooth=prev; dinoRealSize=prevR;
+        dinoSmooth=prev;
         j++;
         _preloadTimer=setTimeout(step, 25);   // 1体ずつ間隔をあけて（フリーズ防止）
     };
@@ -2420,9 +2398,9 @@ function tickHatch(now, dt){
             m.visible=true;
             m.scale.setScalar(dinoCurScale()/(m.userData.builtScale||1));   // スケール確定（実寸モードは実寸倍率で補正）
             // 前後長（ローカル+Z＝鼻先方向）を回転前に測る
-            let depth=1.0;
+            let depth=1.0, height=1.0;
             { m.rotation.set(0,0,0); m.position.set(0,0,0); m.updateMatrixWorld(true);
-              const bb=new THREE.Box3().setFromObject(m); depth=Math.max(0.001, bb.max.z-bb.min.z); }
+              const bb=new THREE.Box3().setFromObject(m); depth=Math.max(0.001, bb.max.z-bb.min.z); height=Math.max(0.001, bb.max.y-bb.min.y); }
             // 向き：鼻先(+Z)をプレイヤーへ
             { const cp=camera.getWorldPosition(new THREE.Vector3()); m.rotation.set(0, Math.atan2(cp.x-e.pos.x, cp.z-e.pos.z), 0); }
             // 本体中心Cを発掘ポイントから奥へ(前後長/3)ずらす
@@ -2430,11 +2408,13 @@ function tickHatch(now, dt){
             if(e.backDir){ const off=depth*(1/2); cX=e.pos.x + e.backDir.x*off; cZ=e.pos.z + e.backDir.z*off; }   // 全種：発掘ポイントから前後長×1/2奥
             m.position.set(cX, GROUND_Y, cZ);   // 本体中心C（回転中心もここ）
             const footY=dinoFootY();   // 恐竜の足元（VR/ARは床から1.6m）
-            m.userData.baseY=footY; m.userData.settled=false;
+            const flying=!!m.userData.flying;
+            const baseY = footY + (flying ? height : 0);   // 飛行種（プテラノドン）は自分の高さ1つ分だけ上に配置
+            m.userData.baseY=baseY; m.userData.settled=false;
             m.userData.homeX=cX; m.userData.homeZ=cZ;   // アイドル回転の中心＝C（毎フレーム更新）
             m.userData.origX=cX; m.userData.origZ=cZ;   // 気づく前の定位置（離れたら戻る先）
             m.userData.bodyLen=depth;   // 体長（前後長・スケール反映済み）＝対面判定の基準
-            popAnims.push({ obj:m, x:cX, z:cZ, startY:GROUND_Y, peakY:footY+0.45, endY:footY, t:0, dur:1.0, dino:true });
+            popAnims.push({ obj:m, x:cX, z:cZ, startY:GROUND_Y, peakY:baseY+0.45, endY:baseY, t:0, dur:1.0, dino:true });
             sfxCry(); vibrate(220,0.85);
             bubble.say(dinoEmergeLine(dn), 3000, true);   // 発掘結果セリフ＝最優先
             GAME.dogHappyUntil = performance.now()+3000;   // 恐竜名セリフ中は下位セリフ・移動・嗅ぎ・撫でを抑制
@@ -2445,7 +2425,7 @@ function tickHatch(now, dt){
             const _lblScale = fieldScale();   // 全環境でフィールド寸法に連動
             const _lw=0.54*_lblScale; const label=makeLabelSprite(nm, e.color, _lw, 0);   // 名称パネル（プレイヤー向きSprite）
             const _lh=_lw*96/256;   // ラベルの高さ
-            label.position.set(cX, dinoFootY()-0.1-_lh/2, cZ);   // 上辺が恐竜の足元から10cm下
+            label.position.set(cX, baseY-0.1-_lh/2, cZ);   // 上辺が恐竜の足元から10cm下（飛行種は浮いた足元の下）
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
         }
@@ -2920,7 +2900,7 @@ function applyAutoForTarget(target){   // 発掘対象に応じて必ず自動�
         segSelect("segStar","off");       starEnabled=false;
         segSelect("segDigPos","fixed");    digPosRandom=false;
         segSelect("segSite","show");      setSiteVisible(true); syncSiteSeg();
-    } else {   // dino / dino2
+    } else {   // dino / dino3
         segSelect("segMode","time");      chosenMode="time"; setTimeLimit(90);
         segSelect("segCardShow","on");    cardShown=true;
         segSelect("segRarity","on");      rarityOn=true;
@@ -4960,7 +4940,7 @@ addEventListener("resize",()=>{
 
 /* =====================================================
  * 【追加】発掘モデル表示（model-viewer プレビュー）
- *   ・「発掘する対象」(chosenDigTarget: artifact/dino/dino2) に応じて一覧を切替
+ *   ・「発掘する対象」(chosenDigTarget: artifact/dino/dino3) に応じて一覧を切替
  *   ・表示するモデルはセレクトで選択
  *   ・URLからの読み込みはせず、既存の読み込み/生成済みモデル
  *     （出土品: artModels[idx] ／ 恐竜: _dinoCacheB,_dinoCacheS[idx]）を
@@ -4997,7 +4977,7 @@ addEventListener("resize",()=>{
         return ExporterClass;
     }
 
-    // 現在の「発掘する対象」（artifact / dino / dino2）
+    // 現在の「発掘する対象」（artifact / dino / dino3）
     function curDigTarget(){
         try{ if(typeof chosenDigTarget!=="undefined" && chosenDigTarget) return chosenDigTarget; }catch(_){}
         try{ if(typeof GAME!=="undefined" && GAME && GAME.digTarget) return GAME.digTarget; }catch(_){}
@@ -5006,16 +4986,15 @@ addEventListener("resize",()=>{
 
     // 既存データから対象の THREE.Object3D を取得（無ければ生成／無ければ null）
     function getObject(target, idx){
-        if(target==="dino" || target==="dino2" || target==="dino3"){
-            const smooth = (target==="dino2" || target==="dino3");   // dino3はなめらか（プレビューは正規化サイズなので実寸差は不要）
+        if(target==="dino" || target==="dino3"){
+            const smooth = (target==="dino3");   // dino3=なめらか / dino=ボクセル（プレビューは正規化サイズ）
             const cache = smooth ? (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null)
                                  : (typeof _dinoCacheB!=="undefined"?_dinoCacheB:null);
             let m = cache && cache[idx];
             if(!m && typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[idx]){
                 const prev = (typeof dinoSmooth!=="undefined") ? dinoSmooth : false;
-                const prevR = (typeof dinoRealSize!=="undefined") ? dinoRealSize : false;
-                try{ dinoSmooth = smooth; if(typeof dinoRealSize!=="undefined") dinoRealSize=false; m = makeDigDino(DINOS[idx]); }
-                finally{ try{ dinoSmooth = prev; if(typeof dinoRealSize!=="undefined") dinoRealSize=prevR; }catch(_){ } }
+                try{ dinoSmooth = smooth; m = makeDigDino(DINOS[idx]); }
+                finally{ try{ dinoSmooth = prev; }catch(_){ } }
             }
             return m || null;
         }
@@ -5025,7 +5004,7 @@ addEventListener("resize",()=>{
     // 対象に合わせて選択肢を作り直す
     function buildOptions(){
         const target = curDigTarget();
-        const isDino = (target==="dino" || target==="dino2" || target==="dino3");
+        const isDino = (target==="dino" || target==="dino3");
         const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8) : 8;
         curList = []; sel.innerHTML = "";
         for(let i=0;i<n;i++){
@@ -5201,7 +5180,7 @@ addEventListener("resize",()=>{
 
     async function showModel(idx){
         const target = curDigTarget();
-        const isDino = (target==="dino" || target==="dino2" || target==="dino3");
+        const isDino = (target==="dino" || target==="dino3");
         setNote("読み込み中…");
         viewer.setAttribute("exposure", "1.0");
 
@@ -5236,7 +5215,7 @@ addEventListener("resize",()=>{
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
         try{
-            const factor = (dinoSize==="raw") ? 1 : dinoCommonFactor(target==="dino2" || target==="dino3");
+            const factor = (dinoSize==="raw") ? 1 : dinoCommonFactor(target==="dino3");
             const url = await objToBlobUrl(obj, { scaleFactor:factor, bakeVoxelColors:true });
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
@@ -5251,7 +5230,7 @@ addEventListener("resize",()=>{
 
     // 対象に応じてトグルの表示を切替（出土品=画質／恐竜=サイズ）、選択状態を反映
     function updateToggles(){
-        const isDino = (function(){ const t=curDigTarget(); return t==="dino"||t==="dino2"||t==="dino3"; })();
+        const isDino = (function(){ const t=curDigTarget(); return t==="dino"||t==="dino3"; })();
         if(artLabel)  artLabel.style.display  = isDino ? "none" : "inline";
         if(artSeg)    artSeg.style.display    = isDino ? "none" : "inline-flex";
         if(dinoLabel) dinoLabel.style.display = isDino ? "inline" : "none";
