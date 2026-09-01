@@ -2300,7 +2300,7 @@ const popAnims=[];
 // ── 恐竜モードの発掘演出：岩→たまご→孵化→恐竜（鳴き声＋セリフ） ──
 const _dinoCacheB=new Array(8).fill(null);   // ② 通常（ボクセル）
 const _dinoCacheS=new Array(8).fill(null);   // ③ なめらか
-const _dinoCacheR=new Array(8).fill(null);   // 恐竜（実寸）dino3：なめらか＋実寸サイズ（遅延生成。出現時のスケール補正で広さに追従）
+const _dinoCacheR=new Array(8).fill(null);   // 恐竜（実寸）dino3：なめらか＋実寸サイズ（事前生成。出現時のスケール補正で広さに追従）
 let   dinoDigModels=_dinoCacheB;             // 現在のスタイルのキャッシュを指す
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
@@ -2325,8 +2325,8 @@ function dinoWorldH(idx){ return dinoHByKey((DINOS[idx]||{}).key); }
 const REAL_H={ ptera:1.8, fukuiraptor:2.0, fukuisaurus:2.6, tri:3.0, trex:4.0, stego:4.0, fukuititan:6.0, brachi:9.5 };
 const REAL_H_MAX=9.5;
 function dinoRealScale(){   // 実寸モードの倍率 S（表示高さ＝実寸×S）
-    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/30);   // 短辺30mで1.0＝実寸／3〜6mは0.2／間は比例／30m超は1超で比例
-    return (siteMode||1)/3;   // サイト表示：siteMode=3で1.0＝実寸、他は比例
+    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/20);   // 短辺20mで1.0＝実寸／下限0.2／間は比例／20m超は1超で比例
+    return (siteMode||1)/2;   // サイト表示：siteMode=2で1.0＝実寸、他は比例
 }
 function dinoCurScale(){ return dinoRealSize ? dinoRealScale() : dinoScale(); }   // 現モードのスケール基準
 function dinoTargetHeight(key){   // 生成時の目標高さ（m）
@@ -2370,6 +2370,7 @@ function preloadEverything(done){
     const jobs=[];
     for(let i=0;i<8;i++) jobs.push({smooth:false, idx:i, cache:_dinoCacheB});
     for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});
+    for(let i=0;i<8;i++) jobs.push({smooth:true, real:true, idx:i, cache:_dinoCacheR});   // 恐竜（実寸）も事前生成＝体験中に生成しないのでカクつかない
     if(typeof COMPANION_ORDER!=="undefined") for(const k of COMPANION_ORDER){ jobs.push({companion:k, smooth:false}); jobs.push({companion:k, smooth:true}); }   // 相棒9種×両ボクセル版
     // カード画像も事前読み込み（恐竜 card00〜card08／出土品 card01〜card08）
     jobs.push({card:CARD_DIR_DINO+"card00.png"});
@@ -2388,7 +2389,7 @@ function preloadEverything(done){
             return;
         }
         if(job.companion){ try{ if(typeof preloadCompanionBody==="function") preloadCompanionBody(job.companion, job.smooth); }catch(_){}; j++; _preloadTimer=setTimeout(step,25); return; }
-        const prev=dinoSmooth, prevR=dinoRealSize; dinoSmooth=job.smooth; dinoRealSize=false;   // B/Sは常に非実寸で生成
+        const prev=dinoSmooth, prevR=dinoRealSize; dinoSmooth=job.smooth; dinoRealSize=!!job.real;   // B/S=非実寸、R=実寸で生成
         try{ const m=makeDigDino(DINOS[job.idx]); m.visible=false; stage.add(m); job.cache[job.idx]=m; }catch(_){}
         dinoSmooth=prev; dinoRealSize=prevR;
         j++;
