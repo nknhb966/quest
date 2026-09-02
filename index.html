@@ -1618,9 +1618,23 @@ const COMPANIONS={};
 let companionKind=DEFAULT_KIND;
 function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 // 実際のボクセル生成は「その相棒が必要になったとき」に一度だけ行う（起動を軽く保つ）
-function scaleBuddyIfDino(key, body){   // 恐竜の相棒は0.8倍（犬より小さくなってもよい）
+let _dogNatH=null;
+function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基準）。単独生成して計測しキャッシュ
+    if(_dogNatH!=null) return _dogNatH;
+    try{
+        const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=VOX; dinoSmooth=false;
+        let b; try{ b=build_dog(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
+        b.updateMatrixWorld(true); const bb=new THREE.Box3().setFromObject(b);
+        const h=bb.max.y-bb.min.y; _dogNatH=(isFinite(h)&&h>0)?h:1;
+    }catch(_){ _dogNatH=1; }
+    return _dogNatH;
+}
+function scaleBuddyIfDino(key, body){   // 恐竜の相棒は0.8倍。ただし犬の1.2倍を上限（小さくなるのは可）
     if(key==="dog") return;
-    body.scale.setScalar(0.8);
+    body.updateMatrixWorld(true);
+    const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
+    const sf=Math.min(0.8, 1.2*dogNaturalH()/H0);
+    body.scale.setScalar(sf);
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
@@ -4674,6 +4688,11 @@ function resetDexAndStandby(rotate){
     if(typeof resetUnlocked==="function") resetUnlocked();   // リセットで獲得候補を犬だけに
     if(typeof resetDogStats==="function") resetDogStats();   // 犬ステータス初期化
     if(typeof setCompanion==="function") setCompanion("dog"); // リセット時は相棒を犬に戻す
+    { // 相棒カードが表示中なら、犬のカードに差し替える（非表示なら何もしない）
+      const bc=document.getElementById("buddyCard");
+      if(bc && bc.style.opacity==="1" && bc.style.pointerEvents!=="none" && typeof showCompanionCard==="function") showCompanionCard("dog");
+      if(typeof _buddyCardVR!=="undefined" && _buddyCardVR && _buddyCardVR.visible && typeof showBuddyCardVR==="function") showBuddyCardVR("dog");
+    }
     if(rotate) recenterFieldHere();                            // 左手グリップ＋Yのときだけ基準（中央/向き）を設定
     GAME.starUsed=false;                                       // リセットでスターポイント復活可能に
     resetDexForRun(); clearRunWorld();
