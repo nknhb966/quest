@@ -1629,11 +1629,11 @@ function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基
     }catch(_){ _dogNatH=1; }
     return _dogNatH;
 }
-function scaleBuddyIfDino(key, body){   // 恐竜の相棒は0.8倍。ただし犬の1.2倍を上限（小さくなるのは可）
+function scaleBuddyIfDino(key, body){   // 恐竜の相棒は等倍(1.0)。ただし犬の1.2倍を上限で頭打ち（小さくなるのは可）
     if(key==="dog") return;
     body.updateMatrixWorld(true);
     const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
-    const sf=Math.min(0.8, 1.2*dogNaturalH()/H0);
+    const sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
     body.scale.setScalar(sf);
 }
 function ensureBody(key){
