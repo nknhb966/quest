@@ -1004,19 +1004,19 @@ const _hemiLight=new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1); scene.add(_
 const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
 sun.position.set(30, 60, 20); scene.add(sun);
 const _ambLight=new THREE.AmbientLight(0x404060, 0.5); scene.add(_ambLight);
-const _lightBase={ hemi:1.1, sun:1.4, amb:0.5 };   // 元の明るさ
+// 発掘図鑑のカード（ホログラム）表示中の暗幕。renderOrder：相棒パネル(1000)より手前・図鑑/カード/ホログラム(1100)より奥。
+// depthTest無効で常に前後の描画順（renderOrder）だけで制御 → 膜より奥（発掘モデル・名称/説明/番号パネル・セリフ・相棒/リザルトパネル）を一律暗転。
+const _dimOverlay=new THREE.Mesh(new THREE.PlaneGeometry(40,40),
+    new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.62, depthTest:false, depthWrite:false, side:THREE.DoubleSide, toneMapped:false}));
+_dimOverlay.renderOrder=1050; _dimOverlay.visible=false; _dimOverlay.frustumCulled=false; scene.add(_dimOverlay);
 let _sceneDimmed=false;
-function setSceneDim(on){   // 発掘図鑑のカード（ホログラム）表示中は、図鑑/カード/ホログラム以外を暗転
-    on=!!on; if(on===_sceneDimmed) return; _sceneDimmed=on;
-    const k = on ? 0.25 : 1.0;   // 3Dシーン（発掘済みモデル等）はライトを落として暗転
-    _hemiLight.intensity=_lightBase.hemi*k; sun.intensity=_lightBase.sun*k; _ambLight.intensity=_lightBase.amb*k;
-    // 非ライトのUI（リザルトパネル・相棒えらびパネル・相棒カード・ランダムボタン）は材質を暗くティントして暗転
-    const tint = on ? 0x4a4a4a : 0xffffff;
-    const setCol=(m)=>{ if(m && m.material && m.material.color) m.material.color.setHex(tint); };
-    if(typeof worldHud!=="undefined" && worldHud.mesh) setCol(worldHud.mesh);
-    if(typeof buddyGridVR!=="undefined" && buddyGridVR.mesh) setCol(buddyGridVR.mesh);
-    if(typeof _buddyCardVR!=="undefined") setCol(_buddyCardVR);
-    if(typeof _buddyRandomBtn!=="undefined") setCol(_buddyRandomBtn);
+function setSceneDim(on){ on=!!on; if(on===_sceneDimmed) return; _sceneDimmed=on; _dimOverlay.visible=on; }   // 暗幕の表示ON/OFFのみ（ライトは触らない＝ホログラムは通常の明るさ）
+function updateDimOverlay(){
+    if(!_dimOverlay.visible) return;
+    const cwp=camera.getWorldPosition(new THREE.Vector3());
+    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+    _dimOverlay.position.copy(cwp).addScaledVector(fwd, 0.6);   // 目の前を覆う（depthTest無効・renderOrderで前後を制御）
+    _dimOverlay.quaternion.copy(camera.quaternion);
 }
 const stage = new THREE.Group(); scene.add(stage);   // プレイヤー以外の全コンテンツ（高さ調整でまとめて上下）
 
@@ -2260,15 +2260,10 @@ function buildHologram(idx){
         model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
-        // ホログラムはアンリット化＝暗転（ライト低下）の影響を受けず明るいまま。相棒パネルより手前(renderOrder)
+        // 暗幕方式：ホログラムはライトを落とさないので通常のライト材質のまま＝通常の明るさ（陰影あり）。暗幕より手前(renderOrder)で明るく見える
         model.traverse(o=>{ if(o.isMesh && o.material){
             const wasArr=Array.isArray(o.material);
-            const arr=(wasArr?o.material:[o.material]).map(m=>new THREE.MeshBasicMaterial({
-                map:m.map||null, vertexColors:!!m.vertexColors,
-                color:(m.color&&m.color.clone)?m.color.clone():new THREE.Color(0xffffff),
-                side:(m.side!==undefined)?m.side:THREE.FrontSide,
-                transparent:!!m.transparent, opacity:(m.opacity!==undefined)?m.opacity:1,
-                toneMapped:false, depthTest:true, depthWrite:true }));
+            const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.depthTest=true; c.depthWrite=true; return c; });
             o.material=wasArr?arr:arr[0]; o.renderOrder=1100;
         }});
         const holoH = dino ? dinoHoloH(idx) : 0.5;
@@ -4639,6 +4634,7 @@ renderer.setAnimationLoop(()=>{
     if(typeof updateBuddyCardVR==="function") updateBuddyCardVR();
     if(typeof updateBuddyRandomBtn==="function") updateBuddyRandomBtn();
     if(typeof updateBuddyGridVR==="function") updateBuddyGridVR();
+    if(typeof updateDimOverlay==="function") updateDimOverlay();
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
