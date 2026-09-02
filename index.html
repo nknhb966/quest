@@ -1895,12 +1895,14 @@ function showBuddyCardVR(k){
 }
 function updateBuddyCardVR(){
     if(!_buddyCardVR || !_buddyCardVR.visible) return;                 // 自動では消さない（閉じるボタン/スタートまで表示）
-    const inStandby = (typeof GAME!=="undefined" && GAME.active) && ((GAME.mode==="time") ? (typeof TA!=="undefined" && TA.state==="ready") : (GAME.standby && !GAME.complete));
+    const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     if(renderer.xr.isPresenting && inStandby && typeof placeYawFront==="function"){
-        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? -0.61 : -0.45;   // ランダム時はランダムボタンの下／選ぶ時はグリッドの下
-        placeYawFront(_buddyCardVR, yOff, 0.9);   // 正面・ヨーのみ追従（選択パネルと同じ挙動）
+        _buddyCardVR.scale.setScalar(1.25);
+        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? -0.30 : -0.10;   // ランダム時はランダムボタンの下／選ぶ時はグリッドの下
+        placeYawFront(_buddyCardVR, yOff, 2.2);   // 奥・上げ・ヨーのみ追従（選択パネルと同じ挙動）
         return;
     }
+    _buddyCardVR.scale.setScalar(1);   // スタンバイ以外は等倍・従来配置
     const q=camera.getWorldQuaternion(new THREE.Quaternion());
     if(leftCtrl){   // 左手に追従（左手基準で右へ40cm・上へ8cm）＝前回より左20cm下20cm
         const lo=leftCtrl.getWorldPosition(new THREE.Vector3());
@@ -1923,12 +1925,13 @@ function makeBuddyRandomBtnTex(){
     return new THREE.CanvasTexture(cv);
 }
 function updateBuddyRandomBtn(){
-    const inStandby = (typeof GAME!=="undefined" && GAME.active) && ((GAME.mode==="time") ? (typeof TA!=="undefined" && TA.state==="ready") : (GAME.standby && !GAME.complete));
+    const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly;   // ランダムモードのみ・選択パネルの直下
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }
     _buddyRandomBtn.visible=true;
-    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.15 - 0.176 - 0.05 - 0.056, 0.9);   // グリッド(中心+0.15,半0.176)の直下
+    _buddyRandomBtn.scale.setScalar(1.25);
+    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.30, 2.2);   // グリッドの直下（奥・上げ・1.25倍）
     return;
     /* 旧: 左手追従の配置（未使用） */
     if(leftCtrl){   // カードの真上（同X/Z・Yのみカード高さ分だけ上）
@@ -2002,12 +2005,13 @@ function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセ�
 }
 let _bgKey="";
 function updateBuddyGridVR(){
-    // リザルトでは選択不可。スタンバイのみ（タイム:ready／コレクション:standby かつ未クリア）
-    const inStandby = (typeof GAME!=="undefined" && GAME.active) && ((GAME.mode==="time") ? (typeof TA!=="undefined" && TA.state==="ready") : (GAME.standby && !GAME.complete));
+    // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
+    const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     const show = renderer.xr.isPresenting && inStandby && !dogOnly;
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;
-    placeYawFront(buddyGridVR.mesh, 0.15, 0.9);   // 正面・やや上・ヨーのみ追従（ピッチ非追従）
+    buddyGridVR.mesh.scale.setScalar(1.25);               // 1.25倍
+    placeYawFront(buddyGridVR.mesh, 0.65, 2.2);           // リザルトパネルくらい奥・約+50cm上・ヨーのみ追従
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
     if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
 }
