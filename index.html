@@ -1716,6 +1716,7 @@ function companionStats(){
 const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];   // 合計降順（犬先頭）
 let buddyRandom=false;   // ブラウザのトグル：相棒を選ぶ／ランダム
 let dogOnly=true;        // 既定：犬のみモード
+let buddyListOpen=false; // スタンバイの相棒一覧の開閉（▼/▲）。リロード・リザルト戻りは閉じた状態が既定
 let dogLevelUp=false;    // 犬レベルアップ制（false=固定[2,2,2]）
 let dogStats=[2,2,2];    // 犬の現在ステータス [Power,Scope,Bonus]
 function resetDogStats(){ dogStats = dogLevelUp ? [1,1,1] : [2,2,2]; }
@@ -1769,38 +1770,49 @@ function updateBuddyStandbyUI(){
         el.appendChild(start);
         return;
     }
-    if(buddyRandom){
-        const lab=document.createElement("div"); lab.textContent="相棒：ランダム（候補）"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;margin-bottom:4px;"; el.appendChild(lab);
-        // 候補一覧（選択時と同じ見た目。ただしボタンは押せない＝表示のみ）
-        const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():COMPANION_ORDER;
-        const dispOrder=COMPANION_ORDER.filter(k=>k!=="dog").concat(["dog"]);   // いぬを最後に
-        dispOrder.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
-            const inPool=(buddyMode!=="unlock") || unlocked.indexOf(k)>=0;
-            const b=document.createElement("button"); b.textContent=(c.label||k).replace(/^\S+\s+/,"");
-            const flexCss = IS_TOUCH ? "flex:1 1 96px;min-width:88px;" : "flex:0 0 calc(33.3% - 8px);box-sizing:border-box;";
-            b.style.cssText=flexCss+"font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:default;";
-            b.disabled=true;                              // ランダムなので選択不可（表示のみ）
-            if(!inPool){ b.style.opacity="0.35"; b.style.filter="grayscale(1)"; }   // 候補外はグレーアウト
-            else b.style.opacity="0.95";
-            el.appendChild(b);
-        });
-        const bag=document.createElement("button"); bag.textContent="🎁 カードをひく";
-        bag.style.cssText="font:bold 14px sans-serif;padding:8px 14px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:6px;";
-        bag.onclick=()=>{ const k=drawRandomCompanion(); showCompanionCard(k, true); updateBuddyStandbyUI(); };
-        el.appendChild(bag);
-    } else {
-        const lab=document.createElement("div"); lab.textContent="相棒を選ぶ"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;margin-bottom:4px;"; el.appendChild(lab);
-        const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():COMPANION_ORDER;
-        const dispOrder=COMPANION_ORDER.filter(k=>k!=="dog").concat(["dog"]);   // いぬを最後に
-        dispOrder.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
-            const avail=(buddyMode!=="unlock") || unlocked.indexOf(k)>=0;   // 獲得モードは未獲得を無効化
-            const b=document.createElement("button"); b.textContent=(c.label||k).replace(/^\S+\s+/,"");
-            const flexCss = IS_TOUCH ? "flex:1 1 96px;min-width:88px;" : "flex:0 0 calc(33.3% - 8px);box-sizing:border-box;";   // PCは3×3
-            b.style.cssText=flexCss+"font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
-            if(!avail){ b.disabled=true; b.style.opacity="0.35"; b.style.cursor="not-allowed"; b.style.filter="grayscale(1)"; }
-            else b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); };
-            el.appendChild(b);
-        });
+    {
+        // ── ヘッダー：ラベル ＋ ▼/▲（恐竜一覧の開閉。開いたら▲で閉じるまで開いたまま）──
+        const head=document.createElement("div");
+        head.style.cssText="display:flex;width:100%;align-items:center;justify-content:center;gap:8px;margin-bottom:2px;";
+        const lab=document.createElement("span"); lab.textContent = buddyRandom ? "相棒：ランダム" : "相棒を選ぶ";
+        lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;";
+        head.appendChild(lab);
+        const tgl=document.createElement("button"); tgl.textContent = buddyListOpen ? "▲" : "▼";
+        tgl.title = buddyListOpen ? "一覧を閉じる" : "一覧を開く";
+        tgl.style.cssText="font:bold 14px sans-serif;padding:2px 12px;border-radius:8px;border:1px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;line-height:1.2;";
+        tgl.onclick=()=>{ buddyListOpen=!buddyListOpen; updateBuddyStandbyUI(); };
+        head.appendChild(tgl);
+        el.appendChild(head);
+
+        // ランダム：カードをひく（一覧の開閉に関わらず常時表示）
+        if(buddyRandom){
+            const bag=document.createElement("button"); bag.textContent="🎁 カードをひく";
+            bag.style.cssText="font:bold 14px sans-serif;padding:8px 14px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-bottom:2px;";
+            bag.onclick=()=>{ const k=drawRandomCompanion(); showCompanionCard(k, true); updateBuddyStandbyUI(); };
+            el.appendChild(bag);
+        }
+
+        // 恐竜一覧（▼で開いているときだけ表示。リロード/リザルト戻りは閉じた状態が既定）
+        if(buddyListOpen){
+            const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():COMPANION_ORDER;
+            const dispOrder=COMPANION_ORDER.filter(k=>k!=="dog").concat(["dog"]);   // いぬを最後に
+            dispOrder.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
+                const b=document.createElement("button"); b.textContent=(c.label||k).replace(/^\S+\s+/,"");
+                const flexCss = IS_TOUCH ? "flex:1 1 96px;min-width:88px;" : "flex:0 0 calc(33.3% - 8px);box-sizing:border-box;";
+                if(buddyRandom){   // ランダムは表示のみ（押せない）
+                    const inPool=(buddyMode!=="unlock") || unlocked.indexOf(k)>=0;
+                    b.style.cssText=flexCss+"font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:default;";
+                    b.disabled=true;
+                    if(!inPool){ b.style.opacity="0.35"; b.style.filter="grayscale(1)"; } else b.style.opacity="0.95";
+                }else{             // 選ぶ：クリックで相棒決定
+                    const avail=(buddyMode!=="unlock") || unlocked.indexOf(k)>=0;
+                    b.style.cssText=flexCss+"font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
+                    if(!avail){ b.disabled=true; b.style.opacity="0.35"; b.style.cursor="not-allowed"; b.style.filter="grayscale(1)"; }
+                    else b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); };
+                }
+                el.appendChild(b);
+            });
+        }
     }
     const start=document.createElement("button"); start.textContent="▶ スタート";
     start.style.cssText="font:bold 14px sans-serif;padding:6px 14px;border-radius:10px;border:2px solid #ffd86a;background:#5a4a1a;color:#fff;cursor:pointer;width:100%;margin-top:4px;";
@@ -3564,6 +3576,7 @@ function taFinish(){
 }
 // 右トリガー（素手なら右手つまむ）で進行
 function enterStandby(){   // ①スタンバイへ（④→①は内容保持のまま。相棒選択可）
+    buddyListOpen=false;   // リザルトから戻ったら恐竜一覧は閉じた状態を既定に
     GAME.complete=false; GAME.standby = (GAME.mode!=="time");
     if(GAME.mode==="time") TA.state="ready"; else TA.state="idle";
     worldHud.hide();
