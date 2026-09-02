@@ -1710,7 +1710,7 @@ function companionStats(){
     const g=v=>Math.max(1,Math.min(5, v||3));
     let pw=c.power, sc=c.scope, bo=c.bonus;
     if(companionKind==="dog" && typeof dogStats!=="undefined"){ pw=dogStats[0]; sc=dogStats[1]; bo=dogStats[2]; }   // 犬はレベル制/固定のステータス
-    return { power:POWER_LV[g(pw)-1], scope:SCOPE_LV[g(sc)-1], bonus:BONUS_LV[g(bo)-1] };
+    return { power:POWER_LV[g(pw)-1], scope:SCOPE_LV[g(sc)-1], bonus:BONUS_LV[g(bo)-1], bonusLv:g(bo) };
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
 const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];   // 合計降順（犬先頭）
@@ -2281,7 +2281,7 @@ function spawnTarget(tier, forcedIdx=null){
     let idx;
     if(forcedIdx!=null){ idx = ((forcedIdx%8)+8)%8; }
     else { idx = pickSpotIdx(); if(idx==null) return null; }
-    const d = difficulty(tier);
+    const d = difficulty(7 - idx);   // 難易度はIDで決定：IDが小さいほど難しい（信頼度↓・発掘回数↑）。得点用の t.tier は idx のまま温存
     const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*3, GROUND_Y, ART_ORIG[idx][1]*3)).clone();
     pos.y = GROUND_Y;
     if(customWorldOn()){   // 矩形ワールド：ランダム配置（無ければ生成）
@@ -4247,9 +4247,12 @@ function petDog(){
     if(digBusy) return;                          // 発掘中はなでない
     petCooldown=1.6;
     // 確率アップ：非単調（通常/ラッキー/会心）＋種類別の効果音
-    const r=Math.random(); let up, kind;
-    if(r<0.10){ up=0.30; kind=2; } else if(r<0.34){ up=0.18; kind=1; } else { up=0.08; kind=0; }
-    petBoost=Math.min(0.85, petBoost+up*companionStats().bonus);   // BONUS:相棒ごとの撫でボーナス倍率
+    // 撫で1回の上がり幅：BONUS値(1〜5)で 6%〜15% を線形。ラッキー×2・会心×4。発生確率は据え置き（会心10%・ラッキー24%・通常66%）
+    const bonusLv = companionStats().bonusLv || 1;
+    const inc = 0.06 + (Math.max(1,Math.min(5,bonusLv))-1)/4 * 0.09;   // 値1→6% … 値5→15%
+    const r=Math.random(); let mult, kind;
+    if(r<0.10){ mult=4; kind=2; } else if(r<0.34){ mult=2; kind=1; } else { mult=1; kind=0; }
+    petBoost=Math.min(0.85, petBoost + inc*mult);   // 発見確率は min(1, dogRel+petBoost) で最終的に100%上限
     if(kind===2){ chord([523,659,784,1047],0.10,"triangle",0.5); showToast("会心のなでなで！確率が一気にアップ！"); }
     else if(kind===1){ chord([523,784],0.07,"triangle",0.45); showToast("ラッキー！確率アップ"); }
     else sfxBark();
