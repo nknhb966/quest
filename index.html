@@ -1993,6 +1993,7 @@ function updateBuddyGridHover(){
 // 吹き出しスプライト
 const bubble = (function(){
     const W=845, H=256;                      // 横幅を1.5倍×1.1（文字サイズは据え置き）
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:false}));
