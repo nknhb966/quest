@@ -259,6 +259,13 @@
           <button data-v="dino3">🦕 恐竜</button>
         </div>
       </div>
+      <div class="opt wide" id="optToolSwap" style="display:none">
+        <div class="lbl">発掘道具の持ち替え（プレイ中に道具を切り替えられるか）</div>
+        <div class="seg" id="segToolSwap">
+          <button data-v="off" class="on">🔒 持ち替えない</button>
+          <button data-v="on">🔄 持ち替える</button>
+        </div>
+      </div>
       <div class="opt wide" id="optMode">
         <div class="lbl">モード</div>
         <div class="seg" id="segMode">
@@ -1885,7 +1892,7 @@ function makeBuddyRandomBtnTex(){
     return new THREE.CanvasTexture(cv);
 }
 function updateBuddyRandomBtn(){
-    const show = renderer.xr.isPresenting && buddyRandom && (typeof isStandby==="function" && isStandby());   // ランダム選択時のみ
+    const show = false;   // 相棒えらびパネル(3×3)のセルに統合したため、単独ランダムボタンは非表示
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }   // 1.5倍
     _buddyRandomBtn.visible=true;
@@ -1903,10 +1910,89 @@ function updateBuddyRandomBtn(){
     _buddyRandomBtn.quaternion.copy(q);   // プレイヤーに正対
 }
 
+/* =====================================================
+ * VR相棒えらびパネル（右手前方に固定・3×3）。左手の発掘図鑑とは色/位置/見出しで区別
+ *   セル0-7=恐竜8種（獲得済み=選択可／未獲得=名称は見えるが不可）、セル8=🎲ランダム
+ *   手動選択でもランダムでも同じこのUI。右手レイ＋右トリガーで選択。スタンバイのみ表示。
+ * ===================================================== */
+const buddyGridVR=(function(){
+    const W=540,H=560;
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+    const ctx=cv.getContext("2d");
+    const tex=new THREE.CanvasTexture(cv);
+    try{ tex.colorSpace=THREE.SRGBColorSpace; }catch(_){ try{ tex.encoding=THREE.sRGBEncoding; }catch(__){} }
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.353), new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthTest:true}));
+    mesh.renderOrder=1000; mesh.visible=false; scene.add(mesh);
+    function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+    const cols=3,rows=3,pad=14,top=86,gx=16;
+    const cw=(W-gx*2-pad*(cols-1))/cols, chh=(H-top-16-pad*(rows-1))/rows;
+    function rectOf(i){ const r=(i/cols)|0,c=i%cols; return {x:gx+c*(cw+pad), y:top+r*(chh+pad), w:cw, h:chh}; }
+    function dinoKeys(){ return (typeof COMPANION_ORDER!=="undefined") ? COMPANION_ORDER.filter(k=>k!=="dog") : []; }
+    function shortName(k){ const c=COMPANIONS[k]; const s=(c&&c.label)?c.label:k; return s.replace(/^\S+\s+/,""); }
+    let hoverIdx=-1;
+    function draw(){
+        ctx.clearRect(0,0,W,H);
+        ctx.fillStyle="rgba(10,26,32,0.95)"; rr(ctx,6,6,W-12,H-12,24); ctx.fill();
+        ctx.strokeStyle="#5ad6c0"; ctx.lineWidth=6; ctx.stroke();   // 発掘図鑑=金枠と区別する青緑枠
+        ctx.fillStyle="#bff4ea"; ctx.font="bold 34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText("🐾 相棒えらび", W/2, 44);
+        const keys=dinoKeys();
+        const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():keys;
+        const um=(typeof buddyMode!=="undefined")?buddyMode:"all";
+        for(let i=0;i<9;i++){
+            const R=rectOf(i);
+            if(i<8){
+                const k=keys[i]; if(!k) continue;
+                const acq=(um!=="unlock")||(unlocked.indexOf(k)>=0);
+                const sel=(typeof companionKind!=="undefined" && companionKind===k);
+                ctx.fillStyle=acq?(sel?"#16564a":"#123a3a"):"rgba(40,52,60,0.9)"; rr(ctx,R.x,R.y,R.w,R.h,12); ctx.fill();
+                ctx.fillStyle=acq?"#eafff9":"rgba(180,200,210,0.55)"; ctx.font="bold 23px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+                ctx.fillText(shortName(k), R.x+R.w/2, R.y+R.h/2-8);
+                ctx.font="bold 15px sans-serif"; ctx.fillStyle=acq?"#7fe0cd":"rgba(180,200,210,0.5)";
+                ctx.fillText(acq?"選択可":"未獲得", R.x+R.w/2, R.y+R.h/2+20);
+                if(sel){ ctx.strokeStyle="#ffe066"; ctx.lineWidth=5; rr(ctx,R.x+2,R.y+2,R.w-4,R.h-4,10); ctx.stroke(); }
+            } else {
+                ctx.fillStyle="#4a3d17"; rr(ctx,R.x,R.y,R.w,R.h,12); ctx.fill();
+                ctx.strokeStyle="#ffd86a"; ctx.lineWidth=3; rr(ctx,R.x+2,R.y+2,R.w-4,R.h-4,10); ctx.stroke();
+                ctx.fillStyle="#fff"; ctx.font="bold 21px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+                ctx.fillText("🎲 ランダム", R.x+R.w/2, R.y+R.h/2);
+            }
+            if(i===hoverIdx){ ctx.strokeStyle="#ffffff"; ctx.lineWidth=4; rr(ctx,R.x-2,R.y-2,R.w+4,R.h+4,13); ctx.stroke(); }
+        }
+        tex.needsUpdate=true;
+    }
+    function pick(u,v){ const X=u*W,Y=(1-v)*H; for(let i=0;i<9;i++){ const r=rectOf(i); if(X>=r.x&&X<=r.x+r.w&&Y>=r.y&&Y<=r.y+r.h) return i; } return -1; }
+    function setHover(i){ if(i!==hoverIdx){ hoverIdx=i; draw(); } }
+    draw();
+    return { mesh, draw, pick, setHover, dinoKeys, get hover(){ return hoverIdx; } };
+})();
+let _bgKey="";
+function updateBuddyGridVR(){
+    const show = renderer.xr.isPresenting && (typeof isStandby==="function" && isStandby()) && !dogOnly;   // スタンバイのみ・犬のみモードは非表示
+    if(!show){ buddyGridVR.mesh.visible=false; return; }
+    buddyGridVR.mesh.visible=true;
+    const q=camera.getWorldQuaternion(new THREE.Quaternion());
+    const cwp=camera.getWorldPosition(new THREE.Vector3());
+    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
+    const right=new THREE.Vector3(1,0,0).applyQuaternion(q);
+    buddyGridVR.mesh.position.copy(cwp).addScaledVector(fwd,0.9).addScaledVector(right,0.45).add(new THREE.Vector3(0,-0.02,0));   // 右手前方の空間に固定（左手図鑑と分離）
+    buddyGridVR.mesh.quaternion.copy(q);
+    const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
+    if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
+}
+const _bgRay=new THREE.Raycaster();
+function updateBuddyGridHover(){
+    if(!renderer.xr.isPresenting || !buddyGridVR.mesh.visible || !rightCtrl){ buddyGridVR.setHover(-1); return; }
+    const o=new THREE.Vector3(); rightCtrl.getWorldPosition(o);
+    const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    _bgRay.set(o,d);
+    const hit=_bgRay.intersectObject(buddyGridVR.mesh,false)[0];
+    buddyGridVR.setHover(hit&&hit.uv ? buddyGridVR.pick(hit.uv.x,hit.uv.y) : -1);
+}
+
 // 吹き出しスプライト
 const bubble = (function(){
     const W=845, H=256;                      // 横幅を1.5倍×1.1（文字サイズは据え置き）
-    const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:false}));
@@ -2335,8 +2421,8 @@ const REAL_H={ ptera:1.8, fukuiraptor:2.0, fukuisaurus:2.6, tri:3.0, trex:4.0, s
 const REAL_H_MAX=9.5;
 function realH(key){ return (REAL_H[key]!==undefined?REAL_H[key]:3.0); }
 function dinoRealScale(){   // 表示倍率 S（表示高さ＝実寸×S）
-    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/30);   // 短辺30mで1.0＝実寸／下限0.2／間は比例／30m超は1超で比例
-    return (siteMode||1)/3;   // サイト表示：siteMode=3で1.0＝実寸、他は比例
+    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/20);   // 短辺20mで1.0＝実寸／下限0.2／間は比例／20m超は1超で比例
+    return (siteMode||1)/2;   // サイト表示：siteMode=2で1.0＝実寸、他は比例
 }
 function dinoCurScale(){ return dinoRealScale(); }
 function dinoTargetHeight(key){ return realH(key) * dinoRealScale(); }        // 生成時の目標高さ（m）
@@ -2898,6 +2984,7 @@ function updateTimeLimitUI(){ const o=document.getElementById("optTimeLimit"); i
 document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segTool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenTool=b.dataset.v; });
 // ===== おすすめ設定 =====
 let recoOn=true;   // おすすめ設定（既定オン）
+let toolSwapAllowed=false;   // 発掘道具の持ち替え（既定：持ち替えない）。おすすめオフのときだけメニューで変更可
 let starEnabled=false;   // スターブロック（既定：なし＝出土品に合わせる）
 let cardShown=true;      // 獲得カード表示（既定：表示）
 let digPosRandom=true;    // サイト表示×恐竜系の発掘場所（true=ランダム/false=固定）。既定ランダム
@@ -2951,6 +3038,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optMode",false); show("optRarity",false); show("optBuddyMode",false);
         show("optDogLevel",false); show("optBuddyPool",false); show("optSite",false); show("optStar",false); show("optCardShow",false);
         show("optDigPos",false); show("optTimeLimit",false);
+        show("optToolSwap",false); toolSwapAllowed=false; segSelect("segToolSwap","off");   // オンは非表示＝必ず持ち替えない
         setTimeLimit(90);   // おすすめオンは90秒固定
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
@@ -2961,6 +3049,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optDogLevel", dogOnly); show("optBuddyPool", !dogOnly);
         show("optSite",true); show("optStar",true); show("optCardShow",true);
         show("optDigPos", (target!=="artifact") && siteVisible);   // 恐竜系×サイト表示のみ
+        show("optToolSwap", true);   // おすすめオフのときだけ表示・切替可
         show("optTimeLimit", chosenMode==="time");   // タイムアタック時のみ
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
@@ -2979,6 +3068,7 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
     });
 });
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
+document.querySelectorAll("#segToolSwap button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segToolSwap button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); toolSwapAllowed=(b.dataset.v==="on"); });
 document.querySelectorAll("#segCardShow button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segCardShow button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); cardShown=(b.dataset.v==="on"); });
 document.querySelectorAll("#segDigPos button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDigPos button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); digPosRandom=(b.dataset.v==="random"); });
 document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); withParamLoading(()=>{ onDigTargetChosen(b.dataset.v); }); });
@@ -3577,6 +3667,7 @@ function taFinish(){
 // 右トリガー（素手なら右手つまむ）で進行
 function enterStandby(){   // ①スタンバイへ（④→①は内容保持のまま。相棒選択可）
     buddyListOpen=false;   // リザルトから戻ったら恐竜一覧は閉じた状態を既定に
+    GAME.tool="wide"; if(typeof updateToolLabel==="function") updateToolLabel(); if(typeof refreshToolModel==="function") refreshToolModel();   // スタンバイでは必ず幅広に戻す（持ち替える設定でも）
     GAME.complete=false; GAME.standby = (GAME.mode!=="time");
     if(GAME.mode==="time") TA.state="ready"; else TA.state="idle";
     worldHud.hide();
@@ -3695,7 +3786,7 @@ function updateHudButtons(){
     const set=(id,show)=>{ const e=document.getElementById(id); if(e && e.id!=="dTA" && e.id!=="taCardBtn") e.style.display = show ? "" : "none"; };
     // ①②：リセット・記録・やめる のみ／④：聞いてみる・リセット・図鑑・記録・やめる／③：従来どおり
     set("dAsk",  ph==="result" || ph==="play");
-    set("dTool", ph==="play");        // 道具は③プレイのみ（①②④は非表示）
+    set("dTool", ph==="play" && toolSwapAllowed);        // 道具切替ボタンは③プレイ中かつ「持ち替える」時のみ
     set("dDex",  ph!=="count");        // 図鑑は①③④で表示（②カウントダウンのみ非表示）
     set("dShowAll", ph==="play");     // 全て発掘は③プレイのみ（④リザルトでは非表示）
     set("dReset", true); set("dRecords", true); set("dQuit", true);
@@ -3714,7 +3805,8 @@ function updateGoal(){
     else { el.textContent=`タイムアタック：${GAME.score}pt ／ 残り${Math.ceil(GAME.timeLeft)}秒`; }
 }
 function updateToolLabel(){ document.getElementById("dTool").textContent = "道具："+(GAME.tool==="wide"?"🖌 幅広":"⛏ 細ピック"); }
-function toggleTool(){ GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToolLabel(); refreshToolModel();
+function toggleTool(){ if(!toolSwapAllowed) return;   // 「持ち替えない」時は切替不可
+    GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToolLabel(); refreshToolModel();
     // 既存ターゲットのdigNeedを再計算
     GAME.targets.forEach(t=>{ t.digNeed=Math.max(2, Math.round(t.diff.digNeed*toolMods().digMul)); t.progress=Math.min(t.progress,t.digNeed); });
     showToast(GAME.tool==="wide"?"🖌 幅広ブラシ：広く探せる/掘り多め":"⛏ 細ピック：狭いが/掘り少なめ");
@@ -4489,6 +4581,7 @@ renderer.setAnimationLoop(()=>{
     updateFieldBorder();
     if(typeof updateBuddyCardVR==="function") updateBuddyCardVR();
     if(typeof updateBuddyRandomBtn==="function") updateBuddyRandomBtn();
+    if(typeof updateBuddyGridVR==="function") updateBuddyGridVR();
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
 
@@ -4496,6 +4589,7 @@ renderer.setAnimationLoop(()=>{
     updateDexPanel();
     updateHandModels();   // 手モデルは右手だけ
     updateDexHover();
+    if(typeof updateBuddyGridHover==="function") updateBuddyGridHover();
     updateTAClock();    // カウントダウン/残り時間を図鑑の近くに
     updateHologram();   // 左手に追従＋カメラ向き＋モデルのモーション
 
@@ -4662,6 +4756,24 @@ function onRightPressEdge(){
         const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
         _dexRay.set(o,d);
         if(_dexRay.intersectObject(_buddyCardVR,false).length){ _buddyCardVR.visible=false; return; }
+    }
+    // スタンバイ中の「相棒えらび」パネル(3×3)を指していれば選択/ランダム（右トリガー）
+    if(typeof buddyGridVR!=="undefined" && buddyGridVR.mesh.visible && rightCtrl){
+        const o=new THREE.Vector3(); rightCtrl.getWorldPosition(o);
+        const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
+        _dexRay.set(o,d);
+        const hit=_dexRay.intersectObject(buddyGridVR.mesh,false)[0];
+        if(hit&&hit.uv){
+            const ci=buddyGridVR.pick(hit.uv.x,hit.uv.y);
+            if(ci===8){ const kk=drawRandomCompanion(); showBuddyCardVR(kk); buddyGridVR.draw(); vibrate(90,0.8); return; }   // 🎲ランダム
+            if(ci>=0){                                    // 恐竜セル：獲得済みだけ選択可、未獲得は無反応
+                const keys=buddyGridVR.dinoKeys(); const k=keys[ci];
+                const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():keys;
+                const acq=(typeof buddyMode==="undefined"||buddyMode!=="unlock")||unlocked.indexOf(k)>=0;
+                if(k && acq){ setCompanion(k); showBuddyCardVR(k); buddyGridVR.draw(); vibrate(70,0.6); }
+                return;
+            }
+        }
     }
     // スタンバイ中のランダムボタンを指していれば、ランダム抽選
     if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible && rightCtrl){
