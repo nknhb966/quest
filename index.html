@@ -228,6 +228,9 @@
         border-radius:9px; padding:7px 13px; font-weight:800; letter-spacing:1px; cursor:pointer; }
     body.playing #dexBtn{ display:block; }
     #dexBtn:hover{ background:rgba(40,26,60,.9); color:#fff; }
+    .szq{ padding:8px 12px; border-radius:9px; border:1px solid rgba(180,140,255,.45); background:#160f2e; color:#eae4ff; font-weight:800; font-size:13px; cursor:pointer; }
+    .szq:hover{ background:#2a1d52; }
+    .szq.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; border-color:#ffd86a; }
 </style>
 </head>
 <body>
@@ -368,6 +371,14 @@
               <input id="wzNum" type="number" min="3" max="50" step="1" value="10" style="width:64px;">
             </div>
           </div>
+        </div>
+        <div id="wsQuick" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center; justify-content:center;">
+          <span style="font-size:12px;color:#b9aee0;">かんたん設定：</span>
+          <button type="button" class="szq" data-sz="10">10×10</button>
+          <button type="button" class="szq" data-sz="20">20×20</button>
+          <button type="button" class="szq" data-sz="30">30×30</button>
+          <button type="button" class="szq" data-sz="40">40×40</button>
+          <button type="button" class="szq" data-sz="50">50×50</button>
         </div>
       </div>
     </div>
@@ -841,7 +852,7 @@ function companionCardPath(key){
 // カード画像/テクスチャのキャッシュ（獲得カード・図鑑で共用）
 const _cardImgCache={}, _cardTexCache={};
 function cardImage(target, idx, onload){
-    const key=target+"_"+idx;
+    const key=cardImgPath(target, idx);   // プリロードと同じ「URLキー」に統一（別キーだと毎回再ロードになり、一斉発掘で描画が間に合わない）
     let im=_cardImgCache[key];
     if(!im){ im=new Image(); im.crossOrigin="anonymous"; im.src=cardImgPath(target, idx); _cardImgCache[key]=im; }
     if(onload && !(im.complete && im.naturalWidth) && !im._redrawHooked){   // まだ読み込めていなければ、読み込み後に一度だけ再描画
@@ -989,10 +1000,17 @@ player.add(camera);
 scene.add(player);
 
 // ライト（レール版はaddCoaster側で処理していたので、歩行版では自前で用意）
-scene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
+const _hemiLight=new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1); scene.add(_hemiLight);
 const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
 sun.position.set(30, 60, 20); scene.add(sun);
-scene.add(new THREE.AmbientLight(0x404060, 0.5));
+const _ambLight=new THREE.AmbientLight(0x404060, 0.5); scene.add(_ambLight);
+const _lightBase={ hemi:1.1, sun:1.4, amb:0.5 };   // 元の明るさ
+let _sceneDimmed=false;
+function setSceneDim(on){   // 発掘図鑑のカード（ホログラム）表示中は、図鑑/カード/ホログラム(非ライト材質)以外を暗転
+    on=!!on; if(on===_sceneDimmed) return; _sceneDimmed=on;
+    const k = on ? 0.25 : 1.0;   // うっすら見える程度まで落とす
+    _hemiLight.intensity=_lightBase.hemi*k; sun.intensity=_lightBase.sun*k; _ambLight.intensity=_lightBase.amb*k;
+}
 const stage = new THREE.Group(); scene.add(stage);   // プレイヤー以外の全コンテンツ（高さ調整でまとめて上下）
 
 // VRButton / ARButton（どちらでも遊べる）
@@ -1870,6 +1888,12 @@ function showBuddyCardVR(k){
 }
 function updateBuddyCardVR(){
     if(!_buddyCardVR || !_buddyCardVR.visible) return;                 // 自動では消さない（閉じるボタン/スタートまで表示）
+    const inStandby = (typeof GAME!=="undefined" && GAME.active) && ((GAME.mode==="time") ? (typeof TA!=="undefined" && TA.state==="ready") : (GAME.standby && !GAME.complete));
+    if(renderer.xr.isPresenting && inStandby && typeof placeYawFront==="function"){
+        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? -0.61 : -0.45;   // ランダム時はランダムボタンの下／選ぶ時はグリッドの下
+        placeYawFront(_buddyCardVR, yOff, 0.9);   // 正面・ヨーのみ追従（選択パネルと同じ挙動）
+        return;
+    }
     const q=camera.getWorldQuaternion(new THREE.Quaternion());
     if(leftCtrl){   // 左手に追従（左手基準で右へ40cm・上へ8cm）＝前回より左20cm下20cm
         const lo=leftCtrl.getWorldPosition(new THREE.Vector3());
@@ -1892,11 +1916,14 @@ function makeBuddyRandomBtnTex(){
     return new THREE.CanvasTexture(cv);
 }
 function updateBuddyRandomBtn(){
-    const show = false;   // 相棒えらびパネル(3×3)のセルに統合したため、単独ランダムボタンは非表示
+    const inStandby = (typeof GAME!=="undefined" && GAME.active) && ((GAME.mode==="time") ? (typeof TA!=="undefined" && TA.state==="ready") : (GAME.standby && !GAME.complete));
+    const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly;   // ランダムモードのみ・選択パネルの直下
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
-    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }   // 1.5倍
+    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }
     _buddyRandomBtn.visible=true;
-    const q=camera.getWorldQuaternion(new THREE.Quaternion());
+    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.15 - 0.176 - 0.05 - 0.056, 0.9);   // グリッド(中心+0.15,半0.176)の直下
+    return;
+    /* 旧: 左手追従の配置（未使用） */
     if(leftCtrl){   // カードの真上（同X/Z・Yのみカード高さ分だけ上）
         const lo=leftCtrl.getWorldPosition(new THREE.Vector3());
         const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
@@ -1939,24 +1966,17 @@ const buddyGridVR=(function(){
         const keys=dinoKeys();
         const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():keys;
         const um=(typeof buddyMode!=="undefined")?buddyMode:"all";
+        const allK=keys.concat(["dog"]);   // 9つ目＝犬（「選ぶ」でも「ランダム」でも共通）
         for(let i=0;i<9;i++){
-            const R=rectOf(i);
-            if(i<8){
-                const k=keys[i]; if(!k) continue;
-                const acq=(um!=="unlock")||(unlocked.indexOf(k)>=0);
-                const sel=(typeof companionKind!=="undefined" && companionKind===k);
-                ctx.fillStyle=acq?(sel?"#16564a":"#123a3a"):"rgba(40,52,60,0.9)"; rr(ctx,R.x,R.y,R.w,R.h,12); ctx.fill();
-                ctx.fillStyle=acq?"#eafff9":"rgba(180,200,210,0.55)"; ctx.font="bold 23px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-                ctx.fillText(shortName(k), R.x+R.w/2, R.y+R.h/2-8);
-                ctx.font="bold 15px sans-serif"; ctx.fillStyle=acq?"#7fe0cd":"rgba(180,200,210,0.5)";
-                ctx.fillText(acq?"選択可":"未獲得", R.x+R.w/2, R.y+R.h/2+20);
-                if(sel){ ctx.strokeStyle="#ffe066"; ctx.lineWidth=5; rr(ctx,R.x+2,R.y+2,R.w-4,R.h-4,10); ctx.stroke(); }
-            } else {
-                ctx.fillStyle="#4a3d17"; rr(ctx,R.x,R.y,R.w,R.h,12); ctx.fill();
-                ctx.strokeStyle="#ffd86a"; ctx.lineWidth=3; rr(ctx,R.x+2,R.y+2,R.w-4,R.h-4,10); ctx.stroke();
-                ctx.fillStyle="#fff"; ctx.font="bold 21px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-                ctx.fillText("🎲 ランダム", R.x+R.w/2, R.y+R.h/2);
-            }
+            const R=rectOf(i); const k=allK[i]; if(!k) continue;
+            const acq=(um!=="unlock")||(unlocked.indexOf(k)>=0);
+            const sel=(typeof companionKind!=="undefined" && companionKind===k);
+            ctx.fillStyle=acq?(sel?"#16564a":"#123a3a"):"rgba(40,52,60,0.9)"; rr(ctx,R.x,R.y,R.w,R.h,12); ctx.fill();
+            ctx.fillStyle=acq?"#eafff9":"rgba(180,200,210,0.55)"; ctx.font="bold 23px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.fillText(shortName(k), R.x+R.w/2, R.y+R.h/2-8);
+            ctx.font="bold 15px sans-serif"; ctx.fillStyle=acq?"#7fe0cd":"rgba(180,200,210,0.5)";
+            ctx.fillText(acq?"選択可":"未獲得", R.x+R.w/2, R.y+R.h/2+20);
+            if(sel){ ctx.strokeStyle="#ffe066"; ctx.lineWidth=5; rr(ctx,R.x+2,R.y+2,R.w-4,R.h-4,10); ctx.stroke(); }
             if(i===hoverIdx){ ctx.strokeStyle="#ffffff"; ctx.lineWidth=4; rr(ctx,R.x-2,R.y-2,R.w+4,R.h+4,13); ctx.stroke(); }
         }
         tex.needsUpdate=true;
@@ -1964,19 +1984,23 @@ const buddyGridVR=(function(){
     function pick(u,v){ const X=u*W,Y=(1-v)*H; for(let i=0;i<9;i++){ const r=rectOf(i); if(X>=r.x&&X<=r.x+r.w&&Y>=r.y&&Y<=r.y+r.h) return i; } return -1; }
     function setHover(i){ if(i!==hoverIdx){ hoverIdx=i; draw(); } }
     draw();
-    return { mesh, draw, pick, setHover, dinoKeys, get hover(){ return hoverIdx; } };
+    return { mesh, draw, pick, setHover, dinoKeys, allKeys:()=>dinoKeys().concat(["dog"]), get hover(){ return hoverIdx; } };
 })();
+function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセット・ヨーのみ追従（首の縦振りには追従しない）
+    const cwp=camera.getWorldPosition(new THREE.Vector3());
+    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); fwd.y=0;
+    if(fwd.lengthSq()<1e-4) fwd.set(0,0,-1); fwd.normalize();
+    obj.position.copy(cwp).addScaledVector(fwd, dist); obj.position.y += yOff;
+    obj.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(-fwd.x, -fwd.z), 0));   // プレイヤーに正対（水平）
+}
 let _bgKey="";
 function updateBuddyGridVR(){
-    const show = renderer.xr.isPresenting && (typeof isStandby==="function" && isStandby()) && !dogOnly;   // スタンバイのみ・犬のみモードは非表示
+    // リザルトでは選択不可。スタンバイのみ（タイム:ready／コレクション:standby かつ未クリア）
+    const inStandby = (typeof GAME!=="undefined" && GAME.active) && ((GAME.mode==="time") ? (typeof TA!=="undefined" && TA.state==="ready") : (GAME.standby && !GAME.complete));
+    const show = renderer.xr.isPresenting && inStandby && !dogOnly;
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;
-    const q=camera.getWorldQuaternion(new THREE.Quaternion());
-    const cwp=camera.getWorldPosition(new THREE.Vector3());
-    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
-    const right=new THREE.Vector3(1,0,0).applyQuaternion(q);
-    buddyGridVR.mesh.position.copy(cwp).addScaledVector(fwd,0.9).addScaledVector(right,0.45).add(new THREE.Vector3(0,-0.02,0));   // 右手前方の空間に固定（左手図鑑と分離）
-    buddyGridVR.mesh.quaternion.copy(q);
+    placeYawFront(buddyGridVR.mesh, 0.15, 0.9);   // 正面・やや上・ヨーのみ追従（ピッチ非追従）
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
     if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
 }
@@ -2177,7 +2201,7 @@ function makeTradingCardTex(idx){
     else { c.fillStyle="rgba(150,120,60,.5)"; c.font="bold 150px sans-serif"; c.fillText(curTarget==="dino"?"🦖":"？", 256, 290); }
     tex.needsUpdate=true; return tex;
 }
-function closeHologram(){ if(holo&&holo.group&&holo.group.parent) holo.group.parent.remove(holo.group); holo=null; }
+function closeHologram(){ if(holo&&holo.group&&holo.group.parent) holo.group.parent.remove(holo.group); holo=null; if(typeof setSceneDim==="function") setSceneDim(false); }
 // 左手をコントローラーのように扱う：手首回転をRoll/Pitch/Yawへ分解して倍率変更
 const _YAXIS = new THREE.Vector3(0,1,0);
 const HOLO_AMP_ROLL = 1.5;                        // Roll(z)の倍率
@@ -2234,6 +2258,7 @@ function buildHologram(idx){
     } else g.userData.card=card;
     scene.add(g);
     holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
+    if(typeof setSceneDim==="function") setSceneDim(true);   // 図鑑カード表示中は他を暗転（図鑑/カード/ホログラムは非ライト材質で明るいまま）
 }
 // 毎フレーム：左手の位置に追従。カードは常にプレイヤーを向く。モデルは左手の角度で回る
 function updateHologram(){
@@ -3138,6 +3163,7 @@ function reloadDinoCache(){ if(typeof _dinoCacheB==="undefined") return;   // �
   if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
   const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
   if(c)c.oninput=()=>setWorldZ(+c.value); if(d)d.onchange=()=>setWorldZ(+d.value);
+  document.querySelectorAll("#wsQuick .szq").forEach(b=>b.onclick=()=>{ const n=+b.dataset.sz; if(typeof setWorldX==="function"){ setWorldX(n); setWorldZ(n); } });   // 10×10〜50×50 かんたん設定（X=Z=正方形）
   updateWorldSizeUI(); }
 updateSiteBtn();
 // おすすめ設定の初期適用（既定オン・発掘対象=既定の出土品）
@@ -3353,7 +3379,7 @@ const worldHud=(function(){
                     else { im.addEventListener("load", ()=>{ if(colData===d && colPage===0) worldHud.renderCollectPage(); }, {once:true}); }
                     if(dogOnly){ if(GAME.dogLvMsg){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText(GAME.dogLvMsg,384,244+875+30); } }   // 犬のみ：レベルアップ表示
                     else if(curTarget!=="dino"){ const dn=(typeof DINOS!=="undefined"&&DINOS[d.card.idx])?(DINOS[d.card.idx].fullName||DINOS[d.card.idx].label||"").replace(/^\S+\s*/,""):"";
-                        ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" を手に入れた！",384,244+875+30); }   // 画像の下
+                        ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" が加わった！",384,244+875+30); }   // 画像の下
                 }
                 if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.8)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でスタンバイに戻る",384,1180); }
             } else {
@@ -3406,7 +3432,7 @@ const worldHud=(function(){
                     else { im.addEventListener("load", ()=>{ if(resData===d && resPage===0) worldHud.renderResultPage(); }, {once:true}); }
                     if(dogOnly){ if(GAME.dogLvMsg){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText(GAME.dogLvMsg,384,244+875+30); } }   // 犬のみ：レベルアップ表示
                     else if(tg!=="dino"){ const dn=(typeof DINOS!=="undefined"&&DINOS[d.calc.card.idx])?(DINOS[d.calc.card.idx].fullName||DINOS[d.calc.card.idx].label||"").replace(/^\S+\s*/,""):"";
-                        ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" を手に入れた！",384,244+875+30); }   // 画像の下
+                        ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" が加わった！",384,244+875+30); }   // 画像の下
                 }
                 if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でスタンバイに戻る",384,1180); }
             } else {
@@ -3480,6 +3506,16 @@ function updateWorldHud(){
         return;
     }
     worldHud.mesh.scale.set(1,1,1);
+    if(renderer.xr.isPresenting){
+        // ②カウントダウン等：正面・ヨーのみ追従（首の縦振りには追従しない）
+        const yaw=Math.atan2(dir.x, dir.z);
+        const hdir=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+        const eyeY=cam.y, dist=2.2;
+        const p=new THREE.Vector3(cam.x+hdir.x*dist, eyeY, cam.z+hdir.z*dist);
+        worldHud.mesh.position.lerp(p, 0.18);
+        worldHud.mesh.lookAt(new THREE.Vector3(cam.x, eyeY, cam.z));   // 水平にプレイヤーへ正対（傾かない）
+        return;
+    }
     const p=cam.clone().addScaledVector(dir, 2.2);
     worldHud.mesh.position.lerp(p, 0.18);
     worldHud.mesh.lookAt(cam);
@@ -4766,9 +4802,9 @@ function onRightPressEdge(){
         const hit=_dexRay.intersectObject(buddyGridVR.mesh,false)[0];
         if(hit&&hit.uv){
             const ci=buddyGridVR.pick(hit.uv.x,hit.uv.y);
-            if(ci===8){ const kk=drawRandomCompanion(); showBuddyCardVR(kk); buddyGridVR.draw(); vibrate(90,0.8); return; }   // 🎲ランダム
-            if(ci>=0){                                    // 恐竜セル：獲得済みだけ選択可、未獲得は無反応
-                const keys=buddyGridVR.dinoKeys(); const k=keys[ci];
+            if(ci>=0){
+                if(typeof buddyRandom!=="undefined" && buddyRandom) return;   // ランダムモードは一覧から選べない（下のランダムボタンで決定）
+                const keys=buddyGridVR.allKeys(); const k=keys[ci];   // 0-7=恐竜, 8=犬
                 const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():keys;
                 const acq=(typeof buddyMode==="undefined"||buddyMode!=="unlock")||unlocked.indexOf(k)>=0;
                 if(k && acq){ setCompanion(k); showBuddyCardVR(k); buddyGridVR.draw(); vibrate(70,0.6); }
