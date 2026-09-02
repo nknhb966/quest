@@ -1006,10 +1006,17 @@ sun.position.set(30, 60, 20); scene.add(sun);
 const _ambLight=new THREE.AmbientLight(0x404060, 0.5); scene.add(_ambLight);
 const _lightBase={ hemi:1.1, sun:1.4, amb:0.5 };   // 元の明るさ
 let _sceneDimmed=false;
-function setSceneDim(on){   // 発掘図鑑のカード（ホログラム）表示中は、図鑑/カード/ホログラム(非ライト材質)以外を暗転
+function setSceneDim(on){   // 発掘図鑑のカード（ホログラム）表示中は、図鑑/カード/ホログラム以外を暗転
     on=!!on; if(on===_sceneDimmed) return; _sceneDimmed=on;
-    const k = on ? 0.25 : 1.0;   // うっすら見える程度まで落とす
+    const k = on ? 0.25 : 1.0;   // 3Dシーン（発掘済みモデル等）はライトを落として暗転
     _hemiLight.intensity=_lightBase.hemi*k; sun.intensity=_lightBase.sun*k; _ambLight.intensity=_lightBase.amb*k;
+    // 非ライトのUI（リザルトパネル・相棒えらびパネル・相棒カード・ランダムボタン）は材質を暗くティントして暗転
+    const tint = on ? 0x4a4a4a : 0xffffff;
+    const setCol=(m)=>{ if(m && m.material && m.material.color) m.material.color.setHex(tint); };
+    if(typeof worldHud!=="undefined" && worldHud.mesh) setCol(worldHud.mesh);
+    if(typeof buddyGridVR!=="undefined" && buddyGridVR.mesh) setCol(buddyGridVR.mesh);
+    if(typeof _buddyCardVR!=="undefined") setCol(_buddyCardVR);
+    if(typeof _buddyRandomBtn!=="undefined") setCol(_buddyRandomBtn);
 }
 const stage = new THREE.Group(); scene.add(stage);   // プレイヤー以外の全コンテンツ（高さ調整でまとめて上下）
 
@@ -2088,6 +2095,7 @@ const dexPanel=(function(){
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, depthTest:true});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.375), mat);
     mesh.position.set(0,0.10,-0.06);
+    mesh.renderOrder=1100;   // 相棒えらびパネル(1000)より手前に描画（深度の見え方を正常化）
     dexHolder.add(mesh);
     const imgs=ART_IMGS.map(src=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>draw(); im.src=src; return im; });
     function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -2233,12 +2241,14 @@ function buildHologram(idx){
     const g=new THREE.Group();
     const card=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.9),
         new THREE.MeshBasicMaterial({map:cardTexture((typeof GAME!=="undefined"&&GAME.digTarget)?GAME.digTarget:curTarget, idx), transparent:true, opacity:0.98, side:THREE.DoubleSide, toneMapped:false, depthTest:true, depthWrite:false}));
-    card.position.set(0.05,0.34,-0.2); g.add(card);   // 右へ+0.2m（プレイヤー基準）
+    card.position.set(0.05,0.34,-0.2); card.renderOrder=1100; g.add(card);   // 右へ+0.2m・相棒パネル(1000)より手前
     let dino=null, art=null;
     if(curTarget==="dino"){ try{
         const cached=dinoDigModels[idx];
         dino = cached ? cloneCont(cached) : makeDigDino(DINOS[idx]);   // キャッシュはuserData退避してclone（構造そのまま・フリーズ回避）
         dino.visible=true; makeFit(dino, dinoHoloH(idx));
+        const _pv=dino.userData.model||dino;   // ホログラムは標準姿勢に（アニメ中の脚/尾/翼/首を中立へリセット）
+        if(_pv&&_pv.userData){ if(_pv.userData.head)_pv.userData.head.rotation.set(0,0,0); if(_pv.userData.tail)_pv.userData.tail.rotation.set(0,0,0); (_pv.userData.wings||[]).forEach(w=>w&&w.rotation.set(0,0,0)); (_pv.userData.legs||[]).forEach(p=>p&&p.rotation.set(0,0,0)); }
     }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.set(1,1,1); }  // 実寸（オリジナル）：フィット倍率を解除
     const model = dino || art;
@@ -2246,11 +2256,16 @@ function buildHologram(idx){
         model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
-        // 元の色のまま（材質は複製して共有素材を汚さない）。深度テストで自然に手前へ
+        // ホログラムはアンリット化＝暗転（ライト低下）の影響を受けず明るいまま。相棒パネルより手前(renderOrder)
         model.traverse(o=>{ if(o.isMesh && o.material){
             const wasArr=Array.isArray(o.material);
-            const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.depthTest=true; c.depthWrite=true; return c; });
-            o.material=wasArr?arr:arr[0];
+            const arr=(wasArr?o.material:[o.material]).map(m=>new THREE.MeshBasicMaterial({
+                map:m.map||null, vertexColors:!!m.vertexColors,
+                color:(m.color&&m.color.clone)?m.color.clone():new THREE.Color(0xffffff),
+                side:(m.side!==undefined)?m.side:THREE.FrontSide,
+                transparent:!!m.transparent, opacity:(m.opacity!==undefined)?m.opacity:1,
+                toneMapped:false, depthTest:true, depthWrite:true }));
+            o.material=wasArr?arr:arr[0]; o.renderOrder=1100;
         }});
         const holoH = dino ? dinoHoloH(idx) : 0.5;
         const nearBias = dino ? Math.max(0, (0.5 - holoH)) * 1.1 : 0;   // 小さいほどプレイヤー側へ（最大約+0.5m）
@@ -3355,7 +3370,7 @@ const worldHud=(function(){
         drawCollectResult(time, list, card){   // コレクションのリザルト（クリアタイム／TOP5／カード）
             colData={time, list, card}; colPage=(typeof cardShown!=="undefined"&&!cardShown)?1:0; this.renderCollectPage();
         },
-        toggleCollectPage(){ if(!colData||(typeof cardShown!=="undefined"&&!cardShown)) return colPage; colPage=colPage?0:1; this.renderCollectPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return colPage; },
+        toggleCollectPage(){ if(typeof holo!=="undefined"&&holo) return colPage; if(!colData||(typeof cardShown!=="undefined"&&!cardShown)) return colPage; colPage=colPage?0:1; this.renderCollectPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return colPage; },
         collectPage(){ return colPage; },
         renderCollectPage(){
             if(!colData) return; const d=colData;
@@ -3407,7 +3422,7 @@ const worldHud=(function(){
             }
             tex.needsUpdate=true; mesh.visible=true;
         },
-        toggleResultsPage(){ if(typeof cardShown!=="undefined"&&!cardShown) return resPage; resPage=resPage?0:1; this.renderResultPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return resPage; },
+        toggleResultsPage(){ if(typeof holo!=="undefined"&&holo) return resPage; if(typeof cardShown!=="undefined"&&!cardShown) return resPage; resPage=resPage?0:1; this.renderResultPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return resPage; },
         resultPage(){ return resPage; },
         renderResultPage(){
             if(!resData) return; const d=resData;
@@ -3771,6 +3786,7 @@ function pickByRarityUnowned(baseRar){
 }
 function taAdvance(){
     const now=performance.now();
+    if((typeof holo!=="undefined"&&holo) && (GAME.complete || TA.state==="results")) return true;   // ホログラム表示中はリザルト→スタンバイに戻さない（先にカードを閉じる）
     if(TA.lockUntil && now<TA.lockUntil) return true;    // 連続入力の取りこぼし防止
     // XR入室直後、高さが安定するまでは開始（①→②）を受け付けない
     const heightPending = renderer.xr.isPresenting && GAME._heightReady===false;
@@ -4794,8 +4810,8 @@ function onRightPressEdge(){
         _dexRay.set(o,d);
         if(_dexRay.intersectObject(_buddyCardVR,false).length){ _buddyCardVR.visible=false; return; }
     }
-    // スタンバイ中の「相棒えらび」パネル(3×3)を指していれば選択/ランダム（右トリガー）
-    if(typeof buddyGridVR!=="undefined" && buddyGridVR.mesh.visible && rightCtrl){
+    // スタンバイ中の「相棒えらび」パネル(3×3)を指していれば選択/ランダム（右トリガー）。ホログラム表示中は無効
+    if(typeof buddyGridVR!=="undefined" && buddyGridVR.mesh.visible && rightCtrl && !(typeof holo!=="undefined"&&holo)){
         const o=new THREE.Vector3(); rightCtrl.getWorldPosition(o);
         const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
         _dexRay.set(o,d);
@@ -4813,7 +4829,7 @@ function onRightPressEdge(){
         }
     }
     // スタンバイ中のランダムボタンを指していれば、ランダム抽選
-    if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible && rightCtrl){
+    if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible && rightCtrl && !(typeof holo!=="undefined"&&holo)){
         const o=new THREE.Vector3(); rightCtrl.getWorldPosition(o);
         const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
         _dexRay.set(o,d);
