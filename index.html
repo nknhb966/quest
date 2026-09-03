@@ -269,6 +269,13 @@
           <button data-v="on">🔄 持ち替える</button>
         </div>
       </div>
+      <div class="opt wide" id="optHoloFreeze" style="display:none">
+        <div class="lbl">図鑑カード表示中の時間（カウントダウン/制限時間）</div>
+        <div class="seg" id="segHoloFreeze">
+          <button data-v="on" class="on">⏸ 止まる</button>
+          <button data-v="off">▶ 止まらない</button>
+        </div>
+      </div>
       <div class="opt wide" id="optMode">
         <div class="lbl">モード</div>
         <div class="seg" id="segMode">
@@ -2893,6 +2900,7 @@ let dogCelebrateT=0;
 const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
 // 犬に「聞く」＝場所ヒント。信頼度に応じて当たり/はずれ。教えた場所へ行って少し待つ。
 function askDog(){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
     if(GAME.complete) return;   // コンプリート後は反応しない
     if(!GAME.active) return;
     // タイムアタックの計測中以外は「終わったよ」の反応にする
@@ -3027,6 +3035,7 @@ document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document
 // ===== おすすめ設定 =====
 let recoOn=true;   // おすすめ設定（既定オン）
 let toolSwapAllowed=false;   // 発掘道具の持ち替え（既定：持ち替えない）。おすすめオフのときだけメニューで変更可
+let holoFreezeTime=true;     // 図鑑カード表示中に時間を止める（既定：止まる）。おすすめオフのときだけ変更可
 let starEnabled=false;   // スターブロック（既定：なし＝出土品に合わせる）
 let cardShown=true;      // 獲得カード表示（既定：表示）
 let digPosRandom=true;    // サイト表示×恐竜系の発掘場所（true=ランダム/false=固定）。既定ランダム
@@ -3081,6 +3090,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optDogLevel",false); show("optBuddyPool",false); show("optSite",false); show("optStar",false); show("optCardShow",false);
         show("optDigPos",false); show("optTimeLimit",false);
         show("optToolSwap",false); toolSwapAllowed=false; segSelect("segToolSwap","off");   // オンは非表示＝必ず持ち替えない
+        show("optHoloFreeze",false); holoFreezeTime=true; segSelect("segHoloFreeze","on");   // オンは非表示＝必ず止まる
         setTimeLimit(90);   // おすすめオンは90秒固定
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
@@ -3092,6 +3102,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optSite",true); show("optStar",true); show("optCardShow",true);
         show("optDigPos", (target!=="artifact") && siteVisible);   // 恐竜系×サイト表示のみ
         show("optToolSwap", true);   // おすすめオフのときだけ表示・切替可
+        show("optHoloFreeze", true);
         show("optTimeLimit", chosenMode==="time");   // タイムアタック時のみ
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
@@ -3111,6 +3122,7 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
 });
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
 document.querySelectorAll("#segToolSwap button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segToolSwap button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); toolSwapAllowed=(b.dataset.v==="on"); });
+document.querySelectorAll("#segHoloFreeze button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segHoloFreeze button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); holoFreezeTime=(b.dataset.v==="on"); });
 document.querySelectorAll("#segCardShow button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segCardShow button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); cardShown=(b.dataset.v==="on"); });
 document.querySelectorAll("#segDigPos button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDigPos button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); digPosRandom=(b.dataset.v==="random"); });
 document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); withParamLoading(()=>{ onDigTargetChosen(b.dataset.v); }); });
@@ -4166,6 +4178,7 @@ function updateBlockGlow(now){
     }
 }
 function doDig(t){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
     t.progress += companionStats().power;   // POWER:掘る力
     sfxDig();
     spawnDirt(t.pos, 8);
@@ -4312,6 +4325,7 @@ function specialFlash(col){
 }
 // 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
 function discoverTarget(t, silent){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
     if(t.discovered) return;
     t.discovered=true; t.marker.visible=true;
     petBoost=0;   // 発掘ポイントに連れて行ってもらったら確率は初期状態（低）に戻す
@@ -4389,6 +4403,7 @@ const PET_LINES=["うれしいワン！","もっと なでて ワン♪","えへ
 function currentHitProb(){ let base=0.5; const tg=GAME.targets.find(x=>!x.discovered); if(tg&&tg.diff) base=tg.diff.dogRel; return Math.min(1, base+petBoost); }
 let lastPetLine="", dogSpinT=0, dogTailWagT=0;
 function petDog(){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
     if(GAME.complete) return;   // コンプリート後は反応しない
     if(GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil) return;   // 喜びセリフ中は撫でられない（掘り優先）
     if(petCooldown>0) return;
@@ -4605,6 +4620,12 @@ renderer.setAnimationLoop(()=>{
         // ── 犬 ──
         updateDog(dt, now);
 
+        // 図鑑カード表示中（暗転中）は、設定に応じてカウントダウン/制限時間を止める
+        if((typeof holo!=="undefined"&&holo) && holoFreezeTime){
+            if(isFinite(GAME.endT)) GAME.endT += dt*1000;   // 制限時間を進めない
+            if(TA.cdEnd) TA.cdEnd += dt*1000;               // カウントダウンも進めない
+        }
+
         // ── ②カウントダウンの進行（両モード共通）──
         if(TA.state==="countdown"){
             const left=TA.cdEnd-now;
@@ -4662,22 +4683,28 @@ renderer.setAnimationLoop(()=>{
 /* VR移動：左スティックで前後左右、右スティックXでスナップ回転
    右中指グリップ押下中は、右スティック 上下＝ワールド高さ／左右＝相棒との距離 を調整 */
 let snapCooldown=0;
-function handleFieldLock(){   // 全フェーズ：左トリガー＋中指グリップ＋Y長押しでフィールド固定をトグル
+function handleFieldLock(){   // 全フェーズ：右手グリップ+トリガー ＋ 左手グリップ+トリガー ＋ 左Y 長押しでフィールド固定をトグル
     const s=renderer.xr.getSession(); if(!s) return;
+    let ly=false, lgrip=false, ltrig=false, rgrip=false, rtrig=false;
     for(const src of s.inputSources){
-        if(src.handedness!=="left" || !src.gamepad) continue;
-        const y=src.gamepad.buttons[5]?.pressed ?? false;
-        const grip=src.gamepad.buttons[1]?.pressed ?? false;
-        const trig=src.gamepad.buttons[0]?.pressed ?? false;
-        if(y && trig && grip){
-            if(!GAME._flDown){ GAME._flDown=performance.now(); GAME._flFired=false; }
-            if(!GAME._flFired && performance.now()-(GAME._flDown||0)>800){
-                GAME._flFired=true; GAME.moveLock=!GAME.moveLock;
-                vibrate(220,0.95); chord(GAME.moveLock?[392,523,659]:[659,523,392],0.06,"triangle",0.5);
-                showToast(GAME.moveLock?"フィールド固定：移動・回転をロックしました":"フィールド固定を解除しました");
-            }
-        } else { GAME._flDown=0; GAME._flFired=false; }
+        if(!src.gamepad) continue;
+        if(src.handedness==="left"){
+            ly=src.gamepad.buttons[5]?.pressed ?? false;
+            lgrip=src.gamepad.buttons[1]?.pressed ?? false;
+            ltrig=src.gamepad.buttons[0]?.pressed ?? false;
+        } else if(src.handedness==="right"){
+            rgrip=src.gamepad.buttons[1]?.pressed ?? false;
+            rtrig=src.gamepad.buttons[0]?.pressed ?? false;
+        }
     }
+    if(ly && lgrip && ltrig && rgrip && rtrig){   // 両手グリップ+トリガー ＋ 左Y
+        if(!GAME._flDown){ GAME._flDown=performance.now(); GAME._flFired=false; }
+        if(!GAME._flFired && performance.now()-(GAME._flDown||0)>800){
+            GAME._flFired=true; GAME.moveLock=!GAME.moveLock;
+            vibrate(220,0.95); chord(GAME.moveLock?[392,523,659]:[659,523,392],0.06,"triangle",0.5);
+            showToast(GAME.moveLock?"フィールド固定：移動・回転をロックしました":"フィールド固定を解除しました");
+        }
+    } else { GAME._flDown=0; GAME._flFired=false; }
 }
 function handleVRLocomotion(dt){
     const s=renderer.xr.getSession(); if(!s) return;
