@@ -945,6 +945,7 @@ function unlockAudio(){ if(audioCtx.state==="suspended") audioCtx.resume(); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio));
 
 function beep(freq, dur=0.09, vol=0.3, type="sine"){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）は音不要
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
     o.connect(g); g.connect(audioCtx.destination); o.type=type;
     o.frequency.setValueAtTime(freq, audioCtx.currentTime);
@@ -953,6 +954,7 @@ function beep(freq, dur=0.09, vol=0.3, type="sine"){
     o.start(); o.stop(audioCtx.currentTime+dur);
 }
 function chord(freqs, step=0.06, type="triangle", vol=0.4){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）は音不要
     freqs.forEach((f,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
         o.connect(g); g.connect(audioCtx.destination); o.type=type;
         o.frequency.setValueAtTime(f, audioCtx.currentTime+i*step);
@@ -1914,8 +1916,8 @@ function updateBuddyCardVR(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     if(renderer.xr.isPresenting && inStandby && typeof placeYawFront==="function"){
         _buddyCardVR.scale.setScalar(1.875);   // 現状(1.25)の1.5倍
-        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? 0.9 : 0.72;   // 一番上（ランダム時はカードをひくの上／選ぶ時は相棒えらびの上）
-        placeYawFront(_buddyCardVR, yOff, 2.2);   // 奥・ヨーのみ追従（選択パネルと同じ挙動）
+        const yOff = 0.0;   // プレイヤー正面の中央（上下追従なし・左右追従あり）
+        placeYawFront(_buddyCardVR, yOff, 2.2);   // 正面・ヨーのみ追従
         return;
     }
     _buddyCardVR.scale.setScalar(1);   // スタンバイ以外は等倍・従来配置
@@ -1944,12 +1946,10 @@ function updateBuddyRandomBtn(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly;   // ランダムモードのみ・選択パネルの直下
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
-    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }
-    _buddyRandomBtn.visible=true;
-    _buddyRandomBtn.scale.setScalar(1.25);
-    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.08, 2.2);   // 中段（カードとグリッドの間）
+    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; dexHolder.add(_buddyRandomBtn); _buddyRandomBtn.position.set(0.70, 0.30, -0.06); _buddyRandomBtn.scale.setScalar(1.0); }   // 左手追従（図鑑の右70cm）・上段（カードをひく）
+    _buddyRandomBtn.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     return;
-    /* 旧: 左手追従の配置（未使用） */
+    /* 旧: 正面配置（未使用） */
     if(leftCtrl){   // カードの真上（同X/Z・Yのみカード高さ分だけ上）
         const lo=leftCtrl.getWorldPosition(new THREE.Vector3());
         const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
@@ -1975,7 +1975,8 @@ const buddyGridVR=(function(){
     const tex=new THREE.CanvasTexture(cv);
     try{ tex.colorSpace=THREE.SRGBColorSpace; }catch(_){ try{ tex.encoding=THREE.sRGBEncoding; }catch(__){} }
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.353), new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthTest:true}));
-    mesh.renderOrder=1000; mesh.visible=false; scene.add(mesh);
+    mesh.renderOrder=1000; mesh.visible=false;
+    dexHolder.add(mesh); mesh.position.set(0.70, 0.05, -0.06); mesh.scale.setScalar(0.882);   // 左手追従（図鑑の右70cm）・幅=図鑑と同じ0.30・下段（相棒えらび）
     function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
     const cols=3,rows=3,pad=28,top=170,gx=32;
     const cw=(W-gx*2-pad*(cols-1))/cols, chh=(H-top-32-pad*(rows-1))/rows;
@@ -2026,9 +2027,7 @@ function updateBuddyGridVR(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     const show = renderer.xr.isPresenting && inStandby && !dogOnly;
     if(!show){ buddyGridVR.mesh.visible=false; return; }
-    buddyGridVR.mesh.visible=true;
-    buddyGridVR.mesh.scale.setScalar(2.625);              // 現状(1.75)の1.5倍
-    placeYawFront(buddyGridVR.mesh, -0.5, 2.2);          // 一番下（並び順：カード→カードをひく→相棒えらび）・奥・ヨーのみ追従
+    buddyGridVR.mesh.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
     if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
 }
@@ -2049,6 +2048,7 @@ const bubble = (function(){
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:false}));
+    spr.renderOrder=1000;   // 相棒カード/相棒えらび(1000)と同順にして距離で正しく前後判定（深度テスト正常化）
     const _baseSX=5.28/buddyScale, _baseSY=1.6/buddyScale;
     spr.scale.set(_baseSX,_baseSY,1); spr.position.set(0,3.3,-1.0); spr.visible=false;   // 少し上＆奥（相棒の後ろ側）へ
     dog.add(spr); bubbleSpr=spr;
@@ -2956,6 +2956,7 @@ function _pulseGamepad(gp, dur, intensity){
     return false;
 }
 function vibrate(dur, intensity){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）はバイブ不要
     const s=renderer.xr.getSession();
     if(!s){ if(navigator.vibrate){ try{ navigator.vibrate(Math.max(35,Math.round(dur*1.6))); }catch(e){} } return; }
     let any=false;
@@ -3116,7 +3117,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optDigPos", (target!=="artifact") && siteVisible);   // 恐竜系×サイト表示のみ
         show("optToolSwap", true);   // おすすめオフのときだけ表示・切替可
         show("optHoloFreeze", true);
-        show("optRealShort", true);
+        show("optRealShort", chosenDigTarget!=="artifact");   // 恐竜系のときだけ表示
         show("optTimeLimit", chosenMode==="time");   // タイムアタック時のみ
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
@@ -3187,6 +3188,7 @@ function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); i
 { document.querySelectorAll("#segSiteSize button").forEach(b=>b.onclick=()=>{
     document.querySelectorAll("#segSiteSize button").forEach(x=>x.classList.toggle("on", x===b));
     siteMode = +b.dataset.v;   // 倍率1〜5
+    if(typeof updateRsInfo==="function") updateRsInfo();   // サイト倍率変更でも原寸比を更新
     withParamLoading(()=>{
         rescaleSite();                       // サイトを選択倍率でフィットし直す
         regenerateCustomSpots();             // 発掘点の再配置（カスタム時）
@@ -4393,6 +4395,7 @@ function focusTarget(){
     return best;
 }
 function updateCoach(dt){
+    if(typeof holo!=="undefined"&&holo){ if(typeof bubbleSpr!=="undefined"&&bubbleSpr) bubbleSpr.visible=false; return; }   // 図鑑カード表示中（暗転中）は相棒のセリフ不要（非表示）
     // 掘り当てなどの喜びセリフ（found/done/again 等・force表示）を言っている間は、
     // コーチングの hold()（「近くに来て」等）で上書きしない。hold() は dogHappyUntil を見ないため必ずここで止める。
     if(typeof GAME!=="undefined" && GAME.dogHappyUntil && performance.now() < GAME.dogHappyUntil) return;
