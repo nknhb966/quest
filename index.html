@@ -1999,7 +1999,7 @@ const buddyGridVR=(function(){
 })();
 function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセット・ヨーのみ追従（首の縦振りには追従しない）
     const cwp=camera.getWorldPosition(new THREE.Vector3());
-    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); fwd.y=0;
+    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); fwd.y=0;   // ワールド回転（スナップ回転込み）で正面を算出
     if(fwd.lengthSq()<1e-4) fwd.set(0,0,-1); fwd.normalize();
     obj.position.copy(cwp).addScaledVector(fwd, dist); obj.position.y += yOff;
     obj.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(-fwd.x, -fwd.z), 0));   // プレイヤーに正対（水平）
