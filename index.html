@@ -1779,7 +1779,7 @@ function drawRandomCompanion(){
     const pick=keys[(Math.random()*keys.length)|0] || "dog";
     setCompanion(pick); return pick;
 }
-// スタンバイ中だけ相棒選択（デスクトップ/スマホ）。VRは grip+トリガー+X/Y
+// スタンバイ中だけ相棒選択（デスクトップ/スマホ）。VRは「相棒えらび」パネルを右手レイ＋右トリガーで選択
 function isStandby(){ try{ return (typeof GAME!=="undefined" && GAME.active && (
     (GAME.mode==="time" && typeof TA!=="undefined" && (TA.state==="ready"||TA.state==="free"||TA.state==="results")) ||
     (GAME.mode!=="time" && (GAME.standby || GAME.complete))
@@ -2010,8 +2010,8 @@ function updateBuddyGridVR(){
     const show = renderer.xr.isPresenting && inStandby && !dogOnly;
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;
-    buddyGridVR.mesh.scale.setScalar(1.25);               // 1.25倍
-    placeYawFront(buddyGridVR.mesh, 0.65, 2.2);           // リザルトパネルくらい奥・約+50cm上・ヨーのみ追従
+    buddyGridVR.mesh.scale.setScalar(1.75);               // 1.75倍
+    placeYawFront(buddyGridVR.mesh, 0.8, 2.2);            // 上側へ（ランダムボタン/相棒カードと重ならない高さ）・奥・ヨーのみ追従
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
     if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
 }
@@ -2260,10 +2260,11 @@ function buildHologram(idx){
         model.visible=true; model.updateMatrixWorld(true);   // 測る前に必ず行列更新
         const bb=new THREE.Box3().setFromObject(model);
         model.position.x-=(bb.min.x+bb.max.x)/2; model.position.y-=(bb.min.y+bb.max.y)/2; model.position.z-=(bb.min.z+bb.max.z)/2;  // 中心を原点に
-        // 暗幕方式：ホログラムはライトを落とさないので通常のライト材質のまま＝通常の明るさ（陰影あり）。暗幕より手前(renderOrder)で明るく見える
+        // 暗幕方式：ホログラムはライト材質のまま＝通常の明るさ（陰影あり）。暗幕(透明・renderOrder1050)より手前に描くため、
+        // モデルも透明パス(transparent)＋renderOrder1100 にして暗幕の後に描画（不透明のままだと暗幕に覆われて暗くなる）。
         model.traverse(o=>{ if(o.isMesh && o.material){
             const wasArr=Array.isArray(o.material);
-            const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.depthTest=true; c.depthWrite=true; return c; });
+            const arr=(wasArr?o.material:[o.material]).map(m=>{ const c=m.clone(); c.transparent=true; c.opacity=(m.opacity!==undefined?m.opacity:1); c.depthTest=true; c.depthWrite=true; return c; });
             o.material=wasArr?arr:arr[0]; o.renderOrder=1100;
         }});
         const holoH = dino ? dinoHoloH(idx) : 0.5;
@@ -4934,16 +4935,7 @@ function handleVRDig(){
             const grip=src.gamepad.buttons[1]?.pressed ?? false;   // 左中指グリップ
             const trig=src.gamepad.buttons[0]?.pressed ?? false;   // 左人差し指トリガー
             const x=src.gamepad.buttons[4]?.pressed ?? false;
-            const selMode = grip && trig && (typeof isStandby==="function" && isStandby());   // 相棒選択はスタンバイ中のみ（スタート後は変更不可）
-            if(selMode){
-                if(!GAME._prevSel){ GAME._buddyIdx=0; setCompanion("dog"); showBuddyCardVR("dog"); vibrate(60,0.6); }   // 押した瞬間は必ず犬
-                if(!buddyRandom){   // 「えらぶ」時のみ X/Y で切替（ランダム時は無効）
-                    if(x && !GAME._prevX){ const cand=buddyCandidates(); let ci=cand.indexOf(companionKind); ci=(ci+1)%cand.length; const kk=cand[ci]; setCompanion(kk); showBuddyCardVR(kk); vibrate(40,0.5); }   // X＝順（候補内）
-                    if(y && !GAME._prevY){ const cand=buddyCandidates(); let ci=cand.indexOf(companionKind); ci=(ci-1+cand.length)%cand.length; const kk=cand[ci]; setCompanion(kk); showBuddyCardVR(kk); vibrate(40,0.5); }   // Y＝逆（候補内）
-                }
-                GAME._prevX=x; GAME._prevY=y; GAME._prevSel=selMode; return;   // 選択中は通常のX/Y動作をしない
-            }
-            GAME._prevSel=selMode;
+            // 旧・相棒選択（左中指グリップ＋左トリガー＋X/Y）は「相棒えらび」パネルに置き換えたため廃止
             if(y && !GAME._prevY){ GAME._yDownAt=performance.now(); GAME._yFired=false; }
             if(y && !trig && !GAME._yFired && performance.now()-(GAME._yDownAt||0)>800){   // Y長押し（トリガー無し）＝リセット
                 GAME._yFired=true; resetDexAndStandby(grip); vibrate(200,0.95); chord([523,784,1047],0.06,"triangle",0.5);
