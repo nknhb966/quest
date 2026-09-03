@@ -247,14 +247,14 @@
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
 
     <div class="cardgrid">
-      <div class="opt wide">
+      <div class="opt wide" id="optReco">
         <div class="lbl">おすすめ設定（オンにすると、発掘対象に合わせて最適な設定を自動でセットします）</div>
         <div class="seg" id="segReco">
           <button data-v="on" class="on">✅ おすすめ設定オン</button>
           <button data-v="off">⚙️ おすすめ設定オフ</button>
         </div>
       </div>
-      <div class="opt wide">
+      <div class="opt wide" id="optDig">
         <div class="lbl">発掘する対象</div>
         <div class="seg" id="segDig">
           <button data-v="artifact" class="on">🏺 出土品</button>
@@ -282,6 +282,7 @@
           <input id="rsSlider" type="range" min="10" max="50" step="1" value="20" style="flex:1;">
           <input id="rsNum" type="number" min="10" max="50" step="1" value="20" style="width:64px;">
         </div>
+        <div id="rsInfo" style="margin-top:8px; font-size:13px; font-weight:800; color:#7fe0cd; text-align:center;">原寸比：約 1.0倍（実寸）</div>
       </div>
       <div class="opt wide" id="optMode">
         <div class="lbl">モード</div>
@@ -1028,9 +1029,10 @@ function setSceneDim(on){ on=!!on; if(on===_sceneDimmed) return; _sceneDimmed=on
 function updateDimOverlay(){
     if(!_dimOverlay.visible) return;
     const cwp=camera.getWorldPosition(new THREE.Vector3());
-    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+    const wq=camera.getWorldQuaternion(new THREE.Quaternion());   // スナップ回転込み
+    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(wq);
     _dimOverlay.position.copy(cwp).addScaledVector(fwd, 0.6);   // 目の前を覆う（depthTest無効・renderOrderで前後を制御）
-    _dimOverlay.quaternion.copy(camera.quaternion);
+    _dimOverlay.quaternion.copy(wq);
 }
 const stage = new THREE.Group(); scene.add(stage);   // プレイヤー以外の全コンテンツ（高さ調整でまとめて上下）
 
@@ -1912,7 +1914,7 @@ function updateBuddyCardVR(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     if(renderer.xr.isPresenting && inStandby && typeof placeYawFront==="function"){
         _buddyCardVR.scale.setScalar(1.875);   // 現状(1.25)の1.5倍
-        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? -0.75 : -0.55;   // ランダム時はランダムボタンの下／選ぶ時はグリッドの下
+        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? 0.9 : 0.72;   // 一番上（ランダム時はカードをひくの上／選ぶ時は相棒えらびの上）
         placeYawFront(_buddyCardVR, yOff, 2.2);   // 奥・ヨーのみ追従（選択パネルと同じ挙動）
         return;
     }
@@ -1945,7 +1947,7 @@ function updateBuddyRandomBtn(){
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }
     _buddyRandomBtn.visible=true;
     _buddyRandomBtn.scale.setScalar(1.25);
-    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.15, 2.2);   // グリッドの下（サイズは現状維持）
+    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.08, 2.2);   // 中段（カードとグリッドの間）
     return;
     /* 旧: 左手追従の配置（未使用） */
     if(leftCtrl){   // カードの真上（同X/Z・Yのみカード高さ分だけ上）
@@ -2026,7 +2028,7 @@ function updateBuddyGridVR(){
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;
     buddyGridVR.mesh.scale.setScalar(2.625);              // 現状(1.75)の1.5倍
-    placeYawFront(buddyGridVR.mesh, 0.7, 2.2);            // 上側（ランダム/カードと重ならない高さ）・奥・ヨーのみ追従
+    placeYawFront(buddyGridVR.mesh, -0.5, 2.2);          // 一番下（並び順：カード→カードをひく→相棒えらび）・奥・ヨーのみ追従
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
     if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
 }
@@ -2265,9 +2267,11 @@ function buildHologram(idx){
     if(curTarget==="dino"){ try{
         const cached=dinoDigModels[idx];
         dino = cached ? cloneCont(cached) : makeDigDino(DINOS[idx]);   // キャッシュはuserData退避してclone（構造そのまま・フリーズ回避）
-        dino.visible=true; makeFit(dino, dinoHoloH(idx));
-        const _pv=dino.userData.model||dino;   // ホログラムは標準姿勢に（アニメ中の脚/尾/翼/首を中立へリセット）
+        dino.visible=true;
+        const _pv=dino.userData.model||dino;   // 先に標準姿勢へ（アニメ中の脚/尾/翼/首を中立へ）→ その姿勢でフィットするのでサイズが安定
         if(_pv&&_pv.userData){ if(_pv.userData.head)_pv.userData.head.rotation.set(0,0,0); if(_pv.userData.tail)_pv.userData.tail.rotation.set(0,0,0); (_pv.userData.wings||[]).forEach(w=>w&&w.rotation.set(0,0,0)); (_pv.userData.legs||[]).forEach(p=>p&&p.rotation.set(0,0,0)); }
+        dino.updateMatrixWorld(true);
+        makeFit(dino, dinoHoloH(idx));   // 標準姿勢に対して実寸比の高さへフィット
     }catch(_){} }
     else if(artModels[idx]){ art=artModels[idx].clone(); art.position.set(0,0,0); art.rotation.set(0,0,0); art.scale.set(1,1,1); }  // 実寸（オリジナル）：フィット倍率を解除
     const model = dino || art;
@@ -3133,8 +3137,22 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
 document.querySelectorAll("#segToolSwap button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segToolSwap button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); toolSwapAllowed=(b.dataset.v==="on"); });
 document.querySelectorAll("#segHoloFreeze button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segHoloFreeze button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); holoFreezeTime=(b.dataset.v==="on"); });
-function setRealRefShort(v){ v=Math.max(10,Math.min(50,Math.round(v||20))); realRefShort=v; const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.value=v; if(n)n.value=v; }
+function setRealRefShort(v){ v=Math.max(10,Math.min(50,Math.round(v||20))); realRefShort=v; const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.value=v; if(n)n.value=v; if(typeof updateRsInfo==="function") updateRsInfo(); }
+function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短辺/基準）を表示
+    const el=document.getElementById("rsInfo"); if(!el) return;
+    let s;
+    if(typeof customWorldOn==="function" && customWorldOn()) s=Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/realRefShort);
+    else s=Math.max(0.2, ((typeof siteMode!=="undefined"?siteMode:1)||1)*10/realRefShort);
+    el.textContent = "原寸比：約 "+s.toFixed(1)+"倍" + (Math.abs(s-1)<0.06?"（実寸）":"");
+}
 { const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
+// メニュー項目の並び替え（未掲載の optBuddy/optDigPos は現状の相対位置を維持）
+(function(){
+    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","optDigPos","worldSizeOpt","optRealShort"];
+    const first=document.getElementById(order[0]); const parent=first&&first.parentNode; if(!parent) return;
+    order.forEach(id=>{ const el=document.getElementById(id); if(el && el.parentNode===parent) parent.appendChild(el); });   // .cardgridの子は全てoptなので順に末尾へ動かせば指定順になる
+})();
+if(typeof updateRsInfo==="function") updateRsInfo();
 document.querySelectorAll("#segCardShow button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segCardShow button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); cardShown=(b.dataset.v==="on"); });
 document.querySelectorAll("#segDigPos button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDigPos button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); digPosRandom=(b.dataset.v==="random"); });
 document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); withParamLoading(()=>{ onDigTargetChosen(b.dataset.v); }); });
@@ -3186,10 +3204,10 @@ function updateHudReset(){
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ if(GAME.mode!=="time" && GAME.complete) worldHud.toggleCollectPage(); else worldHud.toggleResultsPage(); updateResultBtn(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo(); }
 function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo(); }
 let _worldReloadT=null;
 function scheduleWorldReload(){ if(GAME.active){ reloadDinoCache(); return; }
     document.body.classList.add("loading");   // 変更中はロック
