@@ -1897,9 +1897,9 @@ function updateBuddyCardVR(){
     if(!_buddyCardVR || !_buddyCardVR.visible) return;                 // 自動では消さない（閉じるボタン/スタートまで表示）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     if(renderer.xr.isPresenting && inStandby && typeof placeYawFront==="function"){
-        _buddyCardVR.scale.setScalar(1.25);
-        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? -0.30 : -0.10;   // ランダム時はランダムボタンの下／選ぶ時はグリッドの下
-        placeYawFront(_buddyCardVR, yOff, 2.2);   // 奥・上げ・ヨーのみ追従（選択パネルと同じ挙動）
+        _buddyCardVR.scale.setScalar(1.875);   // 現状(1.25)の1.5倍
+        const yOff = (typeof buddyRandom!=="undefined" && buddyRandom) ? -0.75 : -0.55;   // ランダム時はランダムボタンの下／選ぶ時はグリッドの下
+        placeYawFront(_buddyCardVR, yOff, 2.2);   // 奥・ヨーのみ追従（選択パネルと同じ挙動）
         return;
     }
     _buddyCardVR.scale.setScalar(1);   // スタンバイ以外は等倍・従来配置
@@ -1931,7 +1931,7 @@ function updateBuddyRandomBtn(){
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); }
     _buddyRandomBtn.visible=true;
     _buddyRandomBtn.scale.setScalar(1.25);
-    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.30, 2.2);   // グリッドの直下（奥・上げ・1.25倍）
+    if(typeof placeYawFront==="function") placeYawFront(_buddyRandomBtn, 0.15, 2.2);   // グリッドの下（サイズは現状維持）
     return;
     /* 旧: 左手追従の配置（未使用） */
     if(leftCtrl){   // カードの真上（同X/Z・Yのみカード高さ分だけ上）
@@ -1953,7 +1953,7 @@ function updateBuddyRandomBtn(){
  *   手動選択でもランダムでも同じこのUI。右手レイ＋右トリガーで選択。スタンバイのみ表示。
  * ===================================================== */
 const buddyGridVR=(function(){
-    const W=540,H=560;
+    const W=1080,H=1120;   // 解像度2倍（文字くっきり）
     const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
@@ -1961,18 +1961,19 @@ const buddyGridVR=(function(){
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.353), new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthTest:true}));
     mesh.renderOrder=1000; mesh.visible=false; scene.add(mesh);
     function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
-    const cols=3,rows=3,pad=14,top=86,gx=16;
-    const cw=(W-gx*2-pad*(cols-1))/cols, chh=(H-top-16-pad*(rows-1))/rows;
+    const cols=3,rows=3,pad=28,top=170,gx=32;
+    const cw=(W-gx*2-pad*(cols-1))/cols, chh=(H-top-32-pad*(rows-1))/rows;
     function rectOf(i){ const r=(i/cols)|0,c=i%cols; return {x:gx+c*(cw+pad), y:top+r*(chh+pad), w:cw, h:chh}; }
     function dinoKeys(){ return (typeof COMPANION_ORDER!=="undefined") ? COMPANION_ORDER.filter(k=>k!=="dog") : []; }
     function shortName(k){ const c=COMPANIONS[k]; const s=(c&&c.label)?c.label:k; return s.replace(/^\S+\s+/,""); }
+    function fitFont(text, maxW, base){ let s=base; ctx.font="bold "+s+"px sans-serif"; while(ctx.measureText(text).width>maxW && s>20){ s-=2; ctx.font="bold "+s+"px sans-serif"; } return s; }
     let hoverIdx=-1;
     function draw(){
         ctx.clearRect(0,0,W,H);
-        ctx.fillStyle="rgba(10,26,32,0.95)"; rr(ctx,6,6,W-12,H-12,24); ctx.fill();
-        ctx.strokeStyle="#5ad6c0"; ctx.lineWidth=6; ctx.stroke();   // 発掘図鑑=金枠と区別する青緑枠
-        ctx.fillStyle="#bff4ea"; ctx.font="bold 34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-        ctx.fillText("🐾 相棒えらび", W/2, 44);
+        ctx.fillStyle="rgba(10,26,32,0.95)"; rr(ctx,12,12,W-24,H-24,48); ctx.fill();
+        ctx.strokeStyle="#5ad6c0"; ctx.lineWidth=12; ctx.stroke();   // 発掘図鑑=金枠と区別する青緑枠
+        ctx.fillStyle="#bff4ea"; ctx.font="bold 66px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText("🐾 相棒えらび", W/2, 92);
         const keys=dinoKeys();
         const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():keys;
         const um=(typeof buddyMode!=="undefined")?buddyMode:"all";
@@ -1981,13 +1982,13 @@ const buddyGridVR=(function(){
             const R=rectOf(i); const k=allK[i]; if(!k) continue;
             const acq=(um!=="unlock")||(unlocked.indexOf(k)>=0);
             const sel=(typeof companionKind!=="undefined" && companionKind===k);
-            ctx.fillStyle=acq?(sel?"#16564a":"#123a3a"):"rgba(40,52,60,0.9)"; rr(ctx,R.x,R.y,R.w,R.h,12); ctx.fill();
-            ctx.fillStyle=acq?"#eafff9":"rgba(180,200,210,0.55)"; ctx.font="bold 23px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-            ctx.fillText(shortName(k), R.x+R.w/2, R.y+R.h/2-8);
-            ctx.font="bold 15px sans-serif"; ctx.fillStyle=acq?"#7fe0cd":"rgba(180,200,210,0.5)";
-            ctx.fillText(acq?"選択可":"未獲得", R.x+R.w/2, R.y+R.h/2+20);
-            if(sel){ ctx.strokeStyle="#ffe066"; ctx.lineWidth=5; rr(ctx,R.x+2,R.y+2,R.w-4,R.h-4,10); ctx.stroke(); }
-            if(i===hoverIdx){ ctx.strokeStyle="#ffffff"; ctx.lineWidth=4; rr(ctx,R.x-2,R.y-2,R.w+4,R.h+4,13); ctx.stroke(); }
+            ctx.fillStyle=acq?(sel?"#16564a":"#123a3a"):"rgba(40,52,60,0.9)"; rr(ctx,R.x,R.y,R.w,R.h,24); ctx.fill();
+            ctx.fillStyle=acq?"#eafff9":"rgba(180,200,210,0.55)";
+            fitFont(shortName(k), R.w-24, 52);   // 長い名称は自動縮小して収める
+            ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.fillText(shortName(k), R.x+R.w/2, R.y+R.h/2);   // 名称のみ（発掘済み等のサブテキストは非表示）
+            if(sel){ ctx.strokeStyle="#ffe066"; ctx.lineWidth=10; rr(ctx,R.x+4,R.y+4,R.w-8,R.h-8,20); ctx.stroke(); }
+            if(i===hoverIdx){ ctx.strokeStyle="#ffffff"; ctx.lineWidth=8; rr(ctx,R.x-4,R.y-4,R.w+8,R.h+8,26); ctx.stroke(); }
         }
         tex.needsUpdate=true;
     }
@@ -2010,8 +2011,8 @@ function updateBuddyGridVR(){
     const show = renderer.xr.isPresenting && inStandby && !dogOnly;
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;
-    buddyGridVR.mesh.scale.setScalar(1.75);               // 1.75倍
-    placeYawFront(buddyGridVR.mesh, 0.8, 2.2);            // 上側へ（ランダムボタン/相棒カードと重ならない高さ）・奥・ヨーのみ追従
+    buddyGridVR.mesh.scale.setScalar(2.625);              // 現状(1.75)の1.5倍
+    placeYawFront(buddyGridVR.mesh, 0.7, 2.2);            // 上側（ランダム/カードと重ならない高さ）・奥・ヨーのみ追従
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
     if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
 }
@@ -3225,6 +3226,7 @@ function startGame(desktop){
     setDigTarget(chosenDigTarget);   // 発掘対象を確定（図鑑もこの対象に切替）
     clearDinoReveal();
     closeHologram();
+    if(typeof _buddyCardVR!=="undefined" && _buddyCardVR) _buddyCardVR.visible=false;   // 再入室時は相棒カードを非表示（既定＝非表示。犬はsetCompanion("dog")済み）
     GAME.collectedCount=0; GAME.score=0; GAME.timeLeft=TIME_LIMIT; GAME.endT=performance.now()+TIME_LIMIT*1000;
     GAME.recent.length=0; GAME.doneIdx.clear();
     coachTimer=2; wasDigReady=false;
@@ -3279,6 +3281,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     updateSiteVis(); updatePanelScale();
     placeAtStart();
     clearDinoReveal();
+    if(typeof _buddyCardVR!=="undefined" && _buddyCardVR) _buddyCardVR.visible=false;   // 再入室時は相棒カードを非表示に
     if(!GAME.active) startGame(false);
 });
 renderer.xr.addEventListener("sessionend", ()=>{
