@@ -986,6 +986,7 @@ const sfxComplete = ()=> chord([523,659,784,1047,1319],0.11,"triangle",0.55);
 const sfxTimeUp   = ()=> chord([880,660,440,330],0.15,"sawtooth",0.4);
 // 恐竜の鳴き声（下降するうなり）
 function sfxCry(){
+    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）は覗き込み等の鳴き声も不要
     const t=audioCtx.currentTime;
     [190,150,110].forEach((f,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
         o.type="sawtooth"; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(Math.max(50,f*0.55), t+0.45);
@@ -1946,7 +1947,7 @@ function updateBuddyRandomBtn(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
     const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly;   // ランダムモードのみ・選択パネルの直下
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
-    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; dexHolder.add(_buddyRandomBtn); _buddyRandomBtn.position.set(0.70, 0.30, -0.06); _buddyRandomBtn.scale.setScalar(1.0); }   // 左手追従（図鑑の右70cm）・上段（カードをひく）
+    if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); _buddyRandomBtn.scale.setScalar(1.0); }   // 幅=図鑑と同じ0.30。位置/向きは placeBuddyPanels で毎フレーム設定
     _buddyRandomBtn.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     return;
     /* 旧: 正面配置（未使用） */
@@ -1976,7 +1977,7 @@ const buddyGridVR=(function(){
     try{ tex.colorSpace=THREE.SRGBColorSpace; }catch(_){ try{ tex.encoding=THREE.sRGBEncoding; }catch(__){} }
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.353), new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthTest:true}));
     mesh.renderOrder=1000; mesh.visible=false;
-    dexHolder.add(mesh); mesh.position.set(0.70, 0.05, -0.06); mesh.scale.setScalar(0.882);   // 左手追従（図鑑の右70cm）・幅=図鑑と同じ0.30・下段（相棒えらび）
+    scene.add(mesh); mesh.scale.setScalar(0.882);   // 幅=図鑑と同じ0.30。位置/向きは毎フレーム placeBuddyPanels で設定（プレイヤー向き・図鑑と同距離）
     function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
     const cols=3,rows=3,pad=28,top=170,gx=32;
     const cw=(W-gx*2-pad*(cols-1))/cols, chh=(H-top-32-pad*(rows-1))/rows;
@@ -2022,6 +2023,24 @@ function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセ�
     obj.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(-fwd.x, -fwd.z), 0));   // プレイヤーに正対（水平）
 }
 let _bgKey="";
+function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」を、発掘図鑑と同じ距離・図鑑の右側・プレイヤー向きで配置
+    if(!renderer.xr.isPresenting || !leftCtrl || typeof dexPanel==="undefined") return;
+    const H=camera.getWorldPosition(new THREE.Vector3());
+    const wq=camera.getWorldQuaternion(new THREE.Quaternion());
+    const P=dexPanel.mesh.getWorldPosition(new THREE.Vector3());   // 発掘図鑑の位置
+    const D=Math.max(0.25, P.distanceTo(H));                        // 図鑑とプレイヤーの距離
+    const up=new THREE.Vector3(0,1,0);
+    const camRight=new THREE.Vector3(1,0,0).applyQuaternion(wq); camRight.y=0; if(camRight.lengthSq()<1e-6) camRight.set(1,0,0); camRight.normalize();
+    function place(obj, side, upOff){
+        const t=P.clone().addScaledVector(camRight, side).addScaledVector(up, upOff);   // 図鑑から右へ+上下
+        const dir=t.clone().sub(H); if(dir.lengthSq()<1e-6) return; dir.normalize();
+        obj.position.copy(H).addScaledVector(dir, D);   // 図鑑と同じ距離Dへ
+        const away=obj.position.clone().multiplyScalar(2).sub(H);
+        obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ＝正対
+    }
+    if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.70, -0.12);          // 下段＝相棒えらび（図鑑の右70cm）
+    if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.70, 0.20);   // 上段＝カードをひく
+}
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
@@ -2945,6 +2964,7 @@ function dogCelebrate(){ dogCelebrateT=2.4; }   // ゆっくり数回ジャン�
  * ハプティクス
  * ===================================================== */
 function _pulseGamepad(gp, dur, intensity){
+    if(typeof holo!=="undefined"&&holo) return false;   // 図鑑カード表示中（暗転中）はバイブ不要（全経路をここで停止）
     if(!gp) return false;
     try{ const a=gp.hapticActuators;
         if(a && a.length>0){
@@ -3149,7 +3169,7 @@ function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短�
 { const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
 // メニュー項目の並び替え（未掲載の optBuddy/optDigPos は現状の相対位置を維持）
 (function(){
-    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","optDigPos","worldSizeOpt","optRealShort"];
+    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","optRealShort","worldSizeOpt","optDigPos"];
     const first=document.getElementById(order[0]); const parent=first&&first.parentNode; if(!parent) return;
     order.forEach(id=>{ const el=document.getElementById(id); if(el && el.parentNode===parent) parent.appendChild(el); });   // .cardgridの子は全てoptなので順に末尾へ動かせば指定順になる
 })();
@@ -4692,6 +4712,7 @@ renderer.setAnimationLoop(()=>{
     if(typeof updateBuddyCardVR==="function") updateBuddyCardVR();
     if(typeof updateBuddyRandomBtn==="function") updateBuddyRandomBtn();
     if(typeof updateBuddyGridVR==="function") updateBuddyGridVR();
+    if(typeof placeBuddyPanels==="function") placeBuddyPanels();
     if(typeof updateDimOverlay==="function") updateDimOverlay();
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
