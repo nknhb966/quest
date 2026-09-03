@@ -2023,20 +2023,18 @@ function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセ�
     obj.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(-fwd.x, -fwd.z), 0));   // プレイヤーに正対（水平）
 }
 let _bgKey="";
-function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」を、発掘図鑑と同じ距離・図鑑の右側・プレイヤー向きで配置
+function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」を、発掘図鑑から水平右70cmの固定点に置き、向きだけプレイヤーへ正対
     if(!renderer.xr.isPresenting || !leftCtrl || typeof dexPanel==="undefined") return;
     const H=camera.getWorldPosition(new THREE.Vector3());
-    const wq=camera.getWorldQuaternion(new THREE.Quaternion());
     const P=dexPanel.mesh.getWorldPosition(new THREE.Vector3());   // 発掘図鑑の位置
-    const D=Math.max(0.25, P.distanceTo(H));                        // 図鑑とプレイヤーの距離
     const up=new THREE.Vector3(0,1,0);
-    const camRight=new THREE.Vector3(1,0,0).applyQuaternion(wq); camRight.y=0; if(camRight.lengthSq()<1e-6) camRight.set(1,0,0); camRight.normalize();
+    // 水平右方向はプレイヤーリグ基準（スナップ回転は反映・首振りでは動かない）→ 頭を回しても位置が動かず自然
+    let right=new THREE.Vector3(1,0,0).applyQuaternion(player.getWorldQuaternion(new THREE.Quaternion())); right.y=0;
+    if(right.lengthSq()<1e-6) right.set(1,0,0); right.normalize();
     function place(obj, side, upOff){
-        const t=P.clone().addScaledVector(camRight, side).addScaledVector(up, upOff);   // 図鑑から右へ+上下
-        const dir=t.clone().sub(H); if(dir.lengthSq()<1e-6) return; dir.normalize();
-        obj.position.copy(H).addScaledVector(dir, D);   // 図鑑と同じ距離Dへ
+        obj.position.copy(P).addScaledVector(right, side).addScaledVector(up, upOff);   // 図鑑から水平右へ70cm＋上下（固定点。頭の向きに依存しない）
         const away=obj.position.clone().multiplyScalar(2).sub(H);
-        obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ＝正対
+        obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ正対（向きだけ追従）
     }
     if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.70, -0.12);          // 下段＝相棒えらび（図鑑の右70cm）
     if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.70, 0.20);   // 上段＝カードをひく
