@@ -276,6 +276,13 @@
           <button data-v="off">▶ 止まらない</button>
         </div>
       </div>
+      <div class="opt wide" id="optRealShort" style="display:none">
+        <div class="lbl">恐竜が実寸になるフィールド短辺（m）｜20〜30が適正（小さい=密／大きい=疎）</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="rsSlider" type="range" min="10" max="50" step="1" value="20" style="flex:1;">
+          <input id="rsNum" type="number" min="10" max="50" step="1" value="20" style="width:64px;">
+        </div>
+      </div>
       <div class="opt wide" id="optMode">
         <div class="lbl">モード</div>
         <div class="seg" id="segMode">
@@ -2469,9 +2476,9 @@ function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); co
 const REAL_H={ ptera:1.8, fukuiraptor:2.0, fukuisaurus:2.6, tri:3.0, trex:4.0, stego:4.0, fukuititan:6.0, brachi:9.5 };
 const REAL_H_MAX=9.5;
 function realH(key){ return (REAL_H[key]!==undefined?REAL_H[key]:3.0); }
-function dinoRealScale(){   // 表示倍率 S（表示高さ＝実寸×S）
-    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/20);   // 短辺20mで1.0＝実寸／下限0.2／間は比例／20m超は1超で比例
-    return (siteMode||1)/2;   // サイト表示：siteMode=2で1.0＝実寸、他は比例
+function dinoRealScale(){   // 表示倍率 S（表示高さ＝実寸×S）。realRefShort＝恐竜が実寸(1.0)になるフィールド短辺
+    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/realRefShort);   // 実際の短辺がrealRefShortで実寸1.0（小さい親値ほど大きく＝密／大きい親値ほど小さく＝疎）
+    return Math.max(0.2, (siteMode||1)*10/realRefShort);   // サイト表示：siteMode=realRefShort/10 で実寸（10mが1倍・50mが5倍に相当）
 }
 function dinoCurScale(){ return dinoRealScale(); }
 function dinoTargetHeight(key){ return realH(key) * dinoRealScale(); }        // 生成時の目標高さ（m）
@@ -3036,6 +3043,7 @@ document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document
 let recoOn=true;   // おすすめ設定（既定オン）
 let toolSwapAllowed=false;   // 発掘道具の持ち替え（既定：持ち替えない）。おすすめオフのときだけメニューで変更可
 let holoFreezeTime=true;     // 図鑑カード表示中に時間を止める（既定：止まる）。おすすめオフのときだけ変更可
+let realRefShort=20;         // 恐竜が実寸(1.0倍)になるフィールド短辺(m)。既定20。おすすめオフのときだけ変更可
 let starEnabled=false;   // スターブロック（既定：なし＝出土品に合わせる）
 let cardShown=true;      // 獲得カード表示（既定：表示）
 let digPosRandom=true;    // サイト表示×恐竜系の発掘場所（true=ランダム/false=固定）。既定ランダム
@@ -3091,6 +3099,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optDigPos",false); show("optTimeLimit",false);
         show("optToolSwap",false); toolSwapAllowed=false; segSelect("segToolSwap","off");   // オンは非表示＝必ず持ち替えない
         show("optHoloFreeze",false); holoFreezeTime=true; segSelect("segHoloFreeze","on");   // オンは非表示＝必ず止まる
+        show("optRealShort",false); if(typeof setRealRefShort==="function") setRealRefShort(20);   // オンは非表示＝実寸基準20m固定
         setTimeLimit(90);   // おすすめオンは90秒固定
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
@@ -3103,6 +3112,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optDigPos", (target!=="artifact") && siteVisible);   // 恐竜系×サイト表示のみ
         show("optToolSwap", true);   // おすすめオフのときだけ表示・切替可
         show("optHoloFreeze", true);
+        show("optRealShort", true);
         show("optTimeLimit", chosenMode==="time");   // タイムアタック時のみ
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
@@ -3123,6 +3133,8 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
 document.querySelectorAll("#segToolSwap button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segToolSwap button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); toolSwapAllowed=(b.dataset.v==="on"); });
 document.querySelectorAll("#segHoloFreeze button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segHoloFreeze button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); holoFreezeTime=(b.dataset.v==="on"); });
+function setRealRefShort(v){ v=Math.max(10,Math.min(50,Math.round(v||20))); realRefShort=v; const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.value=v; if(n)n.value=v; }
+{ const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
 document.querySelectorAll("#segCardShow button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segCardShow button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); cardShown=(b.dataset.v==="on"); });
 document.querySelectorAll("#segDigPos button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDigPos button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); digPosRandom=(b.dataset.v==="random"); });
 document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); withParamLoading(()=>{ onDigTargetChosen(b.dataset.v); }); });
