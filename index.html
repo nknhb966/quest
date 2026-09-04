@@ -2100,8 +2100,8 @@ const bubble = (function(){
     const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d");
     const tex=new THREE.CanvasTexture(cv);
-    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:false}));
-    spr.renderOrder=1000;   // 相棒カード/相棒えらび(1000)と同順にして距離で正しく前後判定（深度テスト正常化）
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:true, alphaTest:0.1}));
+    spr.renderOrder=1000;   // 相棒カード/相棒えらび(1000)と同順。alphaTestで透明部は破棄＝深度を正しく書き込み（四角枠なし）
     const _baseSX=5.28/buddyScale, _baseSY=1.6/buddyScale;
     spr.scale.set(_baseSX,_baseSY,1); spr.position.set(0,3.3,-1.0); spr.visible=false;   // 少し上＆奥（相棒の後ろ側）へ
     dog.add(spr); bubbleSpr=spr;
@@ -3139,7 +3139,7 @@ function segSelect(segId, v){   // 指定セグの値を選択状態にし、対
 }
 function applyAutoForTarget(target){   // 発掘対象に応じて必ず自動セットする項目（オン/オフ共通）
     if(target==="artifact"){
-        segSelect("segMode","time");      chosenMode="time"; setTimeLimit(90);
+        setTimeLimit(90);
         segSelect("segCardShow","on");    cardShown=true;
         segSelect("segRarity","off");     rarityOn=false;
         segSelect("segBuddyMode","dogonly"); buddyRandom=false; dogOnly=true;
@@ -3148,7 +3148,7 @@ function applyAutoForTarget(target){   // 発掘対象に応じて必ず自動�
         segSelect("segDigPos","fixed");    digPosRandom=false;
         segSelect("segSite","show");      setSiteVisible(true); syncSiteSeg();
     } else {   // dino / dino3
-        segSelect("segMode","time");      chosenMode="time"; setTimeLimit(90);
+        setTimeLimit(90);
         segSelect("segCardShow","on");    cardShown=true;
         segSelect("segRarity","on");      rarityOn=true;
         segSelect("segBuddyMode","pick"); buddyRandom=false; dogOnly=false;
@@ -3184,8 +3184,8 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         return;
     }
     if(on){
-        // 表示：おすすめ・発掘対象・（出土品→サイト大きさ／恐竜→ワールド広さ）
-        show("optMode",false); show("optRarity",false); show("optBuddyMode",false);
+        // 表示：おすすめ・モード・発掘対象・（出土品→サイト大きさ／恐竜→ワールド広さ）
+        show("optMode",true); show("optRarity",false); show("optBuddyMode",false);
         show("optDogLevel",false); show("optBuddyPool",false); show("optSite",false); show("optStar",false); show("optCardShow",false);
         show("optDigPos",false); show("optTimeLimit",false);
         show("optToolSwap",false); toolSwapAllowed=false; segSelect("segToolSwap","off");   // オンは非表示＝必ず持ち替えない
@@ -4754,8 +4754,8 @@ const heartTex=(function(){
 function spawnHearts(pos, n=4){
     for(let i=0;i<n;i++){
         let h=hearts.find(x=>!x.alive);
-        if(!h){ h={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:heartTex, transparent:true, depthTest:true, depthWrite:false})), life:0, alive:false, vx:0, vz:0 };
-            h.spr.scale.set(0.22,0.22,1); stage.add(h.spr); hearts.push(h); }
+        if(!h){ h={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:heartTex, transparent:true, depthTest:true, depthWrite:true, alphaTest:0.1})), life:0, alive:false, vx:0, vz:0 };
+            h.spr.renderOrder=1000; h.spr.scale.set(0.22,0.22,1); stage.add(h.spr); hearts.push(h); }
         h.spr.position.set(pos.x+(Math.random()-0.5)*0.3, pos.y+0.7, pos.z+(Math.random()-0.5)*0.3);
         h.vx=(Math.random()-0.5)*0.3; h.vz=(Math.random()-0.5)*0.3;
         h.life=1.4; h.alive=true; h.spr.visible=true; h.spr.material.opacity=1;
@@ -4785,7 +4785,7 @@ function spawnSparkle(pos, n=1){
     for(let i=0;i<n;i++){
         let s=sparkles.find(x=>!x.alive);
         if(!s){ s={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:sparkleTex, transparent:true, depthTest:true, depthWrite:false, blending:THREE.AdditiveBlending})), life:0, alive:false, vy:0 };
-            s.spr.scale.set(0.18,0.18,1); stage.add(s.spr); sparkles.push(s); }
+            s.spr.renderOrder=1000; s.spr.scale.set(0.18,0.18,1); stage.add(s.spr); sparkles.push(s); }
         s.spr.position.set(pos.x+(Math.random()-0.5)*0.26, pos.y+0.72+Math.random()*0.14, pos.z+(Math.random()-0.5)*0.26);
         s.vy=0.18+Math.random()*0.14; s.life=0.9; s.alive=true; s.spr.visible=true; s.spr.material.opacity=1;
     }
@@ -5394,7 +5394,7 @@ function updateDog(dt, now){
     }
     else dog.position.y=GROUND_Y+DOG_Y+bob;
     // セリフは絶対高さに固定：ジャンプ/弾み(dog.position.yの上下)を打ち消し、基本姿勢時の高さを保つ
-    if(bubbleSpr){ const sy=dog.scale.y||1; bubbleSpr.position.y = 3.3 - (dog.position.y-(GROUND_Y+DOG_Y))/sy; }
+    if(bubbleSpr){ const sy=dog.scale.y||1; bubbleSpr.position.y = 3.3 - (dog.position.y-(GROUND_Y+DOG_Y))/sy - 0.30/sy; }
 
     // ── 探す動作：未発見ポイントが近い（探知音が鳴る）とき、頭を下げて鼻を地面へ（全環境・全相棒）──
     { const body=(typeof activeBody==="function")?activeBody():null;
