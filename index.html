@@ -276,6 +276,13 @@
           <button data-v="off">▶ 止まらない</button>
         </div>
       </div>
+      <div class="opt wide" id="optRealCap" style="display:none">
+        <div class="lbl">恐竜の原寸比（フィールドを広げたときの大きさ上限）</div>
+        <div class="seg" id="segRealCap">
+          <button data-v="off" class="on">∞ 上限なし</button>
+          <button data-v="on">📏 実寸まで</button>
+        </div>
+      </div>
       <div class="opt wide" id="optRealShort" style="display:none">
         <div class="lbl">恐竜が実寸になるフィールド短辺（m）｜20〜30が適正（小さい=密／大きい=疎）</div>
         <div style="display:flex; gap:8px; align-items:center;">
@@ -394,11 +401,11 @@
         </div>
         <div id="wsQuick" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center; justify-content:center;">
           <span style="font-size:12px;color:#b9aee0;">かんたん設定：</span>
-          <button type="button" class="szq" data-sz="10">10×10</button>
-          <button type="button" class="szq" data-sz="20">20×20</button>
-          <button type="button" class="szq" data-sz="30">30×30</button>
-          <button type="button" class="szq" data-sz="40">40×40</button>
-          <button type="button" class="szq" data-sz="50">50×50</button>
+          <button type="button" class="szq" data-sz="10">10</button>
+          <button type="button" class="szq" data-sz="20">20</button>
+          <button type="button" class="szq" data-sz="30">30</button>
+          <button type="button" class="szq" data-sz="40">40</button>
+          <button type="button" class="szq" data-sz="50">50</button>
         </div>
       </div>
     </div>
@@ -2508,8 +2515,11 @@ const REAL_H={ ptera:1.8, fukuiraptor:2.0, fukuisaurus:2.6, tri:3.0, trex:4.0, s
 const REAL_H_MAX=9.5;
 function realH(key){ return (REAL_H[key]!==undefined?REAL_H[key]:3.0); }
 function dinoRealScale(){   // 表示倍率 S（表示高さ＝実寸×S）。realRefShort＝恐竜が実寸(1.0)になるフィールド短辺
-    if(customWorldOn()) return Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/realRefShort);   // 実際の短辺がrealRefShortで実寸1.0（小さい親値ほど大きく＝密／大きい親値ほど小さく＝疎）
-    return Math.max(0.2, (siteMode||1)*10/realRefShort);   // サイト表示：siteMode=realRefShort/10 で実寸（10mが1倍・50mが5倍に相当）
+    let s;
+    if(customWorldOn()) s=Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/realRefShort);   // 実際の短辺がrealRefShortで実寸1.0（小さい親値ほど大きく＝密／大きい親値ほど小さく＝疎）
+    else s=Math.max(0.2, (siteMode||1)*10/realRefShort);   // サイト表示：siteMode=realRefShort/10 で実寸（10mが1倍・50mが5倍に相当）
+    if(realCapToActual) s=Math.min(1.0, s);   // 「実寸まで」＝1.0倍を超えない（覗き見スコープもbodyLen経由で自動追従）
+    return s;
 }
 function dinoCurScale(){ return dinoRealScale(); }
 function dinoTargetHeight(key){ return realH(key) * dinoRealScale(); }        // 生成時の目標高さ（m）
@@ -3077,6 +3087,7 @@ let recoOn=true;   // おすすめ設定（既定オン）
 let toolSwapAllowed=false;   // 発掘道具の持ち替え（既定：持ち替えない）。おすすめオフのときだけメニューで変更可
 let holoFreezeTime=true;     // 図鑑カード表示中に時間を止める（既定：止まる）。おすすめオフのときだけ変更可
 let realRefShort=20;         // 恐竜が実寸(1.0倍)になるフィールド短辺(m)。既定20。おすすめオフのときだけ変更可
+let realCapToActual=false;   // 恐竜の原寸比：false=上限なし（既定）／true=実寸まで（1.0倍を超えない）。おすすめオフのときだけ変更可
 let starEnabled=false;   // スターブロック（既定：なし＝出土品に合わせる）
 let cardShown=true;      // 獲得カード表示（既定：表示）
 let digPosRandom=true;    // サイト表示×恐竜系の発掘場所（true=ランダム/false=固定）。既定ランダム
@@ -3133,6 +3144,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optToolSwap",false); toolSwapAllowed=false; segSelect("segToolSwap","off");   // オンは非表示＝必ず持ち替えない
         show("optHoloFreeze",false); holoFreezeTime=true; segSelect("segHoloFreeze","on");   // オンは非表示＝必ず止まる
         show("optRealShort",false); if(typeof setRealRefShort==="function") setRealRefShort(20);   // オンは非表示＝実寸基準20m固定
+        show("optRealCap",false); realCapToActual=false; segSelect("segRealCap","off");   // オンは非表示＝上限なし
         setTimeLimit(90);   // おすすめオンは90秒固定
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
@@ -3146,6 +3158,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optToolSwap", true);   // おすすめオフのときだけ表示・切替可
         show("optHoloFreeze", true);
         show("optRealShort", chosenDigTarget!=="artifact");   // 恐竜系のときだけ表示
+        show("optRealCap", chosenDigTarget!=="artifact");   // 恐竜系のときだけ表示
         show("optTimeLimit", chosenMode==="time");   // タイムアタック時のみ
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
@@ -3166,18 +3179,17 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
 document.querySelectorAll("#segToolSwap button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segToolSwap button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); toolSwapAllowed=(b.dataset.v==="on"); });
 document.querySelectorAll("#segHoloFreeze button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segHoloFreeze button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); holoFreezeTime=(b.dataset.v==="on"); });
+document.querySelectorAll("#segRealCap button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segRealCap button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); realCapToActual=(b.dataset.v==="on"); if(typeof updateRsInfo==="function") updateRsInfo(); });
 function setRealRefShort(v){ v=Math.max(10,Math.min(50,Math.round(v||20))); realRefShort=v; const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.value=v; if(n)n.value=v; if(typeof updateRsInfo==="function") updateRsInfo(); }
-function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短辺/基準）を表示
+function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短辺/基準・上限反映後）を表示
     const el=document.getElementById("rsInfo"); if(!el) return;
-    let s;
-    if(typeof customWorldOn==="function" && customWorldOn()) s=Math.max(0.2, Math.min(WORLD_X,WORLD_Z)/realRefShort);
-    else s=Math.max(0.2, ((typeof siteMode!=="undefined"?siteMode:1)||1)*10/realRefShort);
+    const s=(typeof dinoRealScale==="function")?dinoRealScale():1;
     el.textContent = "原寸比：約 "+s.toFixed(1)+"倍" + (Math.abs(s-1)<0.06?"（実寸）":"");
 }
 { const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
 // メニュー項目の並び替え（未掲載の optBuddy/optDigPos は現状の相対位置を維持）
 (function(){
-    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","worldSizeOpt","optRealShort","optDigPos"];
+    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","worldSizeOpt","optRealCap","optRealShort","optDigPos"];
     const first=document.getElementById(order[0]); const parent=first&&first.parentNode; if(!parent) return;
     order.forEach(id=>{ const el=document.getElementById(id); if(el && el.parentNode===parent) parent.appendChild(el); });   // .cardgridの子は全てoptなので順に末尾へ動かせば指定順になる
 })();
@@ -5107,7 +5119,13 @@ function updateDog(dt, now){
         const q=camQuat();
         const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=new THREE.Vector3().copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
+        const rawGoal=new THREE.Vector3().copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); rawGoal.y=0;
+        // 首の小さな動きでカクつかないよう、定位置ゴールをローパス（なめらか化）
+        if(!dog.userData._gInit){ dog.userData._gx=rawGoal.x; dog.userData._gz=rawGoal.z; dog.userData._gInit=true; }
+        const gk=1-Math.exp(-dt*4.5);   // 時定数~0.22s：素早い首振りは抑え、ゆっくりの向き変更/歩行には追従
+        dog.userData._gx=THREE.MathUtils.lerp(dog.userData._gx, rawGoal.x, gk);
+        dog.userData._gz=THREE.MathUtils.lerp(dog.userData._gz, rawGoal.z, gk);
+        goal=new THREE.Vector3(dog.userData._gx, 0, dog.userData._gz);
     }
     }   // end if(!rushing)
 
