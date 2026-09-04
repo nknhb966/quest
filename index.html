@@ -353,13 +353,18 @@
         </div>
       </div>
       <div class="opt wide" id="siteSizeOpt">
-        <div class="lbl">サイトモデルの大きさ</div>
-        <div class="seg" id="segSiteSize">
-          <button data-v="1" class="on">1倍</button>
-          <button data-v="2">2倍</button>
-          <button data-v="3">3倍</button>
-          <button data-v="4">4倍</button>
-          <button data-v="5">5倍</button>
+        <div class="lbl">サイトモデルの大きさ（倍率）</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="ssSlider" type="range" min="1" max="5" step="0.1" value="1" style="flex:1;">
+          <input id="ssNum" type="number" min="1" max="5" step="0.1" value="1" style="width:64px;">
+        </div>
+        <div id="ssQuick" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; align-items:center; justify-content:center;">
+          <span style="font-size:12px;color:#b9aee0;">かんたん設定：</span>
+          <button type="button" class="szq on" data-sz="1">1倍</button>
+          <button type="button" class="szq" data-sz="2">2倍</button>
+          <button type="button" class="szq" data-sz="3">3倍</button>
+          <button type="button" class="szq" data-sz="4">4倍</button>
+          <button type="button" class="szq" data-sz="5">5倍</button>
         </div>
       </div>
       <div class="opt wide" id="optDigPos" style="display:none">
@@ -2040,8 +2045,8 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
         const away=obj.position.clone().multiplyScalar(2).sub(H);
         obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ正対
     }
-    if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.70, -0.12);          // 下段＝相棒えらび（図鑑の右70cm）
-    if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.70, 0.20);   // 上段＝カードをひく
+    if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.50, -0.12);          // 下段＝相棒えらび（図鑑の右50cm）
+    if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.50, 0.20);   // 上段＝カードをひく
 }
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
@@ -2312,7 +2317,8 @@ function buildHologram(idx){
         const mg=new THREE.Group(); mg.position.set(0.46,0.0, (dino? -0.7 : -0.2) + nearBias); mg.add(model); g.add(mg); g.userData.mg=mg; g.userData.card=card;  // 右へ+0.1m・回転中心ごと手前へ
     } else g.userData.card=card;
     scene.add(g);
-    holo={ group:g, idx, dino, art }; updateHologram(); sfxLocate();
+    sfxLocate(); vibrate(70,0.6);   // 暗転の直前に選択音＋バイブ（holoをセットすると暗転で抑制されるため、先に鳴らす）
+    holo={ group:g, idx, dino, art }; updateHologram();
     if(typeof setSceneDim==="function") setSceneDim(true);   // 図鑑カード表示中は他を暗転（図鑑/カード/ホログラムは非ライト材質で明るいまま）
 }
 // 毎フレーム：左手の位置に追従。カードは常にプレイヤーを向く。モデルは左手の角度で回る
@@ -2358,7 +2364,7 @@ function updateHologram(){
                if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z=w.userData.sign*(0.22+Math.sin(now*0.004)*0.4); }); }
     }
 }
-function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx){ closeHologram(); sfxLocate(); vibrate(70,0.5); } else { buildHologram(idx); vibrate(70,0.6); } }   // 選択・解除どちらも音＋バイブ
+function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx){ closeHologram(); sfxLocate(); vibrate(70,0.5); } else { buildHologram(idx); } }   // 開く時の音/バイブはbuildHologram内（暗転直前）で鳴らす
 
 /* =====================================================
  * ゲーム状態
@@ -3171,7 +3177,7 @@ function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短�
 { const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
 // メニュー項目の並び替え（未掲載の optBuddy/optDigPos は現状の相対位置を維持）
 (function(){
-    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","optRealShort","worldSizeOpt","optDigPos"];
+    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","worldSizeOpt","optRealShort","optDigPos"];
     const first=document.getElementById(order[0]); const parent=first&&first.parentNode; if(!parent) return;
     order.forEach(id=>{ const el=document.getElementById(id); if(el && el.parentNode===parent) parent.appendChild(el); });   // .cardgridの子は全てoptなので順に末尾へ動かせば指定順になる
 })();
@@ -3207,17 +3213,26 @@ function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); i
     if(typeof resetDogStats==="function") resetDogStats();
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
   }); }
-{ document.querySelectorAll("#segSiteSize button").forEach(b=>b.onclick=()=>{
-    document.querySelectorAll("#segSiteSize button").forEach(x=>x.classList.toggle("on", x===b));
-    siteMode = +b.dataset.v;   // 倍率1〜5
-    if(typeof updateRsInfo==="function") updateRsInfo();   // サイト倍率変更でも原寸比を更新
-    withParamLoading(()=>{
-        rescaleSite();                       // サイトを選択倍率でフィットし直す
+function applySiteMode(){ withParamLoading(()=>{
+        rescaleSite();                       // サイトを倍率でフィットし直す
         regenerateCustomSpots();             // 発掘点の再配置（カスタム時）
         reloadDinoCache();                   // 恐竜サイズが変わるので作り直す
         updateGoal();
-    });
-  }); }
+    }); }
+function setSiteMode(v, apply){
+    v=Math.max(1, Math.min(5, Math.round((v||1)*10)/10));   // 1.0〜5.0（0.1刻み・線形）
+    siteMode=v;
+    const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum");
+    if(s)s.value=v; if(n)n.value=v;
+    document.querySelectorAll("#ssQuick .szq").forEach(b=>b.classList.toggle("on", Math.abs(+b.dataset.sz - v)<0.05));
+    if(typeof updateRsInfo==="function") updateRsInfo();   // 倍率変更で原寸比も線形に更新
+    if(apply) applySiteMode();
+}
+{ const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum");
+  if(s){ s.oninput=()=>setSiteMode(+s.value,false); s.onchange=()=>setSiteMode(+s.value,true); }   // ドラッグ中は即時反映、離したら再構築
+  if(n) n.onchange=()=>setSiteMode(+n.value,true);
+  document.querySelectorAll("#ssQuick .szq").forEach(b=>b.onclick=()=>setSiteMode(+b.dataset.sz,true));   // かんたん1〜5倍
+}
 function updateHudReset(){
     const r=document.getElementById("dReset"); if(r) r.style.display = GAME.desktop ? "inline-block":"none";   // サイト表示/非表示ともに表示
     const sa=document.getElementById("dShowAll"); if(sa) sa.style.display = GAME.desktop ? "inline-block":"none";
@@ -4556,7 +4571,7 @@ const heartTex=(function(){
 function spawnHearts(pos, n=4){
     for(let i=0;i<n;i++){
         let h=hearts.find(x=>!x.alive);
-        if(!h){ h={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:heartTex, transparent:true, depthTest:true})), life:0, alive:false, vx:0, vz:0 };
+        if(!h){ h={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:heartTex, transparent:true, depthTest:true, depthWrite:false})), life:0, alive:false, vx:0, vz:0 };
             h.spr.scale.set(0.22,0.22,1); stage.add(h.spr); hearts.push(h); }
         h.spr.position.set(pos.x+(Math.random()-0.5)*0.3, pos.y+0.7, pos.z+(Math.random()-0.5)*0.3);
         h.vx=(Math.random()-0.5)*0.3; h.vz=(Math.random()-0.5)*0.3;
@@ -4586,7 +4601,7 @@ const sparkleTex=(function(){
 function spawnSparkle(pos, n=1){
     for(let i=0;i<n;i++){
         let s=sparkles.find(x=>!x.alive);
-        if(!s){ s={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:sparkleTex, transparent:true, depthTest:true, blending:THREE.AdditiveBlending})), life:0, alive:false, vy:0 };
+        if(!s){ s={ spr:new THREE.Sprite(new THREE.SpriteMaterial({map:sparkleTex, transparent:true, depthTest:true, depthWrite:false, blending:THREE.AdditiveBlending})), life:0, alive:false, vy:0 };
             s.spr.scale.set(0.18,0.18,1); stage.add(s.spr); sparkles.push(s); }
         s.spr.position.set(pos.x+(Math.random()-0.5)*0.26, pos.y+0.72+Math.random()*0.14, pos.z+(Math.random()-0.5)*0.26);
         s.vy=0.18+Math.random()*0.14; s.life=0.9; s.alive=true; s.spr.visible=true; s.spr.material.opacity=1;
