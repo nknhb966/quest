@@ -2052,8 +2052,8 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
         const away=obj.position.clone().multiplyScalar(2).sub(H);
         obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ正対
     }
-    if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.50, -0.12);          // 下段＝相棒えらび（図鑑の右50cm）
-    if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.50, 0.20);   // 上段＝カードをひく
+    if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.60, -0.12);          // 下段＝相棒えらび（図鑑の右60cm）
+    if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.60, 0.20);   // 上段＝カードをひく（縦に揃える）
 }
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
@@ -5119,13 +5119,7 @@ function updateDog(dt, now){
         const q=camQuat();
         const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        const rawGoal=new THREE.Vector3().copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); rawGoal.y=0;
-        // 首の小さな動きでカクつかないよう、定位置ゴールをローパス（なめらか化）
-        if(!dog.userData._gInit){ dog.userData._gx=rawGoal.x; dog.userData._gz=rawGoal.z; dog.userData._gInit=true; }
-        const gk=1-Math.exp(-dt*4.5);   // 時定数~0.22s：素早い首振りは抑え、ゆっくりの向き変更/歩行には追従
-        dog.userData._gx=THREE.MathUtils.lerp(dog.userData._gx, rawGoal.x, gk);
-        dog.userData._gz=THREE.MathUtils.lerp(dog.userData._gz, rawGoal.z, gk);
-        goal=new THREE.Vector3(dog.userData._gx, 0, dog.userData._gz);
+        goal=new THREE.Vector3().copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
     }
     }   // end if(!rushing)
 
@@ -5228,6 +5222,8 @@ function updateDog(dt, now){
         dog.position.y=GROUND_Y+DOG_Y+Math.abs(Math.sin(petWiggle*6.5))*0.08;        // 小さくぴょこぴょこ
     }
     else dog.position.y=GROUND_Y+DOG_Y+bob;
+    // セリフは絶対高さに固定：ジャンプ/弾み(dog.position.yの上下)を打ち消し、基本姿勢時の高さを保つ
+    if(bubbleSpr){ const sy=dog.scale.y||1; bubbleSpr.position.y = 3.3 - (dog.position.y-(GROUND_Y+DOG_Y))/sy; }
 
     // ── 探す動作：未発見ポイントが近い（探知音が鳴る）とき、頭を下げて鼻を地面へ（全環境・全相棒）──
     { const body=(typeof activeBody==="function")?activeBody():null;
