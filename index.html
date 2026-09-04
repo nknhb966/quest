@@ -2078,7 +2078,7 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = renderer.xr.isPresenting && inStandby && !dogOnly;
+    const show = renderer.xr.isPresenting && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy);   // チャレンジ1ターン目は相棒選択なし（犬固定）
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
@@ -2516,6 +2516,13 @@ function clearTargets(){
 // 全8ポイントを同時に出す（サイト表示/非表示に関わらず、どの順でも掘れる）
 function spawnAllTargets(){
     clearTargets();
+    if(GAME.challenge && GAME.ch && GAME.ch.turn===1){   // 1ターン目：プレイヤー中心2×2m内に最も近い3点（スター無し）
+        const H=camera.getWorldPosition(new THREE.Vector3());
+        const idxs=chTurn1Idxs();
+        for(let k=0;k<3;k++){ const a=(k/3)*Math.PI*2+(Math.random()-0.5)*0.7, rad=0.7+Math.random()*0.3;
+            const t=spawnTarget(idxs[k], idxs[k]); if(t) moveTargetTo(t, new THREE.Vector3(H.x+Math.cos(a)*rad, GROUND_Y, H.z+Math.sin(a)*rad)); }
+        return;
+    }
     for(let i=0;i<8;i++){ if(!GAME.doneIdx.has(i)) spawnTarget(i, i); }
     if(typeof spawnStarPoint==="function" && !GAME.starUsed) spawnStarPoint();   // スターポイント1個（崩したら以後このプレイでは復活しない）
 }
@@ -3349,6 +3356,7 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 
 function startGame(desktop){
     GAME.challenge = (chosenMode==="challenge");                         // 発掘チャレンジ（3ターン）
+    if(GAME.challenge){ GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:(typeof TIME_LIMIT!=="undefined"?TIME_LIMIT:90)}; if(typeof resetUnlocked==="function") resetUnlocked(); chApplyTurn(1); }   // 1ターン目：30秒・スター無し・犬固定
     GAME.active=true; GAME.desktop=desktop; GAME.mode=(GAME.challenge?"time":chosenMode); GAME.tool=chosenTool; GAME.starUsed=false; GAME.complete=false;
     if(typeof resetUnlocked==="function") resetUnlocked();   // 入室で獲得候補を犬だけに
     if(typeof resetDogStats==="function") resetDogStats();   // 犬ステータス初期化
@@ -3830,6 +3838,79 @@ function acquireCard(score){
     else { idx = pickByRarityUnowned(scoreRarity(score)); }   // レア度あり：基準→下位の未獲得
     return { idx, rarity: cardRarityOf(idx) };
 }
+// ===== 発掘チャレンジ（3ターン）コントローラ =====
+const CH_TIMES=[30,60,0];   // 1/2ターン目=30/60秒、3ターン目=ユーザー指定(TIME_LIMIT)
+function chCenterRarity(sc){ if(sc<1000) return "ノーマル"; if(sc<3000) return "プチレア"; if(sc<6000) return "レア"; if(sc<10000) return "激レア"; return "超激レア"; }
+function chUnownedDinoByRarity(rar){ const p=[]; const N=(typeof DINOS!=="undefined")?DINOS.length:8; for(let i=0;i<N;i++){ if(cardRarityOf(i)===rar && !cardOwned(i)) p.push(i); } return p; }
+function chPickBuddyIdx(sc, turn){   // 得点→中心レア度（中心60%・隣±20%）、獲得済み除外。1ターン目はノーマル3種
+    if(turn===1){ const p=chUnownedDinoByRarity("ノーマル"); if(p.length) return p[(Math.random()*p.length)|0]; }
+    const center=chCenterRarity(sc), oi=RARITY_ORDER.indexOf(center);
+    const wt=RARITY_ORDER.map(()=>0); wt[oi]+=0.6;
+    if(oi-1>=0) wt[oi-1]+=0.2; else wt[oi]+=0.2;
+    if(oi+1<RARITY_ORDER.length) wt[oi+1]+=0.2; else wt[oi]+=0.2;
+    let r=Math.random(), pick=oi, acc=0; for(let i=0;i<wt.length;i++){ acc+=wt[i]; if(r<=acc){ pick=i; break; } }
+    for(let d=0; d<RARITY_ORDER.length; d++){ for(const i of [pick-d, pick+d]){ if(i>=0 && i<RARITY_ORDER.length){ const p=chUnownedDinoByRarity(RARITY_ORDER[i]); if(p.length) return p[(Math.random()*p.length)|0]; } } }
+    return null;   // 全獲得済み
+}
+function chApplyTurn(n){   // ターン開始前の設定（時間・スター・相棒ロック）
+    GAME.ch.turn=n;
+    TIME_LIMIT = (n===3) ? (GAME.ch.userTime||90) : CH_TIMES[n-1];
+    starEnabled = (n!==1);            // 1ターン目はスター非表示
+    GAME.chLockBuddy = (n===1);       // 1ターン目は相棒選択なし・犬固定
+    if(n===1 && typeof setCompanion==="function") setCompanion("dog");
+}
+function chSetupTurn1Field(){   // プレイヤー中心2×2m内に最も近い3点（専用の小フィールド）
+    const H=(typeof camera!=="undefined")?camera.getWorldPosition(new THREE.Vector3()):new THREE.Vector3();
+    GAME.chNear3=[]; for(let k=0;k<3;k++){ const a=Math.random()*Math.PI*2, rad=0.6+Math.random()*0.4; GAME.chNear3.push(new THREE.Vector3(H.x+Math.cos(a)*rad, GROUND_Y, H.z+Math.sin(a)*rad)); }
+}
+// ターン結果の付与（taFinishから）：ターン得点を記録し相棒を1体獲得
+function chOnTurnFinish(score){
+    GAME.ch.scores.push(score);
+    const idx = chPickBuddyIdx(score, GAME.ch.turn);
+    let buddyKey=null, buddyName=null;
+    if(idx!=null && typeof DINOS!=="undefined" && DINOS[idx]){ buddyKey=DINOS[idx].key; unlockBuddy(buddyKey); GAME.ch.buddies.push(buddyKey); GAME.ch.cards.push(idx);
+        const c=(typeof COMPANIONS!=="undefined")?COMPANIONS[buddyKey]:null; buddyName=(c&&c.fullName)?c.fullName:buddyKey; }
+    GAME.ch.lastBuddyName=buddyName;
+    if(buddyName) setTimeout(()=>{ try{ bubble.say("相棒 "+buddyName+" が加わった！", 3500, true); GAME.dogHappyUntil=performance.now()+3500; }catch(e){} }, 300);
+}
+// リザルト→次へ（taAdvanceから）：次ターンor全体終了
+function chAdvanceTurn(){
+    if(GAME.ch.turn>=3){   // 3ターン終了→合計を記録し、1ターン目スタンバイへ戻す
+        const total=GAME.ch.scores.reduce((a,b)=>a+b,0);
+        recordChallenge(total, { turns:GAME.ch.scores.slice(), buddies:GAME.ch.buddies.slice() });
+        GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:GAME.ch.userTime};
+        if(typeof resetUnlocked==="function") resetUnlocked();   // 新しいチャレンジ：候補を犬だけに戻す
+        chApplyTurn(1); if(typeof chSetupTurn1Field==="function") chSetupTurn1Field();
+        enterStandby();
+        return;
+    }
+    chApplyTurn(GAME.ch.turn+1);
+    if(GAME.ch.turn===1) chSetupTurn1Field();
+    enterStandby();   // 相棒選択（2/3ターン目）→ 右トリガーでカウントダウン
+}
+function chNormalDinoIdxs(){ const a=[]; const N=(typeof DINOS!=="undefined")?DINOS.length:8; for(let i=0;i<N;i++){ if(cardRarityOf(i)==="ノーマル") a.push(i); } return a; }
+function chTurn1Idxs(){ if(curTarget==="dino"){ const n=chNormalDinoIdxs(); if(n.length>=3) return n.slice(0,3); } return [0,1,2]; }
+function moveTargetTo(t, p){   // 生成済みターゲットを指定座標へ（1ターン目のプレイヤー近傍配置用）
+    if(!t) return; t.pos.copy(p); if(t.marker) t.marker.position.copy(p);
+    const fs=t.fs||1; if(t.block){ t.block.position.set(p.x, GROUND_Y+DIG_BLOCK*0.35*fs, p.z); if(t.outline) t.outline.position.copy(t.block.position); }
+}
+function chTaFinishResults(score, calc){   // チャレンジ：ターン結果（得点＋相棒獲得）
+    clearTargets(); if(typeof clearStarPoint==="function") clearStarPoint();
+    TA.state="results"; TA.lockUntil=performance.now()+1500; if(typeof sfxTimeUp==="function") sfxTimeUp();
+    chOnTurnFinish(score);
+    const bidx = GAME.ch.cards.length ? GAME.ch.cards[GAME.ch.cards.length-1] : null;
+    const card = (bidx!=null) ? { idx:bidx, rarity: cardRarityOf(bidx) } : { idx:0, rarity:cardRarityOf(0) };
+    GAME.lastCard=card;
+    if(typeof cardRevealFX==="function") setTimeout(()=>cardRevealFX(card.rarity), 250);
+    cardImage("dino", card.idx, ()=>{ if(TA.state==="results") worldHud.renderResultPage(); });
+    const turn=GAME.ch.turn, total=GAME.ch.scores.reduce((a,b)=>a+b,0);
+    worldHud.drawResults(score, calc.found, [], {digPts:calc.digPts, secs:calc.secs, timeBonus:calc.timeBonus, asks:0, askPenalty:0, card, chTurn:turn, chScores:GAME.ch.scores.slice(), chTotal:total, chFinal:(turn>=3)});
+    if(typeof updateWorldHud==="function") updateWorldHud();
+    if(typeof updateResultBtn==="function") updateResultBtn();
+    if(typeof showToast==="function"){ const p=n=>n.toLocaleString();
+        showToast(turn>=3 ? ("発掘チャレンジ終了！ 1T "+p(GAME.ch.scores[0]||0)+" / 2T "+p(GAME.ch.scores[1]||0)+" / 3T "+p(GAME.ch.scores[2]||0)+"　合計 "+p(total)+" pt") : (turn+"ターン目 完了！ 右トリガーで次のターンへ")); }
+    updateGoal(); updateTAButton();
+}
 function taFinish(){
     const digPts=GAME.digScore||0;
     const secs=Math.max(0, Math.ceil(GAME.timeLeft));
@@ -3837,6 +3918,7 @@ function taFinish(){
     const timeBonus=secs*30, askPenalty=0;   // 聞いた回数の減点は廃止（発掘pt＋残り秒×30）
     const score=Math.max(0, digPts + timeBonus);
     GAME.score=score; TA.lastScore=score;
+    if(GAME.challenge){ chTaFinishResults(score, {digPts, secs, timeBonus, found:dexFoundCount()}); return; }   // チャレンジは専用リザルト（ターン得点＋相棒獲得）
     if(score>0 && !GAME.challenge) recordTimeAttack(score);   // チャレンジ中は個別ターンをTA記録に残さない（合計のみ後で記録）
     clearTargets(); if(typeof clearStarPoint==="function") clearStarPoint();
     TA.state="results";
@@ -3936,7 +4018,7 @@ function taAdvance(){
         return false;
     }
     if(TA.state==="ready"){ TA.lockUntil=now+800; taBeginCountdown(); return true; }       // ①→②
-    if(TA.state==="results"){ TA.lockUntil=now+800; enterStandby(); return true; }         // ④→①（freeは廃止）
+    if(TA.state==="results"){ TA.lockUntil=now+800; if(GAME.challenge){ chAdvanceTurn(); } else { enterStandby(); } return true; }         // ④→①（チャレンジは次ターンへ）
     if(TA.state==="countdown"){ return true; }   // 数えている間は無視
     return false;                                 // run 中は「相棒に聞く」
 }
