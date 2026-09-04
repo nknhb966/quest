@@ -2025,14 +2025,14 @@ function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセ�
 let _bgKey="";
 function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」を、発掘図鑑から水平右70cmの固定点に置き、向きだけプレイヤーへ正対
     if(!renderer.xr.isPresenting || !leftCtrl || typeof dexPanel==="undefined") return;
+    player.updateMatrixWorld(true);   // 図鑑位置(P)と右方向(right)を同一フレームの回転(スナップ込み)で揃える（回転後のズレ防止）
     const H=camera.getWorldPosition(new THREE.Vector3());
     const P=dexPanel.mesh.getWorldPosition(new THREE.Vector3());   // 発掘図鑑の位置
     const up=new THREE.Vector3(0,1,0);
-    // 水平右方向はプレイヤーリグ基準（スナップ回転は反映・首振りでは動かない）→ 頭を回しても位置が動かず自然
-    let right=new THREE.Vector3(1,0,0).applyQuaternion(player.getWorldQuaternion(new THREE.Quaternion())); right.y=0;
-    if(right.lengthSq()<1e-6) right.set(1,0,0); right.normalize();
+    // 水平右方向はプレイヤーリグ座標系の+X（スナップ回転は反映・首振りでは動かない）
+    const Plocal=player.worldToLocal(P.clone());
     function place(obj, side, upOff){
-        obj.position.copy(P).addScaledVector(right, side).addScaledVector(up, upOff);   // 図鑑から水平右へ70cm＋上下（固定点。頭の向きに依存しない）
+        obj.position.copy(player.localToWorld(new THREE.Vector3(Plocal.x+side, Plocal.y+upOff, Plocal.z)));   // 図鑑から右へ70cm＋上下（固定点。スナップ追従・首振り非追従）
         const away=obj.position.clone().multiplyScalar(2).sub(H);
         obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ正対（向きだけ追従）
     }
