@@ -3572,6 +3572,7 @@ const worldHud=(function(){
         resultPage(){ return resPage; },
         renderResultPage(){
             if(!resData) return; const d=resData;
+            if(d.calc && d.calc.chScores){ this.renderChallengePage(); return; }   // 発掘チャレンジ専用レイアウト
             bg(); ctx.textAlign="center"; ctx.textBaseline="middle";
             const btnLabel = resPage===0 ? "▶ 全体のスコアを見る" : ("🎴 獲得カード："+(d.calc&&d.calc.card?(d.calc.card.rarity||""):""));
             if(resPage===0){
@@ -3623,6 +3624,35 @@ const worldHud=(function(){
                     ctx.textAlign="center"; ctx.font="bold 34px sans-serif"; ctx.fillText(e?(e.score+" pt"):"----",384,yy);
                     ctx.textAlign="right"; ctx.font="bold 24px sans-serif"; ctx.fillText(e?((e.date||"")+(e.time?" "+e.time:"")):"",648,yy);
                 }
+            }
+            tex.needsUpdate=true; mesh.visible=true;
+        },
+        renderChallengePage(){   // 発掘チャレンジ：各ターン（相棒カード）／3ターン目（集計＋今回の獲得カード大表示）
+            if(!resData) return; const d=resData; const c=d.calc;
+            bg(); ctx.textAlign="center"; ctx.textBaseline="middle";
+            if(c.chFinal){
+                ctx.fillStyle="#ffcdea"; ctx.font="bold 46px sans-serif"; ctx.fillText("発掘チャレンジ終了！",384,78);
+                const rows=[["1ターン目",c.chScores[0]||0],["2ターン目",c.chScores[1]||0],["3ターン目",c.chScores[2]||0]];
+                let y=168; const lx=150, rx=618; ctx.font="bold 34px sans-serif";
+                rows.forEach(r=>{ ctx.fillStyle="rgba(226,216,255,.95)"; ctx.textAlign="left"; ctx.fillText(r[0],lx,y); ctx.textAlign="right"; ctx.fillText(r[1].toLocaleString()+" pt",rx,y); y+=50; });
+                ctx.strokeStyle="rgba(255,205,234,.55)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(lx,y-14); ctx.lineTo(rx,y-14); ctx.stroke();
+                ctx.fillStyle="#ffe066"; ctx.font="bold 42px sans-serif"; ctx.textAlign="left"; ctx.fillText("合計",lx,y+16); ctx.textAlign="right"; ctx.fillText(c.chTotal.toLocaleString()+" pt",rx,y+16);
+                ctx.textAlign="center"; ctx.fillStyle=(RARITY_COL[c.card.rarity]||"#fff"); ctx.font="bold 34px sans-serif"; ctx.fillText("🎴 今回の獲得カード（"+(c.card.rarity||"")+"）",384,y+82);
+                const im=cardImage(c.cardTarget||curTarget, c.card.idx);
+                if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 179, y+112, 410, 615); }catch(_){}}
+                else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
+                if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回で最初に戻る",384,1178); }
+            } else {
+                ctx.fillStyle="#8ff0ff"; ctx.font="bold 46px sans-serif"; ctx.fillText(c.chTurn+"ターン目 完了！",384,80);
+                ctx.textAlign="left"; const numTxt=String(d.score);
+                ctx.font="bold 92px sans-serif"; const nw=ctx.measureText(numTxt).width; ctx.font="bold 46px sans-serif"; const uw=ctx.measureText(" pt").width; let sx=384-(nw+uw)/2;
+                ctx.fillStyle="#fff"; ctx.font="bold 92px sans-serif"; ctx.fillText(numTxt,sx,172); ctx.font="bold 46px sans-serif"; ctx.fillText(" pt",sx+nw,182);
+                ctx.textAlign="center"; ctx.fillStyle=(RARITY_COL[c.card.rarity]||"#fff"); ctx.font="bold 30px sans-serif"; ctx.fillText("相棒 GET！",384,244);
+                const im=cardImage("dino", c.card.idx);
+                if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 200, 286, 368, 552); }catch(_){}}
+                else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
+                if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 30px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,870); }
+                if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回で次のターンへ",384,1178); }
             }
             tex.needsUpdate=true; mesh.visible=true;
         }
@@ -3877,7 +3907,7 @@ function chOnTurnFinish(score){
 function chAdvanceTurn(){
     if(GAME.ch.turn>=3){   // 3ターン終了→合計を記録し、1ターン目スタンバイへ戻す
         const total=GAME.ch.scores.reduce((a,b)=>a+b,0);
-        recordChallenge(total, { turns:GAME.ch.scores.slice(), buddies:GAME.ch.buddies.slice() });
+        recordChallenge(total, { turns:GAME.ch.scores.slice(), buddies:GAME.ch.buddies.slice(), card:GAME.ch.finalCard });
         GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:GAME.ch.userTime};
         if(typeof resetUnlocked==="function") resetUnlocked();   // 新しいチャレンジ：候補を犬だけに戻す
         chApplyTurn(1); if(typeof chSetupTurn1Field==="function") chSetupTurn1Field();
@@ -3894,21 +3924,27 @@ function moveTargetTo(t, p){   // 生成済みターゲットを指定座標へ�
     if(!t) return; t.pos.copy(p); if(t.marker) t.marker.position.copy(p);
     const fs=t.fs||1; if(t.block){ t.block.position.set(p.x, GROUND_Y+DIG_BLOCK*0.35*fs, p.z); if(t.outline) t.outline.position.copy(t.block.position); }
 }
-function chTaFinishResults(score, calc){   // チャレンジ：ターン結果（得点＋相棒獲得）
+function chFinalRarity(total){ if(total<3000) return "ノーマル"; if(total<7000) return "プチレア"; if(total<12000) return "レア"; if(total<18000) return "激レア"; return "超激レア"; }
+function chTaFinishResults(score, calc){   // チャレンジ：ターン結果（1・2＝相棒カード／3＝集計＋今回の獲得カード）
     clearTargets(); if(typeof clearStarPoint==="function") clearStarPoint();
     TA.state="results"; TA.lockUntil=performance.now()+1500; if(typeof sfxTimeUp==="function") sfxTimeUp();
     chOnTurnFinish(score);
-    const bidx = GAME.ch.cards.length ? GAME.ch.cards[GAME.ch.cards.length-1] : null;
-    const card = (bidx!=null) ? { idx:bidx, rarity: cardRarityOf(bidx) } : { idx:0, rarity:cardRarityOf(0) };
+    const turn=GAME.ch.turn, total=GAME.ch.scores.reduce((a,b)=>a+b,0);
+    let card, cardTarget;
+    if(turn>=3){   // 最終：今回の獲得カード＝合計レア度で、掘る対象のカード（出土品対象=出土品／恐竜対象=恐竜）
+        const rar=chFinalRarity(total); const fidx=pickCardIdxByRarity(rar);
+        cardTarget=(curTarget==="dino")?"dino":"artifact"; card={idx:fidx, rarity:rar};
+        GAME.ch.finalCard={idx:fidx, rarity:rar, target:cardTarget};
+    } else {   // 各ターン：獲得した相棒（恐竜）カード
+        const bidx=GAME.ch.cards.length?GAME.ch.cards[GAME.ch.cards.length-1]:0;
+        cardTarget="dino"; card={idx:bidx, rarity:cardRarityOf(bidx)};
+    }
     GAME.lastCard=card;
     if(typeof cardRevealFX==="function") setTimeout(()=>cardRevealFX(card.rarity), 250);
-    cardImage("dino", card.idx, ()=>{ if(TA.state==="results") worldHud.renderResultPage(); });
-    const turn=GAME.ch.turn, total=GAME.ch.scores.reduce((a,b)=>a+b,0);
-    worldHud.drawResults(score, calc.found, [], {digPts:calc.digPts, secs:calc.secs, timeBonus:calc.timeBonus, asks:0, askPenalty:0, card, chTurn:turn, chScores:GAME.ch.scores.slice(), chTotal:total, chFinal:(turn>=3)});
+    cardImage(cardTarget, card.idx, ()=>{ if(TA.state==="results") worldHud.renderResultPage(); });
+    worldHud.drawResults(score, calc.found, [], {digPts:calc.digPts, secs:calc.secs, timeBonus:calc.timeBonus, asks:0, askPenalty:0, card, cardTarget, chTurn:turn, chScores:GAME.ch.scores.slice(), chTotal:total, chFinal:(turn>=3)});
     if(typeof updateWorldHud==="function") updateWorldHud();
     if(typeof updateResultBtn==="function") updateResultBtn();
-    if(typeof showToast==="function"){ const p=n=>n.toLocaleString();
-        showToast(turn>=3 ? ("発掘チャレンジ終了！ 1T "+p(GAME.ch.scores[0]||0)+" / 2T "+p(GAME.ch.scores[1]||0)+" / 3T "+p(GAME.ch.scores[2]||0)+"　合計 "+p(total)+" pt") : (turn+"ターン目 完了！ 右トリガーで次のターンへ")); }
     updateGoal(); updateTAButton();
 }
 function taFinish(){
@@ -4027,6 +4063,7 @@ function updateResultBtn(){
     const inCol = GAME.desktop && GAME.mode!=="time" && GAME.complete;
     const inResults = inTA || inCol;
     const b=document.getElementById("taCardBtn"); if(!b) return;
+    if(GAME.challenge){ b.style.display="none"; return; }   // チャレンジのリザルトは1ページ構成（切替なし）
     if(typeof cardShown!=="undefined" && !cardShown){ b.style.display="none"; return; }   // 獲得カード非表示なら切替ボタンなし
     if(inTA){
         b.style.display="";
