@@ -3174,16 +3174,9 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
     const target=chosenDigTarget;
     const show=(id,vis)=>{ const e=document.getElementById(id); if(e) e.style.display=vis?"":"none"; };
     const chNote=document.getElementById("chModeNote"); if(chNote) chNote.style.display=(chosenMode==="challenge")?"":"none";
-    if(chosenMode==="challenge"){   // 発掘チャレンジ：自動設定＆項目ロック（発掘対象と広さのみ表示）
-        applyChallengePreset();
-        ["optReco","optRarity","optBuddyMode","optDogLevel","optBuddyPool","optSite","optStar","optCardShow","optDigPos","optTimeLimit","optHoloFreeze","optToolSwap"].forEach(id=>show(id,false));
-        show("optMode",true);   // モード切替は表示
-        const isArt=(target==="artifact");
-        show("siteSizeOpt", isArt); show("worldSizeOpt", !isArt);
-        show("optRealShort", !isArt); show("optRealCap", !isArt);
-        return;
-    }
-    if(on){
+    const isChallenge=(chosenMode==="challenge");
+    if(isChallenge) applyChallengePreset();
+    if(on && !isChallenge){
         // 表示：おすすめ・モード・発掘対象・（出土品→サイト大きさ／恐竜→ワールド広さ）
         show("optMode",true); show("optRarity",false); show("optBuddyMode",false);
         show("optDogLevel",false); show("optBuddyPool",false); show("optSite",false); show("optStar",false); show("optCardShow",false);
@@ -3210,6 +3203,11 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
     }
+    if(isChallenge){   // 発掘チャレンジ：自動設定でロックする6項目のみ非表示（他は変更可）
+        ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar"].forEach(id=>show(id,false));
+        show("optMode",true); show("optTimeLimit",true);   // モードと3ターン目の制限時間は設定可
+    }
+    show("optReco",true);   // おすすめトグルは常に表示（どのモードでも消えない）
 }
 function onDigTargetChosen(v){
     chosenDigTarget=v; setDigTarget(v);
