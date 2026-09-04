@@ -301,7 +301,7 @@
         <div id="chModeNote" style="display:none; margin-top:8px; font-size:12px; color:#ffcdea; line-height:1.5;">3ターンで発掘に挑戦！相棒を集めて高得点を目指そう！<br>（設定は自動。発掘対象と広さだけ選べます）</div>
       </div>
       <div class="opt wide" id="optTimeLimit">
-        <div class="lbl">制限時間（タイムアタック）：<span id="tlVal">90</span> 秒</div>
+        <div class="lbl">制限時間（タイムアタック／発掘チャレンジ3ターン目）：<span id="tlVal">90</span> 秒</div>
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="tlSlider" type="range" min="60" max="180" step="5" value="90" style="flex:1;">
           <input id="tlNum" type="number" min="60" max="180" step="5" value="90" style="width:64px;">
@@ -2249,7 +2249,49 @@ function updateTAClock(){
     else if(s==="results"){ taClock.draw("右トリガー2回でスタンバイ",false); taClock.show(true); }
     else taClock.show(false);
 }
-// 発掘図鑑は常に表示（左手/コントローラーの角度に関係なく）。向きは常にカメラ向き。
+// ===== 発掘チャレンジ：各ターンのステージ表示パネル =====
+function chRoundInfo(turn){
+    const t3=((GAME.ch&&GAME.ch.userTime)||TIME_LIMIT);
+    if(turn===1) return {head:"ROUND 1", lines:["まずは発掘に挑戦！","近くの3か所を掘り出そう！","制限時間は30秒"]};
+    if(turn===2) return {head:"ROUND 2", lines:["本格的な発掘に挑戦！","スターを狙って高得点を目指そう！","制限時間は60秒"]};
+    return {head:"FINAL ROUND", lines:["最後の発掘！","最高得点を目指そう！","制限時間は"+t3+"秒"]};
+}
+const chRoundPanel=(function(){
+    const W=768,H=430; const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+    const ctx=cv.getContext("2d"); const tex=new THREE.CanvasTexture(cv);
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.92,0.515), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
+    mesh.renderOrder=1200; mesh.visible=false; mesh.frustumCulled=false; scene.add(mesh);
+    function draw(turn){
+        ctx.clearRect(0,0,W,H);
+        ctx.fillStyle="rgba(18,14,30,0.93)"; if(typeof rr==="function"){ rr(ctx,8,8,W-16,H-16,30); ctx.fill(); } else ctx.fillRect(8,8,W-16,H-16);
+        ctx.strokeStyle="#ffcf5a"; ctx.lineWidth=6; ctx.stroke();
+        const r=chRoundInfo(turn); ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillStyle="#ffd86a"; ctx.font="bold 76px sans-serif"; ctx.fillText(r.head, W/2, 96);
+        let y=200; r.lines.forEach((ln,i)=>{ ctx.fillStyle=(i===r.lines.length-1)?"#8ff0ff":"#eafff9"; ctx.font="bold "+(i===r.lines.length-1?42:40)+"px sans-serif"; ctx.fillText(ln, W/2, y); y+=66; });
+        tex.needsUpdate=true;
+    }
+    return { mesh, draw };
+})();
+let _chRoundKey="";
+function updateChRoundPanel(){
+    const active = (typeof GAME!=="undefined") && GAME.challenge && GAME.ch && ((TA.state==="ready" && GAME.active) || TA.state==="countdown");
+    // DOM（デスクトップ/スマホ）
+    let dom=document.getElementById("chRoundDom");
+    if(active && !renderer.xr.isPresenting){
+        if(!dom){ dom=document.createElement("div"); dom.id="chRoundDom";
+            dom.style.cssText="position:fixed;left:50%;top:14%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;max-width:86vw;";
+            document.body.appendChild(dom); }
+        const r=chRoundInfo(GAME.ch.turn);
+        dom.innerHTML='<div style="font-size:30px;color:#ffd86a;margin-bottom:8px;">'+r.head+'</div>'+r.lines.map((l,i)=>'<div style="font-size:16px;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("");
+        dom.style.display="block";
+    } else if(dom){ dom.style.display="none"; }
+    // VR 3Dパネル
+    if(!(active && renderer.xr.isPresenting)){ chRoundPanel.mesh.visible=false; return; }
+    chRoundPanel.mesh.visible=true;
+    const key=GAME.ch.turn+"|"+((GAME.ch.userTime)||TIME_LIMIT);
+    if(key!==_chRoundKey){ _chRoundKey=key; chRoundPanel.draw(GAME.ch.turn); }
+    if(typeof placeYawFront==="function") placeYawFront(chRoundPanel.mesh, 0.45, 2.0);
+}
 function updateDexPanel(){
     if(!renderer.xr.isPresenting || !leftCtrl){ dexHolder.visible=false; return; }
     dexHolder.visible = true;
@@ -2520,7 +2562,7 @@ function spawnAllTargets(){
         const H=camera.getWorldPosition(new THREE.Vector3());
         const idxs=chTurn1Idxs();
         for(let k=0;k<3;k++){ const a=(k/3)*Math.PI*2+(Math.random()-0.5)*0.7, rad=0.7+Math.random()*0.3;
-            const t=spawnTarget(idxs[k], idxs[k]); if(t) moveTargetTo(t, new THREE.Vector3(H.x+Math.cos(a)*rad, GROUND_Y, H.z+Math.sin(a)*rad)); }
+            const t=spawnTarget(idxs[k], idxs[k]); if(t){ moveTargetTo(t, new THREE.Vector3(H.x+Math.cos(a)*rad, GROUND_Y, H.z+Math.sin(a)*rad)); if(typeof discoverTarget==="function") discoverTarget(t, true); } }   // 最初から発見済み（ブロック表示）
         return;
     }
     for(let i=0;i<8;i++){ if(!GAME.doneIdx.has(i)) spawnTarget(i, i); }
@@ -2839,10 +2881,11 @@ function excavate(t, byPlayer){
             if(typeof collectionFinish==="function") collectionFinish();   // ④：クリアタイム記録＋時間別カード＋リザルト
         }
         // 全ポイントは最初から出ているので再出現しない（残りをどの順でも掘れる）
-    } else { // タイムアタック
+    } else { // タイムアタック／発掘チャレンジ
         GAME.digScore = (GAME.digScore||0) + 110 + ((DINOS.length-1) - t.tier)*40;   // index小(レア度高)ほど高得点。種類数に依存しない
         updateGoal();
-        if(dexFoundCount()>=8){ taFinish(); }   // 全8種を掘り切ったら終了＝残り時間でスコア
+        if(GAME.challenge){ if(GAME.targets.length===0){ taFinish(); } }   // チャレンジ：出ているターゲットを全部掘ったらターン終了（時間切れを待たない）
+        else if(dexFoundCount()>=8){ taFinish(); }   // 全8種を掘り切ったら終了＝残り時間でスコア
     }
     return firstTime;
 }
@@ -3869,10 +3912,13 @@ function acquireCard(score){
 // ===== 発掘チャレンジ（3ターン）コントローラ =====
 const CH_TIMES=[30,60,0];   // 1/2ターン目=30/60秒、3ターン目=ユーザー指定(TIME_LIMIT)
 function chCenterRarity(sc){ if(sc<1000) return "ノーマル"; if(sc<3000) return "プチレア"; if(sc<6000) return "レア"; if(sc<10000) return "激レア"; return "超激レア"; }
+function chCenterRarityT2(sc){ if(sc>=2400) return "超激レア"; if(sc>=1800) return "激レア"; if(sc>=1320) return "レア"; if(sc>=840) return "プチレア"; return "ノーマル"; }   // 2ターン目＝タイムアタック条件(4000/3000/2200/1400)×0.6
+function chCenterRarityT3(sc){ if(sc>=6000) return "超激レア"; if(sc>=3600) return "激レア"; if(sc>=1800) return "レア"; if(sc>=600) return "プチレア"; return "ノーマル"; }   // 3ターン目＝現行(1000/3000/6000/10000)×0.6
 function chUnownedDinoByRarity(rar){ const p=[]; const N=(typeof DINOS!=="undefined")?DINOS.length:8; for(let i=0;i<N;i++){ if(cardRarityOf(i)===rar && !cardOwned(i)) p.push(i); } return p; }
 function chPickBuddyIdx(sc, turn){   // 得点→中心レア度（中心60%・隣±20%）、獲得済み除外。1ターン目はノーマル3種
     if(turn===1){ const p=chUnownedDinoByRarity("ノーマル"); if(p.length) return p[(Math.random()*p.length)|0]; }
-    const center=chCenterRarity(sc), oi=RARITY_ORDER.indexOf(center);
+    const center = (turn===2) ? chCenterRarityT2(sc) : chCenterRarityT3(sc);
+    const oi=RARITY_ORDER.indexOf(center);
     const wt=RARITY_ORDER.map(()=>0); wt[oi]+=0.6;
     if(oi-1>=0) wt[oi-1]+=0.2; else wt[oi]+=0.2;
     if(oi+1<RARITY_ORDER.length) wt[oi+1]+=0.2; else wt[oi]+=0.2;
@@ -4911,6 +4957,7 @@ renderer.setAnimationLoop(()=>{
     if(typeof updateBuddyRandomBtn==="function") updateBuddyRandomBtn();
     if(typeof updateBuddyGridVR==="function") updateBuddyGridVR();
     if(typeof placeBuddyPanels==="function") placeBuddyPanels();
+    if(typeof updateChRoundPanel==="function") updateChRoundPanel();
     if(typeof updateDimOverlay==="function") updateDimOverlay();
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
