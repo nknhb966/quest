@@ -240,6 +240,7 @@
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
     <h1 class="title">越前国府発掘クエスト</h1>
+    <p class="subtitle">歩いて探して、出土品や恐竜を掘り当てよう</p>
 
     <p id="loadingNote"><i></i>データを読み込み中…</p>
     <div id="vrbtnwrap"></div>
@@ -247,7 +248,7 @@
 
     <div class="cardgrid">
       <div class="opt wide" id="optReco">
-        <div class="lbl">おすすめ設定（オンにすると、発掘対象に合わせて最適な設定を自動でセットします）</div>
+        <div class="lbl">おすすめ設定</div>
         <div class="seg" id="segReco">
           <button data-v="on" class="on">✅ おすすめ設定オン</button>
           <button data-v="off">⚙️ おすすめ設定オフ</button>
@@ -262,28 +263,28 @@
         </div>
       </div>
       <div class="opt wide" id="optToolSwap" style="display:none">
-        <div class="lbl">発掘道具の持ち替え（プレイ中に道具を切り替えられるか）</div>
+        <div class="lbl">発掘道具の持ち替え</div>
         <div class="seg" id="segToolSwap">
           <button data-v="off" class="on">🔒 持ち替えない</button>
           <button data-v="on">🔄 持ち替える</button>
         </div>
       </div>
       <div class="opt wide" id="optHoloFreeze" style="display:none">
-        <div class="lbl">図鑑カード表示中の時間（カウントダウン/制限時間）</div>
+        <div class="lbl">図鑑カード表示中の時間</div>
         <div class="seg" id="segHoloFreeze">
           <button data-v="on" class="on">⏸ 止まる</button>
           <button data-v="off">▶ 止まらない</button>
         </div>
       </div>
       <div class="opt wide" id="optRealCap" style="display:none">
-        <div class="lbl">恐竜の原寸比（フィールドを広げたときの大きさ上限）</div>
+        <div class="lbl">恐竜の原寸比</div>
         <div class="seg" id="segRealCap">
           <button data-v="off" class="on">∞ 上限なし</button>
           <button data-v="on">📏 実寸まで</button>
         </div>
       </div>
       <div class="opt wide" id="optRealShort" style="display:none">
-        <div class="lbl">恐竜が実寸になるフィールド短辺（m）｜20〜30が適正（小さい=密／大きい=疎）</div>
+        <div class="lbl">恐竜が実寸になるフィールド短辺（m）</div>
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="rsSlider" type="range" min="10" max="50" step="1" value="20" style="flex:1;">
           <input id="rsNum" type="number" min="10" max="50" step="1" value="20" style="width:64px;">
@@ -300,21 +301,21 @@
         <div id="chModeNote" style="display:none; margin-top:8px; font-size:12px; color:#ffcdea; line-height:1.5;">3ターンで発掘に挑戦！相棒を集めて高得点を目指そう！<br>（設定は自動。発掘対象と広さだけ選べます）</div>
       </div>
       <div class="opt wide" id="optTimeLimit">
-        <div class="lbl">制限時間（タイムアタック／発掘チャレンジ3ターン目）：<span id="tlVal">90</span> 秒</div>
+        <div class="lbl">制限時間（発掘チャレンジ3ターン目/タイムアタック）：<span id="tlVal">90</span> 秒</div>
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="tlSlider" type="range" min="60" max="180" step="5" value="90" style="flex:1;">
           <input id="tlNum" type="number" min="60" max="180" step="5" value="90" style="width:64px;">
         </div>
       </div>
       <div class="opt wide" id="optCardShow">
-        <div class="lbl">獲得カードの表示（非表示でもカード獲得・相棒追加・演出は行われます）</div>
+        <div class="lbl">獲得カードの表示</div>
         <div class="seg" id="segCardShow">
           <button data-v="off" class="on">🙈 カード非表示</button>
           <button data-v="on">🎴 カード表示</button>
         </div>
       </div>
       <div class="opt wide" id="optRarity">
-        <div class="lbl">カードのレア度（なしの場合、獲得カードはタイム/点数に関係なくランダム）</div>
+        <div class="lbl">カードのレア度</div>
         <div class="seg" id="segRarity">
           <button data-v="off" class="on">🎲 レア度なし</button>
           <button data-v="on">⭐ レア度あり</button>
@@ -329,7 +330,7 @@
         </div>
       </div>
       <div class="opt wide" id="optDogLevel">
-        <div class="lbl">犬のレベル（アップ型：レア以上のクリアでパラメータが1つ＋1）</div>
+        <div class="lbl">犬のレベル</div>
         <div class="seg" id="segDogLevel">
           <button data-v="fixed" class="on">🔒 固定型</button>
           <button data-v="levelup">📈 アップ型</button>
@@ -340,28 +341,28 @@
         <div class="seg" id="segBuddy"></div>
       </div>
       <div class="opt wide" id="optBuddyPool" style="display:none">
-        <div class="lbl">相棒の候補（獲得：最初は犬だけ。ゲームで獲得したカードの恐竜が候補に加わります）</div>
+        <div class="lbl">相棒の候補</div>
         <div class="seg" id="segBuddyPool">
           <button data-v="unlock" class="on">🎴 獲得した相棒</button>
           <button data-v="all">🐾 全ての相棒</button>
         </div>
       </div>
       <div class="opt wide" id="optStar">
-        <div class="lbl">スターブロック（掘ると未発見の発掘ポイントが2〜5個見つかります）</div>
+        <div class="lbl">スターブロック</div>
         <div class="seg" id="segStar">
           <button data-v="off" class="on">🚫 スターなし</button>
           <button data-v="on">⭐ スターあり</button>
         </div>
       </div>
       <div class="opt wide" id="optSite">
-        <div class="lbl">サイトモデル（遺跡の3D）※ARでは非表示にすると自分の部屋で発掘できます</div>
+        <div class="lbl">サイトモデル（遺跡3D）</div>
         <div class="seg" id="segSite">
           <button data-v="show" class="on">🗺 表示</button>
           <button data-v="hide">🚫 非表示</button>
         </div>
       </div>
       <div class="opt wide" id="siteSizeOpt">
-        <div class="lbl">サイトモデルの大きさ（倍率）</div>
+        <div class="lbl">サイトモデルの大きさ</div>
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="ssSlider" type="range" min="1" max="5" step="0.1" value="1" style="flex:1;">
           <input id="ssNum" type="number" min="1" max="5" step="0.1" value="1" style="width:64px;">
@@ -376,14 +377,14 @@
         </div>
       </div>
       <div class="opt wide" id="optDigPos" style="display:none">
-        <div class="lbl">発掘場所（サイト表示×恐竜のみ。ランダムはエリア内に散らばります）</div>
+        <div class="lbl">発掘場所</div>
         <div class="seg" id="segDigPos">
           <button data-v="random" class="on">🎲 ランダム</button>
           <button data-v="fixed">📍 固定</button>
         </div>
       </div>
       <div class="opt wide" id="worldSizeOpt" style="display:none;">
-        <div class="lbl">ワールドの広さ（サイト非表示時・VR/ARのみ／単位：メートル）</div>
+        <div class="lbl">ワールドの広さ（m）</div>
         <div style="display:flex; gap:14px; flex-wrap:wrap;">
           <div style="flex:1; min-width:200px;">
             <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">横幅 X：<span id="wxVal">10</span> m</div>
@@ -448,11 +449,11 @@
     <div id="colModalList"></div>
     <div style="display:flex; flex-direction:column; gap:8px; margin-top:18px;">
       <div style="display:flex; gap:8px;">
-        <button id="colResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #4b7a8f; background:#16303a; color:#cdeeff; font-weight:800; cursor:pointer;">コレクションのみ削除</button>
+        <button id="chResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #a04b8f; background:#33163a; color:#ffd0f0; font-weight:800; cursor:pointer;">発掘チャレンジのみ削除</button>
         <button id="taResetAll" style="flex:1; padding:10px; border-radius:10px; border:1px solid #a04b57; background:#3a1a22; color:#ffd0d6; font-weight:800; cursor:pointer;">タイムアタックのみ削除</button>
       </div>
       <div style="display:flex; gap:8px;">
-        <button id="chResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #a04b8f; background:#33163a; color:#ffd0f0; font-weight:800; cursor:pointer;">発掘チャレンジのみ削除</button>
+        <button id="colResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #4b7a8f; background:#16303a; color:#cdeeff; font-weight:800; cursor:pointer;">コレクションのみ削除</button>
       </div>
       <div style="display:flex; gap:8px;">
         <button id="allResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #8f6a4b; background:#3a2a16; color:#ffe6c0; font-weight:800; cursor:pointer;">すべて削除</button>
@@ -3688,6 +3689,7 @@ const worldHud=(function(){
                     ctx.textAlign="center"; ctx.font="bold 34px sans-serif"; ctx.fillText(e?(e.score+" pt"):"----",384,yy);
                     ctx.textAlign="right"; ctx.font="bold 24px sans-serif"; ctx.fillText(e?((e.date||"")+(e.time?" "+e.time:"")):"",648,yy);
                 }
+                ctx.textAlign="center"; if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でスタンバイに戻る",384,1180); }   // ページ1にも案内（1ページ目と位置/書式を統一）
             }
             tex.needsUpdate=true; mesh.visible=true;
         },
@@ -3734,7 +3736,7 @@ const worldHud=(function(){
                 else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
                 if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+828+28); }
             }
-            if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,1190); }
+            if(!GAME.desktop){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,1180); }   // 1・2ページとも中央・1180で統一
             tex.needsUpdate=true; mesh.visible=true;
         }
     };
