@@ -2246,7 +2246,7 @@ function updateTAClock(){
     if(s==="countdown"){ const n=Math.max(1,Math.ceil((TA.cdEnd-performance.now())/1000)); taClock.draw(String(n),true); taClock.show(true); }
     else if(s==="run"){ taClock.draw("⏱ "+Math.max(0,Math.ceil(GAME.timeLeft))+"s",false); taClock.show(true); }
     else if(s==="ready"){ taClock.draw("右トリガー2回で開始",false); taClock.show(true); }
-    else if(s==="results"){ taClock.draw((GAME.challenge?(GAME.ch&&GAME.ch.extra?"右トリガー2回で最初から":("右トリガー2回で"+((GAME.ch&&GAME.ch.turn>=3)?"チャレンジ終了":"このターンを終わる"))):"右トリガー2回でスタンバイ"),false); taClock.show(true); }
+    else if(s==="results"){ taClock.draw((GAME.challenge?(GAME.ch&&GAME.ch.extra?"右トリガー2回でスタンバイに戻る":("右トリガー2回で"+((GAME.ch&&GAME.ch.turn>=3)?"チャレンジ終了":"このターンを終わる"))):"右トリガー2回でスタンバイ"),false); taClock.show(true); }
     else taClock.show(false);
 }
 // ===== 発掘チャレンジ：各ターンのステージ表示パネル =====
@@ -2279,7 +2279,7 @@ function updateChRoundPanel(){
     let dom=document.getElementById("chRoundDom");
     if(active && !renderer.xr.isPresenting){
         if(!dom){ dom=document.createElement("div"); dom.id="chRoundDom";
-            dom.style.cssText="position:fixed;left:50%;top:14%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;max-width:86vw;";
+            dom.style.cssText="position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
             document.body.appendChild(dom); }
         const r=chRoundInfo(GAME.ch.turn);
         dom.innerHTML='<div style="font-size:30px;color:#ffd86a;margin-bottom:8px;">'+r.head+'</div>'+r.lines.map((l,i)=>'<div style="font-size:16px;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("");
@@ -3210,6 +3210,12 @@ function applyChallengePreset(){   // 発掘チャレンジの自動設定（変
     segSelect("segStar","on");        starEnabled=true;               // スター：あり（1ターン目のみ実行時にオフ）
     segSelect("segHoloFreeze","off"); holoFreezeTime=false;           // 図鑑カード表示中の時間：止まらない
     segSelect("segDogLevel","up");    dogLevelUp=true;
+    // 以下も自動固定（メインでは非表示）
+    setTimeLimit(90);                                                 // 制限時間：90秒
+    segSelect("segToolSwap","off");   toolSwapAllowed=false;          // 道具の持ち替え：持ち替えない
+    realCapToActual=false; segSelect("segRealCap","off");             // 恐竜の原寸比：上限なし
+    if(typeof setRealRefShort==="function") setRealRefShort(20);      // 実寸になるフィールド短辺：20
+    segSelect("segSite", (chosenDigTarget==="artifact")?"show":"hide"); setSiteVisible(chosenDigTarget==="artifact"); if(typeof syncSiteSeg==="function") syncSiteSeg();   // サイトモデル：出土品=表示／恐竜=非表示
     if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
 }
 function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=全項目表示
@@ -3246,9 +3252,10 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
     }
-    if(isChallenge){   // 発掘チャレンジ：自動設定でロックする6項目のみ非表示（他は変更可）
-        ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar"].forEach(id=>show(id,false));
-        show("optMode",true); show("optTimeLimit",true);   // モードと3ターン目の制限時間は設定可
+    if(isChallenge){   // 発掘チャレンジ：自動設定でロックする項目を非表示（発掘対象と広さのみ変更可）
+        ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar",
+         "optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDogLevel","optDigPos"].forEach(id=>show(id,false));
+        show("optMode",true);
     }
     show("optReco",true);   // おすすめトグルは常に表示（どのモードでも消えない）
 }
@@ -3967,12 +3974,11 @@ function chOnTurnFinish(score){
 }
 // リザルト→次へ（taAdvanceから）：次ターンor全体終了
 function chAdvanceTurn(){
-    if(GAME.ch.turn>=3 && !GAME.ch.extra){   // 3ターン終了→追加フェーズ（獲得カード非表示・ヒントなし）。合計を記録
-        const total=GAME.ch.scores.reduce((a,b)=>a+b,0);
-        recordChallenge(total, { turns:GAME.ch.scores.slice(), buddies:GAME.ch.buddies.slice(), card:GAME.ch.finalCard });
+    if(GAME.ch.turn>=3 && !GAME.ch.extra){   // 3ターン終了→追加フェーズ（獲得カード非表示・ヒントなし）。記録は3ターン目終了時に済み
         GAME.ch.extra=true;
         worldHud.hide();                    // 獲得カードを消す（ワールド/図鑑をじっくり見られる）
         if(typeof updateTAClock==="function") updateTAClock();
+        if(typeof updateTAButton==="function") updateTAButton();
         return;                             // TA.stateは"results"のまま → 次の右トリガー2回で下の全リセットへ
     }
     if(GAME.ch.extra){   // 追加フェーズ通過→全リセットして1ターン目スタンバイ（新しい参加者・リロード後相当）
@@ -4009,6 +4015,7 @@ function chTaFinishResults(score, calc){   // チャレンジ：ターン結果�
         const fidx=pickCardIdxByRarity(rar);
         cardTarget=(curTarget==="dino")?"dino":"artifact"; card={idx:fidx, rarity:rar};
         GAME.ch.finalCard={idx:fidx, rarity:rar, target:cardTarget};
+        recordChallenge(total, { turns:GAME.ch.scores.slice(), buddies:GAME.ch.buddies.slice(), card:GAME.ch.finalCard });   // 3ターン目終了＝リザルト表示直前に記録
     } else {   // 各ターン：獲得した相棒（恐竜）カード
         const bidx=GAME.ch.cards.length?GAME.ch.cards[GAME.ch.cards.length-1]:0;
         cardTarget="dino"; card={idx:bidx, rarity:cardRarityOf(bidx)};
@@ -4137,8 +4144,8 @@ function updateResultBtn(){
     const inCol = GAME.desktop && GAME.mode!=="time" && GAME.complete;
     const inResults = inTA || inCol;
     const b=document.getElementById("taCardBtn"); if(!b) return;
-    if(GAME.challenge){   // チャレンジ：3ターン目（最終）のみ「全体のスコア／獲得カード」の切替を表示。1・2ターン目は1ページ
-        if(GAME.desktop && TA.state==="results" && GAME.ch && GAME.ch.turn>=3){
+    if(GAME.challenge){   // チャレンジ：3ターン目（最終）のみ「全体のスコア／獲得カード」の切替を表示。1・2ターン目は1ページ、追加フェーズは非表示
+        if(GAME.desktop && TA.state==="results" && GAME.ch && GAME.ch.turn>=3 && !GAME.ch.extra){
             b.style.display=""; b.textContent = (worldHud.resultPage()===0) ? "▶ 全体のスコアを見る" : "🎴 獲得カードを見る";
         } else b.style.display="none";
         return;
@@ -4157,7 +4164,7 @@ function updateTAButton(){
     const b=document.getElementById("dTA"); if(!b) return;
     const inResults = GAME.active && ((GAME.mode==="time" && TA.state==="results") || (GAME.mode!=="time" && GAME.complete));   // ④リザルト（両モード）
     b.style.display = inResults ? "" : "none";
-    b.textContent = GAME.challenge ? ((GAME.ch && GAME.ch.turn>=3) ? "チャレンジ終了" : "このターンを終わる") : "スタンバイに戻る";
+    b.textContent = GAME.challenge ? ((GAME.ch && GAME.ch.extra) ? "スタンバイに戻る" : ((GAME.ch && GAME.ch.turn>=3) ? "チャレンジ終了" : "このターンを終わる")) : "スタンバイに戻る";
 }
 
 /* HUD更新 */
