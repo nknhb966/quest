@@ -2279,7 +2279,7 @@ function updateChRoundPanel(){
     let dom=document.getElementById("chRoundDom");
     if(active && !renderer.xr.isPresenting){
         if(!dom){ dom=document.createElement("div"); dom.id="chRoundDom";
-            dom.style.cssText="position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
+            dom.style.cssText="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
             document.body.appendChild(dom); }
         const r=chRoundInfo(GAME.ch.turn);
         dom.innerHTML='<div style="font-size:30px;color:#ffd86a;margin-bottom:8px;">'+r.head+'</div>'+r.lines.map((l,i)=>'<div style="font-size:16px;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("");
