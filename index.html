@@ -2074,6 +2074,7 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
     }
     if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.60, -0.12);          // 下段＝相棒えらび（図鑑の右60cm）
     if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.60, 0.20);   // 上段＝カードをひく（縦に揃える）
+    if(typeof chRoundPanel!=="undefined" && chRoundPanel.mesh.visible) place(chRoundPanel.mesh, 0.60, 0.166);   // 相棒えらびの上（同じ挙動・スタンバイ〜カウントダウン中）
 }
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
@@ -2218,18 +2219,18 @@ const dexPanel=(function(){
 })();
 // タイムアタックのカウントダウン/残り時間を「発掘図鑑の近く（左手）」に表示
 const taClock=(function(){
-    const cv=document.createElement("canvas"); cv.width=576; cv.height=128; const c=cv.getContext("2d");   // 幅1.5倍
+    const cv=document.createElement("canvas"); cv.width=634; cv.height=128; const c=cv.getContext("2d");   // 幅1.5倍×1.1
     const tex=new THREE.CanvasTexture(cv);
     const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true}));
-    spr.scale.set(0.315,0.07,1); spr.position.set(0,0.31,-0.02); spr.visible=false;   // 横幅1.5倍
+    spr.scale.set(0.3465,0.07,1); spr.position.set(0,0.31,-0.02); spr.visible=false;   // 横幅1.1倍（高さ・文字サイズは維持）
     dexHolder.add(spr);
     let last="";
-    function draw(txt,big){ if(txt===last) return; last=txt; c.clearRect(0,0,576,128);
+    function draw(txt,big){ if(txt===last) return; last=txt; c.clearRect(0,0,634,128);
         c.fillStyle="rgba(18,12,32,0.9)"; c.beginPath();
-        if(c.roundRect) c.roundRect(6,6,564,116,22); else c.rect(6,6,564,116);
+        if(c.roundRect) c.roundRect(6,6,622,116,22); else c.rect(6,6,622,116);
         c.fill(); c.strokeStyle="#d8b46a"; c.lineWidth=4; c.stroke();
         const fs = big?86 : (txt.length>8?34:52);
-        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+fs+"px sans-serif"; c.fillText(txt,288,66); tex.needsUpdate=true; }
+        c.fillStyle="#ffe066"; c.textAlign="center"; c.textBaseline="middle"; c.font="bold "+fs+"px sans-serif"; c.fillText(txt,317,66); tex.needsUpdate=true; }
     return { spr, draw, show(v){ spr.visible=v; } };
 })();
 function updateTAClock(){
@@ -2257,17 +2258,17 @@ function chRoundInfo(turn){
     return {head:"FINAL ROUND", lines:["最後の発掘！","最高得点を目指そう！","制限時間は"+t3+"秒"]};
 }
 const chRoundPanel=(function(){
-    const W=768,H=430; const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+    const W=768,H=512; const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d"); const tex=new THREE.CanvasTexture(cv);
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.92,0.515), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
-    mesh.renderOrder=1200; mesh.visible=false; mesh.frustumCulled=false; scene.add(mesh);
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.20), new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthTest:true}));
+    mesh.renderOrder=1000; mesh.visible=false; mesh.frustumCulled=false; scene.add(mesh);   // 相棒えらびと同じ深度/順序。配置は placeBuddyPanels（相棒えらびの上）
     function draw(turn){
         ctx.clearRect(0,0,W,H);
-        ctx.fillStyle="rgba(18,14,30,0.93)"; if(typeof rr==="function"){ rr(ctx,8,8,W-16,H-16,30); ctx.fill(); } else ctx.fillRect(8,8,W-16,H-16);
-        ctx.strokeStyle="#ffcf5a"; ctx.lineWidth=6; ctx.stroke();
+        ctx.fillStyle="rgba(0,0,0,0.9)"; if(typeof rr==="function"){ rr(ctx,10,10,W-20,H-20,26); ctx.fill(); } else ctx.fillRect(10,10,W-20,H-20);
+        ctx.strokeStyle="#ffffff"; ctx.lineWidth=7; ctx.stroke();   // 白枠・黒地のメッセージ風
         const r=chRoundInfo(turn); ctx.textAlign="center"; ctx.textBaseline="middle";
-        ctx.fillStyle="#ffd86a"; ctx.font="bold 76px sans-serif"; ctx.fillText(r.head, W/2, 96);
-        let y=200; r.lines.forEach((ln,i)=>{ ctx.fillStyle=(i===r.lines.length-1)?"#8ff0ff":"#eafff9"; ctx.font="bold "+(i===r.lines.length-1?42:40)+"px sans-serif"; ctx.fillText(ln, W/2, y); y+=66; });
+        ctx.fillStyle="#ffe066"; ctx.font="bold 72px sans-serif"; ctx.fillText(r.head, W/2, 92);   // 見出し＝黄
+        let y=208; r.lines.forEach((ln,i)=>{ ctx.fillStyle=(i===r.lines.length-1)?"#ffe066":"#ffffff"; ctx.font="bold 42px sans-serif"; ctx.fillText(ln, W/2, y); y+=90; });   // 本文＝白／最後の行＝黄
         tex.needsUpdate=true;
     }
     return { mesh, draw };
@@ -2285,12 +2286,11 @@ function updateChRoundPanel(){
         dom.innerHTML='<div style="font-size:30px;color:#ffd86a;margin-bottom:8px;">'+r.head+'</div>'+r.lines.map((l,i)=>'<div style="font-size:16px;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("");
         dom.style.display="block";
     } else if(dom){ dom.style.display="none"; }
-    // VR 3Dパネル
+    // VR 3Dパネル（相棒えらびの上・同じ追従＝placeBuddyPanelsで配置）
     if(!(active && renderer.xr.isPresenting)){ chRoundPanel.mesh.visible=false; return; }
     chRoundPanel.mesh.visible=true;
     const key=GAME.ch.turn+"|"+((GAME.ch.userTime)||TIME_LIMIT);
     if(key!==_chRoundKey){ _chRoundKey=key; chRoundPanel.draw(GAME.ch.turn); }
-    if(typeof placeYawFront==="function") placeYawFront(chRoundPanel.mesh, 0.45, 2.0);
 }
 function updateDexPanel(){
     if(!renderer.xr.isPresenting || !leftCtrl){ dexHolder.visible=false; return; }
@@ -5008,8 +5008,8 @@ renderer.setAnimationLoop(()=>{
     if(typeof updateBuddyCardVR==="function") updateBuddyCardVR();
     if(typeof updateBuddyRandomBtn==="function") updateBuddyRandomBtn();
     if(typeof updateBuddyGridVR==="function") updateBuddyGridVR();
-    if(typeof placeBuddyPanels==="function") placeBuddyPanels();
     if(typeof updateChRoundPanel==="function") updateChRoundPanel();
+    if(typeof placeBuddyPanels==="function") placeBuddyPanels();
     if(typeof updateDimOverlay==="function") updateDimOverlay();
     if(petCooldown>0) petCooldown-=dt;
     if(GAME.active){ updateDigReady(); updateBlockGlow(now); updateAim(isVR); updateCoach(dt); if(isVR) checkPetVR(); }
