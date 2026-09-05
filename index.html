@@ -294,9 +294,9 @@
       <div class="opt wide" id="optMode">
         <div class="lbl">モード</div>
         <div class="seg" id="segMode">
-          <button data-v="time" class="on">⏱ タイムアタック</button>
+          <button data-v="challenge" class="on">🏆 発掘チャレンジ</button>
+          <button data-v="time">⏱ タイムアタック</button>
           <button data-v="collect">🗺 コレクション</button>
-          <button data-v="challenge">🏆 発掘チャレンジ</button>
         </div>
         <div id="chModeNote" style="display:none; margin-top:8px; font-size:12px; color:#ffcdea; line-height:1.5;">3ターンで発掘に挑戦！相棒を集めて高得点を目指そう！<br>（設定は自動。発掘対象と広さだけ選べます）</div>
       </div>
@@ -438,15 +438,15 @@
 <!-- ═══ TOP5 記録モーダル ═══ -->
 <div id="taModal" style="position:fixed; inset:0; z-index:12000; display:none; align-items:center; justify-content:center; background:rgba(10,6,20,.72); backdrop-filter:blur(3px); padding:20px;">
   <div style="width:min(460px,94vw); max-height:90vh; overflow:auto; background:linear-gradient(160deg,#1c1430,#140e24); border:2px solid #d8b46a; border-radius:18px; padding:22px; color:#efe6ff; box-shadow:0 18px 50px rgba(0,0,0,.5);">
-    <div style="text-align:center; font-size:20px; font-weight:800; color:#8ff0ff; margin-bottom:4px;">⏳ じっくりコレクション TOP5</div>
-    <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">クリアタイム（速い順・0.1秒）</div>
-    <div id="colModalList"></div>
+    <div style="text-align:center; font-size:20px; font-weight:800; color:#ffcdea; margin-bottom:4px;">🏆 発掘チャレンジ TOP5</div>
+    <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">3ターン合計ポイント</div>
+    <div id="chModalList"></div>
     <div style="text-align:center; font-size:20px; font-weight:800; color:#f0d98a; margin:16px 0 4px;">🏅 タイムアタック TOP5</div>
     <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">スコア（発掘＋残り秒×30）</div>
     <div id="taModalList"></div>
-    <div style="text-align:center; font-size:20px; font-weight:800; color:#ffcdea; margin:16px 0 4px;">🏆 発掘チャレンジ TOP5</div>
-    <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">3ターン合計ポイント</div>
-    <div id="chModalList"></div>
+    <div style="text-align:center; font-size:20px; font-weight:800; color:#8ff0ff; margin:16px 0 4px;">⏳ じっくりコレクション TOP5</div>
+    <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">クリアタイム（速い順・0.1秒）</div>
+    <div id="colModalList"></div>
     <div style="display:flex; flex-direction:column; gap:8px; margin-top:18px;">
       <div style="display:flex; gap:8px;">
         <button id="colResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #4b7a8f; background:#16303a; color:#cdeeff; font-weight:800; cursor:pointer;">コレクションのみ削除</button>
@@ -2446,7 +2446,7 @@ const GAME = {
     doneIdx:new Set(),         // 発掘済みスポット（リセットまで再出現しない）
     timeLeft:TIME_LIMIT, score:0, endT:0,
 };
-let chosenMode="time", chosenTool="wide", chosenDigTarget="artifact";
+let chosenMode="challenge", chosenTool="wide", chosenDigTarget="artifact";
 let scanSoundOn=true;   // 探知音は常にON
 let rarityOn=false;      // 既定：レア度なし（獲得カードはランダム）
 
@@ -3142,6 +3142,13 @@ function clearNewStamps(){ let ch=false; for(const k in dexData){ if(dexData[k].
  * ===================================================== */
 const menu=document.getElementById("menu");
 document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; if(typeof updateTimeLimitUI==="function") updateTimeLimitUI(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); });
+// デスクトップHUDボタンの並び：dTA（スタンバイに戻る等）を先頭・黄色で目立たせ、リセットは「やめる」の直前
+(function(){
+    const dTA=document.getElementById("dTA"), taCard=document.getElementById("taCardBtn"), dReset=document.getElementById("dReset"), dQuit=document.getElementById("dQuit");
+    if(dTA && dTA.parentNode){ dTA.parentNode.insertBefore(dTA, taCard||dTA.parentNode.firstChild);   // 先頭ボタンへ
+        dTA.style.background="#ffd34d"; dTA.style.color="#3a2600"; dTA.style.fontWeight="900"; }   // 黄色で目立たせ（サイズは据え置き）
+    if(dReset && dQuit && dReset.parentNode) dReset.parentNode.insertBefore(dReset, dQuit);   // リセットを「やめる」の直前へ
+})();
 function setTimeLimit(v){ v=Math.max(60,Math.min(180,Math.round(v/5)*5)); TIME_LIMIT=v;
     const s=document.getElementById("tlSlider"), n=document.getElementById("tlNum"), t=document.getElementById("tlVal");
     if(s) s.value=v; if(n) n.value=v; if(t) t.textContent=v; }
@@ -3412,7 +3419,7 @@ document.getElementById("help").addEventListener("click", e=>{ if(e.target.id===
 
 function startGame(desktop){
     GAME.challenge = (chosenMode==="challenge");                         // 発掘チャレンジ（3ターン）
-    if(GAME.challenge){ GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:(typeof TIME_LIMIT!=="undefined"?TIME_LIMIT:90)}; if(typeof resetUnlocked==="function") resetUnlocked(); chApplyTurn(1); }   // 1ターン目：30秒・スター無し・犬固定
+    if(GAME.challenge){ const ut=(typeof TIME_LIMIT!=="undefined" && TIME_LIMIT>=60)?TIME_LIMIT:90; GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:ut}; if(typeof resetUnlocked==="function") resetUnlocked(); chApplyTurn(1); }   // userTimeはスライダー値（chApplyTurnでTIME_LIMITが30化される前に確定）
     GAME.active=true; GAME.desktop=desktop; GAME.mode=(GAME.challenge?"time":chosenMode); GAME.tool=chosenTool; GAME.starUsed=false; GAME.complete=false;
     if(typeof resetUnlocked==="function") resetUnlocked();   // 入室で獲得候補を犬だけに
     if(typeof resetDogStats==="function") resetDogStats();   // 犬ステータス初期化
@@ -5268,7 +5275,7 @@ function resetDexAndStandby(rotate){
     afterSite(()=>clearTargets());
     if(GAME.mode==="time"){ TA.state="ready"; worldHud.hide(); if(typeof taClock!=="undefined") taClock.show(false); showToast("リセット。スタート待ち"); }
     else { GAME.standby=true; if(GAME.desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐","スタート/スペースで開始", true); } showToast("リセット。スタート待ち"); }
-    if(GAME.challenge){ GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:(GAME.ch&&GAME.ch.userTime)||TIME_LIMIT}; if(typeof chApplyTurn==="function") chApplyTurn(1); }   // チャレンジは1ターン目からやり直し（スコア・相棒もリセット）
+    if(GAME.challenge){ const ut=(GAME.ch && GAME.ch.userTime>=60)?GAME.ch.userTime:90; GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:ut}; if(typeof chApplyTurn==="function") chApplyTurn(1); }   // チャレンジは1ターン目からやり直し（userTimeは保持）
     updateBuddyStandbyUI();
     if(!GAME.challenge) showWorldAura();                       // 矩形＋発掘ポイントを3秒オーラ表示（チャレンジはヒント演出なし）
     updateGoal(); updateTAButton();
