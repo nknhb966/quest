@@ -977,7 +977,7 @@ function unlockAudio(){ if(audioCtx.state==="suspended") audioCtx.resume(); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio));
 
 function beep(freq, dur=0.09, vol=0.3, type="sine"){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）は音不要
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）は音不要
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
     o.connect(g); g.connect(audioCtx.destination); o.type=type;
     o.frequency.setValueAtTime(freq, audioCtx.currentTime);
@@ -986,7 +986,7 @@ function beep(freq, dur=0.09, vol=0.3, type="sine"){
     o.start(); o.stop(audioCtx.currentTime+dur);
 }
 function chord(freqs, step=0.06, type="triangle", vol=0.4){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）は音不要
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）は音不要
     freqs.forEach((f,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
         o.connect(g); g.connect(audioCtx.destination); o.type=type;
         o.frequency.setValueAtTime(f, audioCtx.currentTime+i*step);
@@ -1018,7 +1018,7 @@ const sfxComplete = ()=> chord([523,659,784,1047,1319],0.11,"triangle",0.55);
 const sfxTimeUp   = ()=> chord([880,660,440,330],0.15,"sawtooth",0.4);
 // 恐竜の鳴き声（下降するうなり）
 function sfxCry(){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）は覗き込み等の鳴き声も不要
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）は覗き込み等の鳴き声も不要
     const t=audioCtx.currentTime;
     [190,150,110].forEach((f,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
         o.type="sawtooth"; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(Math.max(50,f*0.55), t+0.45);
@@ -2561,7 +2561,7 @@ function spawnAllTargets(){
     if(GAME.challenge && GAME.ch && GAME.ch.turn===1){   // 1ターン目：プレイヤー中心2×2m内に最も近い3点（スター無し）
         const H=camera.getWorldPosition(new THREE.Vector3());
         const idxs=chTurn1Idxs();
-        for(let k=0;k<3;k++){ const a=(k/3)*Math.PI*2+(Math.random()-0.5)*0.7, rad=0.7+Math.random()*0.3;
+        for(let k=0;k<3;k++){ const a=(k/3)*Math.PI*2+(Math.random()-0.5)*0.7, rad=1.7+Math.random()*0.3;   // プレイヤーから約1.7〜2.0m（＋1m遠く）
             const t=spawnTarget(idxs[k], idxs[k]); if(t){ moveTargetTo(t, new THREE.Vector3(H.x+Math.cos(a)*rad, GROUND_Y, H.z+Math.sin(a)*rad)); if(typeof discoverTarget==="function") discoverTarget(t, true); } }   // 最初から発見済み（ブロック表示）
         return;
     }
@@ -3018,7 +3018,7 @@ let dogCelebrateT=0;
 const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
 // 犬に「聞く」＝場所ヒント。信頼度に応じて当たり/はずれ。教えた場所へ行って少し待つ。
 function askDog(){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）は不可（暗転中）
     if(GAME.complete) return;   // コンプリート後は反応しない
     if(!GAME.active) return;
     // タイムアタックの計測中以外は「終わったよ」の反応にする
@@ -3052,7 +3052,7 @@ function dogCelebrate(){ dogCelebrateT=2.4; }   // ゆっくり数回ジャン�
  * ハプティクス
  * ===================================================== */
 function _pulseGamepad(gp, dur, intensity){
-    if(typeof holo!=="undefined"&&holo) return false;   // 図鑑カード表示中（暗転中）はバイブ不要（全経路をここで停止）
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return false;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）はバイブ不要（全経路をここで停止）
     if(!gp) return false;
     try{ const a=gp.hapticActuators;
         if(a && a.length>0){
@@ -3064,7 +3064,7 @@ function _pulseGamepad(gp, dur, intensity){
     return false;
 }
 function vibrate(dur, intensity){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中（暗転中）はバイブ不要
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）はバイブ不要
     const s=renderer.xr.getSession();
     if(!s){ if(navigator.vibrate){ try{ navigator.vibrate(Math.max(35,Math.round(dur*1.6))); }catch(e){} } return; }
     let any=false;
@@ -4526,7 +4526,7 @@ function updateBlockGlow(now){
     }
 }
 function doDig(t){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）は不可（暗転中）
     t.progress += companionStats().power;   // POWER:掘る力
     sfxDig();
     spawnDirt(t.pos, 8);
@@ -4673,7 +4673,7 @@ function specialFlash(col){
 }
 // 発掘ポイントを発見状態にする（自力で見つけた時も掘れるように）
 function discoverTarget(t, silent){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）は不可（暗転中）
     if(t.discovered) return;
     t.discovered=true; t.marker.visible=true;
     petBoost=0;   // 発掘ポイントに連れて行ってもらったら確率は初期状態（低）に戻す
@@ -4711,7 +4711,7 @@ function focusTarget(){
     return best;
 }
 function updateCoach(dt){
-    if(typeof holo!=="undefined"&&holo){ if(typeof bubbleSpr!=="undefined"&&bubbleSpr) bubbleSpr.visible=false; return; }   // 図鑑カード表示中（暗転中）は相棒のセリフ不要（非表示）
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime){ if(typeof bubbleSpr!=="undefined"&&bubbleSpr) bubbleSpr.visible=false; return; }   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）は相棒のセリフ不要（非表示）
     // 掘り当てなどの喜びセリフ（found/done/again 等・force表示）を言っている間は、
     // コーチングの hold()（「近くに来て」等）で上書きしない。hold() は dogHappyUntil を見ないため必ずここで止める。
     if(typeof GAME!=="undefined" && GAME.dogHappyUntil && performance.now() < GAME.dogHappyUntil) return;
@@ -4752,7 +4752,7 @@ const PET_LINES=["うれしいワン！","もっと なでて ワン♪","えへ
 function currentHitProb(){ let base=0.5; const tg=GAME.targets.find(x=>!x.discovered); if(tg&&tg.diff) base=tg.diff.dogRel; return Math.min(1, base+petBoost); }
 let lastPetLine="", dogSpinT=0, dogTailWagT=0;
 function petDog(){
-    if(typeof holo!=="undefined"&&holo) return;   // 図鑑カード表示中は不可（暗転中）
+    if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）は不可（暗転中）
     if(GAME.complete) return;   // コンプリート後は反応しない
     if(GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil) return;   // 喜びセリフ中は撫でられない（掘り優先）
     if(petCooldown>0) return;
@@ -5219,11 +5219,12 @@ function onRightPressEdge(){
     }
     if(dexHolder.visible && dexPanel.hover>=0){
         const e=dexData[dexPanel.hover];
-        if(e && e.found) toggleHologram(dexPanel.hover);   // 発掘済みのみ選択可（未発掘は無反応）
+        if(e && e.found) toggleHologram(dexPanel.hover);   // 発掘済みのみ選択可（同じ発掘物=閉じる／別の発掘物=切り替え）
         return;
     }
+    if(typeof holo!=="undefined"&&holo){ closeHologram(); sfxLocate(); vibrate(70,0.5); lastRightPress=0; return; }   // ホログラム表示中に図鑑カード以外（何もない場所等）を指して右トリガー→未選択に戻す
     const now=performance.now();
-    if(now-lastRightPress<400){ lastRightPress=0; if(GAME._resToggleTimer){ clearTimeout(GAME._resToggleTimer); GAME._resToggleTimer=null; } onRightDouble(); }   // 2回連続
+    if(now-lastRightPress<400){ lastRightPress=0; if(GAME._resToggleTimer){ clearTimeout(GAME._resToggleTimer); GAME._resToggleTimer=null; } if(typeof chord==="function") chord([660,880],0.05,"triangle",0.4); vibrate(100,0.75); onRightDouble(); }   // 2回連続（確定操作）＝音＋バイブ
     else { lastRightPress=now;
         if(GAME.mode==="time" && TA.state==="results"){   // TA結果：単押しでページ切替（2回でスタンバイ）
             GAME._resToggleTimer=setTimeout(()=>{ GAME._resToggleTimer=null; worldHud.toggleResultsPage(); }, 420);
