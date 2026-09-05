@@ -2279,7 +2279,7 @@ function updateChRoundPanel(){
     let dom=document.getElementById("chRoundDom");
     if(active && !renderer.xr.isPresenting){
         if(!dom){ dom=document.createElement("div"); dom.id="chRoundDom";
-            dom.style.cssText="position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
+            dom.style.cssText="position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
             document.body.appendChild(dom); }
         const r=chRoundInfo(GAME.ch.turn);
         dom.innerHTML='<div style="font-size:30px;color:#ffd86a;margin-bottom:8px;">'+r.head+'</div>'+r.lines.map((l,i)=>'<div style="font-size:16px;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("");
@@ -3202,7 +3202,7 @@ function applyAutoForTarget(target){   // 発掘対象に応じて必ず自動�
     }
     updateWorldSizeUI && updateWorldSizeUI();
 }
-function applyChallengePreset(){   // 発掘チャレンジの自動設定（変更不可）。発掘対象と広さだけユーザーが選べる
+function applyChallengePreset(){   // 発掘チャレンジの自動設定。必須項目は常時、5項目（時間/道具/サイト/原寸比/短辺）はおすすめオン時のみ自動固定
     segSelect("segCardShow","on");    cardShown=true;                 // 獲得カード：表示
     segSelect("segRarity","on");      rarityOn=true;                  // レア度：あり
     segSelect("segBuddyMode","pick"); buddyRandom=false; dogOnly=false;   // 相棒：えらぶ
@@ -3210,12 +3210,13 @@ function applyChallengePreset(){   // 発掘チャレンジの自動設定（変
     segSelect("segStar","on");        starEnabled=true;               // スター：あり（1ターン目のみ実行時にオフ）
     segSelect("segHoloFreeze","off"); holoFreezeTime=false;           // 図鑑カード表示中の時間：止まらない
     segSelect("segDogLevel","up");    dogLevelUp=true;
-    // 以下も自動固定（メインでは非表示）
-    setTimeLimit(90);                                                 // 制限時間：90秒
-    segSelect("segToolSwap","off");   toolSwapAllowed=false;          // 道具の持ち替え：持ち替えない
-    realCapToActual=false; segSelect("segRealCap","off");             // 恐竜の原寸比：上限なし
-    if(typeof setRealRefShort==="function") setRealRefShort(20);      // 実寸になるフィールド短辺：20
-    segSelect("segSite", (chosenDigTarget==="artifact")?"show":"hide"); setSiteVisible(chosenDigTarget==="artifact"); if(typeof syncSiteSeg==="function") syncSiteSeg();   // サイトモデル：出土品=表示／恐竜=非表示
+    if(recoOn){   // おすすめオン：5項目も自動固定
+        setTimeLimit(90);                                             // 制限時間：90秒
+        segSelect("segToolSwap","off");   toolSwapAllowed=false;      // 道具の持ち替え：持ち替えない
+        realCapToActual=false; segSelect("segRealCap","off");         // 恐竜の原寸比：上限なし
+        if(typeof setRealRefShort==="function") setRealRefShort(20);  // 実寸になるフィールド短辺：20
+        segSelect("segSite", (chosenDigTarget==="artifact")?"show":"hide"); setSiteVisible(chosenDigTarget==="artifact"); if(typeof syncSiteSeg==="function") syncSiteSeg();   // サイトモデル：出土品=表示／恐竜=非表示
+    }
     if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
 }
 function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=全項目表示
@@ -3252,9 +3253,16 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("siteSizeOpt", siteVisible);
         show("worldSizeOpt", !siteVisible);
     }
-    if(isChallenge){   // 発掘チャレンジ：自動設定でロックする項目を非表示（発掘対象と広さのみ変更可）
-        ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar",
-         "optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDogLevel","optDigPos"].forEach(id=>show(id,false));
+    if(isChallenge){   // 発掘チャレンジ：必須6項目は常にロック。5項目はおすすめオンで非表示／オフで表示・変更可
+        ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar","optDogLevel","optDigPos"].forEach(id=>show(id,false));
+        if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort"].forEach(id=>show(id,false)); }
+        else {
+            show("optTimeLimit",true);   // 3ターン目の制限時間
+            show("optToolSwap",true);
+            show("optSite",true);
+            show("optRealShort", chosenDigTarget!=="artifact");
+            show("optRealCap", chosenDigTarget!=="artifact");
+        }
         show("optMode",true);
     }
     show("optReco",true);   // おすすめトグルは常に表示（どのモードでも消えない）
@@ -4056,6 +4064,7 @@ function taFinish(){
 // 右トリガー（素手なら右手つまむ）で進行
 function enterStandby(){   // ①スタンバイへ（④→①は内容保持のまま。相棒選択可）
     buddyListOpen=false;   // リザルトから戻ったら恐竜一覧は閉じた状態を既定に
+    { const bc=document.getElementById("buddyCard"); if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; bc.style.display="none"; } if(typeof _buddyCardVR!=="undefined" && _buddyCardVR) _buddyCardVR.visible=false; }   // 相棒カードは閉じる（開いたまま残さない）
     GAME.tool="wide"; if(typeof updateToolLabel==="function") updateToolLabel(); if(typeof refreshToolModel==="function") refreshToolModel();   // スタンバイでは必ず幅広に戻す（持ち替える設定でも）
     GAME.complete=false; GAME.standby = (GAME.mode!=="time");
     if(GAME.mode==="time") TA.state="ready"; else TA.state="idle";
@@ -5242,10 +5251,11 @@ function resetDexAndStandby(rotate){
     if(typeof resetUnlocked==="function") resetUnlocked();   // リセットで獲得候補を犬だけに
     if(typeof resetDogStats==="function") resetDogStats();   // 犬ステータス初期化
     if(typeof setCompanion==="function") setCompanion("dog"); // リセット時は相棒を犬に戻す
-    { // 相棒カードが表示中なら、犬のカードに差し替える（非表示なら何もしない）
+    { // リセット時は相棒カード（DOM/VR）を閉じる（開いたまま残さない）
       const bc=document.getElementById("buddyCard");
-      if(bc && bc.style.opacity==="1" && bc.style.pointerEvents!=="none" && typeof showCompanionCard==="function") showCompanionCard("dog");
-      if(typeof _buddyCardVR!=="undefined" && _buddyCardVR && _buddyCardVR.visible && typeof showBuddyCardVR==="function") showBuddyCardVR("dog");
+      if(bc){ bc.style.opacity="0"; bc.style.pointerEvents="none"; bc.style.display="none"; }
+      if(typeof _buddyCardVR!=="undefined" && _buddyCardVR) _buddyCardVR.visible=false;
+      buddyListOpen=false;
     }
     if(rotate) recenterFieldHere();                            // 左手グリップ＋Yのときだけ基準（中央/向き）を設定
     GAME.starUsed=false;                                       // リセットでスターポイント復活可能に
