@@ -240,9 +240,8 @@
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
     <h1 class="title">越前国府発掘クエスト</h1>
-    <p class="subtitle">遺跡を歩いて探して、出土品や恐竜を掘り当てよう。相棒と一緒に。</p>
 
-    <p id="loadingNote"><i></i>遺跡データを読み込み中…（完了すると開始できます）</p>
+    <p id="loadingNote"><i></i>データを読み込み中…</p>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
 
@@ -3148,6 +3147,8 @@ document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document
     if(dTA && dTA.parentNode){ dTA.parentNode.insertBefore(dTA, taCard||dTA.parentNode.firstChild);   // 先頭ボタンへ
         dTA.style.background="#ffd34d"; dTA.style.color="#3a2600"; dTA.style.fontWeight="900"; }   // 黄色で目立たせ（サイズは据え置き）
     if(dReset && dQuit && dReset.parentNode) dReset.parentNode.insertBefore(dReset, dQuit);   // リセットを「やめる」の直前へ
+    { const dDex=document.getElementById("dDex"); if(dDex && dDex.parentNode){ const prevBtns=Array.from(dDex.parentNode.children).filter(el=>el.tagName==="BUTTON" && el!==dDex && getComputedStyle(el).display!=="none"); // 図鑑より前に表示ボタンがある時だけ改行
+        if(prevBtns.length){ const br=document.createElement("span"); br.style.cssText="flex-basis:100%;width:100%;height:0"; dDex.parentNode.insertBefore(br, dDex); } } }   // 図鑑の直前で改行
 })();
 function setTimeLimit(v){ v=Math.max(60,Math.min(180,Math.round(v/5)*5)); TIME_LIMIT=v;
     const s=document.getElementById("tlSlider"), n=document.getElementById("tlNum"), t=document.getElementById("tlVal");
@@ -3230,7 +3231,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
     const on=recoOn;
     const target=chosenDigTarget;
     const show=(id,vis)=>{ const e=document.getElementById(id); if(e) e.style.display=vis?"":"none"; };
-    const chNote=document.getElementById("chModeNote"); if(chNote) chNote.style.display=(chosenMode==="challenge")?"":"none";
+    const chNote=document.getElementById("chModeNote"); if(chNote) chNote.style.display="none";   // チャレンジの説明文は表示しない
     const isChallenge=(chosenMode==="challenge");
     if(isChallenge) applyChallengePreset();
     if(on && !isChallenge){
@@ -3824,7 +3825,8 @@ function taBeginCountdown(){
     if(!customWorldOn() && digPosRandom && curTarget==="dino"){ regenerateSiteRandomSpots(); } else { GAME.siteSpots=null; }   // サイト表示×恐竜系ランダムは毎回新配置
     if(GAME.challenge && GAME.ch && GAME.ch.turn===1) showWorldAura(true);   // 1ターン目はヒント演出なし（矩形オーラのみ）
     else showWorldAura();             // 矩形内にランダム再配置＋オーラ（＋発掘ポイントのヒント）
-    TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS; if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
+    TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS; TA._lastN=null; if(typeof vibrate==="function") vibrate(220,0.9);   // カウントダウン開始（3）でバイブ（2/1はなし。1秒ごとの音は別途）
+    if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     worldHud.drawCountdown("3","まもなくスタート");
     bubble.say(line("start"), 2200);
     updateGoal(); updateTAButton();
@@ -5231,7 +5233,10 @@ function onRightPressEdge(){
     }
     if(typeof holo!=="undefined"&&holo){ closeHologram(); sfxLocate(); vibrate(70,0.5); lastRightPress=0; return; }   // ホログラム表示中に図鑑カード以外（何もない場所等）を指して右トリガー→未選択に戻す
     const now=performance.now();
-    if(now-lastRightPress<400){ lastRightPress=0; if(GAME._resToggleTimer){ clearTimeout(GAME._resToggleTimer); GAME._resToggleTimer=null; } if(typeof chord==="function") chord([660,880],0.05,"triangle",0.4); vibrate(100,0.75); onRightDouble(); }   // 2回連続（確定操作）＝音＋バイブ
+    if(now-lastRightPress<400){ lastRightPress=0; if(GAME._resToggleTimer){ clearTimeout(GAME._resToggleTimer); GAME._resToggleTimer=null; }
+        const wasCd=(TA.state==="countdown"); onRightDouble();
+        if(!(!wasCd && TA.state==="countdown")){ if(typeof chord==="function") chord([660,880],0.05,"triangle",0.4); vibrate(100,0.75); }   // カウントダウン開始の2回では確認音/バイブなし（それ以外は鳴らす）
+    }
     else { lastRightPress=now;
         if(GAME.mode==="time" && TA.state==="results"){   // TA結果：単押しでページ切替（2回でスタンバイ）
             GAME._resToggleTimer=setTimeout(()=>{ GAME._resToggleTimer=null; worldHud.toggleResultsPage(); }, 420);
