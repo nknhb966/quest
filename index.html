@@ -240,15 +240,15 @@
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
     <h1 class="title">越前国府発掘クエスト</h1>
-    <p class="subtitle">歩いて探して、出土品や恐竜を掘り当てよう</p>
+    <p class="subtitle">遺跡を歩いて探して、出土品や恐竜を掘り当てよう。相棒と一緒に。</p>
 
-    <p id="loadingNote"><i></i>データを読み込み中…</p>
+    <p id="loadingNote"><i></i>遺跡データを読み込み中…（完了すると開始できます）</p>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
 
     <div class="cardgrid">
       <div class="opt wide" id="optReco">
-        <div class="lbl">おすすめ設定</div>
+        <div class="lbl">おすすめ設定（オンにすると、発掘対象に合わせて最適な設定を自動でセットします）</div>
         <div class="seg" id="segReco">
           <button data-v="on" class="on">✅ おすすめ設定オン</button>
           <button data-v="off">⚙️ おすすめ設定オフ</button>
@@ -263,28 +263,28 @@
         </div>
       </div>
       <div class="opt wide" id="optToolSwap" style="display:none">
-        <div class="lbl">発掘道具の持ち替え</div>
+        <div class="lbl">発掘道具の持ち替え（プレイ中に道具を切り替えられるか）</div>
         <div class="seg" id="segToolSwap">
           <button data-v="off" class="on">🔒 持ち替えない</button>
           <button data-v="on">🔄 持ち替える</button>
         </div>
       </div>
       <div class="opt wide" id="optHoloFreeze" style="display:none">
-        <div class="lbl">図鑑カード表示中の時間</div>
+        <div class="lbl">図鑑カード表示中の時間（カウントダウン/制限時間）</div>
         <div class="seg" id="segHoloFreeze">
           <button data-v="on" class="on">⏸ 止まる</button>
           <button data-v="off">▶ 止まらない</button>
         </div>
       </div>
       <div class="opt wide" id="optRealCap" style="display:none">
-        <div class="lbl">恐竜の原寸比</div>
+        <div class="lbl">恐竜の原寸比（フィールドを広げたときの大きさ上限）</div>
         <div class="seg" id="segRealCap">
           <button data-v="off" class="on">∞ 上限なし</button>
           <button data-v="on">📏 実寸まで</button>
         </div>
       </div>
       <div class="opt wide" id="optRealShort" style="display:none">
-        <div class="lbl">恐竜が実寸になるフィールド短辺（m）</div>
+        <div class="lbl">恐竜が実寸になるフィールド短辺（m）｜20〜30が適正（小さい=密／大きい=疎）</div>
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="rsSlider" type="range" min="10" max="50" step="1" value="20" style="flex:1;">
           <input id="rsNum" type="number" min="10" max="50" step="1" value="20" style="width:64px;">
@@ -301,21 +301,21 @@
         <div id="chModeNote" style="display:none; margin-top:8px; font-size:12px; color:#ffcdea; line-height:1.5;">3ターンで発掘に挑戦！相棒を集めて高得点を目指そう！<br>（設定は自動。発掘対象と広さだけ選べます）</div>
       </div>
       <div class="opt wide" id="optTimeLimit">
-        <div class="lbl">制限時間（発掘チャレンジ3ターン目/タイムアタック）：<span id="tlVal">90</span> 秒</div>
+        <div class="lbl">制限時間（タイムアタック／発掘チャレンジ3ターン目）：<span id="tlVal">90</span> 秒</div>
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="tlSlider" type="range" min="60" max="180" step="5" value="90" style="flex:1;">
           <input id="tlNum" type="number" min="60" max="180" step="5" value="90" style="width:64px;">
         </div>
       </div>
       <div class="opt wide" id="optCardShow">
-        <div class="lbl">獲得カードの表示</div>
+        <div class="lbl">獲得カードの表示（非表示でもカード獲得・相棒追加・演出は行われます）</div>
         <div class="seg" id="segCardShow">
           <button data-v="off" class="on">🙈 カード非表示</button>
           <button data-v="on">🎴 カード表示</button>
         </div>
       </div>
       <div class="opt wide" id="optRarity">
-        <div class="lbl">カードのレア度</div>
+        <div class="lbl">カードのレア度（なしの場合、獲得カードはタイム/点数に関係なくランダム）</div>
         <div class="seg" id="segRarity">
           <button data-v="off" class="on">🎲 レア度なし</button>
           <button data-v="on">⭐ レア度あり</button>
@@ -330,7 +330,7 @@
         </div>
       </div>
       <div class="opt wide" id="optDogLevel">
-        <div class="lbl">犬のレベル</div>
+        <div class="lbl">犬のレベル（アップ型：レア以上のクリアでパラメータが1つ＋1）</div>
         <div class="seg" id="segDogLevel">
           <button data-v="fixed" class="on">🔒 固定型</button>
           <button data-v="levelup">📈 アップ型</button>
@@ -341,28 +341,28 @@
         <div class="seg" id="segBuddy"></div>
       </div>
       <div class="opt wide" id="optBuddyPool" style="display:none">
-        <div class="lbl">相棒の候補</div>
+        <div class="lbl">相棒の候補（獲得：最初は犬だけ。ゲームで獲得したカードの恐竜が候補に加わります）</div>
         <div class="seg" id="segBuddyPool">
           <button data-v="unlock" class="on">🎴 獲得した相棒</button>
           <button data-v="all">🐾 全ての相棒</button>
         </div>
       </div>
       <div class="opt wide" id="optStar">
-        <div class="lbl">スターブロック</div>
+        <div class="lbl">スターブロック（掘ると未発見の発掘ポイントが2〜5個見つかります）</div>
         <div class="seg" id="segStar">
           <button data-v="off" class="on">🚫 スターなし</button>
           <button data-v="on">⭐ スターあり</button>
         </div>
       </div>
       <div class="opt wide" id="optSite">
-        <div class="lbl">サイトモデル（遺跡3D）</div>
+        <div class="lbl">サイトモデル（遺跡の3D）※ARでは非表示にすると自分の部屋で発掘できます</div>
         <div class="seg" id="segSite">
           <button data-v="show" class="on">🗺 表示</button>
           <button data-v="hide">🚫 非表示</button>
         </div>
       </div>
       <div class="opt wide" id="siteSizeOpt">
-        <div class="lbl">サイトモデルの大きさ</div>
+        <div class="lbl">サイトモデルの大きさ（倍率）</div>
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="ssSlider" type="range" min="1" max="5" step="0.1" value="1" style="flex:1;">
           <input id="ssNum" type="number" min="1" max="5" step="0.1" value="1" style="width:64px;">
@@ -377,14 +377,14 @@
         </div>
       </div>
       <div class="opt wide" id="optDigPos" style="display:none">
-        <div class="lbl">発掘場所</div>
+        <div class="lbl">発掘場所（サイト表示×恐竜のみ。ランダムはエリア内に散らばります）</div>
         <div class="seg" id="segDigPos">
           <button data-v="random" class="on">🎲 ランダム</button>
           <button data-v="fixed">📍 固定</button>
         </div>
       </div>
       <div class="opt wide" id="worldSizeOpt" style="display:none;">
-        <div class="lbl">ワールドの広さ（m）</div>
+        <div class="lbl">ワールドの広さ（サイト非表示時・VR/ARのみ／単位：メートル）</div>
         <div style="display:flex; gap:14px; flex-wrap:wrap;">
           <div style="flex:1; min-width:200px;">
             <div style="font-size:12px; color:#b9aee0; margin-bottom:4px;">横幅 X：<span id="wxVal">10</span> m</div>
@@ -449,14 +449,14 @@
     <div id="colModalList"></div>
     <div style="display:flex; flex-direction:column; gap:8px; margin-top:18px;">
       <div style="display:flex; gap:8px;">
-        <button id="chResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #a04b8f; background:#33163a; color:#ffd0f0; font-weight:800; cursor:pointer;">発掘チャレンジのみ削除</button>
+        <button id="colResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #4b7a8f; background:#16303a; color:#cdeeff; font-weight:800; cursor:pointer;">コレクションのみ削除</button>
         <button id="taResetAll" style="flex:1; padding:10px; border-radius:10px; border:1px solid #a04b57; background:#3a1a22; color:#ffd0d6; font-weight:800; cursor:pointer;">タイムアタックのみ削除</button>
       </div>
       <div style="display:flex; gap:8px;">
-        <button id="colResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #4b7a8f; background:#16303a; color:#cdeeff; font-weight:800; cursor:pointer;">コレクションのみ削除</button>
-        <button id="allResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #8f6a4b; background:#3a2a16; color:#ffe6c0; font-weight:800; cursor:pointer;">すべて削除</button>
+        <button id="chResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #a04b8f; background:#33163a; color:#ffd0f0; font-weight:800; cursor:pointer;">発掘チャレンジのみ削除</button>
       </div>
       <div style="display:flex; gap:8px;">
+        <button id="allResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #8f6a4b; background:#3a2a16; color:#ffe6c0; font-weight:800; cursor:pointer;">すべて削除</button>
         <button id="taModalClose" style="flex:1; padding:10px; border-radius:10px; border:1px solid #6a5c94; background:#241a34; color:#d9cbf5; font-weight:800; cursor:pointer;">閉じる</button>
       </div>
     </div>
@@ -556,15 +556,15 @@
       <span class="k">左クリック</span> 掘る
     </span>
     <span style="flex-basis:100%;width:100%;height:0"></span>
-    <button id="taCardBtn" style="display:none;">カードを見る</button>
+    <button id="taCardBtn" style="display:none;">🎴 カードを見る</button>
     <button id="dTA" style="display:none">スタート</button>
-    <button id="dBuddy" style="display:none">相棒：</button>
-    <button id="dAsk">聞く</button>
-    <button id="dTool">道具：幅広</button>
-    <button id="dReset" style="display:none;">リセット</button>
-    <button id="dShowAll" style="display:none;">全て発掘</button>
-    <button id="dDex">図鑑</button>
-    <button id="dRecords">記録</button>
+    <button id="dBuddy" style="display:none">相棒：🦖</button>
+    <button id="dAsk">🦖 きいてみる</button>
+    <button id="dTool">道具：🖌 幅広</button>
+    <button id="dReset" style="display:none;">🔄 リセット</button>
+    <button id="dShowAll" style="display:none;">✨ 全て発掘</button>
+    <button id="dDex">📖 図鑑</button>
+    <button id="dRecords">🏅 記録</button>
     <button id="dQuit">やめる</button>
   </div>
 </div>
@@ -1780,7 +1780,7 @@ function refreshBuddyUI(){
     }
     const ask=document.getElementById("dAsk");
     const cur=COMPANIONS[companionKind]||COMPANIONS[DEFAULT_KIND];
-    if(ask) ask.textContent="聞く";
+    if(ask) ask.textContent=(cur.askLabel||"🦖 きいてみる");
     if(btn) btn.textContent="相棒："+((cur.label||"").split(" ")[0]||"🦖");
 }
 
@@ -1903,15 +1903,15 @@ function updateBuddyStandbyUI(){
     el.appendChild(start);
     el.style.display="flex";
 }
-registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 聞く", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, fullName:"いぬ", rarity:"ノーマル", cat:"あいぼう", diet:"なんでも", special:{name:"ここほれワンワン", discP:100, discN:5, digN:0}, era:"—", region:"—", dinoFeat:"たよれる相棒のいぬ。", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
-registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 聞く", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, fullName:"ティラノサウルス", rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
-registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 聞く", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, fullName:"フクイラプトル", rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
-registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 聞く", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, fullName:"フクイティタン", rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された大型の竜脚類。長い首と尾を持つ。", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
-registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 聞く", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, fullName:"トリケラトプス", rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
-registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 聞く", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, fullName:"プテラノドン", rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 聞く", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, fullName:"フクイサウルス", rarity:"ノーマル", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 聞く", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, fullName:"ステゴサウルス", rarity:"ノーマル", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 聞く", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, fullName:"ブラキオサウルス", rarity:"ノーマル", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, fullName:"いぬ", rarity:"ノーマル", cat:"あいぼう", diet:"なんでも", special:{name:"ここほれワンワン", discP:100, discN:5, digN:0}, era:"—", region:"—", dinoFeat:"たよれる相棒のいぬ。", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, fullName:"ティラノサウルス", rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, fullName:"フクイラプトル", rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, fullName:"フクイティタン", rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された大型の竜脚類。長い首と尾を持つ。", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, fullName:"トリケラトプス", rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
+registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, fullName:"プテラノドン", rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, fullName:"フクイサウルス", rarity:"ノーマル", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, fullName:"ステゴサウルス", rarity:"ノーマル", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, fullName:"ブラキオサウルス", rarity:"ノーマル", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
 setCompanion("dog");
 // 相棒選択時に情報カードを目の前に表示（開始前）
 function showCompanionCard(k, bag){
@@ -3148,8 +3148,6 @@ document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document
     if(dTA && dTA.parentNode){ dTA.parentNode.insertBefore(dTA, taCard||dTA.parentNode.firstChild);   // 先頭ボタンへ
         dTA.style.background="#ffd34d"; dTA.style.color="#3a2600"; dTA.style.fontWeight="900"; }   // 黄色で目立たせ（サイズは据え置き）
     if(dReset && dQuit && dReset.parentNode) dReset.parentNode.insertBefore(dReset, dQuit);   // リセットを「やめる」の直前へ
-    { const dDex=document.getElementById("dDex"), dAsk=document.getElementById("dAsk"); if(dDex){ dDex.style.flexBasis=""; dDex.style.flexGrow=""; dDex.classList.remove("dexbreak"); } if(dAsk && dDex && dAsk.parentNode) dAsk.parentNode.insertBefore(dAsk, dDex); }   // 「聞く」を「図鑑」の直前へ（改行の試みは撤去）
-    { const sp=document.getElementById("_dexBreak"); if(sp) sp.remove(); }   // 旧スペーサーが残っていれば除去
 })();
 function setTimeLimit(v){ v=Math.max(60,Math.min(180,Math.round(v/5)*5)); TIME_LIMIT=v;
     const s=document.getElementById("tlSlider"), n=document.getElementById("tlNum"), t=document.getElementById("tlVal");
@@ -3163,30 +3161,6 @@ function updateTimeLimitUI(){ const o=document.getElementById("optTimeLimit"); i
 document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segTool button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenTool=b.dataset.v; });
 // ===== おすすめ設定 =====
 let recoOn=true;   // おすすめ設定（既定オン）
-// ===== デバイス判定（immersive-vr の対応のみでヘッドセット扱い） =====
-let IS_HEADSET=false;   // 既定はスマホ/PC扱い（検出完了までの初期値）
-let headsetDetected=false;   // 検出完了フラグ。完了までは自動サイズを適用しない（ヘッドセットの既定を壊さないため）
-function updateEntryButtons(){   // 入室ボタンの表示制御。おすすめオン時のみデバイスで振り分け、オフなら両方表示
-    const wrap=document.getElementById("vrbtnwrap");
-    const dtop=document.getElementById("startDesktop");
-    if(recoOn){
-        if(IS_HEADSET){ if(wrap) wrap.style.display=""; if(dtop) dtop.style.display="none"; }   // ヘッドセット：VR/ARのみ
-        else { if(wrap) wrap.style.display="none"; if(dtop) dtop.style.display=""; }             // スマホ/PC：「ヘッドセットなしで試す」のみ
-    } else { if(wrap) wrap.style.display=""; if(dtop) dtop.style.display=""; }                    // おすすめオフ：非表示にした入室ボタンも表示
-}
-function applyDeviceAutoSize(){   // スマホ/PC＋おすすめオンのとき、サイト表示=3倍／サイト非表示=30×30m を自動設定（全モード共通）。ヘッドセットはこれまで通り
-    if(!headsetDetected || IS_HEADSET || !recoOn) return;   // 判定完了まで／ヘッドセット／おすすめオフ：既定のまま
-    if(typeof setSiteMode==="function") setSiteMode(3, false);        // サイトモデル表示：3倍
-    if(typeof setWorldX==="function" && typeof setWorldZ==="function"){ setWorldX(30); setWorldZ(30); }   // サイトモデル非表示：30×30m
-}
-async function detectHeadset(){
-    IS_HEADSET=false;
-    try{ if(navigator.xr && navigator.xr.isSessionSupported){ IS_HEADSET = await navigator.xr.isSessionSupported("immersive-vr").catch(()=>false); } }catch(_){ IS_HEADSET=false; }
-    headsetDetected=true;   // 以後は自動サイズ適用を許可
-    updateEntryButtons();
-    if(recoOn){ applyDeviceAutoSize(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); }   // 検出完了後にメニューへ反映
-}
-detectHeadset();   // 起動時に immersive-vr 対応を判定（let宣言後に呼ぶ・非同期継続は初期化完了後に実行）
 let toolSwapAllowed=false;   // 発掘道具の持ち替え（既定：持ち替えない）。おすすめオフのときだけメニューで変更可
 let holoFreezeTime=true;     // 図鑑カード表示中に時間を止める（既定：止まる）。おすすめオフのときだけ変更可
 let realRefShort=20;         // 恐竜が実寸(1.0倍)になるフィールド短辺(m)。既定20。おすすめオフのときだけ変更可
@@ -3234,7 +3208,6 @@ function applyAutoForTarget(target){   // 発掘対象に応じて必ず自動�
         segSelect("segSite","hide");      setSiteVisible(false); syncSiteSeg();
     }
     updateWorldSizeUI && updateWorldSizeUI();
-    if(typeof applyDeviceAutoSize==="function") applyDeviceAutoSize();   // スマホ/PC＋おすすめオン：サイト3倍／ワールド30m
 }
 function applyChallengePreset(){   // 発掘チャレンジの自動設定。必須項目は常時、5項目（時間/道具/サイト/原寸比/短辺）はおすすめオン時のみ自動固定
     segSelect("segCardShow","on");    cardShown=true;                 // 獲得カード：表示
@@ -3250,7 +3223,6 @@ function applyChallengePreset(){   // 発掘チャレンジの自動設定。必
         realCapToActual=false; segSelect("segRealCap","off");         // 恐竜の原寸比：上限なし
         if(typeof setRealRefShort==="function") setRealRefShort(20);  // 実寸になるフィールド短辺：20
         segSelect("segSite", (chosenDigTarget==="artifact")?"show":"hide"); setSiteVisible(chosenDigTarget==="artifact"); if(typeof syncSiteSeg==="function") syncSiteSeg();   // サイトモデル：出土品=表示／恐竜=非表示
-        if(typeof applyDeviceAutoSize==="function") applyDeviceAutoSize();   // スマホ/PC＋おすすめオン：サイト3倍／ワールド30m（チャレンジ1ターン目の3か所配置は別途これまで通り）
     }
     if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
 }
@@ -3258,7 +3230,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
     const on=recoOn;
     const target=chosenDigTarget;
     const show=(id,vis)=>{ const e=document.getElementById(id); if(e) e.style.display=vis?"":"none"; };
-    const chNote=document.getElementById("chModeNote"); if(chNote) chNote.style.display="none";   // チャレンジの説明文は表示しない
+    const chNote=document.getElementById("chModeNote"); if(chNote) chNote.style.display=(chosenMode==="challenge")?"":"none";
     const isChallenge=(chosenMode==="challenge");
     if(isChallenge) applyChallengePreset();
     if(on && !isChallenge){
@@ -3313,7 +3285,6 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
     withParamLoading(()=>{
         if(recoOn){ applyAutoForTarget(chosenDigTarget); }   // オンにしたら現在の対象で①の値を強制セット
         updateRecoVisibility();
-        updateEntryButtons();   // おすすめ切替で入室ボタンの表示も更新（オフ＝両方表示）
     });
 });
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
@@ -3666,7 +3637,7 @@ const worldHud=(function(){
             if(!resData) return; const d=resData;
             if(d.calc && d.calc.chScores){ this.renderChallengePage(); return; }   // 発掘チャレンジ専用レイアウト
             bg(); ctx.textAlign="center"; ctx.textBaseline="middle";
-            const btnLabel = resPage===0 ? "スコア" : ("🎴 獲得カード："+(d.calc&&d.calc.card?(d.calc.card.rarity||""):""));
+            const btnLabel = resPage===0 ? "▶ 全体のスコアを見る" : ("🎴 獲得カード："+(d.calc&&d.calc.card?(d.calc.card.rarity||""):""));
             if(resPage===0){
                 // コレクション結果と同一レイアウト：数字大＋単位半分・上詰め・カード90%・下部案内
                 const numTxt=String(d.score);
@@ -3716,7 +3687,6 @@ const worldHud=(function(){
                     ctx.textAlign="center"; ctx.font="bold 34px sans-serif"; ctx.fillText(e?(e.score+" pt"):"----",384,yy);
                     ctx.textAlign="right"; ctx.font="bold 24px sans-serif"; ctx.fillText(e?((e.date||"")+(e.time?" "+e.time:"")):"",648,yy);
                 }
-                ctx.textAlign="center"; if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でスタンバイに戻る",384,1180); }   // ページ1にも案内（1ページ目と位置/書式を統一）
             }
             tex.needsUpdate=true; mesh.visible=true;
         },
@@ -3737,7 +3707,7 @@ const worldHud=(function(){
                     bigNum(c.chTotal,172);
                     ctx.fillStyle=(RARITY_COL[c.card.rarity]||"#fff"); ctx.font="bold 30px sans-serif"; ctx.fillText("🎴 今回の獲得カード（"+(c.card.rarity||"")+"）",384,250);
                     const im=cardImage(c.cardTarget||curTarget, c.card.idx);
-                    if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 93, 285, 582, 873); }catch(_){}}   // 97%（600×900→582×873・中央）
+                    if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 84, 285, 600, 900); }catch(_){}}   // 1.5倍
                     else { im.addEventListener("load",()=>{ if(resData===d && resPage===0) worldHud.renderChallengePage(); },{once:true}); }
                 } else {        // 全体スコアページ：合計＋各ターン＋3ターン目の計算＋TOP5
                     ctx.fillStyle="#f0d98a"; ctx.font="bold 40px sans-serif"; ctx.fillText("発掘チャレンジ結果",384,78);
@@ -3759,11 +3729,11 @@ const worldHud=(function(){
                 ctx.fillStyle="#8ff0ff"; ctx.font="bold 44px sans-serif"; ctx.fillText(c.chTurn+"ターン目 完了！",384,78);
                 let y=calcBlock(c.digPts,c.secs,c.timeBonus,d.score,168);
                 const im=cardImage("dino", c.card.idx);
-                if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 117, y+38, 535, 803); }catch(_){}}   // 97%（552×828→535×803・中央）
+                if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 108, y+38, 552, 828); }catch(_){}}   // 1.5倍
                 else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
-                if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+803+28); }
+                if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+828+28); }
             }
-            if(!GAME.desktop){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,1180); }   // 1・2ページとも中央・1180で統一
+            if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,1190); }
             tex.needsUpdate=true; mesh.visible=true;
         }
     };
@@ -3854,8 +3824,7 @@ function taBeginCountdown(){
     if(!customWorldOn() && digPosRandom && curTarget==="dino"){ regenerateSiteRandomSpots(); } else { GAME.siteSpots=null; }   // サイト表示×恐竜系ランダムは毎回新配置
     if(GAME.challenge && GAME.ch && GAME.ch.turn===1) showWorldAura(true);   // 1ターン目はヒント演出なし（矩形オーラのみ）
     else showWorldAura();             // 矩形内にランダム再配置＋オーラ（＋発掘ポイントのヒント）
-    TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS; TA._lastN=null; if(typeof vibrate==="function") vibrate(220,0.9);   // カウントダウン開始（3）でバイブ（2/1はなし。1秒ごとの音は別途）
-    if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
+    TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS; if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     worldHud.drawCountdown("3","まもなくスタート");
     bubble.say(line("start"), 2200);
     updateGoal(); updateTAButton();
@@ -4193,17 +4162,17 @@ function updateResultBtn(){
     const b=document.getElementById("taCardBtn"); if(!b) return;
     if(GAME.challenge){   // チャレンジ：3ターン目（最終）のみ「全体のスコア／獲得カード」の切替を表示。1・2ターン目は1ページ、追加フェーズは非表示
         if(GAME.desktop && TA.state==="results" && GAME.ch && GAME.ch.turn>=3 && !GAME.ch.extra){
-            b.style.display=""; b.textContent = (worldHud.resultPage()===0) ? "スコア" : "獲得カード";
+            b.style.display=""; b.textContent = (worldHud.resultPage()===0) ? "▶ 全体のスコアを見る" : "🎴 獲得カードを見る";
         } else b.style.display="none";
         return;
     }
     if(typeof cardShown!=="undefined" && !cardShown){ b.style.display="none"; return; }   // 獲得カード非表示なら切替ボタンなし
     if(inTA){
         b.style.display="";
-        b.textContent = worldHud.resultPage()===0 ? "スコア" : "獲得カード";
+        b.textContent = worldHud.resultPage()===0 ? "▶ 全体のスコアを見る" : "🎴 獲得カードを見る";
     } else if(inCol){
         b.style.display="";
-        b.textContent = worldHud.collectPage()===0 ? "タイムTOP5を見る" : "獲得カード";
+        b.textContent = worldHud.collectPage()===0 ? "▶ タイムTOP5を見る" : "🎴 獲得カードを見る";
     } else b.style.display="none";
 }
 function updateTAButton(){
@@ -4248,7 +4217,7 @@ function updateGoal(){
     else if(TA.state==="free")     { el.textContent=modeLbl+"：再挑戦（"+(IS_TOUCH?"「スタート」ボタン":"スペース / スタート")+"）"; }
     else { el.textContent=modeLbl+`：${GAME.score}pt ／ 残り${Math.ceil(GAME.timeLeft)}秒`; }
 }
-function updateToolLabel(){ document.getElementById("dTool").textContent = "道具："+(GAME.tool==="wide"?"幅広":"細ピック"); }
+function updateToolLabel(){ document.getElementById("dTool").textContent = "道具："+(GAME.tool==="wide"?"🖌 幅広":"⛏ 細ピック"); }
 function toggleTool(){ if(!toolSwapAllowed) return;   // 「持ち替えない」時は切替不可
     GAME.tool = GAME.tool==="wide"?"narrow":"wide"; updateToolLabel(); refreshToolModel();
     // 既存ターゲットのdigNeedを再計算
@@ -5262,10 +5231,7 @@ function onRightPressEdge(){
     }
     if(typeof holo!=="undefined"&&holo){ closeHologram(); sfxLocate(); vibrate(70,0.5); lastRightPress=0; return; }   // ホログラム表示中に図鑑カード以外（何もない場所等）を指して右トリガー→未選択に戻す
     const now=performance.now();
-    if(now-lastRightPress<400){ lastRightPress=0; if(GAME._resToggleTimer){ clearTimeout(GAME._resToggleTimer); GAME._resToggleTimer=null; }
-        const wasCd=(TA.state==="countdown"); onRightDouble();
-        if(!(!wasCd && TA.state==="countdown")){ if(typeof chord==="function") chord([660,880],0.05,"triangle",0.4); vibrate(100,0.75); }   // カウントダウン開始の2回では確認音/バイブなし（それ以外は鳴らす）
-    }
+    if(now-lastRightPress<400){ lastRightPress=0; if(GAME._resToggleTimer){ clearTimeout(GAME._resToggleTimer); GAME._resToggleTimer=null; } if(typeof chord==="function") chord([660,880],0.05,"triangle",0.4); vibrate(100,0.75); onRightDouble(); }   // 2回連続（確定操作）＝音＋バイブ
     else { lastRightPress=now;
         if(GAME.mode==="time" && TA.state==="results"){   // TA結果：単押しでページ切替（2回でスタンバイ）
             GAME._resToggleTimer=setTimeout(()=>{ GAME._resToggleTimer=null; worldHud.toggleResultsPage(); }, 420);
