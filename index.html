@@ -2672,6 +2672,16 @@ function preloadEverything(done){
         _preloadTimer=null;
         while(j<jobs.length && jobs[j].cache && jobs[j].cache[jobs[j].idx]) j++;
         if(j>=jobs.length){
+            // パーティクルプール事前生成（初回発掘時のSprite/Mesh/Material生成スパイクを回避）
+            try{
+                const _P={x:0,y:-100000,z:0};   // 画面外で生成
+                if(typeof spawnDirt==="function") spawnDirt(_P, 24);
+                if(typeof spawnSparkle==="function") spawnSparkle(_P, 12);
+                if(typeof spawnHearts==="function") spawnHearts(_P, 8);
+                if(typeof dirtPool!=="undefined") for(const d of dirtPool){ d.alive=false; d.mesh.visible=false; }
+                if(typeof sparkles!=="undefined") for(const s of sparkles){ s.alive=false; s.spr.visible=false; }
+                if(typeof hearts!=="undefined") for(const h of hearts){ h.alive=false; h.spr.visible=false; }
+            }catch(_){}
             // GPUウォームアップ準備：恐竜キャッシュ16体を描画ループで画面外に数フレーム描画→初回表示のカクつき防止
             try{
                 _warmupModels=[];
@@ -2757,8 +2767,9 @@ function tickHatch(now, dt){
     }
 }
 // 出てきた恐竜のアイドル動作（足踏み＝個体ごとにバラす／尻尾ふり／ゆっくり回転）
+const _adCam=new THREE.Vector3(),_adFwd=new THREE.Vector3(),_adAxis=new THREE.Vector3(),_adToP=new THREE.Vector3(),_adHp1=new THREE.Vector3(),_adHp2=new THREE.Vector3();   // animateDigDinos用スクラッチ
 function animateDigDinos(now, dt){
-    const camW=(typeof camera!=="undefined")? camera.getWorldPosition(new THREE.Vector3()) : null;
+    const camW=(typeof camera!=="undefined")? camera.getWorldPosition(_adCam) : null;
     dinoDigModels.forEach(cont=>{ if(!cont||!cont.visible) return;
         const m=cont.userData.model; if(!m) return;
         const spd=cont.userData.animSpeed||1, off=cont.userData.animPhase||0, ph=now*0.006*spd + off;
@@ -2772,8 +2783,8 @@ function animateDigDinos(now, dt){
             const dx=camW.x-cx, dz=camW.z-cz; const dist=Math.hypot(dx,dz);
             const L=Math.max(0.6, cont.userData.bodyLen||2);
             const notice=L*DINO_FACE.noticeMul*(cont.userData.flying?3:1);   // 飛行種（プテラノドン）は覗き見スコープ3倍
-            const fwd=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), cont.rotation.y);
-            const toP=new THREE.Vector3(dx,0,dz); const pd=toP.length();
+            const fwd=_adFwd.set(0,0,1).applyAxisAngle(_adAxis.set(0,1,0), cont.rotation.y);
+            const toP=_adToP.set(dx,0,dz); const pd=toP.length();
             let ang=999; if(pd>1e-3){ toP.normalize(); ang=Math.acos(THREE.MathUtils.clamp(fwd.dot(toP),-1,1))*180/Math.PI; }
             facing = (dist<=notice) && (ang<=DINO_FACE.frontDeg);
         }
@@ -2808,7 +2819,7 @@ function animateDigDinos(now, dt){
             const canMove = cont.userData.settled && sinceSettle>=5000;   // 出現後5秒は移動しない
             if(_isXR && camW && faceAmt>0.01 && m.userData.head && canMove){
                 const L=Math.max(0.6, cont.userData.bodyLen||2);
-                const hp=m.userData.head.getWorldPosition(new THREE.Vector3());
+                const hp=m.userData.head.getWorldPosition(_adHp1);
                 const pmul=m.userData.peekMul||1;
                 const longNeck=!!m.userData.longNeck;
                 const maxDegM = longNeck ? 88 : (DINO_FACE.pitchDeg+(DINO_FACE.pitchBias||0))*pmul;
@@ -2844,7 +2855,7 @@ function animateDigDinos(now, dt){
             let peek=0;
             if(_isXR && camW && faceAmt>0.01){
                 const head=m.userData.head;
-                const hp=head.getWorldPosition(new THREE.Vector3());        // 首ピボットのワールド位置
+                const hp=head.getWorldPosition(_adHp2);        // 首ピボットのワールド位置
                 let dxz=Math.hypot(camW.x-hp.x, camW.z-hp.z);
                 if(longNeck){ const L=Math.max(0.6, cont.userData.bodyLen||2); dxz=Math.max(0.05, dxz-0.3*L); }   // 長首は後ろを見がち→手前(0.3体長)を狙う
                 const dy=hp.y-camW.y;
@@ -3823,12 +3834,13 @@ const worldHud=(function(){
     };
 })();
 // カメラ正面に保持（移動・首振りに追従）
+const _whCam=new THREE.Vector3(),_whQ=new THREE.Quaternion(),_whDir=new THREE.Vector3(),_whUp=new THREE.Vector3(),_whH=new THREE.Vector3(),_whP=new THREE.Vector3(),_whL=new THREE.Vector3();   // updateWorldHud用スクラッチ
 function updateWorldHud(){
     if(!worldHud.mesh.visible) return;
-    const cam=camera.getWorldPosition(new THREE.Vector3());
-    const camQ=camera.getWorldQuaternion(new THREE.Quaternion());
-    const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camQ);
-    const up=new THREE.Vector3(0,1,0).applyQuaternion(camQ);
+    const cam=camera.getWorldPosition(_whCam);
+    const camQ=camera.getWorldQuaternion(_whQ);
+    const dir=_whDir.set(0,0,-1).applyQuaternion(camQ);
+    const up=_whUp.set(0,1,0).applyQuaternion(camQ);
     const ph=(typeof gamePhase==="function")?gamePhase():"";
     const panelPhase=(ph==="result");
     if(panelPhase){
@@ -3844,17 +3856,17 @@ function updateWorldHud(){
         if(renderer.xr.isPresenting){
             // プレイヤー位置に追従。水平（左右）を見た方向にパネルが来るが、上下は追従しない
             const yaw=Math.atan2(dir.x, dir.z);              // 水平の向きだけ取り出す
-            const hdir=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));   // 水平前方（上下成分なし）
+            const hdir=_whH.set(Math.sin(yaw),0,Math.cos(yaw));   // 水平前方（上下成分なし）
             const eyeY=cam.y;                                // パネル中心は目線の高さに固定（上下は動かさない）
-            const p=new THREE.Vector3(cam.x + hdir.x*dist, eyeY, cam.z + hdir.z*dist);
+            const p=_whP.set(cam.x + hdir.x*dist, eyeY, cam.z + hdir.z*dist);
             worldHud.mesh.position.copy(p);
-            worldHud.mesh.lookAt(new THREE.Vector3(cam.x, eyeY, cam.z));   // 水平にプレイヤーへ正対（傾かない）
+            worldHud.mesh.lookAt(_whL.set(cam.x, eyeY, cam.z));   // 水平にプレイヤーへ正対（傾かない）
             return;
         }
         const topMargin=visH*0.04;
         let upOff;
         { const raise = visH*0.03; const topY = visH/2 - topMargin + raise; upOff = topY - realH/2; }   // PC/スマホは上辺固定＋3%上げ
-        const p=cam.clone().addScaledVector(dir, dist).addScaledVector(up, upOff);
+        const p=_whP.copy(cam).addScaledVector(dir, dist).addScaledVector(up, upOff);
         worldHud.mesh.position.copy(p);
         if(renderer.xr.isPresenting){ worldHud.mesh.lookAt(cam); }   // VRは常にカメラを向く
         else { worldHud.mesh.quaternion.copy(camQ); }                // PC/スマホは常に画面の真正面
@@ -3864,14 +3876,14 @@ function updateWorldHud(){
     if(renderer.xr.isPresenting){
         // ②カウントダウン等：正面・ヨーのみ追従（首の縦振りには追従しない）
         const yaw=Math.atan2(dir.x, dir.z);
-        const hdir=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+        const hdir=_whH.set(Math.sin(yaw),0,Math.cos(yaw));
         const eyeY=cam.y, dist=2.2;
-        const p=new THREE.Vector3(cam.x+hdir.x*dist, eyeY, cam.z+hdir.z*dist);
+        const p=_whP.set(cam.x+hdir.x*dist, eyeY, cam.z+hdir.z*dist);
         worldHud.mesh.position.lerp(p, 0.18);
-        worldHud.mesh.lookAt(new THREE.Vector3(cam.x, eyeY, cam.z));   // 水平にプレイヤーへ正対（傾かない）
+        worldHud.mesh.lookAt(_whL.set(cam.x, eyeY, cam.z));   // 水平にプレイヤーへ正対（傾かない）
         return;
     }
-    const p=cam.clone().addScaledVector(dir, 2.2);
+    const p=_whP.copy(cam).addScaledVector(dir, 2.2);
     worldHud.mesh.position.lerp(p, 0.18);
     worldHud.mesh.lookAt(cam);
 }
@@ -5450,11 +5462,12 @@ function handleVRDig(){
 let _playerPrev = new THREE.Vector3();
 let _dogWalkPhase = 0;
 let _dogInit = false;
+const _udPlayer=new THREE.Vector3(),_udVel=new THREE.Vector3(),_udGoal=new THREE.Vector3(),_udTo=new THREE.Vector3(),_udS=new THREE.Vector3(),_udF=new THREE.Vector3(),_udFace=new THREE.Vector3(),_udW1=new THREE.Vector3(),_udW2=new THREE.Vector3(),_udW3=new THREE.Vector3();   // updateDog用スクラッチ（毎フレームVector3生成を排除）
 function updateDog(dt, now){
     const camWorld=camera.getWorldPosition(tmpV);
-    const playerPos=new THREE.Vector3(camWorld.x,0,camWorld.z);
+    const playerPos=_udPlayer.set(camWorld.x,0,camWorld.z);
     if(!_dogInit){ _playerPrev.copy(playerPos); _dogInit=true; }
-    const vel=new THREE.Vector3().subVectors(playerPos,_playerPrev); vel.y=0;
+    const vel=_udVel.subVectors(playerPos,_playerPrev); vel.y=0;
     const speed=vel.length()/Math.max(dt,1e-3);
     _playerPrev.copy(playerPos);
 
@@ -5465,8 +5478,8 @@ function updateDog(dt, now){
     let rushing=false;
     if(dog.userData.rushTo){
         const q=camQuat();
-        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=new THREE.Vector3(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 1.0);
+        const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        goal=_udGoal.set(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 1.0);
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.3){ dog.userData.rushTo=null; }   // 横に到着したら解除→その場で発掘セリフを言って留まる
         else { rushing=true; }
@@ -5480,11 +5493,11 @@ function updateDog(dt, now){
         // 発見済みブロックが近くにある間は、必ずその「右どなり」に立つ（ヒント移動より優先）
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         const q=camQuat();
-        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=new THREE.Vector3(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 1.0);
+        const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        goal=_udGoal.set(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 1.0);
     } else if(dog.userData.hintActive && dog.userData.hintPos){
         dog.userData.atBlock=false;
-        goal=dog.userData.hintPos.clone(); goal.y=0;
+        goal=_udGoal.copy(dog.userData.hintPos); goal.y=0;
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.8){   // ヒント地点に到着 → 少し待つ
             if(!dog.userData.hintWaitUntil){ dog.userData.hintWaitUntil=now+HINT_WAIT_MS;
@@ -5496,13 +5509,13 @@ function updateDog(dt, now){
         dog.userData.atBlock=false;
         // 定位置＝視線の前方（＋少し横）。後ろ向きに動いても画面内の前方に居続ける。
         const q=camQuat();
-        const fwd =new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
-        const side=new THREE.Vector3(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=new THREE.Vector3().copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
+        const fwd =_udF.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
+        const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        goal=_udGoal.copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
     }
     }   // end if(!rushing)
 
-    const to=new THREE.Vector3().subVectors(goal,dog.position); to.y=0;
+    const to=_udTo.subVectors(goal,dog.position); to.y=0;
     const dist=to.length();
     const prevX=dog.position.x, prevZ=dog.position.z;
     if(dist>0.05 && (!dogHappy || rushing)){   // 喜びセリフ中はその場（ただしrushing＝手動発掘への急行は許可）
@@ -5534,7 +5547,7 @@ function updateDog(dt, now){
     const moving = moved > 0.004;
 
     // 向き：進行方向 or プレイヤー（最短角でなめらかに追従＝切替時の小刻み揺れを防ぐ）
-    const faceDir = moving ? to : new THREE.Vector3().subVectors(playerPos,dog.position);
+    const faceDir = moving ? to : _udFace.subVectors(playerPos,dog.position);
     if(faceDir.lengthSq()>1e-3){
         const yaw=Math.atan2(faceDir.x,faceDir.z);
         let d=yaw-dog.rotation.y; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
@@ -5543,10 +5556,10 @@ function updateDog(dt, now){
     // セリフ吹き出しは、プレイヤーから見て相棒の「奥側」に出す（相棒の向きに関係なく）
     if(bubbleSpr){
         dog.updateMatrixWorld();
-        const dogW=dog.getWorldPosition(new THREE.Vector3());
-        const away=new THREE.Vector3(dogW.x-playerPos.x,0,dogW.z-playerPos.z);
+        const dogW=dog.getWorldPosition(_udW1);
+        const away=_udW2.set(dogW.x-playerPos.x,0,dogW.z-playerPos.z);
         if(away.lengthSq()<1e-4) away.set(0,0,1); away.normalize();
-        const want=new THREE.Vector3(dogW.x+away.x*0.5, dogW.y+1.0, dogW.z+away.z*0.5);
+        const want=_udW3.set(dogW.x+away.x*0.5, dogW.y+1.0, dogW.z+away.z*0.5);
         bubbleSpr.position.copy(dog.worldToLocal(want));
     }
     // 撫で制御は距離のみ：最寄りの発見済みブロックに「相棒が横に立つ距離(DOG_STAY_R)」以内なら撫で不可、離れれば可。出現演出中(digBusyUntil)は不可
@@ -5558,8 +5571,8 @@ function updateDog(dt, now){
     }
     // 相棒が「プレイヤーを向いて待っている」状態か（撫でられる条件）
     {
-        const fwd=new THREE.Vector3(Math.sin(dog.rotation.y),0,Math.cos(dog.rotation.y));
-        const toP=new THREE.Vector3(playerPos.x-dog.position.x,0,playerPos.z-dog.position.z);
+        const fwd=_udW1.set(Math.sin(dog.rotation.y),0,Math.cos(dog.rotation.y));
+        const toP=_udW2.set(playerPos.x-dog.position.x,0,playerPos.z-dog.position.z);
         dogAttentive = !digBusy && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>0.5;   // 相棒が正面を向いているときだけ（横向き・背中は不可）
     }
     petBoost=Math.max(0, petBoost - dt*0.02);   // 撫でボーナスはゆっくり減衰
