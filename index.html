@@ -2298,17 +2298,20 @@ function updateChRoundPanel(){
         if(!dom){ dom=document.createElement("div"); dom.id="chRoundDom";
             dom.style.cssText="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
             document.body.appendChild(dom); }
-        const r=chRoundInfo(GAME.ch.turn);
-        const head='<div style="display:flex;align-items:center;justify-content:center;gap:10px;">'
-            +'<span style="font-size:14px;font-weight:800;color:#ffd86a;">'+r.head+'</span>'
-            +'<button id="chRoundTgl" style="font:bold 13px sans-serif;padding:2px 12px;border-radius:8px;border:1px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;line-height:1.2;pointer-events:auto;" title="'+(chRoundOpen?"説明を閉じる":"説明を開く")+'">'+(chRoundOpen?"▲":"▼")+'</button>'
-            +'</div>';
-        const body=chRoundOpen ? ('<div style="margin-top:6px;">'+r.lines.map((l,i)=>'<div style="font-size:14px;font-weight:800;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("")+'</div>') : "";
-        dom.innerHTML=head+body;
-        dom.style.pointerEvents="none";   // パネル自体はクリック透過。トグルだけ pointer-events:auto で反応
-        { const tg=document.getElementById("chRoundTgl"); if(tg) tg.onclick=(ev)=>{ ev.stopPropagation(); chRoundOpen=!chRoundOpen; updateChRoundPanel(); }; }
+        const domKey=GAME.ch.turn+"|"+(chRoundOpen?"1":"0");
+        if(dom._key!==domKey){   // 内容が変わった時だけ再構築（毎フレームのinnerHTML再構築をやめる＝iOSのタップ詰まり防止）
+            dom._key=domKey;
+            const r=chRoundInfo(GAME.ch.turn);
+            const head='<div style="display:flex;align-items:center;justify-content:center;gap:10px;">'
+                +'<span style="font-size:14px;font-weight:800;color:#ffd86a;">'+r.head+'</span>'
+                +'<button id="chRoundTgl" style="font:bold 13px sans-serif;padding:2px 12px;border-radius:8px;border:1px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;line-height:1.2;pointer-events:auto;" title="'+(chRoundOpen?"説明を閉じる":"説明を開く")+'">'+(chRoundOpen?"▲":"▼")+'</button>'
+                +'</div>';
+            const body=chRoundOpen ? ('<div style="margin-top:6px;">'+r.lines.map((l,i)=>'<div style="font-size:14px;font-weight:800;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("")+'</div>') : "";
+            dom.innerHTML=head+body;
+            const tg=document.getElementById("chRoundTgl"); if(tg) tg.onclick=(ev)=>{ ev.stopPropagation(); chRoundOpen=!chRoundOpen; updateChRoundPanel(); };
+        }
         dom.style.display="block";
-    } else if(dom){ dom.style.display="none"; }
+    } else if(dom){ dom.style.display="none"; dom._key=""; }
     // VR 3Dパネル（相棒えらびの上・同じ追従＝placeBuddyPanelsで配置）
     if(!(active && renderer.xr.isPresenting)){ chRoundPanel.mesh.visible=false; return; }
     chRoundPanel.mesh.visible=true;
@@ -2662,10 +2665,7 @@ function preloadEverything(done){
     const step=()=>{
         _preloadTimer=null;
         while(j<jobs.length && jobs[j].cache && jobs[j].cache[jobs[j].idx]) j++;
-        if(j>=jobs.length){
-            try{ if(renderer.compile) renderer.compile(scene, camera); }catch(_){}   // シェーダを事前コンパイル（初回表示のカクつき対策）。※ループ外の手動renderはiOSで不具合になるため行わない
-            if(done) done(); return;
-        }
+        if(j>=jobs.length){ if(done) done(); return; }
         const job=jobs[j];
         if(job.card){   // カード画像プリロード（読み込み完了/失敗で次へ）
             const im=new Image(); im.crossOrigin="anonymous";
