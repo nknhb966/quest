@@ -28,10 +28,12 @@
     }
     /* 読み込み中はゲーム開始を無効化（背景のシーンは見える） */
     body.loading #vrbtnwrap, body.loading #startDesktop{ opacity:.45; pointer-events:none; filter:grayscale(.4); }
+    body.preloading #vrbtnwrap, body.preloading #startDesktop{ opacity:.45; pointer-events:none; filter:grayscale(.4); }   /* プリロード＋ウォームアップ完了まで入室不可 */
     body.loading button, body.loading #dhud, body.loading #buddyStandby, body.loading #joystick, body.loading #help, body.loading #taModal{ pointer-events:none !important; }
     body.loading #dhud, body.loading #buddyStandby{ opacity:.5; }
     #loadingNote{ display:none; margin:0 0 14px; font-size:13px; letter-spacing:1px; color:#c9bcff; text-align:center; }
     body.loading #loadingNote{ display:block; }
+    body.preloading #loadingNote{ display:block; }
     #loadingNote i{ display:inline-block; width:13px; height:13px; margin-right:8px; vertical-align:-2px;
         border:2px solid rgba(200,180,255,.35); border-top-color:#c9bcff; border-radius:50%; animation:spin 0.9s linear infinite; }
     @keyframes spin{ to{ transform:rotate(360deg);} }
@@ -2651,9 +2653,13 @@ function makeDigDino(dn){
 }
 // 恐竜モデルの先読み：②③の全16体を1体ずつ生成してキャッシュ（サイト読み込みと同時／完了までボタン無効）
 let _preloadTimer=null;
+let PRELOAD_DONE=false;        // プリロード＋GPUウォームアップ完了フラグ（入室可否）
+let _warmupTTL=0;             // 残りウォームアップフレーム数（描画ループで消化）
+let _warmupModels=[];         // ウォームアップ対象（恐竜キャッシュ）
 function preloadEverything(done){
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
-    if(typeof DINOS==="undefined"){ if(done) done(); return; }
+    PRELOAD_DONE=false; document.body.classList.add("preloading");   // 完了まで入室不可
+    if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
     const jobs=[];
     for(let i=0;i<8;i++) jobs.push({smooth:false, idx:i, cache:_dinoCacheB});   // シンプル恐竜（ボクセル）
     for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});   // 恐竜（実寸）＝なめらか
@@ -2665,7 +2671,18 @@ function preloadEverything(done){
     const step=()=>{
         _preloadTimer=null;
         while(j<jobs.length && jobs[j].cache && jobs[j].cache[jobs[j].idx]) j++;
-        if(j>=jobs.length){ if(done) done(); return; }
+        if(j>=jobs.length){
+            // GPUウォームアップ準備：恐竜キャッシュ16体を描画ループで画面外に数フレーム描画→初回表示のカクつき防止
+            try{
+                _warmupModels=[];
+                for(let i=0;i<8;i++){ const a=_dinoCacheB[i], b=_dinoCacheS[i]; if(a)_warmupModels.push(a); if(b)_warmupModels.push(b); }
+                _warmupModels.forEach(m=>{ m.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; }); });   // 画面外でも必ず描画させる
+                _warmupTTL = _warmupModels.length ? 4 : 0;   // 4フレーム描画してGPU転送を確定
+            }catch(_){ _warmupTTL=0; }
+            if(done) done();                                   // body.loading は解除（ただし入室は body.preloading で継続ロック）
+            if(_warmupTTL===0){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); }   // ウォームアップ対象なし＝即完了
+            return;
+        }
         const job=jobs[j];
         if(job.card){   // カード画像プリロード（読み込み完了/失敗で次へ）
             const im=new Image(); im.crossOrigin="anonymous";
@@ -5104,7 +5121,19 @@ renderer.setAnimationLoop(()=>{
         camera.rotateY(yaw); camera.rotateX(pitch);
     }
 
+    // ── GPUウォームアップ：恐竜キャッシュを画面外(y=-100000)で描画してGPU転送を確定（ループ内renderなのでiOS安全）──
+    if(_warmupTTL>0){ for(const m of _warmupModels){ if(m){ m.visible=true; m.position.set(0,-100000,0); } } }
+
     renderer.render(scene,camera);
+
+    if(_warmupTTL>0){
+        _warmupTTL--;
+        if(_warmupTTL===0){
+            for(const m of _warmupModels){ if(m) m.visible=false; }   // 片付け（revealDinoが表示時に再配置する）
+            _warmupModels=[];
+            PRELOAD_DONE=true; document.body.classList.remove("preloading");   // ここで入室可能に
+        }
+    }
 });
 
 /* VR移動：左スティックで前後左右、右スティックXでスナップ回転
