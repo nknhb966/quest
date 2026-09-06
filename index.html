@@ -186,6 +186,7 @@
     #dhud .bar{ pointer-events:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
         background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3); border-radius:12px; padding:9px 14px;
         font-size:13px; color:#d7ccff; backdrop-filter:blur(6px); max-width:min(680px,94vw); width:auto; }
+    #dhud .bar button.dexbreak{ flex-basis:100%; max-width:max-content; }   /* 図鑑を行頭へ改行（幅は文字数に合わせる・余分な行間なし） */
     #dhud .bar b{ color:#fff; } #dhud .k{ background:rgba(120,90,220,.35); border:1px solid rgba(180,140,255,.4);
         border-radius:5px; padding:1px 6px; font-weight:700; font-size:12px; }
     #dhud .pill{ pointer-events:auto; background:rgba(8,6,22,.7); border:1px solid rgba(180,140,255,.3);
@@ -559,7 +560,7 @@
     <button id="taCardBtn" style="display:none;">🎴 カードを見る</button>
     <button id="dTA" style="display:none">スタート</button>
     <button id="dBuddy" style="display:none">相棒：🦖</button>
-    <button id="dAsk">🦖 きいてみる</button>
+    <button id="dAsk">🦖 聞く</button>
     <button id="dTool">道具：🖌 幅広</button>
     <button id="dReset" style="display:none;">🔄 リセット</button>
     <button id="dShowAll" style="display:none;">✨ 全て発掘</button>
@@ -1780,7 +1781,7 @@ function refreshBuddyUI(){
     }
     const ask=document.getElementById("dAsk");
     const cur=COMPANIONS[companionKind]||COMPANIONS[DEFAULT_KIND];
-    if(ask) ask.textContent=(cur.askLabel||"🦖 きいてみる");
+    if(ask) ask.textContent=(cur.askLabel||"🦖 聞く");
     if(btn) btn.textContent="相棒："+((cur.label||"").split(" ")[0]||"🦖");
 }
 
@@ -1903,15 +1904,15 @@ function updateBuddyStandbyUI(){
     el.appendChild(start);
     el.style.display="flex";
 }
-registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 きいてみる", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, fullName:"いぬ", rarity:"ノーマル", cat:"あいぼう", diet:"なんでも", special:{name:"ここほれワンワン", discP:100, discN:5, digN:0}, era:"—", region:"—", dinoFeat:"たよれる相棒のいぬ。", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
-registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 きいてみる", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, fullName:"ティラノサウルス", rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
-registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 きいてみる", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, fullName:"フクイラプトル", rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
-registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 きいてみる", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, fullName:"フクイティタン", rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された大型の竜脚類。長い首と尾を持つ。", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
-registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 きいてみる", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, fullName:"トリケラトプス", rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
-registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 きいてみる", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, fullName:"プテラノドン", rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
-registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 きいてみる", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, fullName:"フクイサウルス", rarity:"ノーマル", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
-registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 きいてみる", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, fullName:"ステゴサウルス", rarity:"ノーマル", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
-registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 きいてみる", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, fullName:"ブラキオサウルス", rarity:"ノーマル", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
+registerCompanion("dog",         { label:"🐶 いぬ",         askLabel:"🐶 聞く", builder:build_dog,         lines:dogLines(),           power:2, scope:2, bonus:2, fullName:"いぬ", rarity:"ノーマル", cat:"あいぼう", diet:"なんでも", special:{name:"ここほれワンワン", discP:100, discN:5, digN:0}, era:"—", region:"—", dinoFeat:"たよれる相棒のいぬ。", feature:"バランス型のたよれる相棒。", cardText:"たよれる相棒！\nなでてポイントを発見しよう！" });
+registerCompanion("trex",        { label:"🦖 ティラノ",      askLabel:"🦖 聞く", builder:build_trex,        lines:dinoLines("ガオー"),   power:5, scope:4, bonus:4, fullName:"ティラノサウルス", rarity:"超激レア", cat:"獣脚類", diet:"肉食", special:{name:"王者の一撃", discP:40, discN:5, digN:4}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。", feature:"大きな頭と強力なアゴを持つ最強クラス。", cardText:"王者の一撃！\n巨大なアゴと力で、発掘ポイントを一気に攻略！" });
+registerCompanion("fukuiraptor", { label:"🦖 フクイラプトル", askLabel:"🦖 聞く", builder:build_fukuiraptor, lines:fukuiLines("ガオォ"),  power:5, scope:3, bonus:5, fullName:"フクイラプトル", rarity:"激レア", cat:"獣脚類", diet:"肉食", special:{name:"ハンティング", discP:45, discN:4, digN:4}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。", feature:"大きな手と鋭い爪を持つハンター型。", cardText:"見つけた獲物は逃がさない！\nすばやく発見して、そのまま発掘！" });
+registerCompanion("fukuititan",  { label:"🦕 フクイティタン", askLabel:"🦕 聞く", builder:build_fukuititan,  lines:fukuiLines("ずしーん"), power:4, scope:4, bonus:4, fullName:"フクイティタン", rarity:"レア", cat:"竜脚類", diet:"植物食", special:{name:"ビッグボディ", discP:60, discN:5, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された大型の竜脚類。長い首と尾を持つ。", feature:"長い首と尾を持つ大型竜脚類。万能型。", cardText:"大きな体で広い範囲をチェック！\nじっくり探して発掘ポイントを見つけよう！" });
+registerCompanion("tri",         { label:"🦕 トリケラ",      askLabel:"🦕 聞く", builder:build_tri,         lines:dinoLines("ブモォ"),   power:4, scope:3, bonus:3, fullName:"トリケラトプス", rarity:"プチレア", cat:"角竜類", diet:"植物食", special:{name:"トリプルホーン", discP:45, discN:4, digN:3}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。", feature:"3本の角と大きなフリル。パワー型。", cardText:"3本の角で地面をドーン！\n見つけた化石を力強く発掘！" });
+registerCompanion("ptera",       { label:"🦅 プテラノドン",   askLabel:"🦅 聞く", builder:build_ptera,       lines:dinoLines("ピギャー"), power:2, scope:5, bonus:3, fullName:"プテラノドン", rarity:"プチレア", cat:"翼竜類", diet:"魚食", special:{name:"スカイサーチ", discP:70, discN:6, digN:2}, era:"白亜紀後期", region:"北アメリカ", dinoFeat:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。", feature:"大きな翼で広範囲を探す翼竜（恐竜ではない）。", cardText:"空から大発見！\nはるか遠くの発掘ポイントまで見つけ出せ！" });
+registerCompanion("fukuisaurus", { label:"🦕 フクイサウルス", askLabel:"🦕 聞く", builder:build_fukuisaurus, lines:fukuiLines("モーゥ"),  power:3, scope:2, bonus:4, fullName:"フクイサウルス", rarity:"ノーマル", cat:"鳥脚類", diet:"植物食", special:{name:"クイックサーチ", discP:70, discN:3, digN:3}, era:"白亜紀前期", region:"福井県", dinoFeat:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。", feature:"くちばし状の口。相棒との連携が得意。", cardText:"相棒といっしょに大発見！\n新しい発掘ポイントをどんどん見つけよう！" });
+registerCompanion("stego",       { label:"🦕 ステゴ",        askLabel:"🦕 聞く", builder:build_stego,       lines:dinoLines("のっしり"), power:3, scope:2, bonus:3, fullName:"ステゴサウルス", rarity:"ノーマル", cat:"剣竜類", diet:"植物食", special:{name:"テールスパイク", discP:45, discN:3, digN:3}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。", feature:"背中の骨板と尾のスパイク。バランス型。", cardText:"しっぽのスパイクでドカン！\n見つけた化石を一気に発掘！" });
+registerCompanion("brachi",      { label:"🦕 ブラキオ",      askLabel:"🦕 聞く", builder:build_brachi,      lines:dinoLines("にょろん"), power:3, scope:4, bonus:1, fullName:"ブラキオサウルス", rarity:"ノーマル", cat:"竜脚類", diet:"植物食", special:{name:"ハイリーチ", discP:75, discN:5, digN:2}, era:"ジュラ紀後期", region:"北アメリカ", dinoFeat:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。", feature:"なが〜い首で遠くを探す探索特化型。", cardText:"なが〜い首で遠くまでチェック！\n高いところから発掘ポイントを探し出せ！" });
 setCompanion("dog");
 // 相棒選択時に情報カードを目の前に表示（開始前）
 function showCompanionCard(k, bag){
@@ -3148,9 +3149,8 @@ document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document
     if(dTA && dTA.parentNode){ dTA.parentNode.insertBefore(dTA, taCard||dTA.parentNode.firstChild);   // 先頭ボタンへ
         dTA.style.background="#ffd34d"; dTA.style.color="#3a2600"; dTA.style.fontWeight="900"; }   // 黄色で目立たせ（サイズは据え置き）
     if(dReset && dQuit && dReset.parentNode) dReset.parentNode.insertBefore(dReset, dQuit);   // リセットを「やめる」の直前へ
-    { const dDex=document.getElementById("dDex"); if(dDex && dDex.parentNode && !document.getElementById("_dexBreak")){ dDex.style.flexBasis=""; dDex.style.flexGrow="";   // 図鑑は通常幅（文字数に合わせる）
-        const br=document.createElement("span"); br.id="_dexBreak"; br.style.cssText="flex-basis:100%;width:100%;height:0;margin-top:-10px;";   // 行頭で改行（gap=10pxの二重化を-10pxで相殺＝自然な1行分）
-        dDex.parentNode.insertBefore(br, dDex); } }   // 図鑑の直前で改行（自然な行間・図鑑は通常幅）
+    { const dDex=document.getElementById("dDex"); if(dDex){ dDex.style.flexBasis=""; dDex.style.flexGrow=""; dDex.classList.add("dexbreak"); } }   // 図鑑の直前で改行（CSS ::before で行頭へ・通常幅・余分な行間なし）
+    { const sp=document.getElementById("_dexBreak"); if(sp) sp.remove(); }   // 旧スペーサーがあれば除去
 })();
 function setTimeLimit(v){ v=Math.max(60,Math.min(180,Math.round(v/5)*5)); TIME_LIMIT=v;
     const s=document.getElementById("tlSlider"), n=document.getElementById("tlNum"), t=document.getElementById("tlVal");
