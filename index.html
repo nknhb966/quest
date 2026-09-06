@@ -2663,15 +2663,7 @@ function preloadEverything(done){
         _preloadTimer=null;
         while(j<jobs.length && jobs[j].cache && jobs[j].cache[jobs[j].idx]) j++;
         if(j>=jobs.length){
-            try{   // GPUウォームアップ：初回表示時のカクつき防止（シェーダcompile＋ジオメトリ/テクスチャ転送）
-                const warm=[];
-                const show=(m)=>{ if(m){ warm.push([m,m.visible]); m.visible=true; } };
-                for(let i=0;i<8;i++){ show(_dinoCacheB[i]); show(_dinoCacheS[i]); }
-                if(typeof COMPANIONS!=="undefined"){ for(const k in COMPANIONS){ const d=COMPANIONS[k]; if(d){ show(d.bodyB); show(d.bodyS); } } }
-                if(renderer.compile) renderer.compile(scene, camera);   // 全マテリアルのシェーダを事前コンパイル
-                renderer.render(scene, camera);                          // 1フレーム描画してGPU転送を確定
-                for(const it of warm) it[0].visible=it[1];               // 元の可視状態へ戻す
-            }catch(_){}
+            try{ if(renderer.compile) renderer.compile(scene, camera); }catch(_){}   // シェーダを事前コンパイル（初回表示のカクつき対策）。※ループ外の手動renderはiOSで不具合になるため行わない
             if(done) done(); return;
         }
         const job=jobs[j];
