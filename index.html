@@ -1048,7 +1048,8 @@ scene.background = new THREE.Color(0x0a0a16);
 scene.fog = new THREE.FogExp2(0x0a0a16, 0.006);
 
 const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
-renderer.setPixelRatio(window.devicePixelRatio);
+const _coarsePtr=(window.matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, _coarsePtr?2:(window.devicePixelRatio||1)));   // スマホ/タブレットはDPRを2に制限（見た目ほぼ不変・GPU負荷を大幅削減）。PCは制限なし
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 try{ renderer.xr.setReferenceSpaceType("local-floor"); }catch(_){}   // 初回から床基準（プレイヤーの高さを正常化）
@@ -1075,11 +1076,12 @@ const _dimOverlay=new THREE.Mesh(new THREE.PlaneGeometry(40,40),
 _dimOverlay.renderOrder=1050; _dimOverlay.visible=false; _dimOverlay.frustumCulled=false; scene.add(_dimOverlay);
 let _sceneDimmed=false;
 function setSceneDim(on){ on=!!on; if(on===_sceneDimmed) return; _sceneDimmed=on; _dimOverlay.visible=on; }   // 暗幕の表示ON/OFFのみ（ライトは触らない＝ホログラムは通常の明るさ）
+const _doCwp=new THREE.Vector3(),_doWq=new THREE.Quaternion(),_doFwd=new THREE.Vector3();
 function updateDimOverlay(){
     if(!_dimOverlay.visible) return;
-    const cwp=camera.getWorldPosition(new THREE.Vector3());
-    const wq=camera.getWorldQuaternion(new THREE.Quaternion());   // スナップ回転込み
-    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(wq);
+    const cwp=camera.getWorldPosition(_doCwp);
+    const wq=camera.getWorldQuaternion(_doWq);   // スナップ回転込み
+    const fwd=_doFwd.set(0,0,-1).applyQuaternion(wq);
     _dimOverlay.position.copy(cwp).addScaledVector(fwd, 0.6);   // 目の前を覆う（depthTest無効・renderOrderで前後を制御）
     _dimOverlay.quaternion.copy(wq);
 }
@@ -1120,6 +1122,7 @@ for(let i=0;i<2;i++){
     c.userData.index = i;
 }
 // 手モデルは右手だけ表示（左手は非表示）。姿勢はモード別
+const _hmQ=new THREE.Quaternion();   // updateHandModels用スクラッチ
 function updateHandModels(){
     for(const c of controllers){
         const hm=c.userData.handModel; if(!hm) continue;
@@ -1133,7 +1136,7 @@ function updateHandModels(){
     if(rightCtrl && rightCtrl.userData.isHand){ toolHolder.quaternion.premultiply(HAND_COMP_Q); toolHolder.position.copy(TOOL_POS_HAND); }
     else toolHolder.position.copy(TOOL_POS_CTRL);
     // 発掘図鑑ホルダー：ハンド時は世界基準（上向き固定）＋外側へ平行移動
-    if(leftCtrl && leftCtrl.userData.isHand){ dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(new THREE.Quaternion()).invert()); dexHolder.position.copy(DEX_POS_OFF); }
+    if(leftCtrl && leftCtrl.userData.isHand){ dexHolder.quaternion.copy(leftCtrl.getWorldQuaternion(_hmQ).invert()); dexHolder.position.copy(DEX_POS_OFF); }
     else { dexHolder.quaternion.identity(); dexHolder.position.set(0,0,0); }
 }
 const HAND_POS_OFF = new THREE.Vector3(0.07, 0, 0.07);   // ハンド時の手のずれ補正（外側+x7cm・プレイヤー側+z7cm）
@@ -1962,6 +1965,7 @@ function showBuddyCardVR(k){
     else { if(_buddyCardVR.material.map) _buddyCardVR.material.map.dispose(); _buddyCardVR.material.map=tex; _buddyCardVR.material.needsUpdate=true; }
     _buddyCardVR.visible=true;   // 閉じる/スタートまで表示
 }
+const _bcQ=new THREE.Quaternion(),_bcLo=new THREE.Vector3(),_bcFwd=new THREE.Vector3(),_bcRight=new THREE.Vector3(),_bcOff=new THREE.Vector3(),_bcCw=new THREE.Vector3();
 function updateBuddyCardVR(){
     if(!_buddyCardVR || !_buddyCardVR.visible) return;                 // 自動では消さない（閉じるボタン/スタートまで表示）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
@@ -1972,16 +1976,16 @@ function updateBuddyCardVR(){
         return;
     }
     _buddyCardVR.scale.setScalar(1);   // スタンバイ以外は等倍・従来配置
-    const q=camera.getWorldQuaternion(new THREE.Quaternion());
+    const q=camera.getWorldQuaternion(_bcQ);
     if(leftCtrl){   // 左手に追従（左手基準で右へ40cm・上へ8cm）＝前回より左20cm下20cm
-        const lo=leftCtrl.getWorldPosition(new THREE.Vector3());
-        const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
-        const right=new THREE.Vector3(1,0,0).applyQuaternion(q);
-        _buddyCardVR.position.copy(lo).addScaledVector(fwd,0.32).addScaledVector(right,0.4).add(new THREE.Vector3(0,0.08,0));
+        const lo=leftCtrl.getWorldPosition(_bcLo);
+        const fwd=_bcFwd.set(0,0,-1).applyQuaternion(q);
+        const right=_bcRight.set(1,0,0).applyQuaternion(q);
+        _buddyCardVR.position.copy(lo).addScaledVector(fwd,0.32).addScaledVector(right,0.4).add(_bcOff.set(0,0.08,0));
     } else {
-        const cw=camera.getWorldPosition(new THREE.Vector3());
-        const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
-        _buddyCardVR.position.copy(cw).addScaledVector(fwd,0.9).add(new THREE.Vector3(0,-0.15,0));
+        const cw=camera.getWorldPosition(_bcCw);
+        const fwd=_bcFwd.set(0,0,-1).applyQuaternion(q);
+        _buddyCardVR.position.copy(cw).addScaledVector(fwd,0.9).add(_bcOff.set(0,-0.15,0));
     }
     _buddyCardVR.quaternion.copy(q);                                    // 常にプレイヤー（カメラ）に正対
 }
@@ -2065,30 +2069,32 @@ const buddyGridVR=(function(){
     draw();
     return { mesh, draw, pick, setHover, dinoKeys, allKeys:()=>dinoKeys().concat(["dog"]), get hover(){ return hoverIdx; } };
 })();
+const _pyfCwp=new THREE.Vector3(),_pyfFwd=new THREE.Vector3(),_pyfQ=new THREE.Quaternion(),_pyfE=new THREE.Euler();
 function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセット・ヨーのみ追従（首の縦振りには追従しない）
-    const cwp=camera.getWorldPosition(new THREE.Vector3());
-    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); fwd.y=0;   // ワールド回転（スナップ回転込み）で正面を算出
+    const cwp=camera.getWorldPosition(_pyfCwp);
+    const fwd=_pyfFwd.set(0,0,-1).applyQuaternion(camera.getWorldQuaternion(_pyfQ)); fwd.y=0;   // ワールド回転（スナップ回転込み）で正面を算出
     if(fwd.lengthSq()<1e-4) fwd.set(0,0,-1); fwd.normalize();
     obj.position.copy(cwp).addScaledVector(fwd, dist); obj.position.y += yOff;
-    obj.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(-fwd.x, -fwd.z), 0));   // プレイヤーに正対（水平）
+    obj.quaternion.setFromEuler(_pyfE.set(0, Math.atan2(-fwd.x, -fwd.z), 0));   // プレイヤーに正対（水平）
 }
 let _bgKey="";
+const _pbH=new THREE.Vector3(),_pbP=new THREE.Vector3(),_pbUp=new THREE.Vector3(),_pbHq=new THREE.Quaternion(),_pbFwd=new THREE.Vector3(),_pbRight=new THREE.Vector3(),_pbAway=new THREE.Vector3(),_pbM4=new THREE.Matrix4();
 function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」を、発掘図鑑から水平右70cmの固定点に置き、向きだけプレイヤーへ正対
     if(!renderer.xr.isPresenting || !leftCtrl || typeof dexPanel==="undefined") return;
     player.updateMatrixWorld(true);
-    const H=camera.getWorldPosition(new THREE.Vector3());
-    const P=dexPanel.mesh.getWorldPosition(new THREE.Vector3());   // 発掘図鑑の位置（左手に追従）
-    const up=new THREE.Vector3(0,1,0);
+    const H=camera.getWorldPosition(_pbH);
+    const P=dexPanel.mesh.getWorldPosition(_pbP);   // 発掘図鑑の位置（左手に追従）
+    const up=_pbUp.set(0,1,0);
     // 「右方向」は発掘図鑑を持つ左手の水平向きから求める：体を回す(スナップ/実回転)と手も回る＝追従／首振り(頭)では手は動かない＝非追従
-    const hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
-    let fwd=new THREE.Vector3(0,0,-1).applyQuaternion(hq); fwd.y=0;
-    if(fwd.lengthSq()<1e-4){ fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); fwd.y=0; }
+    const hq=leftCtrl.getWorldQuaternion(_pbHq);
+    let fwd=_pbFwd.set(0,0,-1).applyQuaternion(hq); fwd.y=0;
+    if(fwd.lengthSq()<1e-4){ fwd=_pbFwd.set(0,0,-1).applyQuaternion(camera.getWorldQuaternion(_pbHq)); fwd.y=0; }
     fwd.normalize();
-    const right=new THREE.Vector3(-fwd.z, 0, fwd.x).normalize();   // fwd の水平右
+    const right=_pbRight.set(-fwd.z, 0, fwd.x).normalize();   // fwd の水平右
     function place(obj, side, upOff){
         obj.position.copy(P).addScaledVector(right, side).addScaledVector(up, upOff);   // 図鑑から右へ70cm＋上下（固定点）
-        const away=obj.position.clone().multiplyScalar(2).sub(H);
-        obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ正対
+        const away=_pbAway.copy(obj.position).multiplyScalar(2).sub(H);
+        obj.quaternion.setFromRotationMatrix(_pbM4.lookAt(obj.position, away, up));   // 面(+Z)をプレイヤーへ正対
     }
     if(buddyGridVR.mesh.visible) place(buddyGridVR.mesh, 0.60, -0.12);          // 下段＝相棒えらび（図鑑の右60cm）
     if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.60, 0.20);   // 上段＝カードをひく（縦に揃える）
@@ -2104,10 +2110,11 @@ function updateBuddyGridVR(){
     if(key!==_bgKey){ _bgKey=key; buddyGridVR.draw(); }   // 状態変化時だけ再描画
 }
 const _bgRay=new THREE.Raycaster();
+const _bghO=new THREE.Vector3(),_bghD=new THREE.Vector3(),_bghQ=new THREE.Quaternion();
 function updateBuddyGridHover(){
     if(!renderer.xr.isPresenting || !buddyGridVR.mesh.visible || !rightCtrl){ buddyGridVR.setHover(-1); return; }
-    const o=new THREE.Vector3(); rightCtrl.getWorldPosition(o);
-    const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    const o=_bghO; rightCtrl.getWorldPosition(o);
+    const d=_bghD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_bghQ)).normalize();
     _bgRay.set(o,d);
     const hit=_bgRay.intersectObject(buddyGridVR.mesh,false)[0];
     buddyGridVR.setHover(hit&&hit.uv ? buddyGridVR.pick(hit.uv.x,hit.uv.y) : -1);
@@ -2327,10 +2334,11 @@ function updateDexPanel(){
 }
 /* 右手のレイで図鑑カードを指す → 右トリガーで「トレカ＋モデル」をホログラム風に宙へ表示 */
 const _dexRay=new THREE.Raycaster();
+const _dhO=new THREE.Vector3(),_dhD=new THREE.Vector3(),_dhQ=new THREE.Quaternion();
 function updateDexHover(){
     if(!renderer.xr.isPresenting || !dexHolder.visible || !rightCtrl){ dexPanel.setHover(-1); return; }
-    const o=new THREE.Vector3(); rightCtrl.getWorldPosition(o);
-    const d=new THREE.Vector3(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    const o=_dhO; rightCtrl.getWorldPosition(o);
+    const d=_dhD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_dhQ)).normalize();
     _dexRay.set(o,d);
     const hit=_dexRay.intersectObject(dexPanel.mesh,false)[0];
     dexPanel.setHover(hit&&hit.uv ? dexPanel.pick(hit.uv.x,hit.uv.y) : -1);
@@ -2419,36 +2427,37 @@ function buildHologram(idx){
     if(typeof setSceneDim==="function") setSceneDim(true);   // 図鑑カード表示中は他を暗転（図鑑/カード/ホログラムは非ライト材質で明るいまま）
 }
 // 毎フレーム：左手の位置に追従。カードは常にプレイヤーを向く。モデルは左手の角度で回る
+const _hCam=new THREE.Vector3(),_hCamDir=new THREE.Vector3(),_hBase=new THREE.Vector3(),_hDir=new THREE.Vector3(),_hQW=new THREE.Quaternion(),_hQYaw=new THREE.Quaternion(),_hDAmp=new THREE.Quaternion(),_hE=new THREE.Euler();
 function updateHologram(){
     if(!holo) return;
-    const g=holo.group, cam=camera.getWorldPosition(new THREE.Vector3());
+    const g=holo.group, cam=camera.getWorldPosition(_hCam);
     const mg=g.userData.mg, card=g.userData.card;
-    const camDir=camera.getWorldDirection(new THREE.Vector3()); camDir.y=0; if(camDir.lengthSq()<1e-4) camDir.set(0,0,-1); camDir.normalize();
+    const camDir=camera.getWorldDirection(_hCamDir); camDir.y=0; if(camDir.lengthSq()<1e-4) camDir.set(0,0,-1); camDir.normalize();
     const viewYaw=Math.atan2(-camDir.x, -camDir.z);   // gの+x=プレイヤーの右／-z=奥 になるヨー
     if(renderer.xr.isPresenting && leftCtrl){
-        const base=leftCtrl.getWorldPosition(new THREE.Vector3()); base.y+=0.30;
+        const base=leftCtrl.getWorldPosition(_hBase); base.y+=0.30;
         g.position.lerp(base, 0.4);
         g.rotation.set(0, viewYaw, 0);                                   // プレイヤー基準：カード左・モデル右を固定
         if(card) card.lookAt(cam);                                      // カードは常にプレイヤーを向く
         if(mg){
             if(leftCtrl.userData.isHand){
                 // 左手をコントローラーのように扱う：現在の手首Quaternion（手に追従するleftCtrlから）をニュートラル基準で分解し各1.5倍
-                const qWrist=leftCtrl.getWorldQuaternion(new THREE.Quaternion());
-                const qYaw=new THREE.Quaternion().setFromAxisAngle(_YAXIS, viewYaw);        // プレイヤー基準
+                const qWrist=leftCtrl.getWorldQuaternion(_hQW);
+                const qYaw=_hQYaw.setFromAxisAngle(_YAXIS, viewYaw);        // プレイヤー基準
                 const wristLocal=qYaw.invert().multiply(qWrist);                            // 手首をプレイヤー基準へ
-                const e=new THREE.Euler().setFromQuaternion(wristLocal,'YXZ');              // Yaw(y)/Pitch(x)/Roll(z)へ分解（軸入れ替わりなし）
+                const e=_hE.setFromQuaternion(wristLocal,'YXZ');              // Yaw(y)/Pitch(x)/Roll(z)へ分解（軸入れ替わりなし）
                 e.z-=HOLO_NEUTRAL_ROLL;                                                     // ニュートラルの手首roll分を引く（ニュートラルで水平）
                 e.x*=HOLO_AMP_PY; e.y*=HOLO_AMP_PY; e.z*=HOLO_AMP_ROLL;                     // Pitch/Yawは2.5倍・Rollは1.5倍
-                const dAmp=new THREE.Quaternion().setFromEuler(e);
+                const dAmp=_hDAmp.setFromEuler(e);
                 mg.quaternion.copy(dAmp).multiply(HOLO_MODEL_FACE);                         // 増幅回転＋正面補正（g基準）
             } else {
-                const hq=leftCtrl.getWorldQuaternion(new THREE.Quaternion());               // コントローラー：従来どおり
+                const hq=leftCtrl.getWorldQuaternion(_hQW);               // コントローラー：従来どおり
                 mg.quaternion.copy(g.quaternion).invert().multiply(hq);
             }
         }
     } else {
-        const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
-        const base=cam.clone().addScaledVector(dir,1.1); base.y=cam.y-0.05;
+        const dir=_hDir.set(0,0,-1).applyQuaternion(camera.getWorldQuaternion(_hQW)); dir.y=0; if(dir.lengthSq()<1e-4) dir.set(0,0,-1); dir.normalize();
+        const base=_hBase.copy(cam).addScaledVector(dir,1.1); base.y=cam.y-0.05;
         g.position.lerp(base,0.25);
         g.rotation.set(0, viewYaw, 0);                                   // デスクトップも同様にカード左・モデル右
         if(card) card.lookAt(cam);
@@ -4293,6 +4302,7 @@ function gamePhase(){   // ①standby ②count ③play ④result
 function updateHudButtons(){
     if(!GAME.desktop) return;
     const ph=gamePhase();
+    const _k=ph+"|"+toolSwapAllowed; if(updateHudButtons._k===_k) return; updateHudButtons._k=_k;   // フェーズ/設定が変わった時だけ更新（毎フレームのgetElementById×7＋style書換を回避）
     const set=(id,show)=>{ const e=document.getElementById(id); if(e && e.id!=="dTA" && e.id!=="taCardBtn") e.style.display = show ? "" : "none"; };
     // ①②：リセット・記録・やめる のみ／④：聞いてみる・リセット・図鑑・記録・やめる／③：従来どおり
     set("dAsk",  ph==="result" || ph==="play");
@@ -4304,16 +4314,18 @@ function updateHudButtons(){
 function updateGoal(){
     if(typeof updateHudButtons==="function") updateHudButtons();
     const el=document.getElementById("dGoal");
-    if(GAME.desktop && typeof gamePhase==="function" && gamePhase()==="result"){ el.style.display="none"; return; }   // リザルトは非表示
-    el.style.display="";
+    if(GAME.desktop && typeof gamePhase==="function" && gamePhase()==="result"){ if(el.style.display!=="none") el.style.display="none"; return; }   // リザルトは非表示
+    if(el.style.display==="none") el.style.display="";
     const tgt=(GAME.digTarget==="dino")?"恐竜":"出土品";
     const modeLbl = GAME.challenge ? "チャレンジ" : "タイムアタック";
-    if(GAME.mode==="collect"){ el.textContent=`コレクション：${tgt} ${GAME.collectedCount} / 8 発掘（残り${8-GAME.collectedCount}）`; }
-    else if(TA.state==="ready")    { el.textContent=modeLbl+"：スタート待ち（"+(IS_TOUCH?"「スタート」ボタン":"スペース / スタート")+"）"; }
-    else if(TA.state==="countdown"){ el.textContent=modeLbl+"：まもなくスタート！"; }
-    else if(TA.state==="results")  { el.textContent=modeLbl+`：結果 ${TA.lastScore}pt`; }
-    else if(TA.state==="free")     { el.textContent=modeLbl+"：再挑戦（"+(IS_TOUCH?"「スタート」ボタン":"スペース / スタート")+"）"; }
-    else { el.textContent=modeLbl+`：${GAME.score}pt ／ 残り${Math.ceil(GAME.timeLeft)}秒`; }
+    let txt;
+    if(GAME.mode==="collect"){ txt=`コレクション：${tgt} ${GAME.collectedCount} / 8 発掘（残り${8-GAME.collectedCount}）`; }
+    else if(TA.state==="ready")    { txt=modeLbl+"：スタート待ち（"+(IS_TOUCH?"「スタート」ボタン":"スペース / スタート")+"）"; }
+    else if(TA.state==="countdown"){ txt=modeLbl+"：まもなくスタート！"; }
+    else if(TA.state==="results")  { txt=modeLbl+`：結果 ${TA.lastScore}pt`; }
+    else if(TA.state==="free")     { txt=modeLbl+"：再挑戦（"+(IS_TOUCH?"「スタート」ボタン":"スペース / スタート")+"）"; }
+    else { txt=modeLbl+`：${GAME.score}pt ／ 残り${Math.ceil(GAME.timeLeft)}秒`; }
+    if(el._g!==txt){ el._g=txt; el.textContent=txt; }   // 内容が変わった時だけDOM更新（毎フレームのtextContent書換・reflowを回避）
 }
 function updateToolLabel(){ document.getElementById("dTool").textContent = "道具："+(GAME.tool==="wide"?"幅広":"細ピック"); }
 function toggleTool(){ if(!toolSwapAllowed) return;   // 「持ち替えない」時は切替不可
@@ -4506,6 +4518,7 @@ function aimAt(origin, dir){
     return GAME.targets.find(t=>t.block===hits[0].object) || null;
 }
 // 今フレームの照準対象を決める（VR＝手/コントローラーの向き、PC＝画面中央）
+const _aimQ=new THREE.Quaternion();
 function updateAim(isVR){
     let hit=null;
     if(isVR){
@@ -4522,8 +4535,8 @@ function updateAim(isVR){
         }
     } else if(GAME.desktop){
         // 画面中央から厳密に判定（甘くしない）
-        const o=camera.getWorldPosition(new THREE.Vector3());
-        const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+        const o=camera.getWorldPosition(_dv1);
+        const d=_dv2.set(0,0,-1).applyQuaternion(camera.getWorldQuaternion(_aimQ));
         hit=aimAt(o,d);
     }
     if(!hit && GAME.star && !GAME.star.done){   // スターポイント
@@ -4569,11 +4582,12 @@ function updateDirt(dt){
 let anyDigReady=false;
 const DIG_VIEW_DEG=34;                 // 画面内とみなす視野角（少し厳密に）
 const _dv1=new THREE.Vector3(), _dv2=new THREE.Vector3();
+const _drD=new THREE.Vector3(),_drQ=new THREE.Quaternion();
 function updateDigReady(){
     anyDigReady=false;
     const allow = !(GAME.mode==="time" && TA.state!=="run");
     const o=camera.getWorldPosition(_dv1);
-    const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    const d=_drD.set(0,0,-1).applyQuaternion(camera.getWorldQuaternion(_drQ)).normalize();
     const cosMax=Math.cos(THREE.MathUtils.degToRad(DIG_VIEW_DEG));
     for(const t of GAME.targets){
         let ready=false;
@@ -4815,6 +4829,7 @@ function focusTarget(){
     if(GAME.star && !GAME.star.done){ const d=Math.hypot(o.x-GAME.star.pos.x, o.z-GAME.star.pos.z); if(d<bd){ bd=d; best=GAME.star; } }   // スターも横に立つ対象
     return best;
 }
+const _coachP=new THREE.Vector3();
 function updateCoach(dt){
     if(typeof holo!=="undefined"&&holo&&holoFreezeTime){ if(typeof bubbleSpr!=="undefined"&&bubbleSpr) bubbleSpr.visible=false; return; }   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）は相棒のセリフ不要（非表示）
     // 掘り当てなどの喜びセリフ（found/done/again 等・force表示）を言っている間は、
@@ -4825,7 +4840,7 @@ function updateCoach(dt){
         return;
     }
     const focus=focusTarget();
-    const camPos=camera.getWorldPosition(new THREE.Vector3());
+    const camPos=camera.getWorldPosition(_coachP);
     const near = focus && Math.hypot(camPos.x-focus.pos.x, camPos.z-focus.pos.z) < DOG_STAY_R;   // 旧コード同様（相棒接近と同じ距離）
 
     // 掘れる状態になった瞬間に一言（表示しっぱなしのセリフは解除）
@@ -4893,10 +4908,11 @@ function petDog(){
     spawnHearts(dog.position, kind===2?4:2);
 }
 // VR：道具を持たず・相棒が注視中で・忙しくない時、相棒の近くで手を往復（撫でる）させたら喜ぶ
+const _cpC=new THREE.Vector3();
 function checkPetVR(){
     if(!renderer.xr.isPresenting) return;
     if(!GAME.canPet || digBusy || !dogAttentive) return;    // 道具が出ている時/発掘中/相棒が向いていない時はなでない
-    const c=dog.getWorldPosition(new THREE.Vector3()); c.y += 0.4;
+    const c=dog.getWorldPosition(_cpC); c.y += 0.4;
     for(const pr of lastProbes){
         if(pr && pr.pos && pr.pos.distanceTo(c) < 0.6 && (pr.sp||0) > 0.6){ petDog(); return; }
     }
@@ -5174,6 +5190,7 @@ function handleFieldLock(){   // 全フェーズ：右手グリップ+トリガ�
         }
     } else { GAME._flDown=0; GAME._flFired=false; }
 }
+const _vlFwd=new THREE.Vector3(),_vlRight=new THREE.Vector3();
 function handleVRLocomotion(dt){
     const s=renderer.xr.getSession(); if(!s) return;
     if(GAME.moveLock) return;   // フィールド固定中は移動・回転を一切しない
@@ -5194,8 +5211,8 @@ function handleVRLocomotion(dt){
     // 移動（頭の向き基準）
     if(Math.abs(moveX)>0.15||Math.abs(moveY)>0.15){
         const q=camQuat();
-        const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
-        const right=new THREE.Vector3(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
+        const fwd=_vlFwd.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
+        const right=_vlRight.set(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
         player.position.addScaledVector(fwd, -moveY*WALK_SPEED*dt);
         player.position.addScaledVector(right, moveX*WALK_SPEED*dt);
         // フィールド外に出ない
@@ -5393,6 +5410,7 @@ function resetDexAndStandby(rotate){
     if(!GAME.challenge) showWorldAura();                       // 矩形＋発掘ポイントを3秒オーラ表示（チャレンジはヒント演出なし）
     updateGoal(); updateTAButton();
 }
+const _vdRhand=new THREE.Vector3(),_vdDogW=new THREE.Vector3();
 function handleVRDig(){
     const s=renderer.xr.getSession(); if(!s) return;
     unlockAudio();
@@ -5412,8 +5430,8 @@ function handleVRDig(){
     // 道具は常に持てる（トリガー不要）。相棒付近では文脈で自動的に非表示＆なで可
     let showTool=true; GAME.canPet=false;
     if(rightCtrl && dog){
-        const rhand=rightCtrl.getWorldPosition(new THREE.Vector3());
-        const dogW=dog.getWorldPosition(new THREE.Vector3()); dogW.y+=0.35;
+        const rhand=rightCtrl.getWorldPosition(_vdRhand);
+        const dogW=dog.getWorldPosition(_vdDogW); dogW.y+=0.35;
         const dDog=rhand.distanceTo(dogW);
         if(dDog<0.70){                                                     // 相棒付近（15cm広げた）
             let nearDig=false;
