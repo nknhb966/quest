@@ -3148,7 +3148,9 @@ document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document
     if(dTA && dTA.parentNode){ dTA.parentNode.insertBefore(dTA, taCard||dTA.parentNode.firstChild);   // 先頭ボタンへ
         dTA.style.background="#ffd34d"; dTA.style.color="#3a2600"; dTA.style.fontWeight="900"; }   // 黄色で目立たせ（サイズは据え置き）
     if(dReset && dQuit && dReset.parentNode) dReset.parentNode.insertBefore(dReset, dQuit);   // リセットを「やめる」の直前へ
-    { const dDex=document.getElementById("dDex"); if(dDex){ dDex.style.flexBasis="100%"; dDex.style.flexGrow="0"; } }   // 図鑑の直前で改行（方針B：図鑑自身に flex-basis を付与＝自然な行間・余分な要素なし）
+    { const dDex=document.getElementById("dDex"); if(dDex && dDex.parentNode && !document.getElementById("_dexBreak")){ dDex.style.flexBasis=""; dDex.style.flexGrow="";   // 図鑑は通常幅（文字数に合わせる）
+        const br=document.createElement("span"); br.id="_dexBreak"; br.style.cssText="flex-basis:100%;width:100%;height:0;margin-top:-10px;";   // 行頭で改行（gap=10pxの二重化を-10pxで相殺＝自然な1行分）
+        dDex.parentNode.insertBefore(br, dDex); } }   // 図鑑の直前で改行（自然な行間・図鑑は通常幅）
 })();
 function setTimeLimit(v){ v=Math.max(60,Math.min(180,Math.round(v/5)*5)); TIME_LIMIT=v;
     const s=document.getElementById("tlSlider"), n=document.getElementById("tlNum"), t=document.getElementById("tlVal");
@@ -3638,7 +3640,7 @@ const worldHud=(function(){
             if(!resData) return; const d=resData;
             if(d.calc && d.calc.chScores){ this.renderChallengePage(); return; }   // 発掘チャレンジ専用レイアウト
             bg(); ctx.textAlign="center"; ctx.textBaseline="middle";
-            const btnLabel = resPage===0 ? "▶ 全体のスコアを見る" : ("🎴 獲得カード："+(d.calc&&d.calc.card?(d.calc.card.rarity||""):""));
+            const btnLabel = resPage===0 ? "スコアを見る" : ("🎴 獲得カード："+(d.calc&&d.calc.card?(d.calc.card.rarity||""):""));
             if(resPage===0){
                 // コレクション結果と同一レイアウト：数字大＋単位半分・上詰め・カード90%・下部案内
                 const numTxt=String(d.score);
@@ -4165,14 +4167,14 @@ function updateResultBtn(){
     const b=document.getElementById("taCardBtn"); if(!b) return;
     if(GAME.challenge){   // チャレンジ：3ターン目（最終）のみ「全体のスコア／獲得カード」の切替を表示。1・2ターン目は1ページ、追加フェーズは非表示
         if(GAME.desktop && TA.state==="results" && GAME.ch && GAME.ch.turn>=3 && !GAME.ch.extra){
-            b.style.display=""; b.textContent = (worldHud.resultPage()===0) ? "▶ 全体のスコアを見る" : "🎴 獲得カードを見る";
+            b.style.display=""; b.textContent = (worldHud.resultPage()===0) ? "スコアを見る" : "🎴 獲得カードを見る";
         } else b.style.display="none";
         return;
     }
     if(typeof cardShown!=="undefined" && !cardShown){ b.style.display="none"; return; }   // 獲得カード非表示なら切替ボタンなし
     if(inTA){
         b.style.display="";
-        b.textContent = worldHud.resultPage()===0 ? "▶ 全体のスコアを見る" : "🎴 獲得カードを見る";
+        b.textContent = worldHud.resultPage()===0 ? "スコアを見る" : "🎴 獲得カードを見る";
     } else if(inCol){
         b.style.display="";
         b.textContent = worldHud.collectPage()===0 ? "▶ タイムTOP5を見る" : "🎴 獲得カードを見る";
