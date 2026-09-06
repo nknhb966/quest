@@ -1815,6 +1815,7 @@ const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fu
 let buddyRandom=false;   // ブラウザのトグル：相棒を選ぶ／ランダム
 let dogOnly=true;        // 既定：犬のみモード
 let buddyListOpen=false; // スタンバイの相棒一覧の開閉（▼/▲）。リロード・リザルト戻りは閉じた状態が既定
+let chRoundOpen=true;   // ROUNDパネル説明行の開閉（▲/▼）。各ターン開始時は必ず開いた状態にする
 let dogLevelUp=false;    // 犬レベルアップ制（false=固定[2,2,2]）
 let dogStats=[2,2,2];    // 犬の現在ステータス [Power,Scope,Bonus]
 function resetDogStats(){ dogStats = dogLevelUp ? [1,1,1] : [2,2,2]; }
@@ -2298,7 +2299,14 @@ function updateChRoundPanel(){
             dom.style.cssText="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
             document.body.appendChild(dom); }
         const r=chRoundInfo(GAME.ch.turn);
-        dom.innerHTML='<div style="font-size:30px;color:#ffd86a;margin-bottom:8px;">'+r.head+'</div>'+r.lines.map((l,i)=>'<div style="font-size:16px;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("");
+        const head='<div style="display:flex;align-items:center;justify-content:center;gap:10px;">'
+            +'<span style="font-size:14px;font-weight:800;color:#ffd86a;">'+r.head+'</span>'
+            +'<button id="chRoundTgl" style="font:bold 13px sans-serif;padding:2px 12px;border-radius:8px;border:1px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;line-height:1.2;pointer-events:auto;" title="'+(chRoundOpen?"説明を閉じる":"説明を開く")+'">'+(chRoundOpen?"▲":"▼")+'</button>'
+            +'</div>';
+        const body=chRoundOpen ? ('<div style="margin-top:6px;">'+r.lines.map((l,i)=>'<div style="font-size:14px;font-weight:800;color:'+((i===r.lines.length-1)?"#8ff0ff":"#eafff9")+';line-height:1.6;">'+l+'</div>').join("")+'</div>') : "";
+        dom.innerHTML=head+body;
+        dom.style.pointerEvents="none";   // パネル自体はクリック透過。トグルだけ pointer-events:auto で反応
+        { const tg=document.getElementById("chRoundTgl"); if(tg) tg.onclick=(ev)=>{ ev.stopPropagation(); chRoundOpen=!chRoundOpen; updateChRoundPanel(); }; }
         dom.style.display="block";
     } else if(dom){ dom.style.display="none"; }
     // VR 3Dパネル（相棒えらびの上・同じ追従＝placeBuddyPanelsで配置）
@@ -2654,7 +2662,18 @@ function preloadEverything(done){
     const step=()=>{
         _preloadTimer=null;
         while(j<jobs.length && jobs[j].cache && jobs[j].cache[jobs[j].idx]) j++;
-        if(j>=jobs.length){ if(done) done(); return; }
+        if(j>=jobs.length){
+            try{   // GPUウォームアップ：初回表示時のカクつき防止（シェーダcompile＋ジオメトリ/テクスチャ転送）
+                const warm=[];
+                const show=(m)=>{ if(m){ warm.push([m,m.visible]); m.visible=true; } };
+                for(let i=0;i<8;i++){ show(_dinoCacheB[i]); show(_dinoCacheS[i]); }
+                if(typeof COMPANIONS!=="undefined"){ for(const k in COMPANIONS){ const d=COMPANIONS[k]; if(d){ show(d.bodyB); show(d.bodyS); } } }
+                if(renderer.compile) renderer.compile(scene, camera);   // 全マテリアルのシェーダを事前コンパイル
+                renderer.render(scene, camera);                          // 1フレーム描画してGPU転送を確定
+                for(const it of warm) it[0].visible=it[1];               // 元の可視状態へ戻す
+            }catch(_){}
+            if(done) done(); return;
+        }
         const job=jobs[j];
         if(job.card){   // カード画像プリロード（読み込み完了/失敗で次へ）
             const im=new Image(); im.crossOrigin="anonymous";
@@ -3200,7 +3219,13 @@ function applyDeviceAutoSize(){   // スマホ/PC＋おすすめオンのとき�
 }
 async function detectHeadset(){
     IS_HEADSET=false;
-    try{ if(navigator.xr && navigator.xr.isSessionSupported){ IS_HEADSET = await navigator.xr.isSessionSupported("immersive-vr").catch(()=>false); } }catch(_){ IS_HEADSET=false; }
+    let vrOk=false;
+    try{ if(navigator.xr && navigator.xr.isSessionSupported){ vrOk = await navigator.xr.isSessionSupported("immersive-vr").catch(()=>false); } }catch(_){ vrOk=false; }
+    // 端末種別で補正：Androidスマホ等は immersive-vr を対応と返すことがあるため、スマホ/タブレットのUAはヘッドセット扱いにしない
+    const ua = (navigator.userAgent||"");
+    const isHeadsetUA = /OculusBrowser|Quest|Pico|VisionOS|Vive|Wolvic|magicleap|Lynx/i.test(ua);   // 既知のヘッドセットUA
+    const isMobileUA  = /Android|iPhone|iPad|iPod|Mobile|Tablet|Silk/i.test(ua);                     // スマホ/タブレットのUA
+    IS_HEADSET = vrOk && (isHeadsetUA || !isMobileUA);   // immersive-vr対応 かつ（既知ヘッドセット or 非モバイル）
     headsetDetected=true;   // 以後は自動サイズ適用を許可
     updateEntryButtons();
     if(recoOn){ applyDeviceAutoSize(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); }   // 検出完了後にメニューへ反映
@@ -3466,6 +3491,7 @@ document.getElementById("helpClose").onclick=()=>{ document.getElementById("help
 document.getElementById("help").addEventListener("click", e=>{ if(e.target.id==="help") e.currentTarget.classList.remove("open"); });
 
 function startGame(desktop){
+    buddyListOpen=false;   // 再入室時は相棒一覧を必ず閉じた状態から
     GAME.challenge = (chosenMode==="challenge");                         // 発掘チャレンジ（3ターン）
     if(GAME.challenge){ const ut=(typeof TIME_LIMIT!=="undefined" && TIME_LIMIT>=60)?TIME_LIMIT:90; GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:ut}; if(typeof resetUnlocked==="function") resetUnlocked(); chApplyTurn(1); }   // userTimeはスライダー値（chApplyTurnでTIME_LIMITが30化される前に確定）
     GAME.active=true; GAME.desktop=desktop; GAME.mode=(GAME.challenge?"time":chosenMode); GAME.tool=chosenTool; GAME.starUsed=false; GAME.complete=false;
@@ -4018,6 +4044,7 @@ function chPickBuddyIdx(sc, turn){   // 得点→中心レア度（中心60%・�
 }
 function chApplyTurn(n){   // ターン開始前の設定（時間・スター・相棒ロック）
     GAME.ch.turn=n;
+    chRoundOpen=true;                 // 各ターン開始時はROUND説明を必ず開いた状態に
     TIME_LIMIT = (n===3) ? (GAME.ch.userTime||90) : CH_TIMES[n-1];
     starEnabled = (n!==1);            // 1ターン目はスター非表示
     GAME.chLockBuddy = (n===1);       // 1ターン目は相棒選択なし・犬固定
