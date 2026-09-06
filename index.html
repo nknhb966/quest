@@ -804,6 +804,7 @@ function updateWorldAura(dt){
 }
 // VR/AR＋カスタムワールドのときは、フィールドの矩形境界を常に表示
 let fieldBorder=null;
+const _fbPts=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
 function updateFieldBorder(){
     const show = (typeof renderer!=="undefined") && renderer.xr.isPresenting && customWorldOn();
     if(!show){ if(fieldBorder) fieldBorder.visible=false; return; }
@@ -818,8 +819,9 @@ function updateFieldBorder(){
     }
     const hx=WORLD_X/2, hz=WORLD_Z/2;
     fieldBorder.children.forEach(ln=>{
-        const pts=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]].map(([x,z])=>{ const w=fieldToWorld(x,z); return new THREE.Vector3(w.x, GROUND_Y+ln.userData.yoff, w.z); });
-        ln.geometry.setFromPoints(pts);
+        const cs=[[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]];
+        for(let k=0;k<5;k++){ const w=fieldToWorld(cs[k][0],cs[k][1]); _fbPts[k].set(w.x, GROUND_Y+ln.userData.yoff, w.z); }
+        ln.geometry.setFromPoints(_fbPts);
     });
     fieldBorder.visible=true;
 }
@@ -2731,6 +2733,7 @@ function revealDino(idx, pos, color){
     }catch(_){}
     eggHatch.push({ egg, idx, pos:pos.clone(), color, at:performance.now()+1300, wob:0, backDir });
 }
+const _thBox=new THREE.Box3(),_thCp=new THREE.Vector3();
 function tickHatch(now, dt){
     for(let i=eggHatch.length-1;i>=0;i--){ const e=eggHatch[i];
         if(e.egg){ e.wob+=dt; e.egg.rotation.z=Math.sin(e.wob*11)*0.16*Math.min(1,e.wob*1.5); }  // 孵化前に揺れる
@@ -2744,9 +2747,9 @@ function tickHatch(now, dt){
             // 前後長（ローカル+Z＝鼻先方向）を回転前に測る
             let depth=1.0, height=1.0;
             { m.rotation.set(0,0,0); m.position.set(0,0,0); m.updateMatrixWorld(true);
-              const bb=new THREE.Box3().setFromObject(m); depth=Math.max(0.001, bb.max.z-bb.min.z); height=Math.max(0.001, bb.max.y-bb.min.y); }
+              const bb=_thBox.setFromObject(m); depth=Math.max(0.001, bb.max.z-bb.min.z); height=Math.max(0.001, bb.max.y-bb.min.y); }
             // 向き：鼻先(+Z)をプレイヤーへ
-            { const cp=camera.getWorldPosition(new THREE.Vector3()); m.rotation.set(0, Math.atan2(cp.x-e.pos.x, cp.z-e.pos.z), 0); }
+            { const cp=camera.getWorldPosition(_thCp); m.rotation.set(0, Math.atan2(cp.x-e.pos.x, cp.z-e.pos.z), 0); }
             // 本体中心Cを発掘ポイントから奥へ(前後長/3)ずらす
             let cX=e.pos.x, cZ=e.pos.z;
             if(e.backDir){ const off=depth*(1/2); cX=e.pos.x + e.backDir.x*off; cZ=e.pos.z + e.backDir.z*off; }   // 全種：発掘ポイントから前後長×1/2奥
@@ -5226,10 +5229,11 @@ function handleVRLocomotion(dt){
     }
 }
 
+const _dmFwd=new THREE.Vector3(),_dmRight=new THREE.Vector3();
 function handleDesktopMove(dt){
     const q=camQuat();
-    const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
-    const right=new THREE.Vector3(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
+    const fwd=_dmFwd.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
+    const right=_dmRight.set(1,0,0).applyQuaternion(q); right.y=0; right.normalize();
     let mx=0,mz=0;
     if(keys["KeyW"])mz+=1; if(keys["KeyS"])mz-=1; if(keys["KeyA"])mx-=1; if(keys["KeyD"])mx+=1;
     if(touchJoy.id!==null){ mx+=touchJoy.x; mz+=touchJoy.z; }   // スマホのスティック
