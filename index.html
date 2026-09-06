@@ -454,9 +454,9 @@
       </div>
       <div style="display:flex; gap:8px;">
         <button id="colResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #4b7a8f; background:#16303a; color:#cdeeff; font-weight:800; cursor:pointer;">コレクションのみ削除</button>
+        <button id="allResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #8f6a4b; background:#3a2a16; color:#ffe6c0; font-weight:800; cursor:pointer;">すべて削除</button>
       </div>
       <div style="display:flex; gap:8px;">
-        <button id="allResetBtn" style="flex:1; padding:10px; border-radius:10px; border:1px solid #8f6a4b; background:#3a2a16; color:#ffe6c0; font-weight:800; cursor:pointer;">すべて削除</button>
         <button id="taModalClose" style="flex:1; padding:10px; border-radius:10px; border:1px solid #6a5c94; background:#241a34; color:#d9cbf5; font-weight:800; cursor:pointer;">閉じる</button>
       </div>
     </div>
@@ -3148,8 +3148,7 @@ document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document
     if(dTA && dTA.parentNode){ dTA.parentNode.insertBefore(dTA, taCard||dTA.parentNode.firstChild);   // 先頭ボタンへ
         dTA.style.background="#ffd34d"; dTA.style.color="#3a2600"; dTA.style.fontWeight="900"; }   // 黄色で目立たせ（サイズは据え置き）
     if(dReset && dQuit && dReset.parentNode) dReset.parentNode.insertBefore(dReset, dQuit);   // リセットを「やめる」の直前へ
-    { const dDex=document.getElementById("dDex"); if(dDex && dDex.parentNode){ const prevBtns=Array.from(dDex.parentNode.children).filter(el=>el.tagName==="BUTTON" && el!==dDex && getComputedStyle(el).display!=="none"); // 図鑑より前に表示ボタンがある時だけ改行
-        if(prevBtns.length){ const br=document.createElement("span"); br.style.cssText="flex-basis:100%;width:100%;height:0"; dDex.parentNode.insertBefore(br, dDex); } } }   // 図鑑の直前で改行
+    { const dDex=document.getElementById("dDex"); if(dDex){ dDex.style.flexBasis="100%"; dDex.style.flexGrow="0"; } }   // 図鑑の直前で改行（方針B：図鑑自身に flex-basis を付与＝自然な行間・余分な要素なし）
 })();
 function setTimeLimit(v){ v=Math.max(60,Math.min(180,Math.round(v/5)*5)); TIME_LIMIT=v;
     const s=document.getElementById("tlSlider"), n=document.getElementById("tlNum"), t=document.getElementById("tlVal");
@@ -3710,7 +3709,7 @@ const worldHud=(function(){
                     bigNum(c.chTotal,172);
                     ctx.fillStyle=(RARITY_COL[c.card.rarity]||"#fff"); ctx.font="bold 30px sans-serif"; ctx.fillText("🎴 今回の獲得カード（"+(c.card.rarity||"")+"）",384,250);
                     const im=cardImage(c.cardTarget||curTarget, c.card.idx);
-                    if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 84, 285, 600, 900); }catch(_){}}   // 1.5倍
+                    if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 93, 285, 582, 873); }catch(_){}}   // 97%（600×900→582×873・中央）
                     else { im.addEventListener("load",()=>{ if(resData===d && resPage===0) worldHud.renderChallengePage(); },{once:true}); }
                 } else {        // 全体スコアページ：合計＋各ターン＋3ターン目の計算＋TOP5
                     ctx.fillStyle="#f0d98a"; ctx.font="bold 40px sans-serif"; ctx.fillText("発掘チャレンジ結果",384,78);
@@ -3732,9 +3731,9 @@ const worldHud=(function(){
                 ctx.fillStyle="#8ff0ff"; ctx.font="bold 44px sans-serif"; ctx.fillText(c.chTurn+"ターン目 完了！",384,78);
                 let y=calcBlock(c.digPts,c.secs,c.timeBonus,d.score,168);
                 const im=cardImage("dino", c.card.idx);
-                if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 108, y+38, 552, 828); }catch(_){}}   // 1.5倍
+                if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 117, y+38, 535, 803); }catch(_){}}   // 97%（552×828→535×803・中央）
                 else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
-                if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+828+28); }
+                if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+803+28); }
             }
             if(!GAME.desktop){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,1180); }   // 1・2ページとも中央・1180で統一
             tex.needsUpdate=true; mesh.visible=true;
