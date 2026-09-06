@@ -1995,7 +1995,7 @@ function makeBuddyRandomBtnTex(){
 }
 function updateBuddyRandomBtn(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly;   // ランダムモードのみ・選択パネルの直下
+    const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // ランダムモードのみ・選択パネルの直下／暗転中（図鑑カード表示中）は非表示
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); _buddyRandomBtn.scale.setScalar(1.0); }   // 幅=図鑑と同じ0.30。位置/向きは placeBuddyPanels で毎フレーム設定
     _buddyRandomBtn.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
@@ -2097,7 +2097,7 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = renderer.xr.isPresenting && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy);   // チャレンジ1ターン目は相棒選択なし（犬固定）
+    const show = renderer.xr.isPresenting && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // チャレンジ1ターン目は相棒選択なし（犬固定）／暗転中（図鑑カード表示中）は非表示
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
@@ -2315,7 +2315,7 @@ function updateChRoundPanel(){
         dom.style.display="block";
     } else if(dom){ dom.style.display="none"; dom._key=""; }
     // VR 3Dパネル（相棒えらびの上・同じ追従＝placeBuddyPanelsで配置）
-    if(!(active && renderer.xr.isPresenting)){ chRoundPanel.mesh.visible=false; return; }
+    if(!(active && renderer.xr.isPresenting) || (typeof _sceneDimmed!=="undefined" && _sceneDimmed)){ chRoundPanel.mesh.visible=false; return; }   // 暗転中（図鑑カード表示中）は非表示
     chRoundPanel.mesh.visible=true;
     const key=GAME.ch.turn+"|"+((GAME.ch.userTime)||TIME_LIMIT);
     if(key!==_chRoundKey){ _chRoundKey=key; chRoundPanel.draw(GAME.ch.turn); }
