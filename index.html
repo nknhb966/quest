@@ -420,6 +420,7 @@
 
     <!-- 発掘モデル表示（タイトルメニュー最下部・あそび方／記録の次の行） -->
     <button id="mvOpenBtn">🔍 発掘モデル表示</button>
+    <button id="mvArOpenBtn">📱 発掘モデル表示AR</button>
 
   </div>
 </div>
@@ -597,6 +598,15 @@
     }
     #mvOpenBtn:active{ transform:scale(.99); }
     body.loading #mvOpenBtn{ opacity:.5; pointer-events:none; filter:grayscale(.4); }
+    #mvArOpenBtn{
+        display:block; width:100%; margin:8px 0 2px;
+        padding:15px 0; border:none; border-radius:12px; cursor:pointer;
+        font-size:16px; font-weight:800; letter-spacing:1px; color:#fff;
+        background:linear-gradient(135deg,#0e9488,#1d4ed8);
+        box-shadow:0 0 26px rgba(40,180,200,.45), inset 0 1px 0 rgba(255,255,255,.15);
+    }
+    #mvArOpenBtn:active{ transform:scale(.99); }
+    body.loading #mvArOpenBtn, body.preloading #mvArOpenBtn{ opacity:.5; pointer-events:none; filter:grayscale(.4); }
 
     #mvModal{
         position:fixed; inset:0; z-index:12000; display:none;
@@ -642,7 +652,7 @@
 <div id="mvModal">
     <div class="mvbox" role="dialog" aria-modal="true" aria-label="発掘モデル表示">
         <div class="mvhead">
-            <h2>craftARt Go</h2>
+            <h2 id="mvTitle">craftARt Go</h2>
             <button id="mvCloseBtn" class="mvclose">✕ 閉じる</button>
         </div>
         <div class="mvctl">
@@ -6186,17 +6196,23 @@ addEventListener("resize",()=>{
         if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
     }
 
-    openBtn.addEventListener("click", openModal);
+    const arOpenBtn = document.getElementById("mvArOpenBtn");
+    function setLiteMode(on){ window.__mvLiteMode=!!on; const h=document.getElementById("mvTitle"); if(h) h.textContent = on ? "craftARt Lite（AR）" : "craftARt Go"; }
+    openBtn.addEventListener("click", ()=>{ setLiteMode(false); openModal(); });
+    if(arOpenBtn) arOpenBtn.addEventListener("click", ()=>{ setLiteMode(true); openModal(); });
     if(closeBtn) closeBtn.addEventListener("click", closeModal);
     sel.addEventListener("change", ()=>{ showModel(curIdx()); });
     if(arBtn) arBtn.addEventListener("click", ()=>{ try{ viewer.activateAR(); }catch(_){ } });
     viewer.addEventListener("load", updateAR);
-    modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
+    modal.addEventListener("click", (e)=>{ if(e.target===modal && !window.__mvUrlDirect) closeModal(); });   // URL直接時は外側タップで閉じない
 
     // URLで直接 craftARt Go を開く：index.html?view=go&target=artifact|dino
     (function autoOpenFromURL(){
         let params; try{ params=new URLSearchParams(location.search); }catch(_){ return; }
-        if((params.get("view")||"").toLowerCase()!=="go") return;
+        const _view=(params.get("view")||"").toLowerCase();
+        if(_view!=="go" && _view!=="lite") return;
+        window.__mvUrlDirect = true;   // URL直接オープン：メイン画面へ戻る操作を全て無効化
+        if(typeof setLiteMode==="function") setLiteMode(_view==="lite"); else window.__mvLiteMode=(_view==="lite");   // liteモード設定＋ヘッダー文言
         { const cl=document.getElementById("mvCloseBtn"); if(cl) cl.style.display="none"; }   // URL直接オープン時は閉じるボタン不要
         const t=(params.get("target")||"").toLowerCase();
         if(["artifact","dino"].includes(t)){ try{ if(typeof chosenDigTarget!=="undefined") chosenDigTarget=t; }catch(_){ } }   // 引き継ぎは「発掘する対象」のみ
