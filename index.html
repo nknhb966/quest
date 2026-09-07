@@ -837,8 +837,54 @@ function updateFieldBorder(){
     });
     fieldBorder.visible=true;
 }
-const SITE_FIT_DIAM = 34;                 // サイトモデルをこの直径(m)に自動フィット
-const ART_TARGET_H  = 0.55;               // 出土品モデルを高さ約this(m)に自動フィット
+// ============================================================================
+//  YEAR_CONFIG … 年度・遺跡ごとに差し替える設定を一箇所に集約（毎年ここだけ直せばよい）
+//  前半＝①年度/遺跡で必ず変わる値＋恐竜セット、後半＝②挙動チューニング用（コメントで区切り）
+// ============================================================================
+const YEAR_CONFIG = {
+    // ---- ① 年度・遺跡ごとに変わる（毎年差し替え）----
+    siteGlbUrl:  "https://www.city.echizen.lg.jp/office/030/021/open-data-echizen_d/fil/00101_kokufuhakkutsu3.glb", // 遺構(サイト)モデルGLBのURL
+    assetBase:   "https://echizencity.github.io/opendata/kokufuhakkutsu3/", // CSV・画像の基準URL（末尾は / ）
+    assetSuffix: "_kokufuhakkutsu3",   // 出土品パネル画像PNGの命名サフィックス（例: 40100_kokufuhakkutsu3.png）
+    csvUrl:      "",                   // models.csv のURL。空なら assetBase + "models.csv" を使用
+    sitePrefix:  "遺構",               // models.csv の name がこの語で始まる行を「遺構」とみなす（遺構2025/2026…）
+    artCount:    8,                    // ゲーム本体の出土品数（発掘点・カード・図鑑が前提とする個数）
+    linkCount:   8,                    // 出土品id↔恐竜idの紐づけ数。idがこれ以上なら最終(linkCount-1)の恐竜に紐づく
+    artOrig:     [[-2.7,-0.5],[4.0,2.4],[3.8,-0.7],[3.0,-2.2],[0,-1.5],[3.2,2.2],[-2,-1],[-1.8,1.2]], // 発掘ポイント固定位置（サイトのネイティブ座標。全体リスケールに追従）
+    artOrigFallbackScale: 3,           // サイト未読込時に artOrig をワールド座標へ変換する倍率
+    siteFitDiam: 34,                   // サイトモデルをこの直径(m)に自動フィット
+    siteYOffset: 0,                    // サイトの高さ微調整(m。地面は自動で足元に合わせる)
+    artImgCodes: ["40100","40200","40300","40400","40500","40600","40700","40800"], // 出土品説明パネル画像のコード（→ assetBase+code+assetSuffix+".png"）
+    artRarity:   ["超激レア","激レア","レア","プチレア","プチレア","ノーマル","ノーマル","ノーマル"], // 出土品8種のレア度（index別）
+    artColors:   [0xffd34d,0x6fe3a5,0x7cc4ff,0xff9ad5,0xffa45c,0xb99cff,0x7ff0e0,0xf5f0a0], // 出土品8種のオーラ/パネル色
+    cardDirDino: "card_dino/",         // 恐竜カード画像フォルダ（index.htmlと同階層）
+    cardDirArt:  "card_artifact/",     // 出土品カード画像フォルダ
+    dinoImgs:    ["","","","","","","",""], // 恐竜説明パネル画像URL（未設定=空＝プレースホルダー表示）
+
+    // ---- 恐竜セット（年度で恐竜が変わる場合はここを差し替え。build は key に対応する build_<key> 関数を使用）----
+    //  key=内部キー / label=表示名 / cry=鳴き声 / realH=実寸の高さ(m・ホログラムの高さ比に使用)
+    dinos: [
+        { key:"trex",        label:"🦖 ティラノサウルス", cry:"ガオー",   realH:4.0 },
+        { key:"fukuiraptor", label:"🦖 フクイラプトル",   cry:"ガオォ",   realH:2.0 },
+        { key:"fukuititan",  label:"🦕 フクイティタン",   cry:"ずしーん", realH:6.0 },
+        { key:"tri",         label:"🦕 トリケラトプス",   cry:"ブモォ",   realH:3.0 },
+        { key:"ptera",       label:"🕊 プテラノドン",     cry:"ピギャー", realH:1.8 },
+        { key:"fukuisaurus", label:"🦕 フクイサウルス",   cry:"モーゥ",   realH:2.6 },
+        { key:"stego",       label:"🦕 ステゴザウルス",   cry:"のっしり", realH:4.0 },
+        { key:"brachi",      label:"🦕 ブラキオサウルス", cry:"にょろん", realH:9.5 },
+    ],
+
+    // ---- ② 挙動チューニング（年度で変えなくてもよいが、ここで調整可能）----
+    challengeTimes:   [30, 60, 0],     // 発掘チャレンジ各ターンの制限時間(秒)。3ターン目=0はユーザー指定(defaultTimeLimit/スライダー)
+    defaultTimeLimit: 90,              // タイムアタック/3ターン目の既定制限時間(秒)。スライダー範囲は60〜180
+    artTargetH:       0.55,            // 出土品モデルを高さ約this(m)に自動フィット
+    dinoSmallH:       0.30,            // 恐竜「小さい」：ティラノをこの高さ(m)に（他種は比率維持）
+    dinoMidH:         1.5,             // 恐竜「普通」：ティラノをこの高さ(m)に（他種は比率維持）
+    collectRarityThresholds: { chogeki:60, geki:90, rare:120, petit:180 } // じっくりコレクション：クリア秒が各値以内→超激/激/レア/プチレア（超えるとノーマル）
+};
+
+const SITE_FIT_DIAM = YEAR_CONFIG.siteFitDiam;   // サイトモデルをこの直径(m)に自動フィット
+const ART_TARGET_H  = YEAR_CONFIG.artTargetH;    // 出土品モデルを高さ約this(m)に自動フィット
 const ARTIFACT_POP_Y= 0.95;              // 出土品/恐竜が落ち着く高さ（少し低め。パネルもこれに追従）
 function popY(){ return ARTIFACT_POP_Y; }   // 発掘済みの落ち着き高さ（VR/AR/PC共通）
 const GROUND_BELOW_EYE = 1.5;            // 目線から地面までの距離（高さの基準。安定判定にも使用）
@@ -883,31 +929,27 @@ function applyWorldParams(){
     DIG_REACH_BASE = BASE_DIG_REACH;                       // ③：倍率/広さで縮小しない（小さくても厳しくならない）＝最適値で固定
     DIG_REACH  = DIG_REACH_BASE;   // ③黄色距離：VR/AR・スマホ・PC 共通（1.0倍）
 }
-const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。地面は自動で足元に合わせる）
-// 最初のHTMLと同じ発掘場所（サイトのネイティブ座標。全体リスケールに追従させる）
-const ART_ORIG = [[-2.7,-0.5],[4.0,2.4],[3.8,-0.7],[3.0,-2.2],[0,-1.5],[3.2,2.2],[-2,-1],[-1.8,1.2]];
+const SITE_Y_OFFSET = YEAR_CONFIG.siteYOffset;   // サイトの高さ微調整(m)
+const ART_ORIG = YEAR_CONFIG.artOrig;   // 発掘ポイント固定位置（サイトのネイティブ座標）
 
-const SITE_GLB   = "https://www.city.echizen.lg.jp/office/030/021/open-data-echizen_d/fil/00101_kokufuhakkutsu3.glb";
-const IMG_BASE   = "https://echizencity.github.io/opendata/kokufuhakkutsu3/";
-const ART_COUNT  = 8;   // ゲーム本体の出土品数（発掘点・カード・図鑑が8個前提）。将来増やす場合はここを変更（本体側の対応が別途必要）
-// ===== craftARt Go 設定（数・名称・判別方法をここで一元管理）=====
-//  ・出土品モデルは models.csv のデータ（path=フル版）のみを使用（ART_FILES/_small は廃止）。件数は ART_COUNT。
-//  ・遺構は CSV(models.csv) の name が sitePrefix（「遺構」）で始まる行を自動判別。遺構2025/2026/2030… は行を足すだけで対応。
+const SITE_GLB   = YEAR_CONFIG.siteGlbUrl;   // 遺構(サイト)モデルGLBのURL
+const IMG_BASE   = YEAR_CONFIG.assetBase;   // CSV・画像の基準URL
+const ART_COUNT  = YEAR_CONFIG.artCount;   // ゲーム本体の出土品数（発掘点・カード・図鑑が前提とする個数）
+// craftARt Go 設定：出土品モデルは models.csv のみを使用（件数は ART_COUNT）。URL/判別語は YEAR_CONFIG から。
 const MV_CFG = {
-    csvUrl:     IMG_BASE + "models.csv",   // モデル一覧CSV（path,name,description,url）
-    sitePrefix: "遺構",                     // CSVの name がこの語で始まる行を「遺構」とみなす
+    csvUrl:     YEAR_CONFIG.csvUrl || (YEAR_CONFIG.assetBase + "models.csv"),   // モデル一覧CSV（path,name,description,url）
+    sitePrefix: YEAR_CONFIG.sitePrefix,    // CSVの name がこの語で始まる行を「遺構」とみなす
     showSite:   true,                      // 遺構を一覧末尾に表示（既定オン）
     showUrl:    false                      // 関連URLを表示するか（既定オフ・準備のみ）
 };
-const ART_IMGS   = ["40100","40200","40300","40400","40500","40600","40700","40800"]
-                    .map(n=>IMG_BASE+n+"_kokufuhakkutsu3.png");
+const ART_IMGS   = YEAR_CONFIG.artImgCodes.map(n=>YEAR_CONFIG.assetBase+n+YEAR_CONFIG.assetSuffix+".png");   // 出土品説明パネル画像URL
 // 恐竜の説明パネル画像（8種）。※パスは後で共有される予定。空文字のあいだはプレースホルダー表示。
 //   順番は DINOS と同じ：0ティラノ 1フクイラプトル 2フクイティタン 3トリケラ 4プテラノ 5フクイサウルス 6ステゴ 7ブラキオ
-const DINO_IMGS  = ["", "", "", "", "", "", "", ""];
+const DINO_IMGS  = YEAR_CONFIG.dinoImgs;   // 恐竜説明パネル画像URL（未設定=空）
 // ===== カードPNG（1:1.5）の共通パス取得 =====
 // ※実際のフォルダ名に合わせて調整してください（index.htmlと同階層）
-const CARD_DIR_DINO = "card_dino/";        // 恐竜用カード画像フォルダ
-const CARD_DIR_ART  = "card_artifact/";    // 出土品用カード画像フォルダ
+const CARD_DIR_DINO = YEAR_CONFIG.cardDirDino;   // 恐竜用カード画像フォルダ
+const CARD_DIR_ART  = YEAR_CONFIG.cardDirArt;    // 出土品用カード画像フォルダ
 function cardImgPath(target, idx){         // target:"dino"/"artifact", idx:0始まり → cardXX.png
     const dir = (target==="dino") ? CARD_DIR_DINO : CARD_DIR_ART;
     const n = String((idx|0)+1).padStart(2,"0");
@@ -938,7 +980,7 @@ function cardTexture(target, idx){
         _cardTexCache[key]=t; }
     return _cardTexCache[key];
 }
-let TIME_LIMIT = 90; // タイムアタック秒数（60〜180・スライダーで可変）
+let TIME_LIMIT = YEAR_CONFIG.defaultTimeLimit; // タイムアタック秒数（60〜180・スライダーで可変）
 
 /* =====================================================
  * 図鑑データ（localStorage 永続化）
@@ -966,10 +1008,11 @@ function recordChallenge(total, detail){   // 3ターン合計を記録（TOP5�
 }
 function roundTime1(sec){ return Math.round(sec*10)/10; }   // 0.1秒に四捨五入
 function collectRarityByTime(sec){          // クリアタイム→レア度（境界は「以内」）
-    if(sec<=60)  return "超激レア";
-    if(sec<=90)  return "激レア";
-    if(sec<=120) return "レア";
-    if(sec<=180) return "プチレア";
+    const th=YEAR_CONFIG.collectRarityThresholds;
+    if(sec<=th.chogeki) return "超激レア";
+    if(sec<=th.geki)    return "激レア";
+    if(sec<=th.rare)    return "レア";
+    if(sec<=th.petit)   return "プチレア";
     return "ノーマル";
 }
 function recordCollection(sec){             // タイムを記録しTOP5化。今回のidを返す
@@ -1309,7 +1352,7 @@ function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if
 /* ── アーティファクトGLB（8種）を事前ロード（非表示で保持） ── */
 const artModels = new Array(8).fill(null);
 // ===== 出土品↔恐竜の紐づけ数（=LINK_COUNT）。出土品idがこれ以上なら最終(LINK_COUNT-1)の恐竜に紐づく。恐竜が増えたら値を上げる =====
-const LINK_COUNT = 8;
+const LINK_COUNT = YEAR_CONFIG.linkCount;
 function linkedDinoIdx(i){ return Math.max(0, Math.min(i|0, LINK_COUNT-1)); }
 
 // ===== craftARt Go: models.csv 読み込み（ゲーム本体・モーダル共用）=====
@@ -1805,16 +1848,9 @@ function dinoLines(cry){
         digNow:`ここ 掘れるぞ ${cry}！`
     };
 }
-const DINOS=[
-    {key:"trex",        label:"🦖 ティラノサウルス", cry:"ガオー",   build:build_trex},
-    {key:"fukuiraptor", label:"🦖 フクイラプトル",   cry:"ガオォ",   build:build_fukuiraptor},
-    {key:"fukuititan",  label:"🦕 フクイティタン",   cry:"ずしーん", build:build_fukuititan},
-    {key:"tri",         label:"🦕 トリケラトプス",   cry:"ブモォ",   build:build_tri},
-    {key:"ptera",       label:"🕊 プテラノドン",     cry:"ピギャー", build:build_ptera},
-    {key:"fukuisaurus", label:"🦕 フクイサウルス",   cry:"モーゥ",   build:build_fukuisaurus},
-    {key:"stego",       label:"🦕 ステゴザウルス",   cry:"のっしり", build:build_stego},
-    {key:"brachi",      label:"🦕 ブラキオサウルス", cry:"にょろん", build:build_brachi},
-];
+// 恐竜メタは YEAR_CONFIG.dinos から。build（見た目生成関数）だけコード側の key→関数 で束縛。
+const DINO_BUILDERS = { trex:build_trex, fukuiraptor:build_fukuiraptor, fukuititan:build_fukuititan, tri:build_tri, ptera:build_ptera, fukuisaurus:build_fukuisaurus, stego:build_stego, brachi:build_brachi };
+const DINOS = YEAR_CONFIG.dinos.map(d=>({ key:d.key, label:d.label, cry:d.cry, build:DINO_BUILDERS[d.key] }));
 
 const BUDDY_BASE=0.35; let buddyScale=1, bubbleSpr=null;   // 相棒の基準スケール × ユーザー倍率(1.0〜2.5)
 function applyBuddyScale(){ dog.scale.setScalar(BUDDY_BASE*buddyScale);
@@ -1930,7 +1966,7 @@ function companionStats(){
     return { power:POWER_LV[g(pw)-1], scope:SCOPE_LV[g(sc)-1], bonus:BONUS_LV[g(bo)-1], bonusLv:g(bo) };
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
-const COMPANION_ORDER=["dog","trex","fukuiraptor","fukuititan","tri","ptera","fukuisaurus","stego","brachi"];   // 合計降順（犬先頭）
+const COMPANION_ORDER=["dog"].concat(YEAR_CONFIG.dinos.map(d=>d.key));   // 合計降順（犬先頭）
 let buddyRandom=false;   // ブラウザのトグル：相棒を選ぶ／ランダム
 let dogOnly=true;        // 既定：犬のみモード
 let buddyListOpen=false; // スタンバイの相棒一覧の開閉（▼/▲）。リロード・リザルト戻りは閉じた状態が既定
@@ -2392,8 +2428,8 @@ function updateTAClock(){
 // ===== 発掘チャレンジ：各ターンのステージ表示パネル =====
 function chRoundInfo(turn){
     const t3=((GAME.ch&&GAME.ch.userTime)||TIME_LIMIT);
-    if(turn===1) return {head:"ROUND 1", lines:["まずは発掘に挑戦！","近くの3か所を掘り出そう！","制限時間は30秒"]};
-    if(turn===2) return {head:"ROUND 2", lines:["本格的な発掘に挑戦！","スターを狙って高得点を目指そう！","制限時間は60秒"]};
+    if(turn===1) return {head:"ROUND 1", lines:["まずは発掘に挑戦！","近くの3か所を掘り出そう！","制限時間は"+CH_TIMES[0]+"秒"]};
+    if(turn===2) return {head:"ROUND 2", lines:["本格的な発掘に挑戦！","スターを狙って高得点を目指そう！","制限時間は"+CH_TIMES[1]+"秒"]};
     return {head:"FINAL ROUND", lines:["最後の発掘！","最高得点を目指そう！","制限時間は"+t3+"秒"]};
 }
 const chRoundPanel=(function(){
@@ -2655,7 +2691,7 @@ function pickSpotIdx(){
     const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
     fwd.y=0; if(fwd.lengthSq()<1e-6) fwd.set(0,0,-1); fwd.normalize();
     const scored=avail.map(i=>{
-        const p=ARTPOS[i] || new THREE.Vector3(ART_ORIG[i][0]*3, 0, ART_ORIG[i][1]*3);
+        const p=ARTPOS[i] || new THREE.Vector3(ART_ORIG[i][0]*YEAR_CONFIG.artOrigFallbackScale, 0, ART_ORIG[i][1]*YEAR_CONFIG.artOrigFallbackScale);
         const to=new THREE.Vector3(p.x-camPos.x, 0, p.z-camPos.z);
         const dist=Math.max(0.001, to.length());
         const dot=to.clone().normalize().dot(fwd);            // 1=正面, -1=真後ろ
@@ -2675,7 +2711,7 @@ function spawnTarget(tier, forcedIdx=null){
     if(forcedIdx!=null){ idx = ((forcedIdx%8)+8)%8; }
     else { idx = pickSpotIdx(); if(idx==null) return null; }
     const d = difficulty(7 - idx);   // 難易度はIDで決定：IDが小さいほど難しい（信頼度↓・発掘回数↑）。得点用の t.tier は idx のまま温存
-    const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*3, GROUND_Y, ART_ORIG[idx][1]*3)).clone();
+    const pos = (ARTPOS[idx] || new THREE.Vector3(ART_ORIG[idx][0]*YEAR_CONFIG.artOrigFallbackScale, GROUND_Y, ART_ORIG[idx][1]*YEAR_CONFIG.artOrigFallbackScale)).clone();
     pos.y = GROUND_Y;
     if(customWorldOn()){   // 矩形ワールド：ランダム配置（無ければ生成）
         if(!GAME.customSpots) regenerateCustomSpots();
@@ -2738,8 +2774,8 @@ let   dinoDigModels=_dinoCacheS;             // 現在のキャッシュ（な�
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
 // ===== 恐竜サイズ（全種・実物大ベース）。シンプル恐竜／恐竜（実寸）とも同じ実寸サイズ・比率・基準 =====
-const REAL_H={ ptera:1.8, fukuiraptor:2.0, fukuisaurus:2.6, tri:3.0, trex:4.0, stego:4.0, fukuititan:6.0, brachi:9.5 };
-const REAL_H_MAX=9.5;
+const REAL_H={}; YEAR_CONFIG.dinos.forEach(d=>{ REAL_H[d.key]=d.realH; });   // 恐竜の実寸(m)＝YEAR_CONFIG由来
+const REAL_H_MAX=Math.max.apply(null, YEAR_CONFIG.dinos.map(d=>d.realH));
 function realH(key){ return (REAL_H[key]!==undefined?REAL_H[key]:3.0); }
 function dinoRealScale(){   // 表示倍率 S（表示高さ＝実寸×S）。realRefShort＝恐竜が実寸(1.0)になるフィールド短辺
     let s;
@@ -3078,7 +3114,7 @@ function excavate(t, byPlayer){
  * 出土品のオーラ（発掘後ずっと光る）＋ 説明パネルとの関連づけ
  * ===================================================== */
 // 出土品ごとの色（パネルの帯・つなぐ線と共通にして対応を分かりやすく）
-const ART_COLORS = [0xffd34d,0x6fe3a5,0x7cc4ff,0xff9ad5,0xffa45c,0xb99cff,0x7ff0e0,0xf5f0a0];
+const ART_COLORS = YEAR_CONFIG.artColors;   // 出土品のオーラ/パネル色
 // 放射グラデーションのオーラ用テクスチャ（中心は透明＝出土品がはっきり見える）
 const auraTex = (function(){
     const cv=document.createElement("canvas"); cv.width=cv.height=128;
@@ -4158,7 +4194,7 @@ function updateRevealFX3D(){
         fx.flash.scale.setScalar(1+t*(fx.lv>=4?9:6)); fx.flash.material.opacity=0.85*(1-t);   // 3倍まで速く広がる
     }
 }
-const ART_RARITY =["超激レア","激レア","レア","プチレア","プチレア","ノーマル","ノーマル","ノーマル"];   // 出土品8種のindex別レア度
+const ART_RARITY = YEAR_CONFIG.artRarity;   // 出土品のindex別レア度
 function cardRarityOf(idx){
     if(curTarget==="dino"){ const k=(typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null; return (k&&COMPANIONS[k])?COMPANIONS[k].rarity:"ノーマル"; }
     return ART_RARITY[idx] || "ノーマル";
@@ -4177,7 +4213,7 @@ function acquireCard(score){
     return { idx, rarity: cardRarityOf(idx) };
 }
 // ===== 発掘チャレンジ（3ターン）コントローラ =====
-const CH_TIMES=[30,60,0];   // 1/2ターン目=30/60秒、3ターン目=ユーザー指定(TIME_LIMIT)
+const CH_TIMES=YEAR_CONFIG.challengeTimes;   // 1/2ターン目=固定秒、3ターン目=0=ユーザー指定(TIME_LIMIT)
 function chCenterRarity(sc){ if(sc<1000) return "ノーマル"; if(sc<3000) return "プチレア"; if(sc<6000) return "レア"; if(sc<10000) return "激レア"; return "超激レア"; }
 function chCenterRarityT2(sc){ if(sc>=2400) return "超激レア"; if(sc>=1800) return "激レア"; if(sc>=1320) return "レア"; if(sc>=840) return "プチレア"; return "ノーマル"; }   // 2ターン目＝タイムアタック条件(4000/3000/2200/1400)×0.6
 function chCenterRarityT3(sc){ if(sc>=6000) return "超激レア"; if(sc>=3600) return "激レア"; if(sc>=1800) return "レア"; if(sc>=600) return "プチレア"; return "ノーマル"; }   // 3ターン目＝現行(1000/3000/6000/10000)×0.6
@@ -5900,7 +5936,7 @@ addEventListener("resize",()=>{
 
     // 恐竜の共通倍率：ティラノ(DINOS内 key="trex")の高さを基準に「全種へ同じ倍率」をかける（種ごとの大小比率は保持）。
     //   小さい=ティラノ0.30m ／ 普通=ティラノ1.5m ／ 大きい=等倍
-    const DINO_SMALL_H = 0.30, DINO_MID_H = 1.5;
+    const DINO_SMALL_H = YEAR_CONFIG.dinoSmallH, DINO_MID_H = YEAR_CONFIG.dinoMidH;
     let _dinoTrexHCache = {};
     function dinoTrexHeight(smooth){
         const key = smooth ? "s" : "b";
