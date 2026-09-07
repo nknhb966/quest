@@ -888,12 +888,10 @@ const SITE_Y_OFFSET = 0;                 // サイトの高さ微調整（m。�
 const ART_ORIG = [[-2.7,-0.5],[4.0,2.4],[3.8,-0.7],[3.0,-2.2],[0,-1.5],[3.2,2.2],[-2,-1],[-1.8,1.2]];
 
 const SITE_GLB   = "https://www.city.echizen.lg.jp/office/030/021/open-data-echizen_d/fil/00101_kokufuhakkutsu3.glb";
-const ART_BASE   = "https://raw.githubusercontent.com/echizencity/opendata/main/kokufuhakkutsu3/";
 const IMG_BASE   = "https://echizencity.github.io/opendata/kokufuhakkutsu3/";
-const ART_FILES  = ["model01_small.glb","model02_small.glb","model03_small.glb","model04_small.glb",
-                    "model05_small.glb","model06_small.glb","model07_small.glb","model08_small.glb"];
+const ART_COUNT  = 8;   // ゲーム本体の出土品数（発掘点・カード・図鑑が8個前提）。将来増やす場合はここを変更（本体側の対応が別途必要）
 // ===== craftARt Go 設定（数・名称・判別方法をここで一元管理）=====
-//  ・出土品は ART_FILES（配列）で管理：将来2桁（最大99想定）も配列に追記するだけで対応。
+//  ・出土品モデルは models.csv のデータ（path=フル版）のみを使用（ART_FILES/_small は廃止）。件数は ART_COUNT。
 //  ・遺構は CSV(models.csv) の name が sitePrefix（「遺構」）で始まる行を自動判別。遺構2025/2026/2030… は行を足すだけで対応。
 const MV_CFG = {
     csvUrl:     IMG_BASE + "models.csv",   // モデル一覧CSV（path,name,description,url）
@@ -1382,20 +1380,35 @@ async function loadArtifactRoot(fullUrl, MAX){
     return root;
 }
 
-// 出土品モデル：CSVの出土品行(path=フル版)を読み、1024に縮小して使用（_small不使用）。失敗時は従来の _small にフォールバック。
+// 出土品モデル：models.csv の出土品行(path=フル版)のみを読み、1024に縮小して使用（ART_FILES/_small は使わない）。
+// CSV取得失敗時はフォールバックせず、簡易メッセージを表示。
+function mvShowCsvError(msg){
+    msg = msg || "モデル一覧（models.csv）を読み込めませんでした。通信環境をご確認ください。";
+    let el=document.getElementById("mvCsvErr");
+    if(!el){ el=document.createElement("div"); el.id="mvCsvErr";
+        el.style.cssText="position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:13000;"
+            +"background:rgba(60,20,24,.95);color:#ffdede;border:1px solid #b0455a;border-radius:10px;"
+            +"padding:10px 16px;font-size:13px;max-width:90vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.5);";
+        document.body.appendChild(el); }
+    el.textContent=msg; el.style.display="block";
+}
+function mvHideCsvError(){ const el=document.getElementById("mvCsvErr"); if(el) el.style.display="none"; }
 (async function loadArtifacts(){
-    let arts=[]; try{ await mvLoadCsvRows(); arts=mvArtifactRows(); }catch(_){ }
+    let arts=[];
+    try{ await mvLoadCsvRows(); arts=mvArtifactRows(); }catch(_){ }
+    if(!arts.length){ mvShowCsvError(); return; }   // CSV取得失敗・空＝フォールバックせず通知のみ
     const applyModel=(o,idx)=>{ if(!o) return;
         const box=new THREE.Box3().setFromObject(o);
         const size=box.getSize(new THREE.Vector3());
         const fit=ART_TARGET_H/Math.max(size.x,size.y,size.z,0.001);
         o.scale.setScalar(fit); o.visible=false; stage.add(o); artModels[idx]=o; };
-    await Promise.all(ART_FILES.map(async (f,idx)=>{
-        const row=arts[idx]; const url=row?mvResolveUrl(row.path):"";
-        let done=false;
-        if(url){ try{ applyModel(await loadArtifactRoot(url, 1024), idx); done=true; }catch(_){ } }
-        if(!done){ try{ gltfLoader.load(ART_BASE+ART_FILES[idx], (g)=>applyModel(g.scene, idx), undefined, ()=>{}); }catch(_){ } }   // フォールバック：従来の _small
+    let failed=0;
+    await Promise.all(Array.from({length:ART_COUNT},(_,idx)=>idx).map(async (idx)=>{
+        const row=arts[idx]; const url=row?mvResolveUrl(row.path):"";   // CSVの出土品行のみ
+        if(!url){ failed++; return; }
+        try{ applyModel(await loadArtifactRoot(url, 1024), idx); }catch(_){ failed++; }
     }));
+    if(failed>0) mvShowCsvError("出土品モデルの一部を読み込めませんでした（"+failed+"/"+ART_COUNT+"）。通信環境をご確認ください。");
 })();
 // 図鑑カード用の画像テクスチャ（発掘演出パネル）
 const texLoader = new THREE.TextureLoader();
@@ -5805,17 +5818,14 @@ addEventListener("resize",()=>{
         const pre=(typeof MV_CFG!=="undefined" && MV_CFG.sitePrefix)?MV_CFG.sitePrefix:"遺構";
         (csvRows||[]).forEach(r=>{ const nm=(r.name||"").trim(); if(nm.indexOf(pre)===0) _csvSites.push(r); else _csvArts.push(r); });
     }
-    function artModelCount(){ return _csvArts.length || ((typeof ART_FILES!=="undefined" && ART_FILES.length)||8); }   // 出土品数＝CSVの出土品行数（CSV無ければ従来数）
+    function artModelCount(){ return _csvArts.length; }   // 出土品数＝CSVの出土品行数（CSVのみ）
     function siteCount(){ return _csvSites.length; }
     function artCount(){ return artModelCount() + (window.MV_SHOW_SITE ? siteCount() : 0); }   // 出土品（+遺構全件）
     function artInfo(idx){ const N=artModelCount(); return (idx<N) ? (_csvArts[idx]||null) : (_csvSites[idx-N]||null); }   // idx→CSV行（出土品→_csvArts／遺構→_csvSites）
-    // idx→GLBのフルURL（CSVの path を正とする）。相対 ./xxx.glb は IMG_BASE 基準で解決、http(s) はそのまま。
+    // idx→GLBのフルURL（CSVの path のみ。相対 ./xxx.glb は IMG_BASE 基準、http(s) はそのまま。フォールバックなし）
     function modelUrl(idx){
         const info=artInfo(idx);
         if(info && info.path){ const p=info.path.trim(); if(/^https?:/i.test(p)) return p; return (typeof IMG_BASE!=="undefined"?IMG_BASE:"")+p.replace(/^\.?\//,""); }
-        // CSV無しフォールバック：ART_FILES のフル版（_small除去）
-        const N=artModelCount();
-        if(idx<N && typeof ART_BASE!=="undefined" && typeof ART_FILES!=="undefined" && ART_FILES[idx]) return ART_BASE+ART_FILES[idx].replace("_small","");
         return "";
     }
     window.MV_SHOW_URL  = (window.MV_SHOW_URL  !== undefined) ? window.MV_SHOW_URL  : ((typeof MV_CFG!=="undefined") ? !!MV_CFG.showUrl  : false);   // 関連URLは既定で非表示（準備のみ）
@@ -6105,6 +6115,7 @@ addEventListener("resize",()=>{
         updateToggles();
         modal.style.display="flex";
         if(curList.length){ sel.value="0"; showModel(0); }
+        else { setNote("モデル一覧（models.csv）を読み込めませんでした。通信環境をご確認ください。"); }
     }
     function closeModal(){
         modal.style.display="none";
@@ -6141,7 +6152,7 @@ addEventListener("resize",()=>{
             _dinoTrexHCache={};
             try{ await loadCsvRows(); }catch(_){ }
             buildOptions(); updateToggles();
-            if(curList.length){ sel.value="0"; showModel(0); } else { setNote("モデルを準備できませんでした。"); }
+            if(curList.length){ sel.value="0"; showModel(0); } else { setNote("モデル一覧（models.csv）を読み込めませんでした。通信環境をご確認ください。"); }
         };
         setTimeout(fill, 100);
     })();
