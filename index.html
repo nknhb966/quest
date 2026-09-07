@@ -633,9 +633,9 @@
     .mvseg button + button{ border-left:1px solid rgba(180,140,255,.28); }
     .mvseg button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
     .mvhotspot{ width:0; height:0; border:none; background:transparent; box-shadow:none; pointer-events:none; }   /* 青い丸は非表示（吹き出しのみ表示） */
-    .mvannotation{ position:absolute; transform:translate(12px,8px); max-width:min(360px,88vw); width:max-content;
+    .mvannotation{ position:absolute; transform:translate(10px,10px); width:150px;
         background:rgba(18,12,32,.94); color:#eae4ff; border:1px solid rgba(210,180,120,.5); border-radius:9px;
-        padding:9px 13px; font-size:13px; line-height:1.6; text-align:left; pointer-events:none;
+        padding:8px 11px; font-size:13px; line-height:1.55; text-align:left; pointer-events:none;
         box-shadow:0 6px 20px rgba(0,0,0,.45); }
     .mvurl{ text-align:center; font-size:13px; letter-spacing:1px; }
     .mvurl a{ color:#8ecbff; text-decoration:none; } .mvurl a:hover{ text-decoration:underline; }
@@ -892,6 +892,15 @@ const ART_BASE   = "https://raw.githubusercontent.com/echizencity/opendata/main/
 const IMG_BASE   = "https://echizencity.github.io/opendata/kokufuhakkutsu3/";
 const ART_FILES  = ["model01_small.glb","model02_small.glb","model03_small.glb","model04_small.glb",
                     "model05_small.glb","model06_small.glb","model07_small.glb","model08_small.glb"];
+// ===== craftARt Go 設定（数・名称・判別方法をここで一元管理）=====
+//  ・出土品は ART_FILES（配列）で管理：将来2桁（最大99想定）も配列に追記するだけで対応。
+//  ・遺構は CSV(models.csv) の name が sitePrefix（「遺構」）で始まる行を自動判別。遺構2025/2026/2030… は行を足すだけで対応。
+const MV_CFG = {
+    csvUrl:     IMG_BASE + "models.csv",   // モデル一覧CSV（path,name,description,url）
+    sitePrefix: "遺構",                     // CSVの name がこの語で始まる行を「遺構」とみなす
+    showSite:   false,                     // 遺構を一覧末尾に表示するか（既定オフ・準備のみ）
+    showUrl:    false                      // 関連URLを表示するか（既定オフ・準備のみ）
+};
 const ART_IMGS   = ["40100","40200","40300","40400","40500","40600","40700","40800"]
                     .map(n=>IMG_BASE+n+"_kokufuhakkutsu3.png");
 // 恐竜の説明パネル画像（8種）。※パスは後で共有される予定。空文字のあいだはプレースホルダー表示。
@@ -5712,33 +5721,42 @@ addEventListener("resize",()=>{
     async function loadCsvRows(){
         if(csvRows) return csvRows;
         if(csvLoading) return csvLoading;
-        const url=(typeof IMG_BASE!=="undefined"?IMG_BASE:"")+"models.csv";
+        const url=(typeof MV_CFG!=="undefined" && MV_CFG.csvUrl) ? MV_CFG.csvUrl : ((typeof IMG_BASE!=="undefined"?IMG_BASE:"")+"models.csv");
         csvLoading=fetch(url).then(r=>r.ok?r.text():Promise.reject(new Error("csv "+r.status))).then(txt=>{
             const lines=txt.replace(/^\uFEFF/,"").trim().split(/\r?\n/);
             const headers=lines[0].split(",").map(h=>h.trim());
             const rows=[];
             for(let i=1;i<lines.length;i++){ if(!lines[i]) continue; const cols=lines[i].split(","); const o={}; headers.forEach((h,j)=>o[h]=(cols[j]||"").trim()); rows.push(o); }
-            csvRows=rows; return rows;
-        }).catch(()=>{ csvRows=[]; return csvRows; });   // 失敗時は空＝従来ラベルにフォールバック
+            csvRows=rows; classifyCsv(); return rows;
+        }).catch(()=>{ csvRows=[]; _csvArts=[]; _csvSites=[]; return csvRows; });   // 失敗時は空＝従来ラベルにフォールバック
         return csvLoading;
     }
-    function artInfo(i){ return (csvRows && csvRows[i]) ? csvRows[i] : null; }   // 出土品idx→CSV行（model01..08＝行0..7）
-    window.MV_SHOW_URL = window.MV_SHOW_URL || false;   // 関連URLは既定で非表示。後で true にすると表示される準備
-    window.MV_SHOW_SITE = window.MV_SHOW_SITE || false;  // 遺構2025(CSV 9行目)は既定で非表示。true にすると出土品一覧の末尾に追加される準備
-    const SITE_ART_IDX = 8;   // CSV上の遺構モデルの行インデックス（model01..08=0..7、遺構=8）
-    function artCount(){ return 8 + (window.MV_SHOW_SITE?1:0); }   // 出土品8点（+遺構1点）
-    // 出土品idx→{base, small}。0..7=ART_FILES、8=遺構（CSVのpathから base/ファイル名を導出）
-    function artSrc(idx){
-        if(idx<8){ return { base:(typeof ART_BASE!=="undefined"?ART_BASE:""),
-                            small:(typeof ART_FILES!=="undefined" && ART_FILES[idx])?ART_FILES[idx]:("model0"+(idx+1)+"_small.glb") }; }
-        const info=artInfo(SITE_ART_IDX);
-        if(info && info.path){ const p=info.path; const k=p.lastIndexOf("/"); if(k>=0) return { base:p.slice(0,k+1), small:p.slice(k+1) }; }
-        return { base:(typeof IMG_BASE!=="undefined"?IMG_BASE:""), small:"00101_kokufuhakkutsu3_small.glb" };
+    // CSVを「出土品」と「遺構」に分類（name が sitePrefix で始まる行＝遺構）
+    let _csvArts=[], _csvSites=[];
+    function classifyCsv(){
+        _csvArts=[]; _csvSites=[];
+        const pre=(typeof MV_CFG!=="undefined" && MV_CFG.sitePrefix)?MV_CFG.sitePrefix:"遺構";
+        (csvRows||[]).forEach(r=>{ const nm=(r.name||"").trim(); if(nm.indexOf(pre)===0) _csvSites.push(r); else _csvArts.push(r); });
     }
+    function artFileCount(){ return (typeof ART_FILES!=="undefined" && ART_FILES.length) ? ART_FILES.length : 8; }   // 出土品数＝配列長
+    function siteCount(){ return _csvSites.length; }
+    function artCount(){ return artFileCount() + (window.MV_SHOW_SITE ? siteCount() : 0); }   // 出土品（+遺構全件）
+    function artInfo(idx){ const N=artFileCount(); return (idx<N) ? (_csvArts[idx]||null) : (_csvSites[idx-N]||null); }   // idx→CSV行（出土品→_csvArts／遺構→_csvSites）
+    // idx→{base, small}。出土品=ART_FILES、遺構=CSVのpathから base/ファイル名を導出（画質トグルは共通適用）
+    function artSrc(idx){
+        const N=artFileCount();
+        if(idx<N){ return { base:(typeof ART_BASE!=="undefined"?ART_BASE:""),
+                            small:(typeof ART_FILES!=="undefined" && ART_FILES[idx])?ART_FILES[idx]:("model"+String(idx+1).padStart(2,"0")+"_small.glb") }; }
+        const info=_csvSites[idx-N];
+        if(info && info.path){ const p=info.path, k=p.lastIndexOf("/"); if(k>=0) return { base:p.slice(0,k+1), small:p.slice(k+1) }; }
+        return { base:(typeof IMG_BASE!=="undefined"?IMG_BASE:""), small:"" };
+    }
+    window.MV_SHOW_URL  = (window.MV_SHOW_URL  !== undefined) ? window.MV_SHOW_URL  : ((typeof MV_CFG!=="undefined") ? !!MV_CFG.showUrl  : false);   // 関連URLは既定で非表示（準備のみ）
+    window.MV_SHOW_SITE = (window.MV_SHOW_SITE !== undefined) ? window.MV_SHOW_SITE : ((typeof MV_CFG!=="undefined") ? !!MV_CFG.showSite : false);   // 遺構は既定で非表示（準備のみ）
     function applyAnnotation(isDino, idx){
         const hs=viewer.querySelector(".mvhotspot"); const an=hs && hs.querySelector(".mvannotation");
         const ue=document.getElementById("mvUrl");
-        const info=(!isDino)?artInfo(idx):null;   // 恐竜/遺構はCSV対象外＝注釈・URLなし
+        const info=(!isDino)?artInfo(idx):null;   // 恐竜はCSV対象外＝注釈・URLなし（出土品・遺構はCSVから付与）
         if(info && info.description && an){ an.textContent=info.description; if(hs) hs.style.display=""; }
         else { if(an) an.textContent=""; if(hs) hs.style.display="none"; }
         if(ue){ if(info && info.url){ ue.innerHTML='<a href="'+info.url+'" target="_blank" rel="noopener">関連URLを開く</a>'; } else { ue.innerHTML=""; }
@@ -5790,9 +5808,9 @@ addEventListener("resize",()=>{
             opt.value=String(i);
             opt.textContent = isDino
                 ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
-                : (i===SITE_ART_IDX
-                    ? ((artInfo(SITE_ART_IDX) && artInfo(SITE_ART_IDX).name) ? artInfo(SITE_ART_IDX).name : "遺構2025")   // 遺構モデル
-                    : ((artInfo(i) && artInfo(i).name) ? artInfo(i).name : ("出土品 No."+String(i+1).padStart(2,"0"))));   // CSVの名称（無ければ従来ラベル）
+                : ((artInfo(i) && artInfo(i).name)
+                    ? artInfo(i).name                                                            // CSVの名称（出土品名・遺構XXXX）
+                    : (i < artFileCount() ? ("出土品 No."+String(i+1).padStart(2,"0")) : "遺構"));  // フォールバック
             sel.appendChild(opt); curList.push(i);
         }
     }
@@ -6055,13 +6073,24 @@ addEventListener("resize",()=>{
         if((params.get("view")||"").toLowerCase()!=="craftart") return;
         const t=(params.get("target")||"").toLowerCase();
         if(["artifact","dino","dino3"].includes(t)){ try{ if(typeof chosenDigTarget!=="undefined") chosenDigTarget=t; }catch(_){ } }   // 引き継ぎは「発掘する対象」のみ
-        let opened=false, tries=0;
-        const tryOpen=()=>{
-            if(opened) return;
-            if(typeof PRELOAD_DONE!=="undefined" && !PRELOAD_DONE && tries++<200){ setTimeout(tryOpen,150); return; }   // プリロード完了を待つ（最大約30秒）
-            opened=true; try{ openModal(); }catch(_){ }
+        // 枠を即表示（背後のタイトルを隠す）。__mvPreviewPause はウォームアップ描画を止めないため“完了後”に true
+        modal.style.display="flex";
+        try{ sel.innerHTML='<option>読み込み中...</option>'; }catch(_){ }
+        try{ viewer.removeAttribute("src"); }catch(_){ }
+        setNote("準備中… モデルの読み込みを待っています");
+        let done=false, tries=0;
+        const fill=async ()=>{
+            if(done) return;
+            if(modal.style.display==="none"){ done=true; return; }   // 待機中に閉じられたら中止
+            if(typeof PRELOAD_DONE!=="undefined" && !PRELOAD_DONE && tries++<400){ setTimeout(fill,150); return; }   // プリロード完了を待つ
+            done=true;
+            window.__mvPreviewPause=true;   // ここで初めてゲーム描画停止（メモリ確保）
+            _dinoFactorCache={};
+            try{ await loadCsvRows(); }catch(_){ }
+            buildOptions(); updateToggles();
+            if(curList.length){ sel.value="0"; showModel(0); } else { setNote("モデルを準備できませんでした。"); }
         };
-        setTimeout(tryOpen, 300);
+        setTimeout(fill, 100);
     })();
     // トグル：出土品の画質（軽い/きれい）
     if(artSeg) artSeg.addEventListener("click", (e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.q) return;
