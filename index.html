@@ -632,11 +632,19 @@
         font-size:14px; font-weight:800; letter-spacing:1px; cursor:pointer; transition:background .15s, color .15s; }
     .mvseg button + button{ border-left:1px solid rgba(180,140,255,.28); }
     .mvseg button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
+    .mvhotspot{ width:16px; height:16px; border-radius:50%; border:2px solid #e6c26a; box-sizing:border-box;
+        background:rgba(124,58,237,.85); box-shadow:0 0 10px rgba(120,80,255,.6); cursor:default; }
+    .mvannotation{ position:absolute; transform:translate(12px,8px); max-width:min(260px,70vw);
+        background:rgba(18,12,32,.94); color:#eae4ff; border:1px solid rgba(210,180,120,.5); border-radius:9px;
+        padding:8px 11px; font-size:13px; line-height:1.55; text-align:left; pointer-events:none;
+        box-shadow:0 6px 20px rgba(0,0,0,.45); }
+    .mvurl{ text-align:center; font-size:13px; letter-spacing:1px; }
+    .mvurl a{ color:#8ecbff; text-decoration:none; } .mvurl a:hover{ text-decoration:underline; }
 </style>
 <div id="mvModal">
     <div class="mvbox" role="dialog" aria-modal="true" aria-label="発掘モデル表示">
         <div class="mvhead">
-            <h2>発掘モデル表示</h2>
+            <h2>craftARt Go</h2>
             <button id="mvCloseBtn" class="mvclose">✕ 閉じる</button>
         </div>
         <div class="mvctl">
@@ -661,7 +669,12 @@
             camera-controls touch-action="none"
             ar ar-modes="webxr scene-viewer quick-look" ar-scale="auto"
             tone-mapping="neutral" shadow-intensity="1" exposure="1.0" interaction-prompt="none"
-            alt="発掘モデル"></model-viewer>
+            alt="発掘モデル">
+            <button class="mvhotspot" slot="hotspot-desc" data-position="0 0 0" data-normal="0 1 0" style="display:none">
+                <div class="mvannotation"></div>
+            </button>
+        </model-viewer>
+        <div class="mvurl" id="mvUrl" style="display:none"></div>
         <div class="mvhint">ドラッグで回転／ピンチ・ホイールで拡大縮小／2本指ドラッグ（右ドラッグ）で移動</div>
     </div>
 </div>
@@ -1032,6 +1045,7 @@ const sfxExcavate = ()=> chord([523,659,784,1047],0.09,"triangle",0.5);// 出土
 const sfxBark     = ()=>{ beep(520,0.08,0.3,"square"); setTimeout(()=>beep(430,0.1,0.28,"square"),90); };
 const sfxComplete = ()=> chord([523,659,784,1047,1319],0.11,"triangle",0.55);
 const sfxTimeUp   = ()=> chord([880,660,440,330],0.15,"sawtooth",0.4);
+const sfxSelect   = ()=> chord([523,784,1047],0.06,"triangle",0.5);   // 相棒選択の確定音（既存の確定音と同じ）
 // 恐竜の鳴き声（下降するうなり）
 function sfxCry(){
     if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）は覗き込み等の鳴き声も不要
@@ -1796,7 +1810,7 @@ function refreshBuddyUI(){
             const b=document.createElement("button");
             b.dataset.v=k; b.textContent=COMPANIONS[k].label||k;
             if(k===companionKind) b.classList.add("on");
-            b.onclick=()=>{ setCompanion(k); showCompanionCard(k); };   // 選択時にカード表示
+            b.onclick=()=>{ setCompanion(k); showCompanionCard(k); if(typeof sfxSelect==="function") sfxSelect(); };   // 選択時にカード表示＋確定音
             seg.appendChild(b);
         });
     }
@@ -1914,7 +1928,7 @@ function updateBuddyStandbyUI(){
                     const avail=(buddyMode!=="unlock") || unlocked.indexOf(k)>=0;
                     b.style.cssText=flexCss+"font:13px sans-serif;padding:8px 6px;border-radius:8px;border:1px solid "+(k===companionKind?"#ffd86a":"#6b5a2e")+";background:"+(k===companionKind?"#4a3d17":"#2a2416")+";color:#fdf3d5;cursor:pointer;";
                     if(!avail){ b.disabled=true; b.style.opacity="0.35"; b.style.cursor="not-allowed"; b.style.filter="grayscale(1)"; }
-                    else b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); };
+                    else b.onclick=()=>{ setCompanion(k); showCompanionCard(k); updateBuddyStandbyUI(); if(typeof sfxSelect==="function") sfxSelect(); };
                 }
                 el.appendChild(b);
             });
@@ -4095,7 +4109,7 @@ function chOnTurnFinish(score){
     if(idx!=null && typeof DINOS!=="undefined" && DINOS[idx]){ buddyKey=DINOS[idx].key; unlockBuddy(buddyKey); GAME.ch.buddies.push(buddyKey); GAME.ch.cards.push(idx);
         const c=(typeof COMPANIONS!=="undefined")?COMPANIONS[buddyKey]:null; buddyName=(c&&c.fullName)?c.fullName:buddyKey; }
     GAME.ch.lastBuddyName=buddyName;
-    if(buddyName) setTimeout(()=>{ try{ bubble.say("相棒 "+buddyName+" が加わった！", 3500, true); GAME.dogHappyUntil=performance.now()+3500; }catch(e){} }, 300);
+    if(buddyName && !(GAME.ch && GAME.ch.turn>=3)) setTimeout(()=>{ try{ bubble.say("相棒 "+buddyName+" が加わった！", 3500, true); GAME.dogHappyUntil=performance.now()+3500; }catch(e){} }, 300);   // 3ターン目（最終）は相棒に「加わった」を言わせない
 }
 // リザルト→次へ（taAdvanceから）：次ターンor全体終了
 function chAdvanceTurn(){
@@ -4343,6 +4357,7 @@ document.getElementById("dAsk").onclick=()=>{ askDog(); };
 document.getElementById("dBuddy").onclick=()=>{
     const keys=Object.keys(COMPANIONS);
     setCompanion(keys[(keys.indexOf(companionKind)+1)%keys.length]);
+    if(typeof sfxSelect==="function") sfxSelect();
 };
 document.getElementById("dDex").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 // TOP5 記録モーダル
@@ -5343,7 +5358,7 @@ function onRightPressEdge(){
                 const keys=buddyGridVR.allKeys(); const k=keys[ci];   // 0-7=恐竜, 8=犬
                 const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():keys;
                 const acq=(typeof buddyMode==="undefined"||buddyMode!=="unlock")||unlocked.indexOf(k)>=0;
-                if(k && acq){ setCompanion(k); showBuddyCardVR(k); buddyGridVR.draw(); vibrate(70,0.6); }
+                if(k && acq){ setCompanion(k); showBuddyCardVR(k); buddyGridVR.draw(); vibrate(70,0.6); if(typeof sfxSelect==="function") sfxSelect(); }
                 return;
             }
         }
@@ -5693,6 +5708,33 @@ addEventListener("resize",()=>{
     let artQuality="small";   // 出土品の画質：small(軽い=1024) / mid(普通=2048) / hi(きれい=3072)。既定は軽い
     let dinoSize="fit";       // 恐竜のサイズ：fit(補正後=小さい) / raw(補正前=大きい)
 
+    // ▼ craftARt Go：models.csv（名称/説明/関連URL）を読み込み、出土品に付与
+    let csvRows=null, csvLoading=null;
+    async function loadCsvRows(){
+        if(csvRows) return csvRows;
+        if(csvLoading) return csvLoading;
+        const url=(typeof IMG_BASE!=="undefined"?IMG_BASE:"")+"models.csv";
+        csvLoading=fetch(url).then(r=>r.ok?r.text():Promise.reject(new Error("csv "+r.status))).then(txt=>{
+            const lines=txt.replace(/^\uFEFF/,"").trim().split(/\r?\n/);
+            const headers=lines[0].split(",").map(h=>h.trim());
+            const rows=[];
+            for(let i=1;i<lines.length;i++){ if(!lines[i]) continue; const cols=lines[i].split(","); const o={}; headers.forEach((h,j)=>o[h]=(cols[j]||"").trim()); rows.push(o); }
+            csvRows=rows; return rows;
+        }).catch(()=>{ csvRows=[]; return csvRows; });   // 失敗時は空＝従来ラベルにフォールバック
+        return csvLoading;
+    }
+    function artInfo(i){ return (csvRows && csvRows[i]) ? csvRows[i] : null; }   // 出土品idx→CSV行（model01..08＝行0..7）
+    window.MV_SHOW_URL = window.MV_SHOW_URL || false;   // 関連URLは既定で非表示。後で true にすると表示される準備
+    function applyAnnotation(isDino, idx){
+        const hs=viewer.querySelector(".mvhotspot"); const an=hs && hs.querySelector(".mvannotation");
+        const ue=document.getElementById("mvUrl");
+        const info=(!isDino)?artInfo(idx):null;   // 恐竜/遺構はCSV対象外＝注釈・URLなし
+        if(info && info.description && an){ an.textContent=info.description; if(hs) hs.style.display=""; }
+        else { if(an) an.textContent=""; if(hs) hs.style.display="none"; }
+        if(ue){ if(info && info.url){ ue.innerHTML='<a href="'+info.url+'" target="_blank" rel="noopener">関連URLを開く</a>'; } else { ue.innerHTML=""; }
+            ue.style.display=(window.MV_SHOW_URL && info && info.url)?"block":"none"; }   // 非表示だが後で表示できる準備
+    }
+
     function curIdx(){ return parseInt(sel.value,10)||0; }
 
     // GLTFExporter は必要時に動的import（失敗してもゲーム本体には影響しない）
@@ -5738,7 +5780,7 @@ addEventListener("resize",()=>{
             opt.value=String(i);
             opt.textContent = isDino
                 ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
-                : ("出土品 No."+String(i+1).padStart(2,"0"));
+                : ((artInfo(i) && artInfo(i).name) ? artInfo(i).name : ("出土品 No."+String(i+1).padStart(2,"0")));   // CSVの名称（無ければ従来ラベル）
             sel.appendChild(opt); curList.push(i);
         }
     }
@@ -5907,6 +5949,7 @@ addEventListener("resize",()=>{
     async function showModel(idx){
         const target = curDigTarget();
         const isDino = (target==="dino" || target==="dino3");
+        applyAnnotation(isDino, idx);   // craftARt Go：出土品の説明ホットスポット＋関連URL（非表示準備）を反映
         setNote("読み込み中…");
         viewer.setAttribute("exposure", "1.0");
 
@@ -5970,9 +6013,10 @@ addEventListener("resize",()=>{
         if(arBtn) arBtn.style.display = ok ? "inline-block" : "none";
     }
 
-    function openModal(){
+    async function openModal(){
         _dinoFactorCache = {};   // ワールド設定/スタイル変更に備え、恐竜の共通倍率を測り直す
         window.__mvPreviewPause = true;   // プレビュー中はゲーム描画を停止（メモリ確保）
+        try{ await loadCsvRows(); }catch(_){}   // 出土品の名称/説明/URLを取得（失敗してもフォールバック）
         buildOptions();
         updateToggles();
         modal.style.display="flex";
