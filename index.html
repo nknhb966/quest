@@ -5216,8 +5216,9 @@ let prevTriggers=[false,false];
 //   ・片手トリガー保持＝回転／両手トリガー保持＝拡大縮小・移動・Z回転（craftARt Lite相当）
 //   ・段階2＝表示＋ジェスチャのみ（パネル①〜④・二モードは段階3/4）
 // ============================================================================
-const LITE = { active:false, group:null, model:null, needPlace:false,
-    showInfo:true, opEnabled:true, curName:"", curDesc:"", ui:null, buttons:[], _uiScale:-1,
+const LITE = { active:false, group:null, model:null, needPlace:false, placeFrames:0,
+    showInfo:true, opEnabled:true, curName:"", curDesc:"", ui:null, buttons:[], _uiScale:-1, isDino:false,
+    mode:"model", selGroup:null, selPanels:[], target:"artifact", quality:"small", intrinsic:1, curIdx:0, _lastRightPress:0,
     targetPos:new THREE.Vector3(), targetScale:new THREE.Vector3(1,1,1), targetQuat:new THREE.Quaternion(),
     scaling:false, rotating:false, initDist:0, initScale:1, lastCenter:null, lastCtrl:null, lastDir:null, _worldVis:null, _dogVis:null };
 const _liteRay=new THREE.Raycaster(), _liteRO=new THREE.Vector3(), _liteRD=new THREE.Vector3(), _liteRQ=new THREE.Quaternion();
@@ -5261,6 +5262,7 @@ function liteExitScene(){
     if(LITE._dogVis!=null && typeof dog!=="undefined") dog.visible=LITE._dogVis;
     LITE.model=null; controllers.forEach(c=>{ if(c.userData) c.userData.liteHeld=false; });
     if(LITE.ui){ try{ (LITE.ui.parent||camera).remove(LITE.ui); }catch(_){ } _liteDispose(LITE.ui); LITE.ui=null; LITE.buttons=[]; LITE.infoPanel=LITE.descPanel=null; }   // HUDパネルを完全破棄
+    if(LITE.selGroup){ try{ (LITE.selGroup.parent||camera).remove(LITE.selGroup); }catch(_){ } _liteDispose(LITE.selGroup); LITE.selGroup=null; LITE.selPanels=[]; }   // ②を完全破棄
 }
 function liteGesture(){
     const held=controllers.filter(c=>c.userData && c.userData.liteHeld);
@@ -5300,7 +5302,7 @@ function liteArTick(){
         if(typeof placeYawFront==="function") placeYawFront(LITE.group, 0, 0.8); else LITE.group.position.set(0,1.3,-0.8);
         LITE.targetPos.copy(LITE.group.position); LITE.targetQuat.copy(LITE.group.quaternion); LITE.placeFrames--;
     }
-    if(LITE.opEnabled!==false) liteGesture();   // モデル操作可能時のみジェスチャで動かす
+    if(LITE.mode==="model" && LITE.opEnabled!==false) liteGesture();   // モデル操作モード＆操作可能時のみ
     LITE.group.position.lerp(LITE.targetPos, 0.2);
     LITE.group.scale.lerp(LITE.targetScale, 0.2);
     LITE.group.quaternion.slerp(LITE.targetQuat, 0.2);
@@ -5309,8 +5311,17 @@ function liteArTick(){
 // Lite用トリガー保持追跡（LITE.active時のみ・ハンド/コントローラ両対応）
 controllers.forEach(c=>{
     c.addEventListener("selectstart", ()=>{ if(!LITE.active) return;
-        if(c===rightCtrl && typeof liteRightPress==="function" && liteRightPress()){ c.userData.litePickConsumed=true; return; }   // 右手：①ボタン優先（当たればジェスチャに使わない）
-        c.userData.litePickConsumed=false; if(c.userData) c.userData.liteHeld=true; });
+        if(c===rightCtrl){
+            const now=performance.now();
+            if(now - LITE._lastRightPress < 350){ LITE._lastRightPress=0; if(typeof liteToggleMode==="function") liteToggleMode(); c.userData.litePickConsumed=true; return; }   // 右トリガー2回＝パネル操作/モデル操作 切替
+            LITE._lastRightPress=now;
+            if(typeof liteRightPress==="function" && liteRightPress()){ c.userData.litePickConsumed=true; return; }   // ①は常に操作可
+            if(LITE.mode==="panel"){ if(typeof liteSelectPick==="function" && liteSelectPick()){ c.userData.litePickConsumed=true; return; } c.userData.litePickConsumed=true; return; }   // パネル操作：②のみ（モデルは動かさない）
+            c.userData.litePickConsumed=false; if(c.userData) c.userData.liteHeld=true;   // モデル操作：ジェスチャ開始
+            return;
+        }
+        if(LITE.mode==="model" && c.userData) c.userData.liteHeld=true;   // 左手：モデル操作モードのみジェスチャ
+    });
     c.addEventListener("selectend",   ()=>{ if(LITE.active && c.userData){ c.userData.liteHeld=false; c.userData.litePickConsumed=false; } });
 });
 // ①③④ パネル（カメラ固定HUD）。右手レイで①ボタンを操作
@@ -5374,6 +5385,59 @@ function liteRightPress(){   // 右手レイで①ボタン判定（押下時）
     return true;
 }
 
+// ② モデルえらび（3列×N・列幅2倍。camera前方右側HUD）。右手レイ＋パネル操作モードで選択
+function liteSelList(){   // 現在の対象のモデル一覧 [{idx,name}]
+    if(LITE.target==="dino"){ const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
+    const arts=mvArtifactRows(), sites=mvSiteRows(), a=[]; arts.forEach((r,i)=>a.push({idx:i, name:r.name||("出土品"+(i+1))}));
+    if(window.MV_SHOW_SITE) sites.forEach((r,j)=>a.push({idx:arts.length+j, name:r.name||"遺構"})); return a;
+}
+function liteBuildSelect(){
+    if(LITE.selGroup){ try{ (LITE.selGroup.parent||camera).remove(LITE.selGroup); }catch(_){ } _liteDispose(LITE.selGroup); LITE.selGroup=null; }
+    LITE.selGroup=new THREE.Group(); camera.add(LITE.selGroup);
+    LITE.selGroup.position.set(0.42, 0.10, -0.7); LITE.selPanels=[];   // 前方右側
+    const list=liteSelList(); const cols=3, cw=0.24, ch=0.055, gx=0.255, gy=0.07;   // 列幅2倍(0.24)・高さ据え置き
+    list.forEach((it,i)=>{ const r=Math.floor(i/cols), c=i%cols;
+        const cell=liteMakePanel(cw,ch,480,110); cell.position.set((c-1)*gx, -r*gy, 0); cell.userData.selIdx=it.idx; cell.userData.name=it.name; LITE.selGroup.add(cell); LITE.selPanels.push(cell); });
+    liteDrawSelect();
+}
+function liteDrawSelect(){
+    LITE.selPanels.forEach(cell=>{ const on=(cell.userData.selIdx===LITE.curIdx);
+        _liteText(cell,(ctx,cw,ch)=>{ ctx.fillStyle=on?"#1d4ed8":"rgba(20,26,44,.92)"; _liteRound(ctx,4,4,cw-8,ch-8,20); ctx.fill(); ctx.strokeStyle=on?"#8ff0ff":"rgba(150,170,210,.5)"; ctx.lineWidth=3; ctx.stroke();
+            ctx.fillStyle="#eaf2ff"; ctx.font="bold 40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            let t=cell.userData.name||""; if(t.length>9) t=t.slice(0,9); ctx.fillText(t,cw/2,ch/2); }); });
+}
+function liteSetDim(obj, dim){ if(!obj) return; obj.traverse(x=>{ if(x.isMesh && x.material){ const ms=Array.isArray(x.material)?x.material:[x.material]; ms.forEach(m=>{ if(m.userData._o0===undefined) m.userData._o0=(m.opacity!==undefined?m.opacity:1); m.transparent=true; m.opacity= dim? m.userData._o0*0.28 : m.userData._o0; }); } }); }
+function liteApplyDim(){
+    // パネル操作＝モデルを暗く／モデル操作＝②(モデルえらび)を暗く
+    liteSetDim(LITE.model, LITE.mode==="panel");
+    liteSetDim(LITE.selGroup, LITE.mode==="model");
+}
+function liteToggleMode(){ LITE.mode=(LITE.mode==="panel")?"model":"panel"; try{ chord(LITE.mode==="panel"?[523,660]:[660,523],0.05,"triangle",0.4); }catch(_){ } liteApplyDim(); }
+async function liteSwitchModel(idx){
+    LITE.curIdx=idx;
+    // 名称・説明を更新
+    if(LITE.target==="dino"){ LITE.curName=(DINOS[idx]&&DINOS[idx].label)||""; LITE.curDesc=""; }
+    else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; LITE.curName=info?(info.name||""):""; LITE.curDesc=info?(info.description||""):""; }
+    const m=await liteBuildModel(LITE.target, idx, LITE.quality);
+    // 旧モデル破棄→新モデル配置（原寸/サイズ維持・中心寄せ・深度テスト）
+    while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); _liteDispose(ch); }
+    LITE.model=null;
+    if(m){ m.scale.setScalar(LITE.intrinsic||1); m.updateMatrixWorld(true);
+        const box=new THREE.Box3().setFromObject(m), ctr=box.getCenter(new THREE.Vector3()); m.position.set(-ctr.x,-ctr.y,-ctr.z);
+        m.traverse(o=>{ if(o.isMesh&&o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(mm=>{ mm.depthTest=true; mm.depthWrite=true; mm.needsUpdate=true; }); } });
+        m.visible=true; LITE.model=m; LITE.group.add(m); }
+    LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();   // 切替時はサイズ/回転リセット
+    liteDrawInfo(); liteDrawDesc(); liteDrawSelect(); liteApplyDim();
+}
+function liteSelectPick(){   // ②セルを右手レイで判定（パネル操作モードのみ）
+    if(!LITE.selGroup || !rightCtrl) return false;
+    rightCtrl.getWorldPosition(_liteRO); _liteRD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_liteRQ)).normalize();
+    _liteRay.set(_liteRO,_liteRD);
+    const hit=_liteRay.intersectObjects(LITE.selPanels,false)[0]; if(!hit) return false;
+    const idx=hit.object.userData.selIdx; if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } }
+    return true;
+}
+
 // AR開始：immersive-ar セッションを張り、選択モデルを表示（段階2）
 async function enterLiteAR(target, idx, quality, intrinsicScale){
     if(!(navigator.xr)){ return false; }
@@ -5386,8 +5450,11 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
     if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; ds=""; }
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
     LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino");   // 恐竜フラグ（説明パネル非表示に使用）
+    LITE.target=target; LITE.quality=quality; LITE.intrinsic=intrinsicScale||1; LITE.curIdx=idx; LITE.mode="model"; LITE._lastRightPress=0;   // 段階4：セッション情報
     liteEnterScene(model, intrinsicScale);
     liteBuildUI();
+    liteBuildSelect();   // ②モデルえらび
+    liteApplyDim();
     window.__mvPreviewPause=false;   // レンダループを動かす（LITE分岐で処理）
     try{ await renderer.xr.setSession(session); }catch(e){ liteExitScene(); return false; }
     LITE.active=true;
