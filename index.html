@@ -5224,7 +5224,7 @@ const _liteRay=new THREE.Raycaster(), _liteRO=new THREE.Vector3(), _liteRD=new T
 const _liteA=new THREE.Vector3(), _liteB=new THREE.Vector3(), _liteC=new THREE.Vector3(), _liteQ=new THREE.Quaternion(), _liteAx=new THREE.Vector3(0,0,1), _liteEx=new THREE.Euler(), _liteEy=new THREE.Euler();
 
 // 表示モデル生成（既存関数を再利用）：恐竜＝makeDigDino（標準姿勢）／出土品・遺構＝loadArtifactRoot(1024)
-async function liteBuildModel(target, idx){
+async function liteBuildModel(target, idx, quality){
     if(target==="dino"){
         const pv=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
         try{ dinoSmooth=true; return (typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[idx])?makeDigDino(DINOS[idx]):null; }
@@ -5233,23 +5233,25 @@ async function liteBuildModel(target, idx){
     const arts=mvArtifactRows(), sites=mvSiteRows(); const N=arts.length;
     const info=(idx<N)?arts[idx]:sites[idx-N];
     if(!info || !info.path) return null;
-    try{ return await loadArtifactRoot(mvResolveUrl(info.path), 1024); }catch(_){ return null; }
+    const MAX=(quality==="hi")?3072:(quality==="mid"?2048:1024);   // 軽い1024／普通2048／きれい3072
+    try{ return await loadArtifactRoot(mvResolveUrl(info.path), MAX); }catch(_){ return null; }
 }
-function liteEnterScene(model){
+function liteEnterScene(model, intrinsicScale){
     if(!LITE.group){ LITE.group=new THREE.Group(); scene.add(LITE.group); }
     while(LITE.group.children.length) LITE.group.remove(LITE.group.children[0]);
     LITE._worldVis=(typeof stage!=="undefined")?stage.visible:null; if(typeof stage!=="undefined") stage.visible=false;   // ゲーム世界を隠す
     LITE._dogVis=(typeof dog!=="undefined")?dog.visible:null; if(typeof dog!=="undefined") dog.visible=false;
     LITE.model=null;
     if(model){
+        model.scale.setScalar(intrinsicScale||1);   // 出土品=原寸(1.0)／恐竜=サイズ倍率
         model.updateMatrixWorld(true);
-        const box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3()); const ctr=box.getCenter(new THREE.Vector3());
-        const fit=0.4/Math.max(size.x,size.y,size.z,0.001);   // 初期表示サイズ（最大辺0.4m）
-        model.scale.setScalar(fit); model.position.set(-ctr.x*fit, -ctr.y*fit, -ctr.z*fit); model.visible=true;
-        LITE.model=model; LITE.group.add(model);
+        const box=new THREE.Box3().setFromObject(model); const ctr=box.getCenter(new THREE.Vector3());
+        model.position.set(-ctr.x, -ctr.y, -ctr.z);   // 中心を原点へ（原寸を維持）
+        model.traverse(o=>{ if(o.isMesh && o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{ m.depthTest=true; m.depthWrite=true; m.needsUpdate=true; }); } });   // 深度テスト有効
+        model.visible=true; LITE.model=model; LITE.group.add(model);
     }
     LITE.needPlace=true;   // 入室後の最初のフレームでカメラ正面へ配置（プレイヤーの向きに合わせる）
-    LITE.targetPos.set(0,1.3,-0.6); LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
+    LITE.targetPos.set(0,1.3,-0.8); LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
     LITE.group.position.copy(LITE.targetPos); LITE.group.scale.set(1,1,1); LITE.group.quaternion.identity(); LITE.group.visible=true;
     LITE.scaling=LITE.rotating=false; LITE.lastCenter=LITE.lastCtrl=LITE.lastDir=null;
 }
@@ -5322,34 +5324,40 @@ function liteMakePanel(w,h,cw,ch){
 function _liteText(mesh, draw){ const ctx=mesh.userData.ctx, cw=mesh.userData.cw, ch=mesh.userData.ch; ctx.clearRect(0,0,cw,ch); draw(ctx,cw,ch); mesh.userData.tex.needsUpdate=true; }
 function _liteRound(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 function liteBuildUI(){
-    if(LITE.ui){ camera.remove(LITE.ui); LITE.ui=null; }
-    LITE.ui=new THREE.Group(); camera.add(LITE.ui); LITE.ui.position.set(0,0,0);
+    if(LITE.ui){ try{ (LITE.ui.parent||camera).remove(LITE.ui); }catch(_){ } LITE.ui=null; }
+    LITE.ui=new THREE.Group();
+    const host = (typeof leftCtrl!=="undefined" && leftCtrl) ? leftCtrl : camera;   // 発掘図鑑と同様に左手に追従（無ければカメラ）
+    host.add(LITE.ui);
+    LITE.ui.position.set(0.02, 0.04, -0.06);   // 左手の少し前・上（手の甲側）
+    LITE.ui.rotation.set(-0.5, 0, 0);          // 手のひらを見たときに正対しやすい角度
     LITE.buttons=[];
-    const info=liteMakePanel(0.42,0.06,672,96); info.position.set(0,0.20,-0.7); info.userData.kind="info"; LITE.ui.add(info); LITE.infoPanel=info;   // ③名称＋倍率（上）
-    const bw=0.16, bh=0.05, bx=-0.26, ys=[0.09,0.02,-0.05];   // ①3ボタン（左・縦積み）
+    // ③ 名称＋倍率（最上段）・① 3ボタン（縦積み）：ボタン2倍(0.32×0.10)・文字1.8倍
+    const bw=0.32, bh=0.10, colX=0, ys=[0.30,0.16,0.02,-0.12];
+    const info=liteMakePanel(bw,bh,1024,320); info.position.set(colX,ys[0],0); info.userData.kind="info"; LITE.ui.add(info); LITE.infoPanel=info;
     const acts=["reset","info","op"];
-    for(let i=0;i<3;i++){ const b=liteMakePanel(bw,bh,512,160); b.position.set(bx, ys[i], -0.7); b.userData.kind="btn"; b.userData.act=acts[i]; LITE.ui.add(b); LITE.buttons.push(b); }
-    const desc=liteMakePanel(0.84,0.20,1344,320); desc.position.set(0,-0.16,-0.7); desc.userData.kind="desc"; LITE.ui.add(desc); LITE.descPanel=desc;   // ④説明（横幅2倍・下）
+    for(let i=0;i<3;i++){ const b=liteMakePanel(bw,bh,1024,320); b.position.set(colX, ys[i+1], 0); b.userData.kind="btn"; b.userData.act=acts[i]; LITE.ui.add(b); LITE.buttons.push(b); }
+    // ④ 説明：リセット(ys[1])の右60cm・幅半分(0.42)・文字1.25倍
+    const desc=liteMakePanel(0.42,0.24,672,384); desc.position.set(colX+0.60, ys[1], 0); desc.userData.kind="desc"; LITE.ui.add(desc); LITE.descPanel=desc;
     LITE._uiScale=-1; liteDrawButtons(); liteDrawDesc(); liteDrawInfo();
 }
 function liteDrawButtons(){
     const st={reset:{t:"サイズ＋回転リセット",bg:"#333",fg:"#fff"},
               info:{t:LITE.showInfo?"説明表示":"説明非表示", bg:LITE.showInfo?"#333":"#ccc", fg:LITE.showInfo?"#fff":"#000"},
               op:{t:LITE.opEnabled?"モデル操作可能":"モデル操作不可", bg:LITE.opEnabled?"#e0533a":"#f3d3cc", fg:LITE.opEnabled?"#fff":"#8a2a17"}};
-    LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,4,4,cw-8,ch-8,26); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold 44px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });
+    LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,6,6,cw-12,ch-12,40); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold 79px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });   // 文字1.8倍
 }
 function liteDrawDesc(){
     const d=LITE.descPanel; if(!d) return; d.visible=!!LITE.showInfo;
     _liteText(d,(ctx,cw,ch)=>{ ctx.fillStyle="rgba(18,12,32,.92)"; _liteRound(ctx,0,0,cw,ch,24); ctx.fill(); ctx.strokeStyle="rgba(210,180,120,.5)"; ctx.lineWidth=3; ctx.stroke();
-        ctx.fillStyle="#eafff9"; ctx.font="34px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
-        const text=LITE.curDesc||"", max=26, pad=28; let y=pad;
-        for(let i=0;i<text.length;i+=max){ ctx.fillText(text.substring(i,i+max), pad, y); y+=46; if(y>ch-46) break; } });
+        ctx.fillStyle="#eafff9"; ctx.font="43px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
+        const text=LITE.curDesc||"", max=14, pad=26; let y=pad;
+        for(let i=0;i<text.length;i+=max){ ctx.fillText(text.substring(i,i+max), pad, y); y+=57; if(y>ch-57) break; } });
 }
 function liteDrawInfo(){
     const p=LITE.infoPanel; if(!p) return; const pct=Math.round((LITE.group?LITE.group.scale.x:1)*100);
-    _liteText(p,(ctx,cw,ch)=>{ ctx.fillStyle="rgba(12,10,26,.85)"; _liteRound(ctx,0,0,cw,ch,22); ctx.fill();
-        ctx.fillStyle="#ffe6a6"; ctx.font="bold 44px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(LITE.curName||"",24,ch/2);
-        ctx.fillStyle="#8ff0ff"; ctx.textAlign="right"; ctx.fillText(pct+"%",cw-24,ch/2); });
+    _liteText(p,(ctx,cw,ch)=>{ ctx.fillStyle="rgba(12,10,26,.85)"; _liteRound(ctx,0,0,cw,ch,40); ctx.fill();
+        ctx.fillStyle="#ffe6a6"; ctx.font="bold 74px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(LITE.curName||"",40,ch/2);
+        ctx.fillStyle="#8ff0ff"; ctx.textAlign="right"; ctx.fillText(pct+"%",cw-40,ch/2); });
 }
 function liteUpdateUI(){ if(!LITE.ui) return; const pct=Math.round((LITE.group.scale.x||1)*100); if(pct!==LITE._uiScale){ LITE._uiScale=pct; liteDrawInfo(); } }   // 倍率が変わった時だけ③再描画
 function liteRightPress(){   // 右手レイで①ボタン判定（押下時）。ボタンを操作したら true
@@ -5358,25 +5366,25 @@ function liteRightPress(){   // 右手レイで①ボタン判定（押下時）
     _liteRay.set(_liteRO,_liteRD);
     const hit=_liteRay.intersectObjects(LITE.buttons,false)[0]; if(!hit) return false;
     const act=hit.object.userData.act;
-    if(act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); }   // サイズ＋回転リセット（位置は保持）
-    else if(act==="info"){ LITE.showInfo=!LITE.showInfo; liteDrawButtons(); liteDrawDesc(); }
-    else if(act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); }
+    if(act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); try{ chord([784,523,392],0.05,"triangle",0.45); }catch(_){ } }   // リセット：下降音
+    else if(act==="info"){ LITE.showInfo=!LITE.showInfo; liteDrawButtons(); liteDrawDesc(); try{ beep(LITE.showInfo?900:520,0.08,0.3,"sine"); }catch(_){ } }   // 表示切替：明/暗
+    else if(act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); try{ beep(LITE.opEnabled?660:330,0.09,0.3,"square"); }catch(_){ } }   // 操作可否：オン/オフ
     return true;
 }
 
 // AR開始：immersive-ar セッションを張り、選択モデルを表示（段階2）
-async function enterLiteAR(target, idx){
+async function enterLiteAR(target, idx, quality, intrinsicScale){
     if(!(navigator.xr)){ return false; }
     let session;
     try{ session = await navigator.xr.requestSession("immersive-ar", { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
     catch(e){ return false; }
-    const model = await liteBuildModel(target, idx);
+    const model = await liteBuildModel(target, idx, quality);
     // 名称・説明（CSV由来）を設定：出土品/遺構＝CSV、恐竜＝DINOSラベル
     let nm="", ds="";
     if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; ds=""; }
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
     LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true;
-    liteEnterScene(model);
+    liteEnterScene(model, intrinsicScale);
     liteBuildUI();
     window.__mvPreviewPause=false;   // レンダループを動かす（LITE分岐で処理）
     try{ await renderer.xr.setSession(session); }catch(e){ liteExitScene(); return false; }
@@ -6378,8 +6386,10 @@ addEventListener("resize",()=>{
     if(closeBtn) closeBtn.addEventListener("click", closeModal);
     sel.addEventListener("change", ()=>{ showModel(curIdx()); });
     if(arBtn) arBtn.addEventListener("click", async ()=>{
-        if(window.__mvLiteMode && typeof enterLiteAR==="function"){   // Lite：カスタムWebXR ARへ
-            const ok=await enterLiteAR(curDigTarget(), curIdx());
+        if(window.__mvLiteMode && typeof enterLiteAR==="function"){   // Lite：カスタムWebXR ARへ（現在の画質・サイズを反映）
+            const tgt=curDigTarget(), i=curIdx();
+            const intrinsic = (tgt==="dino") ? dinoFactor(true, dinoSize) : 1;   // 恐竜=サイズ倍率／出土品=原寸(1.0)
+            const ok=await enterLiteAR(tgt, i, artQuality, intrinsic);
             if(ok){ modal.style.display="none"; window.__mvPreviewPause=false; }   // 入室成功でモーダルを閉じる
             else { setNote("ARを開始できませんでした。AR対応ブラウザ/端末でお試しください。"); }
             return;
