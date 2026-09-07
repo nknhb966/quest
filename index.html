@@ -5216,9 +5216,11 @@ let prevTriggers=[false,false];
 //   ・片手トリガー保持＝回転／両手トリガー保持＝拡大縮小・移動・Z回転（craftARt Lite相当）
 //   ・段階2＝表示＋ジェスチャのみ（パネル①〜④・二モードは段階3/4）
 // ============================================================================
-const LITE = { active:false, group:null, model:null,
+const LITE = { active:false, group:null, model:null, needPlace:false,
+    showInfo:true, opEnabled:true, curName:"", curDesc:"", ui:null, buttons:[], _uiScale:-1,
     targetPos:new THREE.Vector3(), targetScale:new THREE.Vector3(1,1,1), targetQuat:new THREE.Quaternion(),
     scaling:false, rotating:false, initDist:0, initScale:1, lastCenter:null, lastCtrl:null, lastDir:null, _worldVis:null, _dogVis:null };
+const _liteRay=new THREE.Raycaster(), _liteRO=new THREE.Vector3(), _liteRD=new THREE.Vector3(), _liteRQ=new THREE.Quaternion();
 const _liteA=new THREE.Vector3(), _liteB=new THREE.Vector3(), _liteC=new THREE.Vector3(), _liteQ=new THREE.Quaternion(), _liteAx=new THREE.Vector3(0,0,1), _liteEx=new THREE.Euler(), _liteEy=new THREE.Euler();
 
 // 表示モデル生成（既存関数を再利用）：恐竜＝makeDigDino（標準姿勢）／出土品・遺構＝loadArtifactRoot(1024)
@@ -5246,9 +5248,9 @@ function liteEnterScene(model){
         model.scale.setScalar(fit); model.position.set(-ctr.x*fit, -ctr.y*fit, -ctr.z*fit); model.visible=true;
         LITE.model=model; LITE.group.add(model);
     }
-    LITE.group.position.set(0, 1.3, -0.6);   // 目の前・目線あたり
-    LITE.targetPos.copy(LITE.group.position); LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
-    LITE.group.scale.set(1,1,1); LITE.group.quaternion.identity(); LITE.group.visible=true;
+    LITE.needPlace=true;   // 入室後の最初のフレームでカメラ正面へ配置（プレイヤーの向きに合わせる）
+    LITE.targetPos.set(0,1.3,-0.6); LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
+    LITE.group.position.copy(LITE.targetPos); LITE.group.scale.set(1,1,1); LITE.group.quaternion.identity(); LITE.group.visible=true;
     LITE.scaling=LITE.rotating=false; LITE.lastCenter=LITE.lastCtrl=LITE.lastDir=null;
 }
 function liteExitScene(){
@@ -5256,6 +5258,7 @@ function liteExitScene(){
     if(LITE._worldVis!=null && typeof stage!=="undefined") stage.visible=LITE._worldVis;   // ゲーム世界を復帰
     if(LITE._dogVis!=null && typeof dog!=="undefined") dog.visible=LITE._dogVis;
     LITE.model=null; controllers.forEach(c=>{ if(c.userData) c.userData.liteHeld=false; });
+    if(LITE.ui){ try{ camera.remove(LITE.ui); }catch(_){ } LITE.ui=null; LITE.buttons=[]; LITE.infoPanel=LITE.descPanel=null; }   // HUDパネル破棄
 }
 function liteGesture(){
     const held=controllers.filter(c=>c.userData && c.userData.liteHeld);
@@ -5290,16 +5293,77 @@ function liteGesture(){
 }
 function liteArTick(){
     if(!LITE.group) return;
-    liteGesture();
+    if(LITE.needPlace){   // 入室後最初のフレーム：カメラ正面へ配置（プレイヤーの向きに合わせる）
+        if(typeof placeYawFront==="function") placeYawFront(LITE.group, 0, 0.6); else LITE.group.position.set(0,1.3,-0.6);
+        LITE.targetPos.copy(LITE.group.position); LITE.targetQuat.copy(LITE.group.quaternion); LITE.needPlace=false;
+    }
+    if(LITE.opEnabled!==false) liteGesture();   // モデル操作可能時のみジェスチャで動かす
     LITE.group.position.lerp(LITE.targetPos, 0.2);
     LITE.group.scale.lerp(LITE.targetScale, 0.2);
     LITE.group.quaternion.slerp(LITE.targetQuat, 0.2);
+    if(typeof liteUpdateUI==="function") liteUpdateUI();   // ①③④パネル更新
 }
 // Lite用トリガー保持追跡（LITE.active時のみ・ハンド/コントローラ両対応）
 controllers.forEach(c=>{
-    c.addEventListener("selectstart", ()=>{ if(LITE.active && c.userData) c.userData.liteHeld=true; });
-    c.addEventListener("selectend",   ()=>{ if(LITE.active && c.userData) c.userData.liteHeld=false; });
+    c.addEventListener("selectstart", ()=>{ if(!LITE.active) return;
+        if(c===rightCtrl && typeof liteRightPress==="function" && liteRightPress()){ c.userData.litePickConsumed=true; return; }   // 右手：①ボタン優先（当たればジェスチャに使わない）
+        c.userData.litePickConsumed=false; if(c.userData) c.userData.liteHeld=true; });
+    c.addEventListener("selectend",   ()=>{ if(LITE.active && c.userData){ c.userData.liteHeld=false; c.userData.litePickConsumed=false; } });
 });
+// ①③④ パネル（カメラ固定HUD）。右手レイで①ボタンを操作
+function liteMakePanel(w,h,cw,ch){
+    const canvas=document.createElement("canvas"); canvas.width=cw; canvas.height=ch;
+    const tex=new THREE.CanvasTexture(canvas); if("colorSpace" in tex) tex.colorSpace=THREE.SRGBColorSpace;
+    const mat=new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthTest:false });
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h), mat); mesh.renderOrder=3000;
+    mesh.userData.ctx=canvas.getContext("2d"); mesh.userData.tex=tex; mesh.userData.cw=cw; mesh.userData.ch=ch;
+    return mesh;
+}
+function _liteText(mesh, draw){ const ctx=mesh.userData.ctx, cw=mesh.userData.cw, ch=mesh.userData.ch; ctx.clearRect(0,0,cw,ch); draw(ctx,cw,ch); mesh.userData.tex.needsUpdate=true; }
+function _liteRound(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function liteBuildUI(){
+    if(LITE.ui){ camera.remove(LITE.ui); LITE.ui=null; }
+    LITE.ui=new THREE.Group(); camera.add(LITE.ui); LITE.ui.position.set(0,0,0);
+    LITE.buttons=[];
+    const info=liteMakePanel(0.42,0.06,672,96); info.position.set(0,0.20,-0.7); info.userData.kind="info"; LITE.ui.add(info); LITE.infoPanel=info;   // ③名称＋倍率（上）
+    const bw=0.16, bh=0.05, bx=-0.26, ys=[0.09,0.02,-0.05];   // ①3ボタン（左・縦積み）
+    const acts=["reset","info","op"];
+    for(let i=0;i<3;i++){ const b=liteMakePanel(bw,bh,512,160); b.position.set(bx, ys[i], -0.7); b.userData.kind="btn"; b.userData.act=acts[i]; LITE.ui.add(b); LITE.buttons.push(b); }
+    const desc=liteMakePanel(0.84,0.20,1344,320); desc.position.set(0,-0.16,-0.7); desc.userData.kind="desc"; LITE.ui.add(desc); LITE.descPanel=desc;   // ④説明（横幅2倍・下）
+    LITE._uiScale=-1; liteDrawButtons(); liteDrawDesc(); liteDrawInfo();
+}
+function liteDrawButtons(){
+    const st={reset:{t:"サイズ＋回転リセット",bg:"#333",fg:"#fff"},
+              info:{t:LITE.showInfo?"説明表示":"説明非表示", bg:LITE.showInfo?"#333":"#ccc", fg:LITE.showInfo?"#fff":"#000"},
+              op:{t:LITE.opEnabled?"モデル操作可能":"モデル操作不可", bg:LITE.opEnabled?"#e0533a":"#f3d3cc", fg:LITE.opEnabled?"#fff":"#8a2a17"}};
+    LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,4,4,cw-8,ch-8,26); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold 44px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });
+}
+function liteDrawDesc(){
+    const d=LITE.descPanel; if(!d) return; d.visible=!!LITE.showInfo;
+    _liteText(d,(ctx,cw,ch)=>{ ctx.fillStyle="rgba(18,12,32,.92)"; _liteRound(ctx,0,0,cw,ch,24); ctx.fill(); ctx.strokeStyle="rgba(210,180,120,.5)"; ctx.lineWidth=3; ctx.stroke();
+        ctx.fillStyle="#eafff9"; ctx.font="34px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
+        const text=LITE.curDesc||"", max=26, pad=28; let y=pad;
+        for(let i=0;i<text.length;i+=max){ ctx.fillText(text.substring(i,i+max), pad, y); y+=46; if(y>ch-46) break; } });
+}
+function liteDrawInfo(){
+    const p=LITE.infoPanel; if(!p) return; const pct=Math.round((LITE.group?LITE.group.scale.x:1)*100);
+    _liteText(p,(ctx,cw,ch)=>{ ctx.fillStyle="rgba(12,10,26,.85)"; _liteRound(ctx,0,0,cw,ch,22); ctx.fill();
+        ctx.fillStyle="#ffe6a6"; ctx.font="bold 44px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(LITE.curName||"",24,ch/2);
+        ctx.fillStyle="#8ff0ff"; ctx.textAlign="right"; ctx.fillText(pct+"%",cw-24,ch/2); });
+}
+function liteUpdateUI(){ if(!LITE.ui) return; const pct=Math.round((LITE.group.scale.x||1)*100); if(pct!==LITE._uiScale){ LITE._uiScale=pct; liteDrawInfo(); } }   // 倍率が変わった時だけ③再描画
+function liteRightPress(){   // 右手レイで①ボタン判定（押下時）。ボタンを操作したら true
+    if(!LITE.active || !LITE.ui || !rightCtrl) return false;
+    rightCtrl.getWorldPosition(_liteRO); _liteRD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_liteRQ)).normalize();
+    _liteRay.set(_liteRO,_liteRD);
+    const hit=_liteRay.intersectObjects(LITE.buttons,false)[0]; if(!hit) return false;
+    const act=hit.object.userData.act;
+    if(act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); }   // サイズ＋回転リセット（位置は保持）
+    else if(act==="info"){ LITE.showInfo=!LITE.showInfo; liteDrawButtons(); liteDrawDesc(); }
+    else if(act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); }
+    return true;
+}
+
 // AR開始：immersive-ar セッションを張り、選択モデルを表示（段階2）
 async function enterLiteAR(target, idx){
     if(!(navigator.xr)){ return false; }
@@ -5307,7 +5371,13 @@ async function enterLiteAR(target, idx){
     try{ session = await navigator.xr.requestSession("immersive-ar", { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
     catch(e){ return false; }
     const model = await liteBuildModel(target, idx);
+    // 名称・説明（CSV由来）を設定：出土品/遺構＝CSV、恐竜＝DINOSラベル
+    let nm="", ds="";
+    if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; ds=""; }
+    else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
+    LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true;
     liteEnterScene(model);
+    liteBuildUI();
     window.__mvPreviewPause=false;   // レンダループを動かす（LITE分岐で処理）
     try{ await renderer.xr.setSession(session); }catch(e){ liteExitScene(); return false; }
     LITE.active=true;
