@@ -632,11 +632,10 @@
         font-size:14px; font-weight:800; letter-spacing:1px; cursor:pointer; transition:background .15s, color .15s; }
     .mvseg button + button{ border-left:1px solid rgba(180,140,255,.28); }
     .mvseg button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
-    .mvhotspot{ width:16px; height:16px; border-radius:50%; border:2px solid #e6c26a; box-sizing:border-box;
-        background:rgba(124,58,237,.85); box-shadow:0 0 10px rgba(120,80,255,.6); cursor:default; }
-    .mvannotation{ position:absolute; transform:translate(12px,8px); max-width:min(260px,70vw);
+    .mvhotspot{ width:0; height:0; border:none; background:transparent; box-shadow:none; pointer-events:none; }   /* 青い丸は非表示（吹き出しのみ表示） */
+    .mvannotation{ position:absolute; transform:translate(12px,8px); max-width:min(360px,88vw); width:max-content;
         background:rgba(18,12,32,.94); color:#eae4ff; border:1px solid rgba(210,180,120,.5); border-radius:9px;
-        padding:8px 11px; font-size:13px; line-height:1.55; text-align:left; pointer-events:none;
+        padding:9px 13px; font-size:13px; line-height:1.6; text-align:left; pointer-events:none;
         box-shadow:0 6px 20px rgba(0,0,0,.45); }
     .mvurl{ text-align:center; font-size:13px; letter-spacing:1px; }
     .mvurl a{ color:#8ecbff; text-decoration:none; } .mvurl a:hover{ text-decoration:underline; }
@@ -5725,6 +5724,17 @@ addEventListener("resize",()=>{
     }
     function artInfo(i){ return (csvRows && csvRows[i]) ? csvRows[i] : null; }   // 出土品idx→CSV行（model01..08＝行0..7）
     window.MV_SHOW_URL = window.MV_SHOW_URL || false;   // 関連URLは既定で非表示。後で true にすると表示される準備
+    window.MV_SHOW_SITE = window.MV_SHOW_SITE || false;  // 遺構2025(CSV 9行目)は既定で非表示。true にすると出土品一覧の末尾に追加される準備
+    const SITE_ART_IDX = 8;   // CSV上の遺構モデルの行インデックス（model01..08=0..7、遺構=8）
+    function artCount(){ return 8 + (window.MV_SHOW_SITE?1:0); }   // 出土品8点（+遺構1点）
+    // 出土品idx→{base, small}。0..7=ART_FILES、8=遺構（CSVのpathから base/ファイル名を導出）
+    function artSrc(idx){
+        if(idx<8){ return { base:(typeof ART_BASE!=="undefined"?ART_BASE:""),
+                            small:(typeof ART_FILES!=="undefined" && ART_FILES[idx])?ART_FILES[idx]:("model0"+(idx+1)+"_small.glb") }; }
+        const info=artInfo(SITE_ART_IDX);
+        if(info && info.path){ const p=info.path; const k=p.lastIndexOf("/"); if(k>=0) return { base:p.slice(0,k+1), small:p.slice(k+1) }; }
+        return { base:(typeof IMG_BASE!=="undefined"?IMG_BASE:""), small:"00101_kokufuhakkutsu3_small.glb" };
+    }
     function applyAnnotation(isDino, idx){
         const hs=viewer.querySelector(".mvhotspot"); const an=hs && hs.querySelector(".mvannotation");
         const ue=document.getElementById("mvUrl");
@@ -5773,14 +5783,16 @@ addEventListener("resize",()=>{
     function buildOptions(){
         const target = curDigTarget();
         const isDino = (target==="dino" || target==="dino3");
-        const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8) : 8;
+        const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8) : artCount();   // 出土品は8点（遺構表示時は+1）
         curList = []; sel.innerHTML = "";
         for(let i=0;i<n;i++){
             const opt=document.createElement("option");
             opt.value=String(i);
             opt.textContent = isDino
                 ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
-                : ((artInfo(i) && artInfo(i).name) ? artInfo(i).name : ("出土品 No."+String(i+1).padStart(2,"0")));   // CSVの名称（無ければ従来ラベル）
+                : (i===SITE_ART_IDX
+                    ? ((artInfo(SITE_ART_IDX) && artInfo(SITE_ART_IDX).name) ? artInfo(SITE_ART_IDX).name : "遺構2025")   // 遺構モデル
+                    : ((artInfo(i) && artInfo(i).name) ? artInfo(i).name : ("出土品 No."+String(i+1).padStart(2,"0"))));   // CSVの名称（無ければ従来ラベル）
             sel.appendChild(opt); curList.push(i);
         }
     }
@@ -5955,8 +5967,9 @@ addEventListener("resize",()=>{
 
         // 出土品：軽い=_small(1024)そのまま／普通=2048・きれい=3072 は8Kを縮小して表示（元ファイルは無改変）
         if(!isDino){
-            const base  = (typeof ART_BASE!=="undefined") ? ART_BASE : "";
-            const small = (typeof ART_FILES!=="undefined" && ART_FILES[idx]) ? ART_FILES[idx] : ("model0"+(idx+1)+"_small.glb");
+            const _src  = artSrc(idx);   // 0..7=出土品／8=遺構（CSV pathから導出）
+            const base  = _src.base;
+            const small = _src.small;
             if(artQuality==="mid" || artQuality==="hi"){
                 const MAX = (artQuality==="hi") ? 3072 : 2048;
                 setNote("読み込み中…（高精細）");
@@ -6035,6 +6048,21 @@ addEventListener("resize",()=>{
     if(arBtn) arBtn.addEventListener("click", ()=>{ try{ viewer.activateAR(); }catch(_){ } });
     viewer.addEventListener("load", updateAR);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
+
+    // URLで直接 craftARt Go を開く：index.html?view=craftart&target=artifact|dino|dino3
+    (function autoOpenFromURL(){
+        let params; try{ params=new URLSearchParams(location.search); }catch(_){ return; }
+        if((params.get("view")||"").toLowerCase()!=="craftart") return;
+        const t=(params.get("target")||"").toLowerCase();
+        if(["artifact","dino","dino3"].includes(t)){ try{ if(typeof chosenDigTarget!=="undefined") chosenDigTarget=t; }catch(_){ } }   // 引き継ぎは「発掘する対象」のみ
+        let opened=false, tries=0;
+        const tryOpen=()=>{
+            if(opened) return;
+            if(typeof PRELOAD_DONE!=="undefined" && !PRELOAD_DONE && tries++<200){ setTimeout(tryOpen,150); return; }   // プリロード完了を待つ（最大約30秒）
+            opened=true; try{ openModal(); }catch(_){ }
+        };
+        setTimeout(tryOpen, 300);
+    })();
     // トグル：出土品の画質（軽い/きれい）
     if(artSeg) artSeg.addEventListener("click", (e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.q) return;
         artQuality=b.dataset.q; updateToggles(); showModel(curIdx()); });
