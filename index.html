@@ -260,8 +260,7 @@
         <div class="lbl">発掘する対象</div>
         <div class="seg" id="segDig">
           <button data-v="artifact" class="on">🏺 出土品</button>
-          <button data-v="dino">🦖 シンプル恐竜</button>
-          <button data-v="dino3">🦕 恐竜</button>
+          <button data-v="dino">🦕 恐竜</button>
         </div>
       </div>
       <div class="opt wide" id="optToolSwap" style="display:none">
@@ -993,15 +992,15 @@ function curImgs(){ return curTarget==="dino" ? DINO_IMGS : ART_IMGS; }
 function curName(i){ return curTarget==="dino" ? ((typeof DINOS!=="undefined"&&DINOS[i]? DINOS[i].label : "")||"").replace(/^\S+\s*/,"") : ""; }
 let dinoSmooth=false;   // 見た目フラグ：dino3(恐竜実寸)=なめらか／dino(シンプル恐竜)=ボクセル。サイズは両方とも実寸
 function setDigTarget(target){
-    const isDino = (target==="dino" || target==="dino3");
+    const isDino = (target==="dino");
     curTarget = isDino ? "dino" : "artifact";
-    dinoSmooth = (target==="dino3");   // dino3=なめらか、dino=ボクセル
+    dinoSmooth = (target==="dino");   // 恐竜は常になめらか
     dexData = (curTarget==="dino") ? dexDino : dexArt;
     chosenDigTarget = target;   // dino / dino3 / artifact を保持
     // 相棒はボクセル版を切替（両版は事前生成済みなので再生成しない＝一瞬固まらない）
     if(typeof refreshBuddyBodies==="function") refreshBuddyBodies();
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
-    if(typeof _dinoCacheB!=="undefined") dinoDigModels = dinoSmooth ? _dinoCacheS : _dinoCacheB;   // 事前生成済みキャッシュに切替（dino3=なめらか, dino=ボクセル）
+    dinoDigModels = _dinoCacheS;   // 恐竜はなめらかのみ
     if(typeof refreshDexHTML==="function") refreshDexHTML();
     if(typeof updateGoal==="function") updateGoal();
 }
@@ -1311,16 +1310,93 @@ function afterSite(cb){ if(siteReady) cb(); else { const iv=setInterval(()=>{ if
 
 /* ── アーティファクトGLB（8種）を事前ロード（非表示で保持） ── */
 const artModels = new Array(8).fill(null);
-ART_FILES.forEach((f,idx)=>{
-    gltfLoader.load(ART_BASE+f, (gltf)=>{
-        const o=gltf.scene;
+// ===== 出土品↔恐竜の紐づけ数（=LINK_COUNT）。出土品idがこれ以上なら最終(LINK_COUNT-1)の恐竜に紐づく。恐竜が増えたら値を上げる =====
+const LINK_COUNT = 8;
+function linkedDinoIdx(i){ return Math.max(0, Math.min(i|0, LINK_COUNT-1)); }
+
+// ===== craftARt Go: models.csv 読み込み（ゲーム本体・モーダル共用）=====
+let _mvCsvRows=null, _mvCsvLoading=null;
+async function mvLoadCsvRows(){
+    if(_mvCsvRows) return _mvCsvRows;
+    if(_mvCsvLoading) return _mvCsvLoading;
+    const url=(typeof MV_CFG!=="undefined" && MV_CFG.csvUrl) ? MV_CFG.csvUrl : ((typeof IMG_BASE!=="undefined"?IMG_BASE:"")+"models.csv");
+    _mvCsvLoading=fetch(url).then(r=>r.ok?r.text():Promise.reject(new Error("csv "+r.status))).then(txt=>{
+        const lines=txt.replace(/^\uFEFF/,"").trim().split(/\r?\n/);
+        const headers=lines[0].split(",").map(h=>h.trim());
+        const rows=[];
+        for(let i=1;i<lines.length;i++){ if(!lines[i]) continue; const cols=lines[i].split(","); const o={}; headers.forEach((h,j)=>o[h]=(cols[j]||"").trim()); rows.push(o); }
+        _mvCsvRows=rows; return rows;
+    }).catch(()=>{ _mvCsvRows=[]; return _mvCsvRows; });
+    return _mvCsvLoading;
+}
+function mvIsSiteRow(r){ const pre=(typeof MV_CFG!=="undefined" && MV_CFG.sitePrefix)?MV_CFG.sitePrefix:"遺構"; return (((r&&r.name)||"").trim().indexOf(pre)===0); }
+function mvArtifactRows(){ return (_mvCsvRows||[]).filter(r=>!mvIsSiteRow(r)); }   // 「遺構」以外＝出土品行
+function mvSiteRows(){ return (_mvCsvRows||[]).filter(mvIsSiteRow); }
+function mvResolveUrl(path){ const p=(path||"").trim(); if(!p) return ""; if(/^https?:/i.test(p)) return p; return (typeof IMG_BASE!=="undefined"?IMG_BASE:"")+p.replace(/^\.?\//,""); }
+
+// GLBパース/再構築（モジュール級）
+function mvParseGLB(buf){
+    const dv=new DataView(buf); const total=dv.getUint32(8,true);
+    let off=12, json=null, bin=null;
+    while(off<total){ const clen=dv.getUint32(off,true), ctype=dv.getUint32(off+4,true); off+=8;
+        if(ctype===0x4E4F534A){ json=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,off,clen))); }
+        else if(ctype===0x004E4942){ bin=buf.slice(off,off+clen); } off+=clen; }
+    return {json,bin};
+}
+function mvBuildGLB(json,bin){
+    const jb=new TextEncoder().encode(JSON.stringify(json));
+    const jpad=(4-(jb.length%4))%4; const jsonBytes=new Uint8Array(jb.length+jpad); jsonBytes.set(jb); for(let i=0;i<jpad;i++) jsonBytes[jb.length+i]=0x20;
+    let binBytes=bin?new Uint8Array(bin):new Uint8Array(0); const bpad=(4-(binBytes.length%4))%4;
+    if(bpad){ const t=new Uint8Array(binBytes.length+bpad); t.set(binBytes); binBytes=t; }
+    const hasBin=binBytes.length>0; const total=12+8+jsonBytes.length+(hasBin?8+binBytes.length:0);
+    const out=new ArrayBuffer(total), dv=new DataView(out); let o=0;
+    dv.setUint32(0,0x46546C67,true); dv.setUint32(4,2,true); dv.setUint32(8,total,true); o=12;
+    dv.setUint32(o,jsonBytes.length,true); dv.setUint32(o+4,0x4E4F534A,true); o+=8;
+    new Uint8Array(out,o,jsonBytes.length).set(jsonBytes); o+=jsonBytes.length;
+    if(hasBin){ dv.setUint32(o,binBytes.length,true); dv.setUint32(o+4,0x004E4942,true); o+=8; new Uint8Array(out,o,binBytes.length).set(binBytes); }
+    return out;
+}
+// フルGLBを読み、テクスチャをMAX(既定1024)に縮小した THREE.Object3D を返す（_smallを経由しない）
+async function loadArtifactRoot(fullUrl, MAX){
+    MAX=MAX||1024;
+    const resp=await fetch(fullUrl); if(!resp.ok) throw new Error("fetch "+resp.status);
+    const {json,bin}=mvParseGLB(await resp.arrayBuffer());
+    if(!json) throw new Error("bad glb");
+    let tex=null;
+    if(json.images && json.images[0] && json.images[0].bufferView!=null && bin){
+        const im=json.images[0], bv=json.bufferViews[im.bufferView];
+        const blob=new Blob([new Uint8Array(bin,bv.byteOffset||0,bv.byteLength)], {type:im.mimeType||"image/jpeg"});
+        let bmp; try{ bmp=await createImageBitmap(blob,{resizeWidth:MAX,resizeHeight:MAX,resizeQuality:"high"}); }catch(_){ bmp=await createImageBitmap(blob); }
+        const w=Math.min(MAX,bmp.width), h=Math.min(MAX,bmp.height);
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(bmp,0,0,w,h); if(bmp.close) bmp.close();
+        tex=new THREE.CanvasTexture(cv);
+        if("colorSpace" in tex){ tex.colorSpace=THREE.SRGBColorSpace; } else { try{ tex.encoding=THREE.sRGBEncoding; }catch(_){ } }
+        tex.flipY=false; tex.needsUpdate=true;
+    }
+    const gj=JSON.parse(JSON.stringify(json));
+    if(gj.materials) gj.materials.forEach(m=>{ if(m.pbrMetallicRoughness){ delete m.pbrMetallicRoughness.baseColorTexture; delete m.pbrMetallicRoughness.metallicRoughnessTexture; } delete m.normalTexture; delete m.occlusionTexture; delete m.emissiveTexture; });
+    delete gj.textures; delete gj.images; delete gj.samplers;
+    const gltf=await new Promise((res,rej)=> gltfLoader.parse(mvBuildGLB(gj,bin),"",res,rej));
+    const root=gltf.scene || (gltf.scenes&&gltf.scenes[0]); if(!root) throw new Error("no scene");
+    if(tex){ root.traverse(o=>{ if(o.isMesh && o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(mm=>{ mm.map=tex; if(mm.color&&mm.color.setRGB) mm.color.setRGB(1,1,1); mm.needsUpdate=true; }); } }); }
+    return root;
+}
+
+// 出土品モデル：CSVの出土品行(path=フル版)を読み、1024に縮小して使用（_small不使用）。失敗時は従来の _small にフォールバック。
+(async function loadArtifacts(){
+    let arts=[]; try{ await mvLoadCsvRows(); arts=mvArtifactRows(); }catch(_){ }
+    const applyModel=(o,idx)=>{ if(!o) return;
         const box=new THREE.Box3().setFromObject(o);
         const size=box.getSize(new THREE.Vector3());
         const fit=ART_TARGET_H/Math.max(size.x,size.y,size.z,0.001);
-        o.scale.setScalar(fit);
-        o.visible=false; stage.add(o); artModels[idx]=o;
-    }, undefined, ()=>{ /* 失敗しても続行 */ });
-});
+        o.scale.setScalar(fit); o.visible=false; stage.add(o); artModels[idx]=o; };
+    await Promise.all(ART_FILES.map(async (f,idx)=>{
+        const row=arts[idx]; const url=row?mvResolveUrl(row.path):"";
+        let done=false;
+        if(url){ try{ applyModel(await loadArtifactRoot(url, 1024), idx); done=true; }catch(_){ } }
+        if(!done){ try{ gltfLoader.load(ART_BASE+ART_FILES[idx], (g)=>applyModel(g.scene, idx), undefined, ()=>{}); }catch(_){ } }   // フォールバック：従来の _small
+    }));
+})();
 // 図鑑カード用の画像テクスチャ（発掘演出パネル）
 const texLoader = new THREE.TextureLoader();
 
@@ -1766,7 +1842,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜の相棒は等倍(1.0)。た�
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
-    let smooth=false; try{ smooth = (chosenDigTarget!=="dino"); }catch(e){ smooth=false; }   // 出土品/なめらか恐竜→なめらか
+    const smooth=true;   // 恐竜（相棒）は常になめらか
     const slot = smooth?"bodyS":"bodyB";
     if(!def[slot]){
         const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
@@ -1865,7 +1941,7 @@ let unlockedBuddies=["dog"];         // 獲得モードの候補（退室/リセ
 function resetUnlocked(){ unlockedBuddies=["dog"]; }
 function unlockBuddy(key){ if(key && key!=="dog" && unlockedBuddies.indexOf(key)<0) unlockedBuddies.push(key); }
 // 獲得カード(target,idx)→相棒キー（出土品でも同順位=同indexの恐竜キー）
-function buddyKeyForCard(target, idx){ return (typeof DINOS!=="undefined" && DINOS[idx]) ? DINOS[idx].key : null; }
+function buddyKeyForCard(target, idx){ const di=(target==="dino")?idx:linkedDinoIdx(idx); return (typeof DINOS!=="undefined" && DINOS[di]) ? DINOS[di].key : null; }   // 出土品は id を LINK_COUNT で頭打ちして恐竜に紐づけ
 // 現在の相棒候補（COMPANION_ORDER順）
 function buddyCandidates(){
     if(buddyMode!=="unlock") return COMPANION_ORDER.filter(k=>COMPANIONS[k]);
@@ -2636,9 +2712,8 @@ function spawnAllTargets(){
  * ===================================================== */
 const popAnims=[];
 // ── 恐竜モードの発掘演出：岩→たまご→孵化→恐竜（鳴き声＋セリフ） ──
-const _dinoCacheB=new Array(8).fill(null);   // シンプル恐竜（ボクセル・実寸）
 const _dinoCacheS=new Array(8).fill(null);   // 恐竜（実寸）＝なめらか・実寸
-let   dinoDigModels=_dinoCacheB;             // 現在のスタイルのキャッシュを指す
+let   dinoDigModels=_dinoCacheS;             // 現在のキャッシュ（なめらかのみ）
 const eggHatch=[];
 function makeFit(obj, targetH){ const bb=new THREE.Box3().setFromObject(obj); const h=bb.max.y-bb.min.y; const s=(h>0?targetH/h:1); obj.scale.setScalar(s); return s; }
 // ===== 恐竜サイズ（全種・実物大ベース）。シンプル恐竜／恐竜（実寸）とも同じ実寸サイズ・比率・基準 =====
@@ -2695,9 +2770,8 @@ function preloadEverything(done){
     PRELOAD_DONE=false; document.body.classList.add("preloading");   // 完了まで入室不可
     if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
     const jobs=[];
-    for(let i=0;i<8;i++) jobs.push({smooth:false, idx:i, cache:_dinoCacheB});   // シンプル恐竜（ボクセル）
-    for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});   // 恐竜（実寸）＝なめらか
-    if(typeof COMPANION_ORDER!=="undefined") for(const k of COMPANION_ORDER){ jobs.push({companion:k, smooth:false}); jobs.push({companion:k, smooth:true}); }   // 相棒9種×両ボクセル版
+    for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});   // 恐竜（なめらか・実寸）
+    if(typeof COMPANION_ORDER!=="undefined") for(const k of COMPANION_ORDER){ jobs.push({companion:k, smooth:true}); }   // 相棒9種（なめらか）
     // カード画像も事前読み込み（恐竜 card00〜card08／出土品 card01〜card08）
     jobs.push({card:CARD_DIR_DINO+"card00.png"});
     for(let i=0;i<8;i++){ jobs.push({card:cardImgPath("dino",i)}); jobs.push({card:cardImgPath("artifact",i)}); }
@@ -2719,7 +2793,7 @@ function preloadEverything(done){
             // GPUウォームアップ準備：恐竜キャッシュ16体を描画ループで画面外に数フレーム描画→初回表示のカクつき防止
             try{
                 _warmupModels=[];
-                for(let i=0;i<8;i++){ const a=_dinoCacheB[i], b=_dinoCacheS[i]; if(a)_warmupModels.push(a); if(b)_warmupModels.push(b); }
+                for(let i=0;i<8;i++){ const b=_dinoCacheS[i]; if(b)_warmupModels.push(b); }
                 _warmupModels.forEach(m=>{ m.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; }); });   // 画面外でも必ず描画させる
                 _warmupTTL = _warmupModels.length ? 4 : 0;   // 4フレーム描画してGPU転送を確定
             }catch(_){ _warmupTTL=0; }
@@ -3504,8 +3578,8 @@ function scheduleWorldReload(){ if(GAME.active){ reloadDinoCache(); return; }
     if(_worldReloadT) clearTimeout(_worldReloadT);
     _worldReloadT=setTimeout(()=>{ withParamLoading(()=>{ reloadDinoCache(); }); }, 250);   // 連続変更が落ち着いてから再生成
 }
-function reloadDinoCache(){ if(typeof _dinoCacheB==="undefined") return;   // サイズが変わるので恐竜モデルを両スタイルとも作り直す
-    [_dinoCacheB,_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
+function reloadDinoCache(){ if(typeof _dinoCacheS==="undefined") return;   // サイズが変わるので恐竜モデルを作り直す
+    [_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
     if(typeof preloadEverything==="function") preloadEverything(); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
   if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
@@ -3731,7 +3805,7 @@ const worldHud=(function(){
                     if(im.complete && im.naturalWidth){ try{ ctx.drawImage(im, 92, 244, 583, 875); }catch(_){}}
                     else { im.addEventListener("load", ()=>{ if(colData===d && colPage===0) worldHud.renderCollectPage(); }, {once:true}); }
                     if(dogOnly){ if(GAME.dogLvMsg){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText(GAME.dogLvMsg,384,244+875+30); } }   // 犬のみ：レベルアップ表示
-                    else if(curTarget!=="dino"){ const dn=(typeof DINOS!=="undefined"&&DINOS[d.card.idx])?(DINOS[d.card.idx].fullName||DINOS[d.card.idx].label||"").replace(/^\S+\s*/,""):"";
+                    else if(curTarget!=="dino"){ const _li=linkedDinoIdx(d.card.idx); const dn=(typeof DINOS!=="undefined"&&DINOS[_li])?(DINOS[_li].fullName||DINOS[_li].label||"").replace(/^\S+\s*/,""):"";
                         ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" が加わった！",384,244+875+30); }   // 画像の下
                 }
                 if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.8)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でスタンバイに戻る",384,1180); }
@@ -5721,16 +5795,8 @@ addEventListener("resize",()=>{
     let csvRows=null, csvLoading=null;
     async function loadCsvRows(){
         if(csvRows) return csvRows;
-        if(csvLoading) return csvLoading;
-        const url=(typeof MV_CFG!=="undefined" && MV_CFG.csvUrl) ? MV_CFG.csvUrl : ((typeof IMG_BASE!=="undefined"?IMG_BASE:"")+"models.csv");
-        csvLoading=fetch(url).then(r=>r.ok?r.text():Promise.reject(new Error("csv "+r.status))).then(txt=>{
-            const lines=txt.replace(/^\uFEFF/,"").trim().split(/\r?\n/);
-            const headers=lines[0].split(",").map(h=>h.trim());
-            const rows=[];
-            for(let i=1;i<lines.length;i++){ if(!lines[i]) continue; const cols=lines[i].split(","); const o={}; headers.forEach((h,j)=>o[h]=(cols[j]||"").trim()); rows.push(o); }
-            csvRows=rows; classifyCsv(); return rows;
-        }).catch(()=>{ csvRows=[]; _csvArts=[]; _csvSites=[]; return csvRows; });   // 失敗時は空＝従来ラベルにフォールバック
-        return csvLoading;
+        try{ csvRows = await mvLoadCsvRows(); }catch(_){ csvRows=[]; }   // ゲーム本体と共用（二重fetch回避）
+        classifyCsv(); return csvRows;
     }
     // CSVを「出土品」と「遺構」に分類（name が sitePrefix で始まる行＝遺構）
     let _csvArts=[], _csvSites=[];
@@ -5783,14 +5849,12 @@ addEventListener("resize",()=>{
 
     // 既存データから対象の THREE.Object3D を取得（無ければ生成／無ければ null）
     function getObject(target, idx){
-        if(target==="dino" || target==="dino3"){
-            const smooth = (target==="dino3");   // dino3=なめらか / dino=ボクセル（プレビューは正規化サイズ）
-            const cache = smooth ? (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null)
-                                 : (typeof _dinoCacheB!=="undefined"?_dinoCacheB:null);
+        if(target==="dino"){
+            const cache = (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null);
             let m = cache && cache[idx];
             if(!m && typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[idx]){
                 const prev = (typeof dinoSmooth!=="undefined") ? dinoSmooth : false;
-                try{ dinoSmooth = smooth; m = makeDigDino(DINOS[idx]); }
+                try{ dinoSmooth = true; m = makeDigDino(DINOS[idx]); }
                 finally{ try{ dinoSmooth = prev; }catch(_){ } }
             }
             return m || null;
@@ -5801,7 +5865,7 @@ addEventListener("resize",()=>{
     // 対象に合わせて選択肢を作り直す
     function buildOptions(){
         const target = curDigTarget();
-        const isDino = (target==="dino" || target==="dino3");
+        const isDino = (target==="dino");
         const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8) : artCount();   // 出土品は8点（遺構表示時は+1）
         curList = []; sel.innerHTML = "";
         for(let i=0;i<n;i++){
@@ -5823,8 +5887,7 @@ addEventListener("resize",()=>{
     function dinoTrexHeight(smooth){
         const key = smooth ? "s" : "b";
         if(_dinoTrexHCache[key]) return _dinoTrexHCache[key];
-        const cache = smooth ? (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null)
-                             : (typeof _dinoCacheB!=="undefined"?_dinoCacheB:null);
+        const cache = (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null);   // 恐竜はなめらかのみ
         let ti = (typeof DINOS!=="undefined") ? DINOS.findIndex(d=>d && d.key==="trex") : 0; if(ti<0) ti=0;
         let m = cache && cache[ti];
         if(!m && typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[ti]){
@@ -5976,7 +6039,7 @@ addEventListener("resize",()=>{
 
     async function showModel(idx){
         const target = curDigTarget();
-        const isDino = (target==="dino" || target==="dino3");
+        const isDino = (target==="dino");
         applyAnnotation(isDino, idx);   // craftARt Go：出土品の説明ホットスポット＋関連URL（非表示準備）を反映
         setNote("読み込み中…");
         viewer.setAttribute("exposure", "1.0");
@@ -6005,7 +6068,7 @@ addEventListener("resize",()=>{
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
         try{
-            const factor = dinoFactor(target==="dino3", dinoSize);
+            const factor = dinoFactor(target==="dino", dinoSize);
             const url = await objToBlobUrl(obj, { scaleFactor:factor, bakeVoxelColors:true });
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
@@ -6020,7 +6083,7 @@ addEventListener("resize",()=>{
 
     // 対象に応じてトグルの表示を切替（出土品=画質／恐竜=サイズ）、選択状態を反映
     function updateToggles(){
-        const isDino = (function(){ const t=curDigTarget(); return t==="dino"||t==="dino3"; })();
+        const isDino = (function(){ const t=curDigTarget(); return t==="dino"; })();
         if(artLabel)  artLabel.style.display  = isDino ? "none" : "inline";
         if(artSeg)    artSeg.style.display    = isDino ? "none" : "inline-flex";
         if(dinoLabel) dinoLabel.style.display = isDino ? "inline" : "none";
@@ -6062,7 +6125,7 @@ addEventListener("resize",()=>{
         let params; try{ params=new URLSearchParams(location.search); }catch(_){ return; }
         if((params.get("view")||"").toLowerCase()!=="craftart") return;
         const t=(params.get("target")||"").toLowerCase();
-        if(["artifact","dino","dino3"].includes(t)){ try{ if(typeof chosenDigTarget!=="undefined") chosenDigTarget=t; }catch(_){ } }   // 引き継ぎは「発掘する対象」のみ
+        if(["artifact","dino"].includes(t)){ try{ if(typeof chosenDigTarget!=="undefined") chosenDigTarget=t; }catch(_){ } }   // 引き継ぎは「発掘する対象」のみ
         // 枠を即表示（背後のタイトルを隠す）。__mvPreviewPause はウォームアップ描画を止めないため“完了後”に true
         modal.style.display="flex";
         try{ sel.innerHTML='<option>読み込み中...</option>'; }catch(_){ }
