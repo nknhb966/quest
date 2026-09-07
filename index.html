@@ -660,6 +660,7 @@
             <span class="mvlabel" id="mvDinoLabel">サイズ</span>
             <div class="mvseg" id="mvDinoSeg">
                 <button data-s="fit" class="on">小さい</button>
+                <button data-s="mid">普通</button>
                 <button data-s="raw">大きい</button>
             </div>
         </div>
@@ -898,7 +899,7 @@ const ART_FILES  = ["model01_small.glb","model02_small.glb","model03_small.glb",
 const MV_CFG = {
     csvUrl:     IMG_BASE + "models.csv",   // モデル一覧CSV（path,name,description,url）
     sitePrefix: "遺構",                     // CSVの name がこの語で始まる行を「遺構」とみなす
-    showSite:   false,                     // 遺構を一覧末尾に表示するか（既定オフ・準備のみ）
+    showSite:   true,                      // 遺構を一覧末尾に表示（既定オン）
     showUrl:    false                      // 関連URLを表示するか（既定オフ・準備のみ）
 };
 const ART_IMGS   = ["40100","40200","40300","40400","40500","40600","40700","40800"]
@@ -5738,18 +5739,18 @@ addEventListener("resize",()=>{
         const pre=(typeof MV_CFG!=="undefined" && MV_CFG.sitePrefix)?MV_CFG.sitePrefix:"遺構";
         (csvRows||[]).forEach(r=>{ const nm=(r.name||"").trim(); if(nm.indexOf(pre)===0) _csvSites.push(r); else _csvArts.push(r); });
     }
-    function artFileCount(){ return (typeof ART_FILES!=="undefined" && ART_FILES.length) ? ART_FILES.length : 8; }   // 出土品数＝配列長
+    function artModelCount(){ return _csvArts.length || ((typeof ART_FILES!=="undefined" && ART_FILES.length)||8); }   // 出土品数＝CSVの出土品行数（CSV無ければ従来数）
     function siteCount(){ return _csvSites.length; }
-    function artCount(){ return artFileCount() + (window.MV_SHOW_SITE ? siteCount() : 0); }   // 出土品（+遺構全件）
-    function artInfo(idx){ const N=artFileCount(); return (idx<N) ? (_csvArts[idx]||null) : (_csvSites[idx-N]||null); }   // idx→CSV行（出土品→_csvArts／遺構→_csvSites）
-    // idx→{base, small}。出土品=ART_FILES、遺構=CSVのpathから base/ファイル名を導出（画質トグルは共通適用）
-    function artSrc(idx){
-        const N=artFileCount();
-        if(idx<N){ return { base:(typeof ART_BASE!=="undefined"?ART_BASE:""),
-                            small:(typeof ART_FILES!=="undefined" && ART_FILES[idx])?ART_FILES[idx]:("model"+String(idx+1).padStart(2,"0")+"_small.glb") }; }
-        const info=_csvSites[idx-N];
-        if(info && info.path){ const p=info.path, k=p.lastIndexOf("/"); if(k>=0) return { base:p.slice(0,k+1), small:p.slice(k+1) }; }
-        return { base:(typeof IMG_BASE!=="undefined"?IMG_BASE:""), small:"" };
+    function artCount(){ return artModelCount() + (window.MV_SHOW_SITE ? siteCount() : 0); }   // 出土品（+遺構全件）
+    function artInfo(idx){ const N=artModelCount(); return (idx<N) ? (_csvArts[idx]||null) : (_csvSites[idx-N]||null); }   // idx→CSV行（出土品→_csvArts／遺構→_csvSites）
+    // idx→GLBのフルURL（CSVの path を正とする）。相対 ./xxx.glb は IMG_BASE 基準で解決、http(s) はそのまま。
+    function modelUrl(idx){
+        const info=artInfo(idx);
+        if(info && info.path){ const p=info.path.trim(); if(/^https?:/i.test(p)) return p; return (typeof IMG_BASE!=="undefined"?IMG_BASE:"")+p.replace(/^\.?\//,""); }
+        // CSV無しフォールバック：ART_FILES のフル版（_small除去）
+        const N=artModelCount();
+        if(idx<N && typeof ART_BASE!=="undefined" && typeof ART_FILES!=="undefined" && ART_FILES[idx]) return ART_BASE+ART_FILES[idx].replace("_small","");
+        return "";
     }
     window.MV_SHOW_URL  = (window.MV_SHOW_URL  !== undefined) ? window.MV_SHOW_URL  : ((typeof MV_CFG!=="undefined") ? !!MV_CFG.showUrl  : false);   // 関連URLは既定で非表示（準備のみ）
     window.MV_SHOW_SITE = (window.MV_SHOW_SITE !== undefined) ? window.MV_SHOW_SITE : ((typeof MV_CFG!=="undefined") ? !!MV_CFG.showSite : false);   // 遺構は既定で非表示（準備のみ）
@@ -5810,36 +5811,34 @@ addEventListener("resize",()=>{
                 ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
                 : ((artInfo(i) && artInfo(i).name)
                     ? artInfo(i).name                                                            // CSVの名称（出土品名・遺構XXXX）
-                    : (i < artFileCount() ? ("出土品 No."+String(i+1).padStart(2,"0")) : "遺構"));  // フォールバック
+                    : (i < artModelCount() ? ("出土品 No."+String(i+1).padStart(2,"0")) : "遺構"));  // フォールバック
             sel.appendChild(opt); curList.push(i);
         }
     }
 
-    // 恐竜の共通縮小率：一番大きい種が DINO_MAX_H(m) になるよう「全種に同じ倍率」をかける。
-    //   → 種ごとの“大きさの比率”を保ったままAR/プレビュー表示できる（巨大化だけ抑える）。
-    const DINO_MAX_H = 0.30;
-    let _dinoFactorCache = {};
-    function dinoCommonFactor(smooth){
+    // 恐竜の共通倍率：ティラノ(DINOS内 key="trex")の高さを基準に「全種へ同じ倍率」をかける（種ごとの大小比率は保持）。
+    //   小さい=ティラノ0.30m ／ 普通=ティラノ1.5m ／ 大きい=等倍
+    const DINO_SMALL_H = 0.30, DINO_MID_H = 1.5;
+    let _dinoTrexHCache = {};
+    function dinoTrexHeight(smooth){
         const key = smooth ? "s" : "b";
-        if(_dinoFactorCache[key]) return _dinoFactorCache[key];
+        if(_dinoTrexHCache[key]) return _dinoTrexHCache[key];
         const cache = smooth ? (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null)
                              : (typeof _dinoCacheB!=="undefined"?_dinoCacheB:null);
-        const n = (typeof DINOS!=="undefined") ? DINOS.length : 8;
-        let maxH = 0;
-        for(let i=0;i<n;i++){
-            let m = cache && cache[i];
-            if(!m && typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[i]){
-                const prev=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
-                try{ dinoSmooth=smooth; m=makeDigDino(DINOS[i]); }finally{ try{ dinoSmooth=prev; }catch(_){ } }
-            }
-            if(m){ try{ m.updateMatrixWorld(true);
-                const b=new THREE.Box3().setFromObject(m); const s=b.getSize(new THREE.Vector3());
-                if(isFinite(s.y)) maxH=Math.max(maxH, s.y);
-            }catch(_){ } }
+        let ti = (typeof DINOS!=="undefined") ? DINOS.findIndex(d=>d && d.key==="trex") : 0; if(ti<0) ti=0;
+        let m = cache && cache[ti];
+        if(!m && typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[ti]){
+            const prev=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+            try{ dinoSmooth=smooth; m=makeDigDino(DINOS[ti]); }finally{ try{ dinoSmooth=prev; }catch(_){ } }
         }
-        const k = (maxH>0) ? (DINO_MAX_H/maxH) : 1;
-        _dinoFactorCache[key]=k;
-        return k;
+        let h=0;
+        if(m){ try{ m.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(m); const s=b.getSize(new THREE.Vector3()); if(isFinite(s.y)) h=s.y; }catch(_){ } }
+        _dinoTrexHCache[key]=h; return h;
+    }
+    function dinoFactor(smooth, mode){   // mode: fit(小さい)/mid(普通)/raw(大きい)
+        if(mode==="raw") return 1;
+        const th = dinoTrexHeight(smooth) || 1;
+        return ((mode==="mid") ? DINO_MID_H : DINO_SMALL_H) / th;
     }
 
     // 恐竜の頂点カラーを「パレットテクスチャ＋UV」に焼き込む。
@@ -5940,9 +5939,8 @@ addEventListener("resize",()=>{
         root.updateMatrixWorld(true); root.traverse(o=>{ o.visible=true; });
         return await new Promise((res,rej)=> ex.parse(root,(r)=>{ try{ res(URL.createObjectURL(new Blob([r],{type:"model/gltf-binary"}))); }catch(e){ rej(e);} }, rej, {binary:true,onlyVisible:false}));
     }
-    async function loadArtifactHiRes(base, smallFile, MAX){
+    async function loadArtifactHiRes(fullUrl, MAX){
         MAX = MAX||2048;
-        const fullUrl = base + smallFile.replace("_small","");
         const resp = await fetch(fullUrl); if(!resp.ok) throw new Error("fetch "+resp.status);
         const buf = await resp.arrayBuffer();
         const {json,bin}=parseGLB(buf);
@@ -5983,29 +5981,21 @@ addEventListener("resize",()=>{
         setNote("読み込み中…");
         viewer.setAttribute("exposure", "1.0");
 
-        // 出土品：軽い=_small(1024)そのまま／普通=2048・きれい=3072 は8Kを縮小して表示（元ファイルは無改変）
+        // 出土品・遺構：CSVの path（フル版）を読み、全画質でテクスチャ縮小のみ変える（_smallは経由しない）
         if(!isDino){
-            const _src  = artSrc(idx);   // 0..7=出土品／8=遺構（CSV pathから導出）
-            const base  = _src.base;
-            const small = _src.small;
-            if(artQuality==="mid" || artQuality==="hi"){
-                const MAX = (artQuality==="hi") ? 3072 : 2048;
-                setNote("読み込み中…（高精細）");
-                try{
-                    const url = await loadArtifactHiRes(base, small, MAX);
-                    if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
-                    lastBlobUrl = url;
-                    viewer.setAttribute("src", url);
-                    setNote("");
-                }catch(err){
-                    if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
-                    viewer.setAttribute("src", base+small);
-                    setNote("高精細版はこの端末の制限で表示できないため、軽い版を表示しています。");
-                }
-            }else{
-                if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
-                viewer.setAttribute("src", base+small);
+            const fullUrl = modelUrl(idx);
+            const MAX = (artQuality==="hi") ? 3072 : (artQuality==="mid" ? 2048 : 1024);   // 軽い1024／普通2048／きれい3072
+            setNote(artQuality==="hi" ? "読み込み中…（きれい）" : (artQuality==="mid" ? "読み込み中…（普通）" : "読み込み中…"));
+            try{
+                const url = await loadArtifactHiRes(fullUrl, MAX);
+                if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+                lastBlobUrl = url;
+                viewer.setAttribute("src", url);
                 setNote("");
+            }catch(err){
+                if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
+                viewer.setAttribute("src", fullUrl);   // 縮小に失敗した場合は原本を直接表示
+                setNote("この端末では縮小できないため、原本を表示しています。");
             }
             updateAR();
             return;
@@ -6015,7 +6005,7 @@ addEventListener("resize",()=>{
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
         try{
-            const factor = (dinoSize==="raw") ? 1 : dinoCommonFactor(target==="dino3");
+            const factor = dinoFactor(target==="dino3", dinoSize);
             const url = await objToBlobUrl(obj, { scaleFactor:factor, bakeVoxelColors:true });
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
@@ -6045,7 +6035,7 @@ addEventListener("resize",()=>{
     }
 
     async function openModal(){
-        _dinoFactorCache = {};   // ワールド設定/スタイル変更に備え、恐竜の共通倍率を測り直す
+        _dinoTrexHCache = {};   // 恐竜の基準倍率を測り直す
         window.__mvPreviewPause = true;   // プレビュー中はゲーム描画を停止（メモリ確保）
         try{ await loadCsvRows(); }catch(_){}   // 出土品の名称/説明/URLを取得（失敗してもフォールバック）
         buildOptions();
@@ -6085,7 +6075,7 @@ addEventListener("resize",()=>{
             if(typeof PRELOAD_DONE!=="undefined" && !PRELOAD_DONE && tries++<400){ setTimeout(fill,150); return; }   // プリロード完了を待つ
             done=true;
             window.__mvPreviewPause=true;   // ここで初めてゲーム描画停止（メモリ確保）
-            _dinoFactorCache={};
+            _dinoTrexHCache={};
             try{ await loadCsvRows(); }catch(_){ }
             buildOptions(); updateToggles();
             if(curList.length){ sel.value="0"; showModel(0); } else { setNote("モデルを準備できませんでした。"); }
