@@ -632,6 +632,7 @@
     #mvViewer{ width:100%; flex:1 1 auto; min-height:52vh; height:60vh; max-height:74vh;
         background:radial-gradient(ellipse at 50% 40%, #1a1436 0%, #0a0716 70%);
         border-radius:12px; --poster-color:transparent; }
+    #mvViewer::part(default-ar-button){ display:none !important; }   /* AR起動は「📱 ARで見る」に一本化 */
     #mvNote{ display:none; text-align:center; color:#c9bcff; font-size:13px; letter-spacing:1px; }
     .mvhint{ text-align:center; font-size:12px; color:rgba(190,178,225,.62); letter-spacing:.5px; }
     #mvToggleRow{ justify-content:center; }
@@ -685,6 +686,9 @@
         </model-viewer>
         <div class="mvurl" id="mvUrl" style="display:none"></div>
         <div class="mvhint">ドラッグで回転／ピンチ・ホイールで拡大縮小／2本指ドラッグ（右ドラッグ）で移動</div>
+        <div class="mvlibs" style="text-align:center; font-size:11px; color:rgba(180,170,210,.7); margin-top:6px; letter-spacing:.5px;">
+            使用ライブラリ：<a href="https://modelviewer.dev/" target="_blank" rel="noopener" style="color:#8ecbff; text-decoration:none;">model-viewer</a>、<a href="https://threejs.org/" target="_blank" rel="noopener" style="color:#8ecbff; text-decoration:none;">three.js</a>
+        </div>
     </div>
 </div>
 <!-- ▲▲ 追加ここまで ▲▲ -->
@@ -1426,9 +1430,13 @@ function mvBuildGLB(json,bin){
 }
 // フルGLBを読み、テクスチャをMAX(既定1024)に縮小した THREE.Object3D を返す（_smallを経由しない）
 async function loadArtifactRoot(fullUrl, MAX){
-    MAX=MAX||1024;
     const resp=await fetch(fullUrl); if(!resp.ok) throw new Error("fetch "+resp.status);
-    const {json,bin}=mvParseGLB(await resp.arrayBuffer());
+    const buf=await resp.arrayBuffer();
+    if(!MAX){   // きれい＝原本（無縮小）：そのままパース
+        const gltf0=await new Promise((res,rej)=> gltfLoader.parse(buf,"",res,rej));
+        const r0=gltf0.scene || (gltf0.scenes&&gltf0.scenes[0]); if(!r0) throw new Error("no scene"); return r0;
+    }
+    const {json,bin}=mvParseGLB(buf);
     if(!json) throw new Error("bad glb");
     let tex=null;
     if(json.images && json.images[0] && json.images[0].bufferView!=null && bin){
@@ -1464,9 +1472,10 @@ function mvShowCsvError(msg){
 }
 function mvHideCsvError(){ const el=document.getElementById("mvCsvErr"); if(el) el.style.display="none"; }
 (async function loadArtifacts(){
+    document.body.classList.add("preloading");   // 出土品ロード完了まで入室不可
     let arts=[];
     try{ await mvLoadCsvRows(); arts=mvArtifactRows(); }catch(_){ }
-    if(!arts.length){ mvShowCsvError(); return; }   // CSV取得失敗・空＝フォールバックせず通知のみ
+    if(!arts.length){ mvShowCsvError(); ARTIFACTS_DONE=true; _maybeFinishPreload(); return; }   // CSV失敗でもゲートは解放（メッセージのみ）
     const applyModel=(o,idx)=>{ if(!o) return;
         const box=new THREE.Box3().setFromObject(o);
         const size=box.getSize(new THREE.Vector3());
@@ -1479,6 +1488,7 @@ function mvHideCsvError(){ const el=document.getElementById("mvCsvErr"); if(el) 
         try{ applyModel(await loadArtifactRoot(url, 1024), idx); }catch(_){ failed++; }
     }));
     if(failed>0) mvShowCsvError("出土品モデルの一部を読み込めませんでした（"+failed+"/"+ART_COUNT+"）。通信環境をご確認ください。");
+    ARTIFACTS_DONE=true; _maybeFinishPreload();   // 出土品ロード完了→（ウォームアップ完了も揃えば）入室可能
 })();
 // 図鑑カード用の画像テクスチャ（発掘演出パネル）
 const texLoader = new THREE.TextureLoader();
@@ -2846,7 +2856,9 @@ function makeDigDino(dn){
 }
 // 恐竜モデルの先読み：②③の全16体を1体ずつ生成してキャッシュ（サイト読み込みと同時／完了までボタン無効）
 let _preloadTimer=null;
-let PRELOAD_DONE=false;        // プリロード＋GPUウォームアップ完了フラグ（入室可否）
+let PRELOAD_DONE=false;        // プリロード＋GPUウォームアップ＋出土品ロード完了フラグ（入室可否）
+let WARMUP_DONE=false, ARTIFACTS_DONE=false;
+function _maybeFinishPreload(){ if(WARMUP_DONE && ARTIFACTS_DONE){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); } }
 let _warmupTTL=0;             // 残りウォームアップフレーム数（描画ループで消化）
 let _warmupModels=[];         // ウォームアップ対象（恐竜キャッシュ）
 function preloadEverything(done){
@@ -2882,7 +2894,7 @@ function preloadEverything(done){
                 _warmupTTL = _warmupModels.length ? 4 : 0;   // 4フレーム描画してGPU転送を確定
             }catch(_){ _warmupTTL=0; }
             if(done) done();                                   // body.loading は解除（ただし入室は body.preloading で継続ロック）
-            if(_warmupTTL===0){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); }   // ウォームアップ対象なし＝即完了
+            if(_warmupTTL===0){ WARMUP_DONE=true; _maybeFinishPreload(); }   // ウォームアップ対象なし＝即完了（出土品ロードも待つ）
             return;
         }
         const job=jobs[j];
@@ -5228,21 +5240,37 @@ const _liteA=new THREE.Vector3(), _liteB=new THREE.Vector3(), _liteC=new THREE.V
 const _liteHP=new THREE.Vector3(), _liteCP=new THREE.Vector3(), _liteFaceQ=new THREE.Quaternion(), _liteFaceE=new THREE.Euler(), _liteOff=new THREE.Vector3();
 
 // 表示モデル生成（既存関数を再利用）：恐竜＝makeDigDino（標準姿勢）／出土品・遺構＝loadArtifactRoot(1024)
-async function liteBuildModel(target, idx, quality){
-    if(target==="dino"){
-        const pv=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
-        try{ dinoSmooth=true; return (typeof makeDigDino==="function" && typeof DINOS!=="undefined" && DINOS[idx])?makeDigDino(DINOS[idx]):null; }
-        finally{ try{ dinoSmooth=pv; }catch(_){ } }
-    }
-    const arts=mvArtifactRows(), sites=mvSiteRows(); const N=arts.length;
-    const info=(idx<N)?arts[idx]:sites[idx-N];
+// Lite用モデルキャッシュ：恐竜=専用neutralキャッシュ、出土品=(画質,idx)ごとにキャッシュ。切替時の再生成/再取得をなくす
+const _liteDino=[null,null,null,null,null,null,null,null];   // 恐竜（なめらか・neutral）
+const _liteArt={};   // key="q_idx" → THREE.Object3D
+function _liteDinoBuild(idx){
+    if(_liteDino[idx]) return _liteDino[idx];
+    if(typeof makeDigDino!=="function" || typeof DINOS==="undefined" || !DINOS[idx]) return null;
+    const pv=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+    try{ dinoSmooth=true; _liteDino[idx]=makeDigDino(DINOS[idx]); }finally{ try{ dinoSmooth=pv; }catch(_){ } }
+    if(_liteDino[idx]) _liteDino[idx].visible=false;
+    return _liteDino[idx];
+}
+async function _liteArtLoad(idx, quality){
+    const key=quality+"_"+idx; if(_liteArt[key]) return _liteArt[key];
+    const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N];
     if(!info || !info.path) return null;
-    const MAX=(quality==="hi")?3072:(quality==="mid"?2048:1024);   // 軽い1024／普通2048／きれい3072
-    try{ return await loadArtifactRoot(mvResolveUrl(info.path), MAX); }catch(_){ return null; }
+    const MAX=(quality==="hi")?0:(quality==="mid"?3072:1024);   // 軽い1024/普通3072/きれい原本
+    try{ const m=await loadArtifactRoot(mvResolveUrl(info.path), MAX); if(m){ m.visible=false; _liteArt[key]=m; } return m; }catch(_){ return null; }
+}
+// 入室時プリロード：対象の全モデルを先読み（恐竜=全種／出土品=選択画質で全点）
+async function litePrewarmAll(target, quality){
+    if(target==="dino"){ for(let i=0;i<(DINOS?DINOS.length:8);i++) _liteDinoBuild(i); return; }
+    const n=mvArtifactRows().length + (window.MV_SHOW_SITE?mvSiteRows().length:0);
+    for(let i=0;i<n;i++){ await _liteArtLoad(i, quality); }   // 逐次先読み（完了までAR開始しない）
+}
+function liteBuildModel(target, idx, quality){   // キャッシュから取得（プリロード済み前提）
+    if(target==="dino") return _liteDinoBuild(idx);
+    return _liteArt[quality+"_"+idx] || null;
 }
 function liteEnterScene(model, intrinsicScale){
     if(!LITE.group){ LITE.group=new THREE.Group(); scene.add(LITE.group); }
-    while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); _liteDispose(ch); }   // 旧モデルを完全破棄（残像防止）
+    while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; }   // 旧モデルはキャッシュのため破棄せず外すだけ
     LITE._worldVis=(typeof stage!=="undefined")?stage.visible:null; if(typeof stage!=="undefined") stage.visible=false;   // ゲーム世界を隠す
     LITE._dogVis=(typeof dog!=="undefined")?dog.visible:null; if(typeof dog!=="undefined") dog.visible=false;
     try{ if(typeof taClock!=="undefined") taClock.show(false); }catch(_){ }   // カウントダウン/時計を隠す
@@ -5266,7 +5294,7 @@ function liteEnterScene(model, intrinsicScale){
     LITE.scaling=LITE.rotating=false; LITE.lastCenter=LITE.lastCtrl=LITE.lastDir=null;
 }
 function liteExitScene(){
-    if(LITE.group){ while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); _liteDispose(ch); } LITE.group.visible=false; }   // モデルを完全破棄
+    if(LITE.group){ while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; } LITE.group.visible=false; }   // モデルはキャッシュ保持（破棄しない）
     if(LITE._worldVis!=null && typeof stage!=="undefined") stage.visible=LITE._worldVis;   // ゲーム世界を復帰
     if(LITE._dogVis!=null && typeof dog!=="undefined") dog.visible=LITE._dogVis;
     LITE.model=null; controllers.forEach(c=>{ if(c.userData) c.userData.liteHeld=false; });
@@ -5329,7 +5357,7 @@ function litePlaceHandUI(){   // ①②を左手のワールド位置に追従�
     LITE.ui.visible=true;
     // 手のひら＝開いて全表示／手の甲＝閉じて名称倍率だけ残す
     const open=litePalmFacing();
-    if(open!==LITE.palmOpen){ try{ if(open) chord([523,784,1047],0.05,"triangle",0.4); else chord([1047,784,523],0.05,"triangle",0.4); }catch(_){ } }   // 開く/閉じる音
+    if(open!==LITE.palmOpen){ try{ if(open) chord([131,165,196],0.06,"sine",0.4); else chord([196,165,131],0.06,"sine",0.4); }catch(_){ } }   // 開く/閉じる音（低音）
     LITE.palmOpen=open;
     LITE.buttons.forEach(b=>b.visible=open);
     LITE.selPanels.forEach(c=>c.visible=open);
@@ -5475,9 +5503,8 @@ async function liteSwitchModel(idx){
     // 名称・説明を更新
     if(LITE.target==="dino"){ LITE.curName=(DINOS[idx]&&DINOS[idx].label)||""; LITE.curDesc=""; }
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; LITE.curName=info?(info.name||""):""; LITE.curDesc=info?(info.description||""):""; }
-    const m=await liteBuildModel(LITE.target, idx, LITE.quality);
-    // 旧モデル破棄→新モデル配置（原寸/サイズ維持・中心寄せ・深度テスト）
-    while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); _liteDispose(ch); }
+    const m=liteBuildModel(LITE.target, idx, LITE.quality);   // キャッシュから同期取得（固まらない）
+    while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; }   // 旧モデルはキャッシュのため破棄せず外すだけ
     LITE.model=null;
     if(m){ m.scale.setScalar(LITE.intrinsic||1); m.updateMatrixWorld(true);
         const box=new THREE.Box3().setFromObject(m), ctr=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3()); LITE.modelDepth=sz.z||0; m.position.set(-ctr.x,-ctr.y,-ctr.z);
@@ -5502,7 +5529,8 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
     let session;
     try{ session = await navigator.xr.requestSession("immersive-ar", { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
     catch(e){ return false; }
-    const model = await liteBuildModel(target, idx, quality);
+    try{ await litePrewarmAll(target, quality); }catch(_){ }   // 入室時に選択画質で全モデル先読み（完了まで開始しない＝切替時に固まらない）
+    const model = liteBuildModel(target, idx, quality);   // キャッシュから同期取得
     // 名称・説明（CSV由来）を設定：出土品/遺構＝CSV、恐竜＝DINOSラベル
     let nm="", ds="";
     if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; ds=""; }
@@ -5650,7 +5678,7 @@ renderer.setAnimationLoop(()=>{
         if(_warmupTTL===0){
             for(const m of _warmupModels){ if(m) m.visible=false; }   // 片付け（revealDinoが表示時に再配置する）
             _warmupModels=[];
-            PRELOAD_DONE=true; document.body.classList.remove("preloading");   // ここで入室可能に
+            WARMUP_DONE=true; _maybeFinishPreload();   // ウォームアップ完了（出土品ロード完了も待って入室可能に）
         }
     }
 });
@@ -6288,10 +6316,11 @@ addEventListener("resize",()=>{
         if(m){ try{ m.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(m); const s=b.getSize(new THREE.Vector3()); if(isFinite(s.y)) h=s.y; }catch(_){ } }
         _dinoTrexHCache[key]=h; return h;
     }
-    function dinoFactor(smooth, mode){   // mode: fit(小さい)/mid(普通)/raw(大きい)
-        if(mode==="raw") return 1;
+    function dinoFactor(smooth, mode){   // mode: fit(小さい=trex0.3m)/mid(普通=trex1.5m)/raw(大きい=trex実寸)。全て共通倍率
         const th = dinoTrexHeight(smooth) || 1;
-        return ((mode==="mid") ? DINO_MID_H : DINO_SMALL_H) / th;
+        const trexReal = (typeof REAL_H!=="undefined" && REAL_H.trex) ? REAL_H.trex : 4.0;
+        const target = (mode==="mid") ? DINO_MID_H : (mode==="raw") ? trexReal : DINO_SMALL_H;
+        return target / th;
     }
 
     // 恐竜の頂点カラーを「パレットテクスチャ＋UV」に焼き込む。
@@ -6393,9 +6422,9 @@ addEventListener("resize",()=>{
         return await new Promise((res,rej)=> ex.parse(root,(r)=>{ try{ res(URL.createObjectURL(new Blob([r],{type:"model/gltf-binary"}))); }catch(e){ rej(e);} }, rej, {binary:true,onlyVisible:false}));
     }
     async function loadArtifactHiRes(fullUrl, MAX){
-        MAX = MAX||2048;
         const resp = await fetch(fullUrl); if(!resp.ok) throw new Error("fetch "+resp.status);
         const buf = await resp.arrayBuffer();
+        if(!MAX){ return URL.createObjectURL(new Blob([buf], {type:"model/gltf-binary"})); }   // きれい＝原本（無縮小）
         const {json,bin}=parseGLB(buf);
         if(!json) throw new Error("bad glb");
         // 1) テクスチャ画像を縮小（8Kを一気にGPUへ送らない）
@@ -6437,7 +6466,7 @@ addEventListener("resize",()=>{
         // 出土品・遺構：CSVの path（フル版）を読み、全画質でテクスチャ縮小のみ変える（_smallは経由しない）
         if(!isDino){
             const fullUrl = modelUrl(idx);
-            const MAX = (artQuality==="hi") ? 3072 : (artQuality==="mid" ? 2048 : 1024);   // 軽い1024／普通2048／きれい3072
+            const MAX = (artQuality==="hi") ? 0 : (artQuality==="mid" ? 3072 : 1024);   // 軽い1024／普通3072／きれい=原本(0)
             setNote(artQuality==="hi" ? "読み込み中…（きれい）" : (artQuality==="mid" ? "読み込み中…（普通）" : "読み込み中…"));
             try{
                 const url = await loadArtifactHiRes(fullUrl, MAX);
