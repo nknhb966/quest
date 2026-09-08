@@ -5264,7 +5264,7 @@ function liteExitScene(){
     if(LITE._dogVis!=null && typeof dog!=="undefined") dog.visible=LITE._dogVis;
     LITE.model=null; controllers.forEach(c=>{ if(c.userData) c.userData.liteHeld=false; });
     if(LITE.ui){ try{ (LITE.ui.parent||camera).remove(LITE.ui); }catch(_){ } _liteDispose(LITE.ui); LITE.ui=null; LITE.buttons=[]; LITE.infoPanel=LITE.descPanel=null; }   // HUDパネルを完全破棄
-    if(LITE.selGroup){ try{ (LITE.selGroup.parent||camera).remove(LITE.selGroup); }catch(_){ } _liteDispose(LITE.selGroup); LITE.selGroup=null; LITE.selPanels=[]; }   // ②を完全破棄
+    LITE.selPanels=[];   // ②はLITE.uiの子（uiのdisposeで破棄済み）
 }
 function liteGesture(){
     const held=controllers.filter(c=>c.userData && c.userData.liteHeld);
@@ -5297,15 +5297,29 @@ function liteGesture(){
     }
     LITE.scaling=LITE.rotating=false; LITE.initDist=0; LITE.lastCenter=LITE.lastCtrl=LITE.lastDir=null;
 }
-function litePlaceHandUI(){   // ①③④・②を「左手のワールド位置に追従（上下左右＋奥行き）＋常にプレイヤー正対」で配置
-    const lh=controllers.find(c=>c.userData && c.userData.handedness==="left"); if(!lh) return;
+function litePalmFacing(){   // 左手の手のひらがプレイヤー側か（コントローラ/ハンド共通・実機で軸/閾値微調整）
+    const lh=controllers.find(c=>c.userData && c.userData.handedness==="left"); if(!lh) return true;
+    lh.getWorldPosition(_liteHP); camera.getWorldPosition(_liteCP); lh.getWorldQuaternion(_liteQ);
+    const palm=_liteA.copy(LITE_PALM_AXIS).applyQuaternion(_liteQ).normalize();
+    const toCam=_liteB.copy(_liteCP).sub(_liteHP).normalize();
+    return palm.dot(toCam) > LITE_PALM_THRESH;
+}
+function litePlaceHandUI(){   // ①②を左手のワールド位置に追従＋常にプレイヤー正対。手のひらで開閉
+    if(!LITE.ui) return;
+    const lh=controllers.find(c=>c.userData && c.userData.handedness==="left");
+    if(!lh){ LITE.ui.visible=true; return; }
     lh.getWorldPosition(_liteHP); camera.getWorldPosition(_liteCP);
-    const yaw=Math.atan2(_liteCP.x-_liteHP.x, _liteCP.z-_liteHP.z);   // 手→カメラのヨー（プレイヤー正対）
+    const yaw=Math.atan2(_liteCP.x-_liteHP.x, _liteCP.z-_liteHP.z);
     _liteFaceQ.setFromEuler(_liteFaceE.set(0, yaw, 0));
-    if(LITE.ui){ if(LITE.ui.parent!==scene){ if(LITE.ui.parent) LITE.ui.parent.remove(LITE.ui); scene.add(LITE.ui); }
-        _liteOff.set(-0.50,-0.18,0).applyQuaternion(_liteFaceQ); LITE.ui.position.copy(_liteHP).add(_liteOff); LITE.ui.quaternion.copy(_liteFaceQ); }   // ①③④（下20cm・左30cm移動込み）
-    if(LITE.selGroup){ if(LITE.selGroup.parent!==scene){ if(LITE.selGroup.parent) LITE.selGroup.parent.remove(LITE.selGroup); scene.add(LITE.selGroup); }
-        _liteOff.set(0.45,-0.18,0).applyQuaternion(_liteFaceQ); LITE.selGroup.position.copy(_liteHP).add(_liteOff); LITE.selGroup.quaternion.copy(_liteFaceQ); }   // ②（下20cm・左30cm移動込み）
+    if(LITE.ui.parent!==scene){ if(LITE.ui.parent) LITE.ui.parent.remove(LITE.ui); scene.add(LITE.ui); }
+    _liteOff.set(0, 0.02, 0).applyQuaternion(_liteFaceQ); LITE.ui.position.copy(_liteHP).add(_liteOff); LITE.ui.quaternion.copy(_liteFaceQ);
+    LITE.ui.visible=true;
+    // 手のひら＝開いて全表示／手の甲＝閉じて名称倍率だけ残す
+    const open=litePalmFacing(); LITE.palmOpen=open;
+    LITE.buttons.forEach(b=>b.visible=open);
+    LITE.selPanels.forEach(c=>c.visible=open);
+    if(LITE.descPanel) LITE.descPanel.visible = open && !LITE.isDino && !!LITE.curDesc;
+    if(LITE.infoPanel) LITE.infoPanel.visible=true;   // 名称・倍率は常時
 }
 function liteArTick(){
     if(!LITE.group) return;
@@ -5315,7 +5329,7 @@ function liteArTick(){
         if(typeof placeYawFront==="function") placeYawFront(LITE.group, 0, dist); else LITE.group.position.set(0,1.3,-dist);
         LITE.targetPos.copy(LITE.group.position); LITE.targetQuat.copy(LITE.group.quaternion); LITE.placeFrames--;
     }
-    if(LITE.mode==="model" && LITE.opEnabled!==false) liteGesture();   // モデル操作モード＆操作可能時のみ
+    if(LITE.opEnabled!==false) liteGesture();   // モデル操作可能時（右手レイがパネルに当たった時はliteHeldが立たない＝パネル優先）
     LITE.group.position.lerp(LITE.targetPos, 0.2);
     LITE.group.scale.lerp(LITE.targetScale, 0.2);
     LITE.group.quaternion.slerp(LITE.targetQuat, 0.2);
@@ -5325,23 +5339,21 @@ function liteArTick(){
 controllers.forEach(c=>{
     c.addEventListener("selectstart", ()=>{ if(!LITE.active) return;
         if(c===rightCtrl){
-            const now=performance.now();
-            if(now - LITE._lastRightPress < 350){ LITE._lastRightPress=0; if(typeof liteToggleMode==="function") liteToggleMode(); c.userData.litePickConsumed=true; return; }   // 右トリガー2回＝パネル操作/モデル操作 切替
-            LITE._lastRightPress=now;
-            if(typeof liteRightPress==="function" && liteRightPress()){ c.userData.litePickConsumed=true; return; }   // ①は常に操作可
-            if(LITE.mode==="panel"){ if(typeof liteSelectPick==="function" && liteSelectPick()){ c.userData.litePickConsumed=true; return; } c.userData.litePickConsumed=true; return; }   // パネル操作：②のみ（モデルは動かさない）
-            c.userData.litePickConsumed=false; if(c.userData) c.userData.liteHeld=true;   // モデル操作：ジェスチャ開始
-            return;
+            if(typeof litePickAny==="function" && litePickAny()){ c.userData.litePickConsumed=true; return; }   // 右手レイが①②に当たればパネル操作を優先
+            c.userData.litePickConsumed=false; c.userData.liteHeld=true; return;   // 外れたら従来のジェスチャ
         }
-        if(LITE.mode==="model" && c.userData) c.userData.liteHeld=true;   // 左手：モデル操作モードのみジェスチャ
+        if(c.userData) c.userData.liteHeld=true;   // 左手：ジェスチャ
     });
     c.addEventListener("selectend",   ()=>{ if(LITE.active && c.userData){ c.userData.liteHeld=false; c.userData.litePickConsumed=false; } });
 });
 // ①③④ パネル（カメラ固定HUD）。右手レイで①ボタンを操作
-function liteMakePanel(w,h,cw,ch){
+const LITE_DENS=2400, LITE_FPX=26;   // canvas解像度(px/m)／全パネル共通の文字px
+const LITE_PALM_AXIS=new THREE.Vector3(0,-1,0), LITE_PALM_THRESH=0.2;   // 左手ローカルの手のひら法線・表示閾値（実機で微調整）
+function liteMakePanel(w,h){
+    const cw=Math.max(8,Math.round(w*LITE_DENS)), ch=Math.max(8,Math.round(h*LITE_DENS));   // 平面と同アスペクト＝文字の伸縮なし
     const canvas=document.createElement("canvas"); canvas.width=cw; canvas.height=ch;
     const tex=new THREE.CanvasTexture(canvas); if("colorSpace" in tex) tex.colorSpace=THREE.SRGBColorSpace;
-    const mat=new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthTest:true, depthWrite:false });   // 深度テスト有効（モデルと前後で隠れ合う）
+    const mat=new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthTest:true, depthWrite:false });   // 深度テスト有効
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h), mat); mesh.renderOrder=3000;
     mesh.userData.ctx=canvas.getContext("2d"); mesh.userData.tex=tex; mesh.userData.cw=cw; mesh.userData.ch=ch;
     return mesh;
@@ -5353,53 +5365,61 @@ function liteBuildUI(){
     if(LITE.ui){ try{ (LITE.ui.parent||camera).remove(LITE.ui); }catch(_){ } _liteDispose(LITE.ui); LITE.ui=null; }   // 旧UIを完全破棄（残像防止）
     LITE.ui=new THREE.Group(); scene.add(LITE.ui);   // ワールド配置（毎フレーム左手位置＋プレイヤー正対で追従）
     LITE.buttons=[];
-    const bw=0.32, bh=0.10, colX=0;
-    // ③ 名称＋倍率＝左手の位置(y=0)。その下に余白少なめ(0.115間隔)で①3ボタン
-    const info=liteMakePanel(bw,bh,1024,320); info.position.set(colX,0,0); info.userData.kind="info"; LITE.ui.add(info); LITE.infoPanel=info;
-    const acts=["reset","info","op"], ys=[-0.115,-0.23,-0.345];
-    for(let i=0;i<3;i++){ const b=liteMakePanel(bw,bh,1024,320); b.position.set(colX, ys[i], 0); b.userData.kind="btn"; b.userData.act=acts[i]; LITE.ui.add(b); LITE.buttons.push(b); }
-    // ④ 説明パネルは liteRebuildDesc で毎回生成（アスペクト一致・可変高さ）
+    // A3レイアウト：左A4=①、右A4=②。A4縦=幅0.21×高0.297。全体幅0.42。
+    const A4W=0.21, A4H=0.297, top=A4H/2;   // A4上辺
+    const colL=-A4W/2, colR=A4W/2;   // ①中心 / ②中心
+    // ① 縦：名称倍率 → リセット → モデル操作 → 説明
+    const bw=A4W*0.94, bh=0.05, gap=0.008;
+    const info=liteMakePanel(bw,bh); info.position.set(colL, top-bh/2, 0); info.userData.kind="info"; LITE.ui.add(info); LITE.infoPanel=info;
+    const resetY=top-bh/2-(bh+gap), opY=resetY-(bh+gap);
+    const rb=liteMakePanel(bw,bh); rb.position.set(colL, resetY, 0); rb.userData.kind="btn"; rb.userData.act="reset"; LITE.ui.add(rb); LITE.buttons.push(rb);
+    const ob=liteMakePanel(bw,bh); ob.position.set(colL, opY, 0); ob.userData.kind="btn"; ob.userData.act="op"; LITE.ui.add(ob); LITE.buttons.push(ob);
+    LITE._descTop = opY - bh/2 - gap;   // 説明パネルの上辺基準
+    LITE._colL=colL; LITE._descW=bw;
     LITE.descPanel=null;
-    LITE._uiScale=-1; liteDrawButtons(); liteRebuildDesc(); liteDrawInfo();
+    // ② モデルえらび（右A4：3列×N）
+    liteBuildSelectInto(colR, top, A4W);
+    liteDrawButtons(); liteRebuildDesc(); liteDrawInfo();
 }
 function liteDrawButtons(){
     const st={reset:{t:"サイズ＋回転リセット",bg:"#333",fg:"#fff"},
-              info:{t:LITE.showInfo?"説明表示":"説明非表示", bg:LITE.showInfo?"#333":"#ccc", fg:LITE.showInfo?"#fff":"#000"},
               op:{t:LITE.opEnabled?"モデル操作可能":"モデル操作不可", bg:LITE.opEnabled?"#e0533a":"#f3d3cc", fg:LITE.opEnabled?"#fff":"#8a2a17"}};
-    LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,6,6,cw-12,ch-12,40); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold 79px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });   // 文字1.8倍
+    LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; if(!s) return; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,3,3,cw-6,ch-6,18); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });
 }
-function liteRebuildDesc(){   // 説明パネルを毎回破棄→新規生成（文字の伸縮なし・見切れなし）
+function liteRebuildDesc(){   // 説明パネルを毎回破棄→新規生成（文字統一・伸縮なし・見切れなし）。説明ボタン廃止＝説明があれば表示
     if(LITE.descPanel){ try{ if(LITE.descPanel.parent) LITE.descPanel.parent.remove(LITE.descPanel); }catch(_){ } _liteDispose(LITE.descPanel); LITE.descPanel=null; }
-    if(LITE.isDino || !LITE.curDesc || !LITE.ui) return;   // 恐竜/説明なしは作らない
-    const cwPx=672, fs=43, lh=57, pad=26, maxChars=14;
+    if(LITE.isDino || !LITE.curDesc || !LITE.ui) return;   // 説明が無ければ非表示（恐竜含む）
+    const worldW=(LITE._descW||0.19), pad=0.006, fpxW=LITE_FPX/LITE_DENS;   // 文字の世界幅
+    const maxChars=Math.max(6, Math.floor((worldW-pad*2)/(fpxW*0.62)));   // 1行あたり文字数（全角近似）
     const text=LITE.curDesc; const nLines=Math.max(1, Math.ceil(text.length/maxChars));
-    const chPx=Math.round(pad*2 + nLines*lh);
-    const worldW=0.42, worldH=worldW*chPx/cwPx;   // canvasと同アスペクト
-    const d=liteMakePanel(worldW, worldH, cwPx, chPx); d.userData.kind="desc";
-    d.position.set(0.42, 0.05 - worldH/2, 0);   // ①③④の右・上辺を名称倍率パネル上辺(+0.05)に揃える
+    const lineH=fpxW*1.25, worldH=pad*2 + nLines*lineH;
+    const d=liteMakePanel(worldW, worldH); d.userData.kind="desc";
+    const colL=(LITE._colL||-0.105), topEdge=(LITE._descTop||0);
+    d.position.set(colL, topEdge - worldH/2, 0);   // ①列の下・上辺=モデル操作ボタンの下
     LITE.ui.add(d); LITE.descPanel=d;
-    _liteText(d,(ctx,cw2,ch2)=>{ ctx.fillStyle="rgba(18,12,32,.92)"; _liteRound(ctx,0,0,cw2,ch2,24); ctx.fill(); ctx.strokeStyle="rgba(210,180,120,.5)"; ctx.lineWidth=3; ctx.stroke();
-        ctx.fillStyle="#eafff9"; ctx.font=fs+"px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top"; let y=pad;
-        for(let i=0;i<text.length;i+=maxChars){ ctx.fillText(text.substring(i,i+maxChars), pad, y); y+=lh; } });
-    d.visible = !!LITE.showInfo;
+    _liteText(d,(ctx,cw2,ch2)=>{ ctx.fillStyle="rgba(18,12,32,.93)"; _liteRound(ctx,0,0,cw2,ch2,14); ctx.fill(); ctx.strokeStyle="rgba(210,180,120,.5)"; ctx.lineWidth=2; ctx.stroke();
+        ctx.fillStyle="#eafff9"; ctx.font=LITE_FPX+"px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
+        const p=pad*LITE_DENS, lh=lineH*LITE_DENS; let y=p;
+        for(let i=0;i<text.length;i+=maxChars){ ctx.fillText(text.substring(i,i+maxChars), p, y); y+=lh; } });
 }
-function liteDrawDesc(){ if(LITE.descPanel) LITE.descPanel.visible = !!LITE.showInfo && !LITE.isDino && !!LITE.curDesc; }   // 表示/非表示のみ
+function liteDrawDesc(){ if(LITE.descPanel) LITE.descPanel.visible = !LITE.isDino && !!LITE.curDesc; }   // 説明有無で表示（ボタン廃止）
 function liteDrawInfo(){
     const p=LITE.infoPanel; if(!p) return; const pct=Math.round((LITE.group?LITE.group.scale.x:1)*100);
-    _liteText(p,(ctx,cw,ch)=>{ ctx.fillStyle="rgba(12,10,26,.85)"; _liteRound(ctx,0,0,cw,ch,40); ctx.fill();
-        ctx.fillStyle="#ffe6a6"; ctx.font="bold 74px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(LITE.curName||"",40,ch/2);
-        ctx.fillStyle="#8ff0ff"; ctx.textAlign="right"; ctx.fillText(pct+"%",cw-40,ch/2); });
+    _liteText(p,(ctx,cw,ch)=>{ ctx.fillStyle="rgba(12,10,26,.9)"; _liteRound(ctx,0,0,cw,ch,18); ctx.fill();
+        ctx.fillStyle="#ffe6a6"; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(LITE.curName||"",14,ch/2);
+        ctx.fillStyle="#8ff0ff"; ctx.textAlign="right"; ctx.fillText(pct+"%",cw-14,ch/2); });
 }
 function liteUpdateUI(){ if(!LITE.ui) return; const pct=Math.round((LITE.group.scale.x||1)*100); if(pct!==LITE._uiScale){ LITE._uiScale=pct; liteDrawInfo(); } }   // 倍率が変わった時だけ③再描画
-function liteRightPress(){   // 右手レイで①ボタン判定（押下時）。ボタンを操作したら true
+function litePickAny(){   // 右手レイで①ボタン・②セルを判定（可視のもののみ）。当たれば実行し true
     if(!LITE.active || !LITE.ui || !rightCtrl) return false;
     rightCtrl.getWorldPosition(_liteRO); _liteRD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_liteRQ)).normalize();
     _liteRay.set(_liteRO,_liteRD);
-    const hit=_liteRay.intersectObjects(LITE.buttons,false)[0]; if(!hit) return false;
-    const act=hit.object.userData.act;
-    if(act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); try{ chord([784,523,392],0.05,"triangle",0.45); }catch(_){ } }   // リセット：下降音
-    else if(act==="info"){ LITE.showInfo=!LITE.showInfo; liteDrawButtons(); liteDrawDesc(); try{ beep(LITE.showInfo?900:520,0.08,0.3,"sine"); }catch(_){ } }   // 表示切替：明/暗
-    else if(act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); try{ beep(LITE.opEnabled?660:330,0.09,0.3,"square"); }catch(_){ } }   // 操作可否：オン/オフ
+    const targets=[]; LITE.buttons.forEach(b=>{ if(b.visible) targets.push(b); }); LITE.selPanels.forEach(c=>{ if(c.visible) targets.push(c); });
+    const hit=_liteRay.intersectObjects(targets,false)[0]; if(!hit) return false;
+    const o=hit.object;
+    if(o.userData.act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); try{ chord([784,523,392],0.05,"triangle",0.45); }catch(_){ } }
+    else if(o.userData.act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); try{ beep(LITE.opEnabled?660:330,0.09,0.3,"square"); }catch(_){ } }
+    else if(o.userData.kind==="sel"){ const idx=o.userData.selIdx; if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } }
     return true;
 }
 
@@ -5409,22 +5429,22 @@ function liteSelList(){   // 現在の対象のモデル一覧 [{idx,name}]
     const arts=mvArtifactRows(), sites=mvSiteRows(), a=[]; arts.forEach((r,i)=>a.push({idx:i, name:r.name||("出土品"+(i+1))}));
     if(window.MV_SHOW_SITE) sites.forEach((r,j)=>a.push({idx:arts.length+j, name:r.name||"遺構"})); return a;
 }
-function liteBuildSelect(){
-    if(LITE.selGroup){ try{ (LITE.selGroup.parent||camera).remove(LITE.selGroup); }catch(_){ } _liteDispose(LITE.selGroup); LITE.selGroup=null; }
-    LITE.selGroup=new THREE.Group(); scene.add(LITE.selGroup); LITE.selPanels=[];   // ワールド配置（左手追従＋正対）
-    const list=liteSelList(); const cols=3, totalW=0.9, gx=totalW/cols, cw=gx*0.92, ch=0.20, gy=ch+0.01;   // 全体幅0.9m・セル高さ0.2m
-    const CW=480, CH=Math.round(CW*ch/cw);   // canvasを平面と同アスペクト（文字の伸縮なし）
-    const yTop = 0.05 - ch/2;   // 上辺(=+0.05)を「名称＋倍率」パネル上辺(bh/2)に合わせる
+function liteBuildSelectInto(cx, top, A4W){
+    // 旧②セルはLITE.uiのdisposeで一緒に破棄済み。ここでは新規生成のみ。
+    LITE.selPanels=[];
+    const list=liteSelList(); const cols=3, gx=A4W/cols, cw=gx*0.92, ch=cw, gy=ch+0.006;   // 正方セル・3列
+    const yTop=top-ch/2;
     list.forEach((it,i)=>{ const r=Math.floor(i/cols), c=i%cols;
-        const cell=liteMakePanel(cw,ch,CW,CH); cell.position.set((c-(cols-1)/2)*gx, yTop - r*gy, 0); cell.userData.selIdx=it.idx; cell.userData.name=it.name; LITE.selGroup.add(cell); LITE.selPanels.push(cell); });
+        const cell=liteMakePanel(cw,ch); cell.position.set(cx + (c-(cols-1)/2)*gx, yTop - r*gy, 0); cell.userData.selIdx=it.idx; cell.userData.name=it.name; cell.userData.kind="sel"; LITE.ui.add(cell); LITE.selPanels.push(cell); });
     liteDrawSelect();
 }
+function liteBuildSelect(){ /* ①②統合のため liteBuildUI 内で構築（後方互換の空関数） */ }
 function _liteWrap(ctx, text, maxW){ const out=[]; let line=""; for(const ch of (text||"")){ const t=line+ch; if(ctx.measureText(t).width>maxW && line){ out.push(line); line=ch; } else line=t; } if(line) out.push(line); return out; }
 function liteDrawSelect(){
     LITE.selPanels.forEach(cell=>{ const on=(cell.userData.selIdx===LITE.curIdx);
-        _liteText(cell,(ctx,cw,ch)=>{ ctx.fillStyle=on?"#1d4ed8":"rgba(20,26,44,.92)"; _liteRound(ctx,6,6,cw-12,ch-12,26); ctx.fill(); ctx.strokeStyle=on?"#8ff0ff":"rgba(150,170,210,.5)"; ctx.lineWidth=4; ctx.stroke();
-            ctx.fillStyle="#eaf2ff"; ctx.font="bold 40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-            const lines=_liteWrap(ctx, cell.userData.name||"", cw-40); const lh=48; let y=ch/2-(lines.length-1)*lh/2;
+        _liteText(cell,(ctx,cw,ch)=>{ ctx.fillStyle=on?"#1d4ed8":"rgba(20,26,44,.92)"; _liteRound(ctx,3,3,cw-6,ch-6,14); ctx.fill(); ctx.strokeStyle=on?"#8ff0ff":"rgba(150,170,210,.5)"; ctx.lineWidth=3; ctx.stroke();
+            ctx.fillStyle="#eaf2ff"; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            const lines=_liteWrap(ctx, cell.userData.name||"", cw-10); const lh=LITE_FPX*1.15; let y=ch/2-(lines.length-1)*lh/2;
             lines.forEach(l=>{ ctx.fillText(l, cw/2, y); y+=lh; }); }); });
 }
 function liteSetDim(obj, dim){ if(!obj) return; obj.traverse(x=>{ if(x.isMesh && x.material){ const ms=Array.isArray(x.material)?x.material:[x.material]; ms.forEach(m=>{ if(m.userData._o0===undefined) m.userData._o0=(m.opacity!==undefined?m.opacity:1); m.transparent=true; m.opacity= dim? m.userData._o0*0.28 : m.userData._o0; }); } }); }
@@ -5448,9 +5468,10 @@ async function liteSwitchModel(idx){
         m.traverse(o=>{ if(o.isMesh&&o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(mm=>{ mm.depthTest=true; mm.depthWrite=true; mm.needsUpdate=true; }); } });
         m.visible=true; LITE.model=m; LITE.group.add(m); }
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4;   // 切替時：サイズ/回転/位置リセット→正面(0.8+奥行き/2)へ再配置
-    liteDrawInfo(); liteRebuildDesc(); liteDrawSelect(); liteApplyDim();
+    liteDrawInfo(); liteRebuildDesc(); liteDrawSelect();
 }
-function liteSelectPick(){   // ②セルを右手レイで判定（パネル操作モードのみ）
+function liteSelectPick(){ return (typeof litePickAny==="function") && litePickAny(); }
+function _liteSelectPickOld(){   // 旧
     if(!LITE.selGroup || !rightCtrl) return false;
     rightCtrl.getWorldPosition(_liteRO); _liteRD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_liteRQ)).normalize();
     _liteRay.set(_liteRO,_liteRD);
@@ -5473,9 +5494,7 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
     LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino");   // 恐竜フラグ（説明パネル非表示に使用）
     LITE.target=target; LITE.quality=quality; LITE.intrinsic=intrinsicScale||1; LITE.curIdx=idx; LITE.mode="model"; LITE._lastRightPress=0;   // 段階4：セッション情報
     liteEnterScene(model, intrinsicScale);
-    liteBuildUI();
-    liteBuildSelect();   // ②モデルえらび
-    liteApplyDim();
+    liteBuildUI();   // ①②をまとめて構築
     window.__mvPreviewPause=false;   // レンダループを動かす（LITE分岐で処理）
     try{ await renderer.xr.setSession(session); }catch(e){ liteExitScene(); return false; }
     LITE.active=true;
