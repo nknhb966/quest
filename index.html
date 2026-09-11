@@ -3739,7 +3739,7 @@ document.getElementById("dexReset").onclick=()=>{
     dexData={}; saveDex(dexData); refreshDexHTML();
     if(typeof dexPanel!=="undefined") dexPanel.draw();
     // ワールド上の発掘物・演出を消す
-    artModels.forEach(m=>{ if(m) m.visible=false; });
+    artModels.forEach(m=>{ if(m){ m.visible=false; if(m.userData.nameLabel){ stage.remove(m.userData.nameLabel); m.userData.nameLabel=null; } } });   // 出土品：モデルと同時に名称ラベルも消す
     clearDinoReveal();
     closeHologram();
     infoPanels.forEach(p=>{ if(p.userData.link) stage.remove(p.userData.link); stage.remove(p); }); infoPanels.length=0;
@@ -3781,7 +3781,7 @@ function startGame(desktop){
     coachTimer=2; wasDigReady=false;
     clearTargets();
     // 出土品モデルを一旦隠す
-    artModels.forEach(m=>{ if(m) m.visible=false; });
+    artModels.forEach(m=>{ if(m){ m.visible=false; if(m.userData.nameLabel){ stage.remove(m.userData.nameLabel); m.userData.nameLabel=null; } } });   // 出土品：モデルと同時に名称ラベルも消す
     clearDinoReveal();
     closeHologram();
     infoPanels.forEach(p=>{ if(p.userData.link) stage.remove(p.userData.link); stage.remove(p); }); infoPanels.length=0;
@@ -4141,7 +4141,7 @@ function dexFoundCount(){ let n=0; for(let i=0;i<8;i++) if(dexData[i]&&dexData[i
 // 走行ごとにワールドの発掘結果を片付ける
 function clearRunWorld(){
     clearTargets();
-    artModels.forEach(m=>{ if(m) m.visible=false; });
+    artModels.forEach(m=>{ if(m){ m.visible=false; if(m.userData.nameLabel){ stage.remove(m.userData.nameLabel); m.userData.nameLabel=null; } } });   // 出土品：モデルと同時に名称ラベルも消す
     clearDinoReveal();
     closeHologram();
     infoPanels.forEach(p=>{ if(p.userData.link) stage.remove(p.userData.link); stage.remove(p); }); infoPanels.length=0;
