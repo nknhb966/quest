@@ -1432,7 +1432,7 @@ function mvBuildGLB(json,bin){
 // 「きれい」の実効上限解像度：端末のGPU上限とiOS事情を考慮（原本が大きすぎる端末でのクラッシュ回避）
 // 検証用フラグ：true にすると「きれい」を端末に関係なく原本（無縮小）で読む。
 // クラッシュするようなら false に戻す（iOSは4096上限キャップ）。
-const MV_HI_ORIGINAL = true;   // ← 検証中：原本。戻すときは false
+const MV_HI_ORIGINAL = false;   // 原本はiPhoneでクラッシュのため無効（iOSは4096上限キャップ／PCは原本）
 function liteHiMax(){
     if(MV_HI_ORIGINAL) return 0;   // 原本（無縮小）
     let gpuMax=4096; try{ if(renderer && renderer.capabilities && renderer.capabilities.maxTextureSize) gpuMax=renderer.capabilities.maxTextureSize; }catch(_){ }
