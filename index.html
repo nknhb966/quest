@@ -5268,8 +5268,12 @@ async function _liteArtLoad(idx, quality){
     try{ const m=await loadArtifactRoot(mvResolveUrl(info.path), MAX); if(m){ m.visible=false; _liteArt[key]=m; } return m; }catch(_){ return null; }
 }
 // 入室時プリロード：対象の全モデルを先読み（恐竜=全種／出土品=選択画質で全点）
+function _litePurgeArtExcept(q){   // 現在の画質以外の出土品キャッシュを破棄（常に1画質分だけ保持）
+    for(const k in _liteArt){ if(k.indexOf(q+"_")!==0){ try{ const m=_liteArt[k]; if(m && m.parent) m.parent.remove(m); _liteDispose(m); }catch(_){ } delete _liteArt[k]; } }
+}
 async function litePrewarmAll(target, quality){
     if(target==="dino"){ for(let i=0;i<(DINOS?DINOS.length:8);i++) _liteDinoBuild(i); return; }
+    _litePurgeArtExcept(quality);   // 画質切替時：旧画質のモデル/テクスチャをGPUごと破棄（メモリ増加を防止）
     const n=mvArtifactRows().length + (window.MV_SHOW_SITE?mvSiteRows().length:0);
     for(let i=0;i<n;i++){ await _liteArtLoad(i, quality); }   // 逐次先読み（完了までAR開始しない）
 }
@@ -6466,6 +6470,7 @@ addEventListener("resize",()=>{
     }
 
     async function showModel(idx){
+        const _tok = (showModel._tok = (showModel._tok||0)+1);   // 連続切替：最新の要求だけ反映
         const target = curDigTarget();
         const isDino = (target==="dino");
         applyAnnotation(isDino, idx);   // craftARt Go：出土品の説明ホットスポット＋関連URL（非表示準備）を反映
@@ -6479,11 +6484,13 @@ addEventListener("resize",()=>{
             setNote(artQuality==="hi" ? "読み込み中…（きれい）" : (artQuality==="mid" ? "読み込み中…（普通）" : "読み込み中…"));
             try{
                 const url = await loadArtifactHiRes(fullUrl, MAX);
+                if(_tok !== showModel._tok){ try{ URL.revokeObjectURL(url); }catch(_){ } return; }   // 新しい切替が来た＝この結果は破棄して中止（積み上げ防止）
                 if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
                 lastBlobUrl = url;
                 viewer.setAttribute("src", url);
                 setNote("");
             }catch(err){
+                if(_tok !== showModel._tok) return;   // 古い要求は無視
                 if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
                 viewer.setAttribute("src", fullUrl);   // 縮小に失敗した場合は原本を直接表示
                 setNote("この端末では縮小できないため、原本を表示しています。");
