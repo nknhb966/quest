@@ -2794,8 +2794,8 @@ function spawnTarget(tier, forcedIdx=null){
     GAME.recent.unshift(idx); GAME.recent=GAME.recent.slice(0,8);
     return t;
 }
-function clearAllNameLabels(){   // 出土品・恐竜の名称ラベルを全て除去（リセット/対象切替時の残存防止）
-    const rm=(m)=>{ if(m && m.userData && m.userData.nameLabel){ stage.remove(m.userData.nameLabel); m.userData.nameLabel=null; } };
+function clearAllNameLabels(){   // 名称ラベルの掃除：ただし「表示中のモデル」のラベルは残す（表示中は名称も表示するため／リザルト・スタンバイで名称が消えるのを防ぐ）
+    const rm=(m)=>{ if(m && m.userData && m.userData.nameLabel && !m.visible){ stage.remove(m.userData.nameLabel); m.userData.nameLabel=null; } };
     if(typeof artModels!=="undefined") artModels.forEach(rm);
     if(typeof _dinoCacheS!=="undefined") _dinoCacheS.forEach(rm);
     if(typeof dinoDigModels!=="undefined" && dinoDigModels && dinoDigModels.forEach) dinoDigModels.forEach(rm);
