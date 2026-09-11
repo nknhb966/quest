@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>craftARt Go</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    body, html { margin:0; padding:0; height:100%; display:flex; flex-direction:column; align-items:center; font-family:sans-serif; }
+    a { color:gray !important; }
+    .header { text-align:center; padding:6px 0 0px; }
+    .header h1 { font-size:1.5em; margin:3px 0; line-height:1.2; }
+    .controls { margin:5px; }
+    select { font-size:1em; padding:5px 10px; border-radius:6px; border:1px solid #ccc; background:#fff; color:#333; }
+    model-viewer { width:100vw; height:78vh; }
+    model-viewer::part(default-ar-button) { display:none; }   /* AR起動は下のボタンに一本化 */
+    /* ホットスポット（丸は非表示・吹き出しのみ） */
+    .hotspot { width:0; height:0; border:none; background:transparent; pointer-events:none; }
+    .annotation { font-size:14px; background:#f0f0f0; color:#333; position:absolute; transform:translate(10px,10px);
+        border-radius:5px; padding:0.5em; width:150px; text-align:left; }
+    .urltext { position:absolute; text-align:center; bottom:10px; right:10px; }
+    .hotspot, .urltext { display:none; }
+    .btn { display:inline-block; padding:1em; margin:5px; background:#cce3f6; color:#222; border-radius:30px; cursor:pointer; font-size:1em; border:none; transition:background .3s ease, transform .2s; }
+    .btn:hover { background:#a6c9e2; }
+    .footer { text-align:center; font-size:.8em; padding:2px 0; color:#666; }
+    .footer a { color:#3366cc; text-decoration:none; }
+    .footer a:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <div class="header"><h1>craftARt Go</h1></div>
+
+  <div class="controls">
+    <select id="modelSelect"><option>読み込み中...</option></select>
+  </div>
+
+  <model-viewer id="viewer" ar ar-modes="scene-viewer webxr quick-look" src="" alt="3D Model Viewer" camera-controls autoplay>
+    <button class="hotspot" slot="hotspot-description" data-position="0 0 0" data-normal="0 1 0">
+      <div class="annotation"></div>
+    </button>
+    <div class="urltext">関連URL</div>
+  </model-viewer>
+
+  <div><button id="arButton" class="btn">ARで見る</button></div>
+
+  <footer class="footer">
+    使用ライブラリ：<a href="https://modelviewer.dev/" target="_blank" rel="noopener">model-viewer</a>
+  </footer>
+
+  <script>
+    // ▼ 年度設定（models.csv・画像の基準URL）。年度が変わったらここを差し替え
+    const ASSET_BASE = "https://echizencity.github.io/opendata/kokufuhakkutsu3/";
+    const CSV_URL    = ASSET_BASE + "models.csv";
+    const SHOW_URL   = false;   // 関連URLを表示するか（既定：非表示。準備のみ）
+
+    // CSVの相対パス(./model01.glb)を基準URLで絶対化。http(s)はそのまま
+    function resolveUrl(p){ p=(p||"").trim(); if(!p) return ""; if(/^https?:/i.test(p)) return p; return ASSET_BASE + p.replace(/^\.?\//,""); }
+
+    function parseCSV(text){
+      const lines = text.replace(/^\uFEFF/,"").trim().split(/\r?\n/);
+      const headers = lines[0].split(",").map(h=>h.trim());
+      const rows=[];
+      for(let i=1;i<lines.length;i++){ if(!lines[i]) continue; const cols=lines[i].split(","); const o={}; headers.forEach((h,j)=>o[h]=(cols[j]||"").trim()); rows.push(o); }
+      return { data:rows, headers };
+    }
+
+    async function loadCSV(url){ const r=await fetch(url); return parseCSV(await r.text()); }
+
+    async function initialize(){
+      const modelSelect=document.getElementById("modelSelect");
+      const viewer=document.getElementById("viewer");
+      const arButton=document.getElementById("arButton");
+      const hotspot=viewer.querySelector(".hotspot");
+      const annotation=hotspot.querySelector(".annotation");
+      const urltext=viewer.querySelector(".urltext");
+
+      let records=[];
+      try{ const res=await loadCSV(CSV_URL); records=res.data; }
+      catch(e){ modelSelect.innerHTML="<option>models.csvを読み込めませんでした</option>"; return; }
+
+      modelSelect.innerHTML="";
+      records.forEach((item,index)=>{ const o=document.createElement("option"); o.value=index; o.textContent=item.name||("モデル "+(index+1)); modelSelect.appendChild(o); });
+
+      function loadModel(item){
+        viewer.src=resolveUrl(item.path); viewer.alt=item.name||"";
+        if(item.description && item.description.trim()!==""){ annotation.textContent=item.description; hotspot.style.display="block"; }
+        else { annotation.textContent=""; hotspot.style.display="none"; }
+        if(SHOW_URL && item.url && item.url.trim()!==""){ urltext.innerHTML='<a href="'+item.url+'" target="_blank" rel="noopener">関連URLを開く</a>'; urltext.style.display="block"; }
+        else { urltext.innerHTML=""; urltext.style.display="none"; }
+      }
+
+      modelSelect.addEventListener("change", e=>{ const item=records[e.target.value]; if(item) loadModel(item); });
+      arButton.addEventListener("click", ()=>{ try{ viewer.activateAR(); }catch(_){ } });
+
+      if(records.length>0) loadModel(records[0]);
+    }
+    initialize();
+  </script>
+</body>
+</html>
