@@ -1429,6 +1429,15 @@ function mvBuildGLB(json,bin){
     return out;
 }
 // フルGLBを読み、テクスチャをMAX(既定1024)に縮小した THREE.Object3D を返す（_smallを経由しない）
+// 「きれい」の実効上限解像度：端末のGPU上限とiOS事情を考慮（原本が大きすぎる端末でのクラッシュ回避）
+function liteHiMax(){
+    let gpuMax=4096; try{ if(renderer && renderer.capabilities && renderer.capabilities.maxTextureSize) gpuMax=renderer.capabilities.maxTextureSize; }catch(_){ }
+    const ua=(navigator.userAgent||"");
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && "ontouchstart" in window);   // iPadOS(Mac偽装)も
+    const cap = isIOS ? 4096 : 0;   // iOS=4096上限／その他=無縮小(0)
+    if(cap===0) return 0;                      // 無縮小（原本）
+    return Math.min(cap, gpuMax||cap);         // 端末GPU上限も超えない
+}
 async function loadArtifactRoot(fullUrl, MAX){
     const resp=await fetch(fullUrl); if(!resp.ok) throw new Error("fetch "+resp.status);
     const buf=await resp.arrayBuffer();
@@ -5255,7 +5264,7 @@ async function _liteArtLoad(idx, quality){
     const key=quality+"_"+idx; if(_liteArt[key]) return _liteArt[key];
     const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N];
     if(!info || !info.path) return null;
-    const MAX=(quality==="hi")?0:(quality==="mid"?3072:1024);   // 軽い1024/普通3072/きれい原本
+    const MAX=(quality==="hi")?liteHiMax():(quality==="mid"?3072:1024);   // 軽い1024/普通3072/きれい=端末上限(iOS=4096等・無縮小0)
     try{ const m=await loadArtifactRoot(mvResolveUrl(info.path), MAX); if(m){ m.visible=false; _liteArt[key]=m; } return m; }catch(_){ return null; }
 }
 // 入室時プリロード：対象の全モデルを先読み（恐竜=全種／出土品=選択画質で全点）
@@ -6466,7 +6475,7 @@ addEventListener("resize",()=>{
         // 出土品・遺構：CSVの path（フル版）を読み、全画質でテクスチャ縮小のみ変える（_smallは経由しない）
         if(!isDino){
             const fullUrl = modelUrl(idx);
-            const MAX = (artQuality==="hi") ? 0 : (artQuality==="mid" ? 3072 : 1024);   // 軽い1024／普通3072／きれい=原本(0)
+            const MAX = (artQuality==="hi") ? (typeof liteHiMax==="function"?liteHiMax():0) : (artQuality==="mid" ? 3072 : 1024);   // 軽い1024／普通3072／きれい=端末上限（iOSキャップ）
             setNote(artQuality==="hi" ? "読み込み中…（きれい）" : (artQuality==="mid" ? "読み込み中…（普通）" : "読み込み中…"));
             try{
                 const url = await loadArtifactHiRes(fullUrl, MAX);
