@@ -2800,6 +2800,13 @@ function clearAllNameLabels(){   // 出土品・恐竜の名称ラベルを全�
     if(typeof _dinoCacheS!=="undefined") _dinoCacheS.forEach(rm);
     if(typeof dinoDigModels!=="undefined" && dinoDigModels && dinoDigModels.forEach) dinoDigModels.forEach(rm);
 }
+// 名称ラベルの表示をモデルの表示状態に毎フレーム同期：
+// モデルが表示されている間は名称も表示、モデルが消えたら名称も消す（全経路で挙動を統一）
+function syncNameLabels(){
+    const sync=(m)=>{ if(m && m.userData){ const lb=m.userData.nameLabel; if(lb) lb.visible = !!m.visible; } };
+    if(typeof artModels!=="undefined") artModels.forEach(sync);
+    if(typeof dinoDigModels!=="undefined" && dinoDigModels && dinoDigModels.forEach) dinoDigModels.forEach(sync);
+}
 function clearTargets(){
     GAME.targets.forEach(t=>{ stage.remove(t.marker); if(t.block) stage.remove(t.block); if(t.outline) stage.remove(t.outline); });
     GAME.targets.length=0;
@@ -5614,6 +5621,8 @@ renderer.setAnimationLoop(()=>{
     animateDigDinos(now, dt);  // 出てきた恐竜の足踏み・尻尾ふり・回転・上下
     // 発掘済みモデルを回転
     artModels.forEach(m=>{ if(m&&m.visible) m.rotation.y+=0.005; });
+    // 名称ラベルの表示をモデルに合わせる（表示中＝名称も表示／消去＝名称も消す）
+    syncNameLabels();
     // 情報パネルをカメラへ向ける
     const camPos=camera.getWorldPosition(tmpV2);
     infoPanels.forEach(p=>{ p.lookAt(camPos); });   // 自分（カメラ）の方を向く（高い位置でも見下ろす向きに）
