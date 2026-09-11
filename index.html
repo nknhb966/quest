@@ -263,6 +263,13 @@
           <button data-v="dino">🦕 恐竜</button>
         </div>
       </div>
+      <div class="opt wide" id="optArtLine">
+        <div class="lbl">出土品の説明パネル・線</div>
+        <div class="seg" id="segArtLine">
+          <button data-v="off" class="on">非表示</button>
+          <button data-v="on">表示</button>
+        </div>
+      </div>
       <div class="opt wide" id="optToolSwap" style="display:none">
         <div class="lbl">発掘道具の持ち替え</div>
         <div class="seg" id="segToolSwap">
@@ -2807,7 +2814,12 @@ function spawnAllTargets(){
         // 恐竜：従来どおりプレイヤー周囲2×2m内に3点（スター無し）
         const idxs=chTurn1Idxs();
         for(let k=0;k<3;k++){ const a=(k/3)*Math.PI*2+(Math.random()-0.5)*0.7, rad=1.7+Math.random()*0.3;   // プレイヤーから約1.7〜2.0m
-            const t=spawnTarget(idxs[k], idxs[k]); if(t){ moveTargetTo(t, new THREE.Vector3(H.x+Math.cos(a)*rad, GROUND_Y, H.z+Math.sin(a)*rad)); if(typeof discoverTarget==="function") discoverTarget(t, true); } }   // 最初から発見済み（ブロック表示）
+            let wx=H.x+Math.cos(a)*rad, wz=H.z+Math.sin(a)*rad;
+            if(customWorldOn()){   // サイト非表示（狭いワールド）時は必ずフィールド内に収める
+                const hx=WORLD_X/2-0.3, hz=WORLD_Z/2-0.3, f=worldToField(wx,wz);
+                const cf=fieldToWorld(Math.max(-hx,Math.min(hx,f.x)), Math.max(-hz,Math.min(hz,f.z))); wx=cf.x; wz=cf.z;
+            }
+            const t=spawnTarget(idxs[k], idxs[k]); if(t){ moveTargetTo(t, new THREE.Vector3(wx, GROUND_Y, wz)); if(typeof discoverTarget==="function") discoverTarget(t, true); } }   // 最初から発見済み（ブロック表示）
         return;
     }
     for(let i=0;i<8;i++){ if(!GAME.doneIdx.has(i)) spawnTarget(i, i); }
@@ -3130,6 +3142,11 @@ function excavate(t, byPlayer){
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
             model.scale.setScalar( artScale() );   // 全環境：サイト/ワールド寸法に比例
             popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:popY(), t:0, dur:1.0 });
+            // 名称ラベル（恐竜と同様にモデルの下側・全モード）
+            if(model.userData.nameLabel) stage.remove(model.userData.nameLabel);
+            const _an=(function(){ const r=(typeof mvArtifactRows==="function")?mvArtifactRows():[]; return (r[t.idx] && r[t.idx].name) ? r[t.idx].name : ("出土品 No."+String(t.idx+1).padStart(2,"0")); })();
+            const _als=fieldScale(); const _alw=0.54*_als; const _alab=makeLabelSprite(_an, auraColor, _alw, 0); const _alh=_alw*96/256;
+            _alab.position.set(t.pos.x, popY()-0.1-_alh/2, t.pos.z); stage.add(_alab); model.userData.nameLabel=_alab;
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
     }
@@ -3205,6 +3222,8 @@ function clearAuras(){ auras.forEach(a=>stage.remove(a.group)); auras.length=0; 
 // 情報パネル（発掘済みの解説画像を現地に表示）
 // 画像はカード形式（縦長）。実際の縦横比で作り、出土品のすぐ上に置く。
 const infoPanels=[];
+let showArtInfo=false;   // 出土品の説明パネル＋つなぐ線の表示（既定：非表示）。おすすめ設定オフ＋出土品時のトグルで切替
+function applyArtInfoVis(){ infoPanels.forEach(p=>{ p.visible=showArtInfo; if(p.userData.link) p.userData.link.visible=showArtInfo; }); }
 const PANEL_BASE_H = 1.725;     // パネルの高さ（m）※幅は画像の比率から決まる（1.15の1.5倍）
 function placeholderTex(title){
     const cv=document.createElement("canvas"); cv.width=512; cv.height=683; const c=cv.getContext("2d");
@@ -3281,6 +3300,7 @@ function updatePanelScale(){
         const lift = isVR ? 0.7/3 : 0.7;   // VR/ARは線1/3、PC/スマホは従来
         p.position.y = popY() + lift + h*0.5 + (((p.userData.sizeMul||1)-1)*0.4);
     });
+    applyArtInfoVis();   // 表示/非表示（既定：非表示）を反映
 }
 
 /* =====================================================
@@ -3556,9 +3576,11 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
         show("worldSizeOpt", !isArt);
+        show("optArtLine", false);   // おすすめオン時は非表示
     } else {
         // オフ：これまでの条件で全表示（dogOnly/candidateの相互排他は各トグルで制御）
         show("optMode",true); show("optRarity",true); show("optBuddyMode",true);
+        show("optArtLine", target==="artifact");   // おすすめオフ＋出土品のときだけ「説明パネル・線」トグル表示
         show("optDogLevel", dogOnly); show("optBuddyPool", !dogOnly);
         show("optSite",true); show("optStar",true); show("optCardShow",true);
         show("optDigPos", (target!=="artifact") && siteVisible);   // 恐竜系×サイト表示のみ
@@ -3571,7 +3593,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("worldSizeOpt", !siteVisible);
     }
     if(isChallenge){   // 発掘チャレンジ：必須6項目は常にロック。5項目はおすすめオンで非表示／オフで表示・変更可
-        ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar","optDogLevel","optDigPos"].forEach(id=>show(id,false));
+        ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar","optDogLevel","optDigPos","optArtLine"].forEach(id=>show(id,false));
         if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort"].forEach(id=>show(id,false)); }
         else {
             show("optTimeLimit",true);   // 3ターン目の制限時間
@@ -3611,7 +3633,7 @@ function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短�
 { const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
 // メニュー項目の並び替え（未掲載の optBuddy/optDigPos は現状の相対位置を維持）
 (function(){
-    const order=["optReco","optDig","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","worldSizeOpt","optRealCap","optRealShort","optDigPos"];
+    const order=["optReco","optDig","optArtLine","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","worldSizeOpt","optRealCap","optRealShort","optDigPos"];
     const first=document.getElementById(order[0]); const parent=first&&first.parentNode; if(!parent) return;
     order.forEach(id=>{ const el=document.getElementById(id); if(el && el.parentNode===parent) parent.appendChild(el); });   // .cardgridの子は全てoptなので順に末尾へ動かせば指定順になる
 })();
@@ -3619,6 +3641,7 @@ if(typeof updateRsInfo==="function") updateRsInfo();
 document.querySelectorAll("#segCardShow button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segCardShow button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); cardShown=(b.dataset.v==="on"); });
 document.querySelectorAll("#segDigPos button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDigPos button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); digPosRandom=(b.dataset.v==="random"); });
 document.querySelectorAll("#segDig button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segDig button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); withParamLoading(()=>{ onDigTargetChosen(b.dataset.v); }); });
+document.querySelectorAll("#segArtLine button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segArtLine button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); showArtInfo=(b.dataset.v==="on"); if(typeof applyArtInfoVis==="function") applyArtInfoVis(); });   // 出土品の説明パネル・線 表示切替
 // サイトモデル 表示/非表示（メニュー＋HUD）
 function updateSiteBtn(){ const b=document.getElementById("dSite"); if(b) b.textContent="🗺 サイト："+(siteVisible?"表示":"非表示"); }
 function syncSiteSeg(){ document.querySelectorAll("#segSite button").forEach(x=>x.classList.toggle("on", (x.dataset.v==="show")===siteVisible)); }
@@ -3639,6 +3662,7 @@ function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); i
     const lvl=document.getElementById("optDogLevel");     // 犬のレベル
     if(pool) pool.style.display = dogOnly ? "none" : "";
     if(lvl)  lvl.style.display  = dogOnly ? "" : "none";
+    if(dogOnly){ segSelect("segDogLevel","fixed"); dogLevelUp=false; if(typeof resetDogStats==="function") resetDogStats(); }   // 犬のみ選択時：レベルは『固定型』を既定選択
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();   // モード変更を即反映
   }); }
 { document.querySelectorAll("#segDogLevel button").forEach(b=>b.onclick=()=>{
