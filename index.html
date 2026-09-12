@@ -4115,7 +4115,7 @@ const resultBuddy=(function(){
     let fitGeo=1, halfDepthGeo=0.2;
     const _cache=new Array(8).fill(null);   // idxごとにクローンを保持（2度目以降は即時＝スムーズ）
     const TARGET_H=1.15, TARGET_W=1.02;   // 板ローカル(ジオメトリ)単位の基準サイズ（板は幅1.3×高2.098）
-    const SIZE_MUL=0.8;                    // モデル0.8倍
+    const SIZE_MUL=0.7;                    // モデル0.7倍（1・2ターン目共通）
     const Y_GEO=-0.20;                     // 板中央よりやや下
     const BACK_M=1.0;                      // 板よりさらに1.0m奥（プレイヤーから遠ざける）
     const SWING=Math.PI/3;                 // 首振り幅：正面0°に対して±60°
