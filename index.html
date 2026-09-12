@@ -3902,7 +3902,7 @@ const worldHud=(function(){
         ctx.strokeStyle="#d8b46a"; ctx.lineWidth=6; ctx.stroke(); }
     return {
         mesh,
-        show(){ mesh.visible=true; }, hide(){ mesh.visible=false; },
+        show(){ mesh.visible=true; }, hide(){ mesh.visible=false; if(window.__resultBuddy) window.__resultBuddy.clear(); },
         drawCountdown(text, sub, short){
             ctx.clearRect(0,0,768,1460);
             if(!short){   // ②カウントダウン：正方形パネル（中央）。キャンバスのピクセルは正方形なので720×720で正方形に見える
@@ -4044,6 +4044,7 @@ const worldHud=(function(){
         renderChallengePage(){   // 発掘チャレンジ：各ターン（得点計算＋相棒カード1.5倍）／3ターン目（2ページ）。フォント/TOP5はタイムアタック準拠
             if(!resData) return; const d=resData; const c=d.calc;
             bg(); ctx.textAlign="center"; ctx.textBaseline="middle";
+            if(window.__resultBuddy) window.__resultBuddy.clear();   // 既定は非表示（出土品の1・2ターン目のみ下で表示）
             const advTxt = "右トリガー2回で" + ((c.chFinal)?"チャレンジ終了":"このターンを終わる");
             const bigNum=(num,cy)=>{ const t=String(num); ctx.textAlign="left"; ctx.font="bold 96px sans-serif"; const nw=ctx.measureText(t).width; ctx.font="bold 48px sans-serif"; const uw=ctx.measureText(" pt").width; const sx=384-(nw+uw)/2; ctx.fillStyle="#fff"; ctx.font="bold 96px sans-serif"; ctx.fillText(t,sx,cy); ctx.font="bold 48px sans-serif"; ctx.fillText(" pt",sx+nw,cy+12); ctx.textAlign="center"; };
             const calcBlock=(digPts,secs,timeBonus,score,y0)=>{ const lx=100,rx=680; let y=y0; const rowH=44; ctx.font="bold 30px sans-serif";
@@ -4079,20 +4080,84 @@ const worldHud=(function(){
             } else {
                 ctx.fillStyle="#8ff0ff"; ctx.font="bold 44px sans-serif"; ctx.fillText(c.chTurn+"ターン目 完了！",384,78);
                 let y=calcBlock(c.digPts,c.secs,c.timeBonus,d.score,168);
-                const im=cardImage("dino", c.card.idx);
-                if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 117, y+38, 535, 803); }catch(_){}}   // 97%（552×828→535×803・中央）
-                else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
-                if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+803+28); }
+                if(curTarget!=="dino"){
+                    // 出土品発掘：カードは出さず、板の手前に相棒(恐竜)3Dモデルを表示。カード領域は詰めてテキストを大きく
+                    const bn=(GAME.ch&&GAME.ch.lastBuddyName) ? GAME.ch.lastBuddyName
+                             : ((typeof DINOS!=="undefined"&&DINOS[c.card.idx])?((DINOS[c.card.idx].fullName||DINOS[c.card.idx].label||"").replace(/^\S+\s*/,"")):"");
+                    ctx.fillStyle="#ffd86a"; ctx.font="bold 46px sans-serif"; ctx.fillText("相棒 "+bn+" が加わった！",384,y+66);
+                    if(window.__resultBuddy) window.__resultBuddy.set(c.card.idx);   // 3Dモデル（この下の領域に重ねて表示）
+                } else {
+                    // 恐竜発掘：従来どおり相棒カードを表示
+                    const im=cardImage("dino", c.card.idx);
+                    if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 117, y+38, 535, 803); }catch(_){}}   // 97%（552×828→535×803・中央）
+                    else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
+                    if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+803+28); }
+                }
             }
             if(!GAME.desktop){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,1180); }   // 1・2ページとも中央・1180で統一
             tex.needsUpdate=true; mesh.visible=true;
         }
     };
 })();
+// ===== 発掘チャレンジ 1・2ターン目（出土品発掘時）のリザルト：相棒(恐竜)3Dモデルを板の手前に重ねて表示 =====
+//  ・カードは出さず、この動くモデルを見せる（プレイヤー向き・足/羽と尻尾が動く・触る等の操作は不可）
+//  ・板は scale(s,s,1) と環境で伸縮するため、子にせず毎フレーム“等倍”で板の手前へ配置（奥行きが歪まない）
+const resultBuddy=(function(){
+    let holder=null, cont=null, idx=-1, active=false;
+    let fitGeo=1, halfDepthGeo=0.2;
+    const TARGET_H=1.15, TARGET_W=1.02;   // 板ローカル(ジオメトリ)単位の目標サイズ（板は幅1.3×高2.098）
+    const Y_GEO=-0.20;                     // 板中央よりやや下（カードがあった領域）
+    const _bb=new THREE.Box3(), _c=new THREE.Vector3(), _sz=new THREE.Vector3(), _off=new THREE.Vector3();
+    function ensureHolder(){ if(holder) return; holder=new THREE.Group(); holder.visible=false; scene.add(holder); }
+    function build(i){
+        ensureHolder();
+        if(cont){ holder.remove(cont); cont=null; }
+        const dn=(typeof DINOS!=="undefined")?DINOS[i]:null; if(!dn){ active=false; return; }
+        const prev=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+        try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; cont=makeDigDino(dn); }   // 見栄え重視でなめらか版
+        catch(e){ cont=null; }
+        finally{ if(typeof dinoSmooth!=="undefined") dinoSmooth=prev; }
+        if(!cont){ active=false; return; }
+        cont.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; });
+        cont.position.set(0,0,0); cont.rotation.set(0,0,0); cont.scale.setScalar(1); cont.updateMatrixWorld(true);
+        _bb.setFromObject(cont); _bb.getCenter(_c); _bb.getSize(_sz);
+        const sy=_sz.y>0?_sz.y:1, sx=_sz.x>0?_sz.x:1, sd=_sz.z>0?_sz.z:0.4;
+        fitGeo=Math.min(TARGET_H/sy, TARGET_W/sx);
+        halfDepthGeo=(sd*fitGeo)/2;
+        cont.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ（holder.scaleでまとめて拡縮）
+        holder.add(cont);
+        idx=i;
+    }
+    return {
+        set(i){ if(i==null||i<0){ this.clear(); return; } if(i!==idx||!cont) build(i); active=!!cont; },
+        clear(){ active=false; if(holder) holder.visible=false; },
+        // 板(worldHud.mesh)の位置・向き・スケール s に合わせ、板の手前へ等倍で配置＋アイドル
+        update(s){
+            if(!holder) return;
+            const ph=(typeof gamePhase==="function")?gamePhase():"";
+            if(!active || ph!=="result" || !worldHud.mesh.visible){ holder.visible=false; return; }
+            holder.visible=true;
+            const q=worldHud.mesh.quaternion, pos=worldHud.mesh.position;
+            const zGeo=halfDepthGeo+0.08;   // モデル全体が板より手前(プレイヤー側)に来るように前へ逃がす
+            _off.set(0, Y_GEO, zGeo).multiplyScalar(s).applyQuaternion(q);
+            holder.position.copy(pos).add(_off);
+            holder.quaternion.copy(q);      // 板と同じ向き＝+Zがプレイヤー方向。モデルの鼻先(+Z)も正面を向く
+            holder.scale.setScalar(fitGeo*s);
+            const now=performance.now(), p2=now*0.006*0.95;
+            if(cont && cont.userData){       // 足/羽・尻尾のみ動かす（触る等の操作は不可）
+                const legs=cont.userData.legs, tail=cont.userData.tail, wings=cont.userData.wings;
+                if(legs) legs.forEach(pg=>{ if(pg) pg.rotation.x=Math.sin(p2+(pg.userData.phase||0))*0.30; });
+                if(tail) tail.rotation.y=Math.sin(now*0.003)*0.28;
+                if(wings) wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*(0.22+Math.sin(now*0.004)*0.40); });
+            }
+        }
+    };
+})();
+window.__resultBuddy=resultBuddy;
 // カメラ正面に保持（移動・首振りに追従）
 const _whCam=new THREE.Vector3(),_whQ=new THREE.Quaternion(),_whDir=new THREE.Vector3(),_whUp=new THREE.Vector3(),_whH=new THREE.Vector3(),_whP=new THREE.Vector3(),_whL=new THREE.Vector3();   // updateWorldHud用スクラッチ
 function updateWorldHud(){
-    if(!worldHud.mesh.visible) return;
+    if(!worldHud.mesh.visible){ resultBuddy.update(1); return; }
     const cam=camera.getWorldPosition(_whCam);
     const camQ=camera.getWorldQuaternion(_whQ);
     const dir=_whDir.set(0,0,-1).applyQuaternion(camQ);
@@ -4117,6 +4182,7 @@ function updateWorldHud(){
             const p=_whP.set(cam.x + hdir.x*dist, eyeY, cam.z + hdir.z*dist);
             worldHud.mesh.position.copy(p);
             worldHud.mesh.lookAt(_whL.set(cam.x, eyeY, cam.z));   // 水平にプレイヤーへ正対（傾かない）
+            resultBuddy.update(s);   // 相棒(恐竜)モデルを板の手前へ
             return;
         }
         const topMargin=visH*0.04;
@@ -4126,8 +4192,10 @@ function updateWorldHud(){
         worldHud.mesh.position.copy(p);
         if(renderer.xr.isPresenting){ worldHud.mesh.lookAt(cam); }   // VRは常にカメラを向く
         else { worldHud.mesh.quaternion.copy(camQ); }                // PC/スマホは常に画面の真正面
+        resultBuddy.update(s);   // 相棒(恐竜)モデルを板の手前へ
         return;
     }
+    resultBuddy.update(1);   // リザルト以外＝相棒モデルは非表示
     worldHud.mesh.scale.set(1,1,1);
     if(renderer.xr.isPresenting){
         // ②カウントダウン等：正面・ヨーのみ追従（首の縦振りには追従しない）
