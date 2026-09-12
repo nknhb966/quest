@@ -2897,7 +2897,9 @@ function makeDigDino(dn){
 let _preloadTimer=null;
 let PRELOAD_DONE=false;        // プリロード＋GPUウォームアップ＋出土品ロード完了フラグ（入室可否）
 let WARMUP_DONE=false, ARTIFACTS_DONE=false;
-function _maybeFinishPreload(){ if(WARMUP_DONE && ARTIFACTS_DONE){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); } }
+function _maybeFinishPreload(){ if(WARMUP_DONE && ARTIFACTS_DONE){ PRELOAD_DONE=true; document.body.classList.remove("preloading");
+    if(window.__resultBuddy && window.__resultBuddy.preload) window.__resultBuddy.preload();   // 相棒(恐竜)モデルのクローンを事前生成＝リザルト時に固まらない
+} }
 let _warmupTTL=0;             // 残りウォームアップフレーム数（描画ループで消化）
 let _warmupModels=[];         // ウォームアップ対象（恐竜キャッシュ）
 function preloadEverything(done){
@@ -4120,6 +4122,7 @@ const resultBuddy=(function(){
     const OSC=0.0006;                      // 往復の速さ（rad/ms：+60↔-60で約10.5秒＝ゆっくり）
     const HOLD_MS=500;                     // 出現直後はこの時間だけ正面(プレイヤー側)を向いてから回転
     let   t0=0, wasVisible=false;          // 出現時に位相リセット（毎回0°＝正面から始める）
+    let   _preloadKicked=false;            // クローンの事前生成を一度だけ起動
     const _bb=new THREE.Box3(), _c=new THREE.Vector3(), _sz=new THREE.Vector3(), _off=new THREE.Vector3(), _fwd=new THREE.Vector3();
     function ensureHolder(){ if(holder) return; holder=new THREE.Group(); holder.visible=false; scene.add(holder); }
     function makeBuddy(i){
@@ -4153,7 +4156,17 @@ const resultBuddy=(function(){
     return {
         set(i){ if(i==null||i<0){ this.clear(); return; } if(i!==idx||!cont) build(i); active=!!cont; },
         clear(){ active=false; if(holder) holder.visible=false; },
-        invalidate(){ if(holder&&cont&&cont.parent===holder) holder.remove(cont); for(let k=0;k<_cache.length;k++) _cache[k]=null; cont=null; idx=-1; active=false; if(holder) holder.visible=false; },
+        // 全8体のクローンをバックグラウンドで事前生成（1体ずつ間隔をあけてカクつき回避）。リザルト時は即時表示＝固まらない
+        preload(){ if(_preloadKicked) return; _preloadKicked=true; ensureHolder();
+            let i=0;
+            const stepB=()=>{
+                if(i>=_cache.length) return;
+                try{ if(!_cache[i]){ const src=(typeof dinoDigModels!=="undefined"&&dinoDigModels[i])||(typeof _dinoCacheS!=="undefined"&&_dinoCacheS[i]); if(src) _cache[i]=makeBuddy(i); } }catch(e){}
+                i++; setTimeout(stepB, 180);
+            };
+            setTimeout(stepB, 180);
+        },
+        invalidate(){ if(holder&&cont&&cont.parent===holder) holder.remove(cont); for(let k=0;k<_cache.length;k++) _cache[k]=null; cont=null; idx=-1; active=false; _preloadKicked=false; if(holder) holder.visible=false; },
         // 板(worldHud.mesh)の位置・向き・スケール s に合わせて配置。板よりさらに1.0m奥・0.8倍・ゆっくり回転
         update(s){
             if(!holder) return;
@@ -4167,8 +4180,11 @@ const resultBuddy=(function(){
             _fwd.set(0,0,1).applyQuaternion(q);            // 板→プレイヤー方向(+Z)
             holder.position.addScaledVector(_fwd, -BACK_M); // 1.0m 奥（プレイヤーから遠ざける）
             const now=performance.now(), p2=now*0.006*0.95;
+            if(!wasVisible){ t0=now; wasVisible=true; }        // 出現した瞬間に位相リセット＝正面(0°)から
             holder.quaternion.copy(q);
-            holder.rotateY(now*SPIN);                       // ゆっくり回転（ターンテーブル）
+            const el=now-t0;
+            const yaw = (el<=HOLD_MS) ? 0 : SWING*Math.sin((el-HOLD_MS)*OSC);   // 出現→少し正面→ -60..+60をゆっくり往復
+            holder.rotateY(yaw);
             holder.scale.setScalar(fitGeo*s*SIZE_MUL);      // 0.8倍
             if(cont && cont.userData){       // 足/羽・尻尾のみ動かす（触る等の操作は不可）
                 const legs=cont.userData.legs, tail=cont.userData.tail, wings=cont.userData.wings;
