@@ -502,7 +502,7 @@
       <section>
         <h3>🏆 発掘チャレンジ（3ターン）</h3>
         <p><b>3つのターン</b>を連続で挑戦します。各ターンのスコア（＝発掘ポイント＋残り秒×30）に応じて<b>恐竜が相棒として仲間</b>になり、次のターンから一緒に発掘できます。</p>
-        <p><b>1ターン目</b>はやさしめ（近くの3か所・相棒は犬）。<b>2・3ターン目</b>は範囲が広がり、<b>高得点ほどレアな相棒</b>が手に入ります。3ターンの<b>合計スコア</b>で最後の獲得カードが決まり、<b>チャレンジのTOP5</b>に記録されます。</p>
+        <p><b>1ターン目</b>はやさしめ（近くの5か所・プレイは相棒犬）。<b>得点に応じてプチレア／ノーマルの相棒</b>が手に入ります。<b>2・3ターン目</b>は範囲が広がり、<b>高得点ほどレアな相棒</b>が手に入ります。3ターンの<b>合計スコア</b>で最後の獲得カードが決まり、<b>チャレンジのTOP5</b>に記録されます。</p>
         <p class="k">ターンの進行：PC/スマホは<b>「このターンをおわる／おわる」</b>ボタン／VR・ARは<b>右トリガー2回</b>。</p>
       </section>
       <section>
@@ -2494,7 +2494,7 @@ function updateTAClock(){
 // ===== 発掘チャレンジ：各ターンのステージ表示パネル =====
 function chRoundInfo(turn){
     const t3=((GAME.ch&&GAME.ch.userTime)||TIME_LIMIT);
-    if(turn===1) return {head:"ROUND 1", lines:["まずは発掘に挑戦！","近くの3か所を掘り出そう！","制限時間は"+CH_TIMES[0]+"秒"]};
+    if(turn===1) return {head:"ROUND 1", lines:["まずは発掘に挑戦！","近くの5か所を掘り出そう！","制限時間は"+CH_TIMES[0]+"秒"]};
     if(turn===2) return {head:"ROUND 2", lines:["本格的な発掘に挑戦！","スターを狙って高得点を目指そう！","制限時間は"+CH_TIMES[1]+"秒"]};
     return {head:"FINAL ROUND", lines:["最後の発掘！","最高得点を目指そう！","制限時間は"+t3+"秒"]};
 }
@@ -2831,12 +2831,12 @@ function spawnAllTargets(){
             const order=[];
             for(let i=0;i<8;i++){ const p=ARTPOS[i]; if(!p) continue; order.push({i, d:Math.hypot(p.x-H.x, p.z-H.z)}); }
             order.sort((a,b)=>a.d-b.d);
-            order.slice(0,3).forEach(o=>{ const t=spawnTarget(o.i, o.i); if(t && typeof discoverTarget==="function") discoverTarget(t, true); });   // ARTPOSのまま・最初から発見済み（ブロック表示）
+            order.slice(0,5).forEach(o=>{ const t=spawnTarget(o.i, o.i); if(t && typeof discoverTarget==="function") discoverTarget(t, true); });   // ARTPOSのまま・最初から発見済み（近い5点）
             return;
         }
-        // 恐竜：従来どおりプレイヤー周囲2×2m内に3点（スター無し）
+        // 恐竜：従来どおりプレイヤー周囲2×2m内に5点（スター無し）
         const idxs=chTurn1Idxs();
-        for(let k=0;k<3;k++){ const a=(k/3)*Math.PI*2+(Math.random()-0.5)*0.7, rad=1.7+Math.random()*0.3;   // プレイヤーから約1.7〜2.0m
+        for(let k=0;k<5;k++){ const a=(k/5)*Math.PI*2+(Math.random()-0.5)*0.7, rad=1.7+Math.random()*0.3;   // プレイヤーから約1.7〜2.0m
             let wx=H.x+Math.cos(a)*rad, wz=H.z+Math.sin(a)*rad;
             if(customWorldOn()){   // サイト非表示（狭いワールド）時は必ずフィールド内に収める
                 const hx=WORLD_X/2-0.3, hz=WORLD_Z/2-0.3, f=worldToField(wx,wz);
@@ -4421,8 +4421,15 @@ function chCenterRarity(sc){ if(sc<1000) return "ノーマル"; if(sc<3000) retu
 function chCenterRarityT2(sc){ if(sc>=2400) return "超激レア"; if(sc>=1800) return "激レア"; if(sc>=1320) return "レア"; if(sc>=840) return "プチレア"; return "ノーマル"; }   // 2ターン目＝タイムアタック条件(4000/3000/2200/1400)×0.6
 function chCenterRarityT3(sc){ if(sc>=6000) return "超激レア"; if(sc>=3600) return "激レア"; if(sc>=1800) return "レア"; if(sc>=600) return "プチレア"; return "ノーマル"; }   // 3ターン目＝現行(1000/3000/6000/10000)×0.6
 function chUnownedDinoByRarity(rar){ const p=[]; const N=(typeof DINOS!=="undefined")?DINOS.length:8; for(let i=0;i<N;i++){ if(cardRarityOf(i)===rar && !cardOwned(i)) p.push(i); } return p; }
-function chPickBuddyIdx(sc, turn){   // 得点→中心レア度（中心60%・隣±20%）、獲得済み除外。1ターン目はノーマル3種
-    if(turn===1){ const p=chUnownedDinoByRarity("ノーマル"); if(p.length) return p[(Math.random()*p.length)|0]; }
+const CH_T1_PETIT=1200;   // 1ターン目：この得点以上でプチレア、未満はノーマル（5種掘り切って残り約8秒以上でプチレア目安）
+function chPickBuddyIdx(sc, turn){   // 得点→中心レア度（中心60%・隣±20%）、獲得済み除外。1ターン目は得点でプチレア/ノーマル
+    if(turn===1){
+        const rar = (sc>=CH_T1_PETIT) ? "プチレア" : "ノーマル";
+        let p=chUnownedDinoByRarity(rar);
+        if(!p.length) p=chUnownedDinoByRarity(rar==="プチレア"?"ノーマル":"プチレア");   // そのレア度が全獲得済みなら他方から
+        if(p.length) return p[(Math.random()*p.length)|0];
+        return null;
+    }
     const center = (turn===2) ? chCenterRarityT2(sc) : chCenterRarityT3(sc);
     const oi=RARITY_ORDER.indexOf(center);
     const wt=RARITY_ORDER.map(()=>0); wt[oi]+=0.6;
@@ -4472,7 +4479,8 @@ function chAdvanceTurn(){
     enterStandby();   // 相棒選択（2/3ターン目）→ 右トリガーでカウントダウン
 }
 function chNormalDinoIdxs(){ const a=[]; const N=(typeof DINOS!=="undefined")?DINOS.length:8; for(let i=0;i<N;i++){ if(cardRarityOf(i)==="ノーマル") a.push(i); } return a; }
-function chTurn1Idxs(){ if(curTarget==="dino"){ const n=chNormalDinoIdxs(); if(n.length>=3) return n.slice(0,3); } return [0,1,2]; }
+function chTurn1DinoIdxs(){ const a=[]; const N=(typeof DINOS!=="undefined")?DINOS.length:8; for(let i=0;i<N;i++){ const r=cardRarityOf(i); if(r==="プチレア"||r==="ノーマル") a.push(i); } return a; }   // ターン1の発掘5種＝プチレア＋ノーマル恐竜
+function chTurn1Idxs(){ if(curTarget==="dino"){ const n=chTurn1DinoIdxs(); if(n.length>=5) return n.slice(0,5); if(n.length) return n; } return [0,1,2,3,4]; }
 function moveTargetTo(t, p){   // 生成済みターゲットを指定座標へ（1ターン目のプレイヤー近傍配置用）
     if(!t) return; t.pos.copy(p); if(t.marker) t.marker.position.copy(p);
     const fs=t.fs||1; if(t.block){ t.block.position.set(p.x, GROUND_Y+DIG_BLOCK*0.35*fs, p.z); if(t.outline) t.outline.position.copy(t.block.position); }
