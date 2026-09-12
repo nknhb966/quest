@@ -503,7 +503,7 @@
         <h3>🏆 発掘チャレンジ（3ターン）</h3>
         <p><b>3つのターン</b>を連続で挑戦します。各ターンのスコア（＝発掘ポイント＋残り秒×30）に応じて<b>恐竜が相棒として仲間</b>になり、次のターンから一緒に発掘できます。</p>
         <p><b>1ターン目</b>はやさしめ（近くの3か所・相棒は犬）。<b>2・3ターン目</b>は範囲が広がり、<b>高得点ほどレアな相棒</b>が手に入ります。3ターンの<b>合計スコア</b>で最後の獲得カードが決まり、<b>チャレンジのTOP5</b>に記録されます。</p>
-        <p class="k">ターンの進行：PC/スマホは<b>「このターンを終わる／チャレンジ終了」</b>ボタン／VR・ARは<b>右トリガー2回</b>。</p>
+        <p class="k">ターンの進行：PC/スマホは<b>「このターンをおわる／おわる」</b>ボタン／VR・ARは<b>右トリガー2回</b>。</p>
       </section>
       <section>
         <h3>🔄 ゲームの流れ</h3>
@@ -4656,7 +4656,7 @@ function updateTAButton(){
     const b=document.getElementById("dTA"); if(!b) return;
     const inResults = GAME.active && ((GAME.mode==="time" && TA.state==="results") || (GAME.mode!=="time" && GAME.complete));   // ④リザルト（両モード）
     b.style.display = inResults ? "" : "none";
-    b.textContent = GAME.challenge ? ((GAME.ch && GAME.ch.extra) ? "スタンバイに戻る" : ((GAME.ch && GAME.ch.turn>=3) ? "チャレンジ終了" : "このターンを終わる")) : (GAME.reviewing ? "スタンバイに戻る" : "おわる");
+    b.textContent = GAME.challenge ? ((GAME.ch && GAME.ch.extra) ? "スタンバイに戻る" : ((GAME.ch && GAME.ch.turn>=3) ? "おわる" : "このターンをおわる")) : (GAME.reviewing ? "スタンバイに戻る" : "おわる");
 }
 
 /* HUD更新 */
