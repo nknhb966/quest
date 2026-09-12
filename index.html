@@ -3726,6 +3726,7 @@ function scheduleWorldReload(){ if(GAME.active){ reloadDinoCache(); return; }
     _worldReloadT=setTimeout(()=>{ withParamLoading(()=>{ reloadDinoCache(); }); }, 250);   // 連続変更が落ち着いてから再生成
 }
 function reloadDinoCache(){ if(typeof _dinoCacheS==="undefined") return;   // サイズが変わるので恐竜モデルを作り直す
+    if(window.__resultBuddy && window.__resultBuddy.invalidate) window.__resultBuddy.invalidate();   // 相棒モデルの複製も作り直し対象に
     [_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
     if(typeof preloadEverything==="function") preloadEverything(); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
@@ -3897,8 +3898,9 @@ const worldHud=(function(){
     cardMesh.position.set(1.24,0,0.02); cardMesh.visible=false; mesh.add(cardMesh);   // 獲得カード（VRは右横／モバイルは中央でボタン切替）
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-    function bg(){ ctx.clearRect(0,0,768,1240);
-        ctx.fillStyle="rgba(10,7,26,0.90)"; rr(24,24,720,1192,40); ctx.fill();
+    function bg(bottomY){ ctx.clearRect(0,0,768,1240);
+        const h=(bottomY? Math.max(80, bottomY-24) : 1192);   // bottomY指定時はそこまでの短い板（上辺=24は固定）
+        ctx.fillStyle="rgba(10,7,26,0.90)"; rr(24,24,720,h,40); ctx.fill();
         ctx.strokeStyle="#d8b46a"; ctx.lineWidth=6; ctx.stroke(); }
     return {
         mesh,
@@ -4043,8 +4045,11 @@ const worldHud=(function(){
         },
         renderChallengePage(){   // 発掘チャレンジ：各ターン（得点計算＋相棒カード1.5倍）／3ターン目（2ページ）。フォント/TOP5はタイムアタック準拠
             if(!resData) return; const d=resData; const c=d.calc;
-            bg(); ctx.textAlign="center"; ctx.textBaseline="middle";
+            const shortBoard = (!c.chFinal && curTarget!=="dino");   // 出土品・1/2ターン目のみ板を短縮（この画面だけ。上辺は固定）
+            const shortBottom = GAME.desktop ? 372 : 416;            // 板の下端＝内容の直下（VRはガイド文言ぶん少し長い）
+            bg( shortBoard ? shortBottom : undefined ); ctx.textAlign="center"; ctx.textBaseline="middle";
             if(window.__resultBuddy) window.__resultBuddy.clear();   // 既定は非表示（出土品の1・2ターン目のみ下で表示）
+            let advY = 1180;   // ガイド文言のY（短縮板では内容の直下へ移す）
             const advTxt = "右トリガー2回で" + ((c.chFinal)?"チャレンジ終了":"このターンを終わる");
             const bigNum=(num,cy)=>{ const t=String(num); ctx.textAlign="left"; ctx.font="bold 96px sans-serif"; const nw=ctx.measureText(t).width; ctx.font="bold 48px sans-serif"; const uw=ctx.measureText(" pt").width; const sx=384-(nw+uw)/2; ctx.fillStyle="#fff"; ctx.font="bold 96px sans-serif"; ctx.fillText(t,sx,cy); ctx.font="bold 48px sans-serif"; ctx.fillText(" pt",sx+nw,cy+12); ctx.textAlign="center"; };
             const calcBlock=(digPts,secs,timeBonus,score,y0)=>{ const lx=100,rx=680; let y=y0; const rowH=44; ctx.font="bold 30px sans-serif";
@@ -4081,11 +4086,12 @@ const worldHud=(function(){
                 ctx.fillStyle="#8ff0ff"; ctx.font="bold 44px sans-serif"; ctx.fillText(c.chTurn+"ターン目 完了！",384,78);
                 let y=calcBlock(c.digPts,c.secs,c.timeBonus,d.score,168);
                 if(curTarget!=="dino"){
-                    // 出土品発掘：カードは出さず、板の手前に相棒(恐竜)3Dモデルを表示。カード領域は詰めてテキストを大きく
+                    // 出土品発掘：カードは出さず、板の下に相棒(恐竜)3Dモデルを表示。板は「相棒◯◯…」の直下までに短縮
                     const bn=(GAME.ch&&GAME.ch.lastBuddyName) ? GAME.ch.lastBuddyName
                              : ((typeof DINOS!=="undefined"&&DINOS[c.card.idx])?((DINOS[c.card.idx].fullName||DINOS[c.card.idx].label||"").replace(/^\S+\s*/,"")):"");
-                    ctx.fillStyle="#ffd86a"; ctx.font="bold 46px sans-serif"; ctx.fillText("相棒 "+bn+" が加わった！",384,y+66);
-                    if(window.__resultBuddy) window.__resultBuddy.set(c.card.idx);   // 3Dモデル（この下の領域に重ねて表示）
+                    ctx.fillStyle="#ffd86a"; ctx.font="bold 32px sans-serif"; ctx.fillText("相棒 "+bn+" が加わった！",384,y+60);
+                    advY = y+60+42;   // ガイド文言は「相棒◯◯…」の直下（短縮板の中）
+                    if(window.__resultBuddy) window.__resultBuddy.set(c.card.idx);   // 3Dモデル（板の下に表示）
                 } else {
                     // 恐竜発掘：従来どおり相棒カードを表示
                     const im=cardImage("dino", c.card.idx);
@@ -4094,54 +4100,57 @@ const worldHud=(function(){
                     if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+803+28); }
                 }
             }
-            if(!GAME.desktop){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,1180); }   // 1・2ページとも中央・1180で統一
+            if(!GAME.desktop){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,advY); }   // 短縮板では内容の直下、通常は1180
             tex.needsUpdate=true; mesh.visible=true;
         }
     };
 })();
-// ===== 発掘チャレンジ 1・2ターン目（出土品発掘時）のリザルト：相棒(恐竜)3Dモデルを板の手前に重ねて表示 =====
+// ===== 発掘チャレンジ 1・2ターン目（出土品発掘時）のリザルト：相棒(恐竜)3Dモデルを短縮した板の下に表示 =====
 //  ・カードは出さず、この動くモデルを見せる（プレイヤー向き・足/羽と尻尾が動く・触る等の操作は不可）
-//  ・板は scale(s,s,1) と環境で伸縮するため、子にせず毎フレーム“等倍”で板の手前へ配置（奥行きが歪まない）
+//  ・プリロード済みキャッシュから cloneCont で複製（生成のカクつき回避・ジオメトリ共有で軽量）＝メインシーンで通常描画
 const resultBuddy=(function(){
-    let holder=null, cont=null, idx=-1, active=false, buddyScene=null;
+    let holder=null, cont=null, idx=-1, active=false;
     let fitGeo=1, halfDepthGeo=0.2;
-    const TARGET_H=1.15, TARGET_W=1.02;   // 板ローカル(ジオメトリ)単位の目標サイズ（板は幅1.3×高2.098）
-    const Y_GEO=-0.20;                     // 板中央よりやや下（カードがあった領域）
+    const _cache=new Array(8).fill(null);   // idxごとにクローンを保持（2度目以降は即時＝スムーズ）
+    const TARGET_H=1.15, TARGET_W=1.02;   // 板ローカル(ジオメトリ)単位の基準サイズ（板は幅1.3×高2.098）
+    const SIZE_MUL=0.8;                    // モデル0.8倍
+    const Y_GEO=-0.20;                     // 板中央よりやや下
     const BACK_M=1.0;                      // 板よりさらに1.0m奥（プレイヤーから遠ざける）
     const SPIN=0.0004;                     // ゆっくり回転（rad/ms ≒ 0.4rad/s：1周約16秒）
     const _bb=new THREE.Box3(), _c=new THREE.Vector3(), _sz=new THREE.Vector3(), _off=new THREE.Vector3(), _fwd=new THREE.Vector3();
-    function ensureHolder(){
-        if(holder) return;
-        // 板(90%不透明)より奥へ下げても隠れないよう、専用シーンで“最後に上から”描画（自己遮蔽=3Dの前後関係は保持）
-        buddyScene=new THREE.Scene();
-        buddyScene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
-        const sun2=new THREE.DirectionalLight(0xfff2d8, 1.4); sun2.position.set(30,60,20); buddyScene.add(sun2);
-        buddyScene.add(new THREE.AmbientLight(0x404060, 0.5));
-        holder=new THREE.Group(); holder.visible=false; buddyScene.add(holder);
+    function ensureHolder(){ if(holder) return; holder=new THREE.Group(); holder.visible=false; scene.add(holder); }
+    function makeBuddy(i){
+        // プリロード済みのなめらか恐竜からクローン（フリーズ回避）。無ければその場生成（フォールバック）
+        const src=(typeof dinoDigModels!=="undefined"&&dinoDigModels[i]) ? dinoDigModels[i]
+                 : ((typeof _dinoCacheS!=="undefined"&&_dinoCacheS[i]) ? _dinoCacheS[i] : null);
+        let m=null;
+        if(src && typeof cloneCont==="function"){ try{ m=cloneCont(src); }catch(e){ m=null; } }
+        if(!m){ const dn=(typeof DINOS!=="undefined")?DINOS[i]:null; if(!dn) return null;
+            const prev=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+            try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; m=makeDigDino(dn); }catch(e){ m=null; }
+            finally{ if(typeof dinoSmooth!=="undefined") dinoSmooth=prev; } }
+        if(!m) return null;
+        m.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; });
+        m.position.set(0,0,0); m.rotation.set(0,0,0); m.scale.setScalar(1); m.updateMatrixWorld(true);
+        _bb.setFromObject(m); _bb.getCenter(_c); _bb.getSize(_sz);
+        const sy=_sz.y>0?_sz.y:1, sx=_sz.x>0?_sz.x:1, sd=_sz.z>0?_sz.z:0.4;
+        const fit=Math.min(TARGET_H/sy, TARGET_W/sx);
+        m.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ（holder.scaleでまとめて拡縮／回転軸も中心）
+        return { model:m, fit, halfDepth:(sd*fit)/2 };
     }
     function build(i){
         ensureHolder();
-        if(cont){ holder.remove(cont); cont=null; }
-        const dn=(typeof DINOS!=="undefined")?DINOS[i]:null; if(!dn){ active=false; return; }
-        const prev=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
-        try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; cont=makeDigDino(dn); }   // 見栄え重視でなめらか版
-        catch(e){ cont=null; }
-        finally{ if(typeof dinoSmooth!=="undefined") dinoSmooth=prev; }
-        if(!cont){ active=false; return; }
-        cont.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; });
-        cont.position.set(0,0,0); cont.rotation.set(0,0,0); cont.scale.setScalar(1); cont.updateMatrixWorld(true);
-        _bb.setFromObject(cont); _bb.getCenter(_c); _bb.getSize(_sz);
-        const sy=_sz.y>0?_sz.y:1, sx=_sz.x>0?_sz.x:1, sd=_sz.z>0?_sz.z:0.4;
-        fitGeo=Math.min(TARGET_H/sy, TARGET_W/sx);
-        halfDepthGeo=(sd*fitGeo)/2;
-        cont.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ（holder.scaleでまとめて拡縮／回転軸も中心）
-        holder.add(cont);
-        idx=i;
+        if(!_cache[i]) _cache[i]=makeBuddy(i);
+        const rec=_cache[i]; if(!rec){ active=false; return; }
+        if(cont && cont!==rec.model && cont.parent===holder) holder.remove(cont);
+        cont=rec.model; if(cont.parent!==holder) holder.add(cont);
+        fitGeo=rec.fit; halfDepthGeo=rec.halfDepth; idx=i;
     }
     return {
         set(i){ if(i==null||i<0){ this.clear(); return; } if(i!==idx||!cont) build(i); active=!!cont; },
         clear(){ active=false; if(holder) holder.visible=false; },
-        // 板(worldHud.mesh)の位置・向き・スケール s に合わせて配置。板よりさらに1.0m奥＋ゆっくり回転
+        invalidate(){ if(holder&&cont&&cont.parent===holder) holder.remove(cont); for(let k=0;k<_cache.length;k++) _cache[k]=null; cont=null; idx=-1; active=false; if(holder) holder.visible=false; },
+        // 板(worldHud.mesh)の位置・向き・スケール s に合わせて配置。板よりさらに1.0m奥・0.8倍・ゆっくり回転
         update(s){
             if(!holder) return;
             const ph=(typeof gamePhase==="function")?gamePhase():"";
@@ -4156,21 +4165,13 @@ const resultBuddy=(function(){
             const now=performance.now(), p2=now*0.006*0.95;
             holder.quaternion.copy(q);
             holder.rotateY(now*SPIN);                       // ゆっくり回転（ターンテーブル）
-            holder.scale.setScalar(fitGeo*s);
+            holder.scale.setScalar(fitGeo*s*SIZE_MUL);      // 0.8倍
             if(cont && cont.userData){       // 足/羽・尻尾のみ動かす（触る等の操作は不可）
                 const legs=cont.userData.legs, tail=cont.userData.tail, wings=cont.userData.wings;
                 if(legs) legs.forEach(pg=>{ if(pg) pg.rotation.x=Math.sin(p2+(pg.userData.phase||0))*0.30; });
                 if(tail) tail.rotation.y=Math.sin(now*0.003)*0.28;
                 if(wings) wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*(0.22+Math.sin(now*0.004)*0.40); });
             }
-        },
-        // メイン描画の後に呼ぶ：深度をクリアして板の上へ重ね描き（奥に下げても隠れない）
-        renderOverlay(rnd, cam){
-            if(!buddyScene || !holder || !holder.visible) return;
-            const prevAuto=rnd.autoClear; rnd.autoClear=false;
-            rnd.clearDepth();
-            rnd.render(buddyScene, cam);
-            rnd.autoClear=prevAuto;
         }
     };
 })();
@@ -5818,7 +5819,6 @@ renderer.setAnimationLoop(()=>{
     if(_warmupTTL>0){ for(const m of _warmupModels){ if(m){ m.visible=true; m.position.set(0,-100000,0); } } }
 
     renderer.render(scene,camera);
-    if(window.__resultBuddy) window.__resultBuddy.renderOverlay(renderer, camera);   // 相棒モデルを板の上へ重ね描き（奥に下げても隠れない）
 
     if(_warmupTTL>0){
         _warmupTTL--;
