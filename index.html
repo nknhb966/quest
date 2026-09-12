@@ -4103,12 +4103,22 @@ const worldHud=(function(){
 //  ・カードは出さず、この動くモデルを見せる（プレイヤー向き・足/羽と尻尾が動く・触る等の操作は不可）
 //  ・板は scale(s,s,1) と環境で伸縮するため、子にせず毎フレーム“等倍”で板の手前へ配置（奥行きが歪まない）
 const resultBuddy=(function(){
-    let holder=null, cont=null, idx=-1, active=false;
+    let holder=null, cont=null, idx=-1, active=false, buddyScene=null;
     let fitGeo=1, halfDepthGeo=0.2;
     const TARGET_H=1.15, TARGET_W=1.02;   // 板ローカル(ジオメトリ)単位の目標サイズ（板は幅1.3×高2.098）
     const Y_GEO=-0.20;                     // 板中央よりやや下（カードがあった領域）
-    const _bb=new THREE.Box3(), _c=new THREE.Vector3(), _sz=new THREE.Vector3(), _off=new THREE.Vector3();
-    function ensureHolder(){ if(holder) return; holder=new THREE.Group(); holder.visible=false; scene.add(holder); }
+    const BACK_M=1.0;                      // 板よりさらに1.0m奥（プレイヤーから遠ざける）
+    const SPIN=0.0004;                     // ゆっくり回転（rad/ms ≒ 0.4rad/s：1周約16秒）
+    const _bb=new THREE.Box3(), _c=new THREE.Vector3(), _sz=new THREE.Vector3(), _off=new THREE.Vector3(), _fwd=new THREE.Vector3();
+    function ensureHolder(){
+        if(holder) return;
+        // 板(90%不透明)より奥へ下げても隠れないよう、専用シーンで“最後に上から”描画（自己遮蔽=3Dの前後関係は保持）
+        buddyScene=new THREE.Scene();
+        buddyScene.add(new THREE.HemisphereLight(0xbcd3ff, 0x2a2438, 1.1));
+        const sun2=new THREE.DirectionalLight(0xfff2d8, 1.4); sun2.position.set(30,60,20); buddyScene.add(sun2);
+        buddyScene.add(new THREE.AmbientLight(0x404060, 0.5));
+        holder=new THREE.Group(); holder.visible=false; buddyScene.add(holder);
+    }
     function build(i){
         ensureHolder();
         if(cont){ holder.remove(cont); cont=null; }
@@ -4124,32 +4134,43 @@ const resultBuddy=(function(){
         const sy=_sz.y>0?_sz.y:1, sx=_sz.x>0?_sz.x:1, sd=_sz.z>0?_sz.z:0.4;
         fitGeo=Math.min(TARGET_H/sy, TARGET_W/sx);
         halfDepthGeo=(sd*fitGeo)/2;
-        cont.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ（holder.scaleでまとめて拡縮）
+        cont.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ（holder.scaleでまとめて拡縮／回転軸も中心）
         holder.add(cont);
         idx=i;
     }
     return {
         set(i){ if(i==null||i<0){ this.clear(); return; } if(i!==idx||!cont) build(i); active=!!cont; },
         clear(){ active=false; if(holder) holder.visible=false; },
-        // 板(worldHud.mesh)の位置・向き・スケール s に合わせ、板の手前へ等倍で配置＋アイドル
+        // 板(worldHud.mesh)の位置・向き・スケール s に合わせて配置。板よりさらに1.0m奥＋ゆっくり回転
         update(s){
             if(!holder) return;
             const ph=(typeof gamePhase==="function")?gamePhase():"";
             if(!active || ph!=="result" || !worldHud.mesh.visible){ holder.visible=false; return; }
             holder.visible=true;
             const q=worldHud.mesh.quaternion, pos=worldHud.mesh.position;
-            const zGeo=halfDepthGeo+0.08;   // モデル全体が板より手前(プレイヤー側)に来るように前へ逃がす
+            const zGeo=halfDepthGeo+0.08;
             _off.set(0, Y_GEO, zGeo).multiplyScalar(s).applyQuaternion(q);
             holder.position.copy(pos).add(_off);
-            holder.quaternion.copy(q);      // 板と同じ向き＝+Zがプレイヤー方向。モデルの鼻先(+Z)も正面を向く
-            holder.scale.setScalar(fitGeo*s);
+            _fwd.set(0,0,1).applyQuaternion(q);            // 板→プレイヤー方向(+Z)
+            holder.position.addScaledVector(_fwd, -BACK_M); // 1.0m 奥（プレイヤーから遠ざける）
             const now=performance.now(), p2=now*0.006*0.95;
+            holder.quaternion.copy(q);
+            holder.rotateY(now*SPIN);                       // ゆっくり回転（ターンテーブル）
+            holder.scale.setScalar(fitGeo*s);
             if(cont && cont.userData){       // 足/羽・尻尾のみ動かす（触る等の操作は不可）
                 const legs=cont.userData.legs, tail=cont.userData.tail, wings=cont.userData.wings;
                 if(legs) legs.forEach(pg=>{ if(pg) pg.rotation.x=Math.sin(p2+(pg.userData.phase||0))*0.30; });
                 if(tail) tail.rotation.y=Math.sin(now*0.003)*0.28;
                 if(wings) wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*(0.22+Math.sin(now*0.004)*0.40); });
             }
+        },
+        // メイン描画の後に呼ぶ：深度をクリアして板の上へ重ね描き（奥に下げても隠れない）
+        renderOverlay(rnd, cam){
+            if(!buddyScene || !holder || !holder.visible) return;
+            const prevAuto=rnd.autoClear; rnd.autoClear=false;
+            rnd.clearDepth();
+            rnd.render(buddyScene, cam);
+            rnd.autoClear=prevAuto;
         }
     };
 })();
@@ -5797,6 +5818,7 @@ renderer.setAnimationLoop(()=>{
     if(_warmupTTL>0){ for(const m of _warmupModels){ if(m){ m.visible=true; m.position.set(0,-100000,0); } } }
 
     renderer.render(scene,camera);
+    if(window.__resultBuddy) window.__resultBuddy.renderOverlay(renderer, camera);   // 相棒モデルを板の上へ重ね描き（奥に下げても隠れない）
 
     if(_warmupTTL>0){
         _warmupTTL--;
