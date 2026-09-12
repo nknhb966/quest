@@ -2479,7 +2479,7 @@ function updateTAClock(){
     if(GAME._heightReady===false){ taClock.draw("高さ調整中…",false); taClock.show(true); return; }   // 安定するまで開始不可
     if(GAME.mode!=="time"){   // コレクション：スタンバイ/カウントダウン/リザルトのサイン
         if(GAME.active && GAME.standby){ taClock.draw("右トリガー2回で開始",false); taClock.show(true); }
-        else if(GAME.active && GAME.complete){ taClock.draw((GAME.challenge?("右トリガー2回で"+((GAME.ch&&GAME.ch.turn>=3)?"チャレンジ終了":"このターンを終わる")):(GAME.reviewing?"右トリガー2回でスタンバイに戻る":"右トリガー2回でおわる")),false); taClock.show(true); }
+        else if(GAME.active && GAME.complete){ taClock.draw((GAME.challenge?("右トリガー2回で"+((GAME.ch&&GAME.ch.turn>=3)?"おわる":"このターンをおわる")):(GAME.reviewing?"右トリガー2回でスタンバイに戻る":"右トリガー2回でおわる")),false); taClock.show(true); }
         else if(TA.state==="countdown"){ const n=Math.max(1,Math.ceil((TA.cdEnd-performance.now())/1000)); taClock.draw(String(n),true); taClock.show(true); }
         else taClock.show(false);
         return;
@@ -2488,7 +2488,7 @@ function updateTAClock(){
     if(s==="countdown"){ const n=Math.max(1,Math.ceil((TA.cdEnd-performance.now())/1000)); taClock.draw(String(n),true); taClock.show(true); }
     else if(s==="run"){ taClock.draw("⏱ "+Math.max(0,Math.ceil(GAME.timeLeft))+"s",false); taClock.show(true); }
     else if(s==="ready"){ taClock.draw("右トリガー2回で開始",false); taClock.show(true); }
-    else if(s==="results"){ taClock.draw((GAME.challenge?(GAME.ch&&GAME.ch.extra?"右トリガー2回でスタンバイに戻る":("右トリガー2回で"+((GAME.ch&&GAME.ch.turn>=3)?"チャレンジ終了":"このターンを終わる"))):(GAME.reviewing?"右トリガー2回でスタンバイに戻る":"右トリガー2回でおわる")),false); taClock.show(true); }
+    else if(s==="results"){ taClock.draw((GAME.challenge?(GAME.ch&&GAME.ch.extra?"右トリガー2回でスタンバイに戻る":("右トリガー2回で"+((GAME.ch&&GAME.ch.turn>=3)?"おわる":"このターンをおわる"))):(GAME.reviewing?"右トリガー2回でスタンバイに戻る":"右トリガー2回でおわる")),false); taClock.show(true); }
     else taClock.show(false);
 }
 // ===== 発掘チャレンジ：各ターンのステージ表示パネル =====
@@ -4062,7 +4062,7 @@ const worldHud=(function(){
             bg( shortBoard ? shortBottom : undefined ); ctx.textAlign="center"; ctx.textBaseline="middle";
             if(window.__resultBuddy) window.__resultBuddy.clear();   // 既定は非表示（出土品の1・2ターン目のみ下で表示）
             let advY = 1180;   // ガイド文言のY（短縮板では内容の直下へ移す）
-            const advTxt = "右トリガー2回で" + ((c.chFinal)?"チャレンジ終了":"このターンを終わる");
+            const advTxt = "右トリガー2回で" + ((c.chFinal)?"おわる":"このターンをおわる");
             const bigNum=(num,cy)=>{ const t=String(num); ctx.textAlign="left"; ctx.font="bold 96px sans-serif"; const nw=ctx.measureText(t).width; ctx.font="bold 48px sans-serif"; const uw=ctx.measureText(" pt").width; const sx=384-(nw+uw)/2; ctx.fillStyle="#fff"; ctx.font="bold 96px sans-serif"; ctx.fillText(t,sx,cy); ctx.font="bold 48px sans-serif"; ctx.fillText(" pt",sx+nw,cy+12); ctx.textAlign="center"; };
             const calcBlock=(digPts,secs,timeBonus,score,y0)=>{ const lx=100,rx=680; let y=y0; const rowH=44; ctx.font="bold 30px sans-serif";
                 const row=(label,val)=>{ ctx.fillStyle="rgba(226,216,255,.9)"; ctx.textAlign="left"; ctx.fillText(label,lx,y); ctx.textAlign="right"; ctx.fillText(val,rx,y); y+=rowH; };
