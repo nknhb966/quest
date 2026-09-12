@@ -4116,7 +4116,10 @@ const resultBuddy=(function(){
     const SIZE_MUL=0.8;                    // モデル0.8倍
     const Y_GEO=-0.20;                     // 板中央よりやや下
     const BACK_M=1.0;                      // 板よりさらに1.0m奥（プレイヤーから遠ざける）
-    const SPIN=0.0004;                     // ゆっくり回転（rad/ms ≒ 0.4rad/s：1周約16秒）
+    const SWING=Math.PI/3;                 // 首振り幅：正面0°に対して±60°
+    const OSC=0.0006;                      // 往復の速さ（rad/ms：+60↔-60で約10.5秒＝ゆっくり）
+    const HOLD_MS=500;                     // 出現直後はこの時間だけ正面(プレイヤー側)を向いてから回転
+    let   t0=0, wasVisible=false;          // 出現時に位相リセット（毎回0°＝正面から始める）
     const _bb=new THREE.Box3(), _c=new THREE.Vector3(), _sz=new THREE.Vector3(), _off=new THREE.Vector3(), _fwd=new THREE.Vector3();
     function ensureHolder(){ if(holder) return; holder=new THREE.Group(); holder.visible=false; scene.add(holder); }
     function makeBuddy(i){
@@ -4155,7 +4158,7 @@ const resultBuddy=(function(){
         update(s){
             if(!holder) return;
             const ph=(typeof gamePhase==="function")?gamePhase():"";
-            if(!active || ph!=="result" || !worldHud.mesh.visible){ holder.visible=false; return; }
+            if(!active || ph!=="result" || !worldHud.mesh.visible){ holder.visible=false; wasVisible=false; return; }
             holder.visible=true;
             const q=worldHud.mesh.quaternion, pos=worldHud.mesh.position;
             const zGeo=halfDepthGeo+0.08;
