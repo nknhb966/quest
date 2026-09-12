@@ -2053,6 +2053,7 @@ function buddyCandidates(){
     if(buddyMode!=="unlock") return COMPANION_ORDER.filter(k=>COMPANIONS[k]);
     return COMPANION_ORDER.filter(k=>COMPANIONS[k] && (k==="dog" || unlockedBuddies.indexOf(k)>=0));
 }
+function onlyDogBuddy(){ return (typeof buddyCandidates==="function") && buddyCandidates().length<=1; }   // 選べる相棒が犬だけ（獲得モードで他を未獲得等）
 function drawRandomCompanion(){
     const keys=buddyCandidates();                     // 候補から均等ランダム（レア度の区別なし）
     const pick=keys[(Math.random()*keys.length)|0] || "dog";
@@ -2080,6 +2081,14 @@ function updateBuddyStandbyUI(){
         start.onclick=()=>{ taAdvance(); };
         el.appendChild(start);
         return;
+    }
+    if(typeof onlyDogBuddy==="function" && onlyDogBuddy()){   // 候補が犬だけ：▼・一覧・カードをひくは出さず「相棒：いぬ」表示（全モード共通）
+        if(companionKind!=="dog") setCompanion("dog");
+        const lab=document.createElement("div"); lab.textContent="相棒：いぬ"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
+        const start=document.createElement("button"); start.textContent="▶ スタート";
+        start.style.cssText="font:bold 14px sans-serif;padding:8px 18px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:8px;";
+        start.onclick=()=>{ taAdvance(); };
+        el.appendChild(start); el.style.display="flex"; return;
     }
     {
         // ── ヘッダー：ラベル ＋ ▼/▲（恐竜一覧の開閉。開いたら▲で閉じるまで開いたまま）──
@@ -2206,7 +2215,7 @@ function makeBuddyRandomBtnTex(){
 }
 function updateBuddyRandomBtn(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // ランダムモードのみ・選択パネルの直下／暗転中（図鑑カード表示中）は非表示
+    const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // ランダムモードのみ・選択パネルの直下／TA・コレクションで候補が犬だけ／暗転中は非表示
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); _buddyRandomBtn.scale.setScalar(1.0); }   // 幅=図鑑と同じ0.30。位置/向きは placeBuddyPanels で毎フレーム設定
     _buddyRandomBtn.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
@@ -2310,7 +2319,7 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = renderer.xr.isPresenting && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // チャレンジ1ターン目は相棒選択なし（犬固定）／暗転中（図鑑カード表示中）は非表示
+    const show = renderer.xr.isPresenting && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy) && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // チャレンジ1ターン目は犬固定／TA・コレクションで候補が犬だけ／暗転中は非表示
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
@@ -3742,6 +3751,7 @@ updateSiteBtn();
 if(typeof applyAutoForTarget==="function"){ applyAutoForTarget(chosenDigTarget); updateRecoVisibility(); if(typeof updateTimeLimitUI==="function") updateTimeLimitUI(); }
 { const od=document.getElementById("openDex"); if(od) od.onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); }; }
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
+{ const dEl=document.getElementById("dex"); if(dEl) dEl.addEventListener("click", ev=>{ if(ev.target===dEl){ dEl.classList.remove("open"); clearNewStamps(); refreshDexHTML(); } }); }   // モーダル外側タップでも閉じる
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
 document.getElementById("dexReset").onclick=()=>{
     if(!confirm("発掘図鑑をリセットします。すべての発掘記録が消えます。よろしいですか？")) return;
@@ -4540,6 +4550,7 @@ function enterStandby(){   // ①スタンバイへ（④→①は内容保持�
     GAME.complete=false; GAME.reviewing=false; GAME.standby = (GAME.mode!=="time");
     if(GAME.mode==="time") TA.state="ready"; else TA.state="idle";
     worldHud.hide();
+    if(!GAME.challenge && typeof clearRunWorld==="function") clearRunWorld();   // TA/コレクション：スタンバイに戻ったら発掘モデル・名称ラベル・説明/番号パネル等を消す
     GAME._bsKey=null;   // スタンバイUIを再構築させる
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     updateGoal(); updateTAButton();
@@ -4637,7 +4648,7 @@ function updateResultBtn(){
         b.textContent = worldHud.resultPage()===0 ? "スコア" : "獲得カード";
     } else if(inCol){
         b.style.display="";
-        b.textContent = worldHud.collectPage()===0 ? "タイムTOP5を見る" : "獲得カード";
+        b.textContent = worldHud.collectPage()===0 ? "スコア" : "獲得カード";
     } else b.style.display="none";
 }
 function updateTAButton(){
