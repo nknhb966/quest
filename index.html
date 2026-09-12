@@ -4047,7 +4047,7 @@ const worldHud=(function(){
         },
         renderChallengePage(){   // 発掘チャレンジ：各ターン（得点計算＋相棒カード1.5倍）／3ターン目（2ページ）。フォント/TOP5はタイムアタック準拠
             if(!resData) return; const d=resData; const c=d.calc;
-            const shortBoard = (!c.chFinal && curTarget!=="dino");   // 出土品・1/2ターン目のみ板を短縮（この画面だけ。上辺は固定）
+            const shortBoard = (!c.chFinal);   // 1・2ターン目は出土品・恐竜どちらもモデル表示＝板を短縮（3ターン目カードは従来）
             const shortBottom = GAME.desktop ? 372 : 416;            // 板の下端＝内容の直下（VRはガイド文言ぶん少し長い）
             bg( shortBoard ? shortBottom : undefined ); ctx.textAlign="center"; ctx.textBaseline="middle";
             if(window.__resultBuddy) window.__resultBuddy.clear();   // 既定は非表示（出土品の1・2ターン目のみ下で表示）
@@ -4087,20 +4087,12 @@ const worldHud=(function(){
             } else {
                 ctx.fillStyle="#8ff0ff"; ctx.font="bold 44px sans-serif"; ctx.fillText(c.chTurn+"ターン目 完了！",384,78);
                 let y=calcBlock(c.digPts,c.secs,c.timeBonus,d.score,168);
-                if(curTarget!=="dino"){
-                    // 出土品発掘：カードは出さず、板の下に相棒(恐竜)3Dモデルを表示。板は「相棒◯◯…」の直下までに短縮
-                    const bn=(GAME.ch&&GAME.ch.lastBuddyName) ? GAME.ch.lastBuddyName
-                             : ((typeof DINOS!=="undefined"&&DINOS[c.card.idx])?((DINOS[c.card.idx].fullName||DINOS[c.card.idx].label||"").replace(/^\S+\s*/,"")):"");
-                    ctx.fillStyle="#ffd86a"; ctx.font="bold 32px sans-serif"; ctx.fillText("相棒 "+bn+" が加わった！",384,y+60);
-                    advY = y+60+42;   // ガイド文言は「相棒◯◯…」の直下（短縮板の中）
-                    if(window.__resultBuddy) window.__resultBuddy.set(c.card.idx);   // 3Dモデル（板の下に表示）
-                } else {
-                    // 恐竜発掘：従来どおり相棒カードを表示
-                    const im=cardImage("dino", c.card.idx);
-                    if(im.complete&&im.naturalWidth){ try{ ctx.drawImage(im, 117, y+38, 535, 803); }catch(_){}}   // 97%（552×828→535×803・中央）
-                    else { im.addEventListener("load",()=>{ if(resData===d) worldHud.renderChallengePage(); },{once:true}); }
-                    if(GAME.ch&&GAME.ch.lastBuddyName){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.fillText("相棒 "+GAME.ch.lastBuddyName+" が加わった！",384,y+38+803+28); }
-                }
+                // 出土品・恐竜どちらの発掘でも：カードは出さず、板の下に相棒(恐竜)3Dモデルを表示。板は「相棒◯◯…」の直下までに短縮
+                const bn=(GAME.ch&&GAME.ch.lastBuddyName) ? GAME.ch.lastBuddyName
+                         : ((typeof DINOS!=="undefined"&&DINOS[c.card.idx])?((DINOS[c.card.idx].fullName||DINOS[c.card.idx].label||"").replace(/^\S+\s*/,"")):"");
+                ctx.fillStyle="#ffd86a"; ctx.font="bold 32px sans-serif"; ctx.fillText("相棒 "+bn+" が加わった！",384,y+60);
+                advY = y+60+42;   // ガイド文言は「相棒◯◯…」の直下（短縮板の中）
+                if(window.__resultBuddy) window.__resultBuddy.set(c.card.idx);   // 3Dモデル（板の下に表示）
             }
             if(!GAME.desktop){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(advTxt,384,advY); }   // 短縮板では内容の直下、通常は1180
             tex.needsUpdate=true; mesh.visible=true;
@@ -4115,7 +4107,7 @@ const resultBuddy=(function(){
     let fitGeo=1, halfDepthGeo=0.2;
     const _cache=new Array(8).fill(null);   // idxごとにクローンを保持（2度目以降は即時＝スムーズ）
     const TARGET_H=1.15, TARGET_W=1.02;   // 板ローカル(ジオメトリ)単位の基準サイズ（板は幅1.3×高2.098）
-    const SIZE_MUL=0.7;                    // モデル0.7倍（1・2ターン目共通）
+    const SIZE_MUL=0.5;                    // モデル0.5倍（1・2ターン目共通）
     const Y_GEO=-0.20;                     // 板中央よりやや下
     const BACK_M=1.0;                      // 板よりさらに1.0m奥（プレイヤーから遠ざける）
     const SWING=Math.PI/3;                 // 首振り幅：正面0°に対して±60°
