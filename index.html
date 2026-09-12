@@ -4640,8 +4640,9 @@ function updateTAButton(){
 }
 
 /* HUD更新 */
-function gamePhase(){   // ①standby ②count ③play ④result
+function gamePhase(){   // ①standby ②count ③play ④result ⑤review（発掘チャレンジ3ターン目リザルト後の追加フェーズ：役割は従来のまま）
     if(!GAME.active) return "standby";
+    if(GAME.challenge && GAME.ch && GAME.ch.extra) return "review";   // 3ターン終了後の見返しフェーズ（従来はresult扱いだったサブ状態を独立フェーズ名に。挙動は不変）
     if(GAME.mode!=="time" && GAME.complete) return "result";        // コレクション④（TA.stateに依らず）
     if(GAME.mode==="time" && TA.state==="results") return "result"; // タイムアタック④
     if(TA.state==="countdown") return "count";
@@ -4654,7 +4655,7 @@ function updateHudButtons(){
     const _k=ph+"|"+toolSwapAllowed; if(updateHudButtons._k===_k) return; updateHudButtons._k=_k;   // フェーズ/設定が変わった時だけ更新（毎フレームのgetElementById×7＋style書換を回避）
     const set=(id,show)=>{ const e=document.getElementById(id); if(e && e.id!=="dTA" && e.id!=="taCardBtn") e.style.display = show ? "" : "none"; };
     // ①②：リセット・記録・やめる のみ／④：聞いてみる・リセット・図鑑・記録・やめる／③：従来どおり
-    set("dAsk",  ph==="result" || ph==="play");
+    set("dAsk",  ph==="result" || ph==="play" || ph==="review");   // reviewは従来resultだったため同じ表示を維持
     set("dTool", ph==="play" && toolSwapAllowed);        // 道具切替ボタンは③プレイ中かつ「持ち替える」時のみ
     set("dDex",  ph!=="count");        // 図鑑は①③④で表示（②カウントダウンのみ非表示）
     set("dShowAll", ph==="play");     // 全て発掘は③プレイのみ（④リザルトでは非表示）
@@ -4663,7 +4664,7 @@ function updateHudButtons(){
 function updateGoal(){
     if(typeof updateHudButtons==="function") updateHudButtons();
     const el=document.getElementById("dGoal");
-    if(GAME.desktop && typeof gamePhase==="function" && gamePhase()==="result"){ if(el.style.display!=="none") el.style.display="none"; return; }   // リザルトは非表示
+    if(GAME.desktop && typeof gamePhase==="function" && (gamePhase()==="result"||gamePhase()==="review")){ if(el.style.display!=="none") el.style.display="none"; return; }   // リザルト・見返し(review)は非表示（reviewは従来resultだったため同挙動）
     if(el.style.display==="none") el.style.display="";
     const tgt=(GAME.digTarget==="dino")?"恐竜":"出土品";
     const modeLbl = GAME.challenge ? "チャレンジ" : "タイムアタック";
