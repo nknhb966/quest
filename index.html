@@ -426,10 +426,10 @@
     </div>
 
     <!-- 発掘モデル表示の対象トグル（出土品/犬/恐竜）。ビューア・AR両方の表示対象を制御 -->
-    <div id="mvKindSeg" style="display:flex; gap:6px; margin:12px auto 4px; max-width:360px;">
-      <button type="button" data-t="artifact" style="flex:1; padding:9px 0; border-radius:10px; border:2px solid #ffd86a; background:#4a3d17; color:#fff; font:bold 14px sans-serif; cursor:pointer;">出土品</button>
-      <button type="button" data-t="dog" style="flex:1; padding:9px 0; border-radius:10px; border:2px solid #6b5a2e; background:#2a2416; color:#fdf3d5; font:bold 14px sans-serif; cursor:pointer;">犬</button>
-      <button type="button" data-t="dino" style="flex:1; padding:9px 0; border-radius:10px; border:2px solid #6b5a2e; background:#2a2416; color:#fdf3d5; font:bold 14px sans-serif; cursor:pointer;">恐竜</button>
+    <div id="mvKindSeg" style="display:flex; gap:8px; margin:12px 0 4px; width:100%;">
+      <button type="button" data-t="artifact" style="flex:1; padding:12px 0; border-radius:11px; border:2px solid #a78bfa; background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; font:bold 15px sans-serif; cursor:pointer;">出土品</button>
+      <button type="button" data-t="dog" style="flex:1; padding:12px 0; border-radius:11px; border:2px solid #4a3a7a; background:#17122e; color:#b9a9ee; font:bold 15px sans-serif; cursor:pointer;">犬</button>
+      <button type="button" data-t="dino" style="flex:1; padding:12px 0; border-radius:11px; border:2px solid #4a3a7a; background:#17122e; color:#b9a9ee; font:bold 15px sans-serif; cursor:pointer;">恐竜</button>
     </div>
     <!-- 発掘モデル表示（タイトルメニュー最下部・あそび方／記録の次の行） -->
     <button id="mvOpenBtn">🔍 発掘モデル表示</button>
@@ -610,7 +610,7 @@
         box-shadow:0 0 26px rgba(120,80,255,.5), inset 0 1px 0 rgba(255,255,255,.15);
     }
     #mvOpenBtn:active{ transform:scale(.99); }
-    body.loading #mvOpenBtn{ opacity:.5; pointer-events:none; filter:grayscale(.4); }
+    body.loading #mvOpenBtn, body.preloading #mvOpenBtn, body.preloading #mvArOpenBtn, body.preloading #mvKindSeg, body.preloading #segDig{ opacity:.5; pointer-events:none; filter:grayscale(.4); }   /* プリロード完全完了まで発掘モデル表示・対象トグル・発掘対象切替もロック */
     #mvArOpenBtn{
         display:block; width:100%; margin:8px 0 2px;
         padding:15px 0; border:none; border-radius:12px; cursor:pointer;
@@ -1847,8 +1847,8 @@ function build_dog(P){
   H.box(-0.16,1.06,1.04, 0.16,1.12,1.14, D);            // 口
   H.box(-0.3,1.4,0.42, -0.14,1.82,0.6, M);              // 耳L（mirrorで右も）
   H.box(-0.28,1.42,0.46, -0.16,1.7,0.58, D);            // 耳の内側（影）
-  H.eye(-0.15,1.24,0.9,1.0); H.eye(0.15,1.24,0.9,1.0);
-  [-1,1].forEach(sg=>{ const hx=sg*0.172; H.box(hx-0.007,1.264,0.87, hx+0.007,1.278,0.905, 0xf2f0f6); });   // 目のハイライト：各目・左右対称（mirrorで重なり二重化しない）／恐竜同様の上外側の小さな点
+  H.eye(-0.15,1.24,0.9,1.0); H.eye(0.15,1.24,0.9,1.0);   // 目（頭前面の既存ボクセルを黒に＝はみ出さない）
+  { const F=new Chunk(); [-1,1].forEach(sg=>{ const hx=sg*0.15-0.030; F.box(hx-0.008,1.262,0.9, hx+0.008,1.280,0.912, 0xf2f0f6); }); g.add(F.build()); }   // ハイライト：両目とも左上・ミラーしない
   attachHead(g, 0, 1.0, 0.36, H);                       // 首の付け根（頭の手前下）をピボットに
   // 立ち上がってカールした尻尾（左右に振る）
   const tail=new THREE.Group(); tail.position.set(0,1.0,-0.5); g.add(tail);
@@ -1977,7 +1977,7 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
     B.mirrorX(); g.add(B.build());
     // 頭（ワールド座標→attachHeadで首元をピボットに）
     const ny=by0+bh*0.55, nz=zf-0.04, hb=by0+bh-0.02;
-    const hsz=(P.headSize!=null?P.headSize:0.22), hh=(P.headH!=null?P.headH:0.34);
+    const hsz=(P.headSize!=null?P.headSize:0.22)*1.25, hh=(P.headH!=null?P.headH:0.34)*1.12;   // キャラクターらしく頭を大きめに
     const sl=(P.snoutLen!=null?P.snoutLen:0.26), sw=(P.snoutW!=null?P.snoutW:0.12), sh=(P.snoutH!=null?P.snoutH:0.16);
     const H=new Chunk();
     H.box(-hsz, hb, zf-0.06, hsz, hb+hh, zf-0.06+hsz*1.7, M);               // 頭
@@ -1986,13 +1986,10 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
     const sz0=zf-0.06+hsz*1.5;
     H.box(-sw, hb+0.03, sz0, sw, hb+0.03+sh, sz0+sl, (P.snoutCol!=null?P.snoutCol:M));     // マズル
     H.box(-0.055, hb+0.03+sh-0.03, sz0+sl-0.03, 0.055, hb+0.03+sh+0.04, sz0+sl+0.05, N);   // 鼻
-    // 目（黒）＋ハイライト（白）：全犬種で確実に表示・左右同サイズ
+    // 目（黒）：頭前面にフラッシュ（efzまで＝はみ出さない）。ハイライトは別チャンクで両目とも左上に固定
     const efz=zf-0.06+hsz*1.7, eyY=hb+hh*0.62, exx=hsz*0.5;
-    [-1,1].forEach(sg=>{
-        H.box(sg*exx-0.055, eyY-0.05, efz-0.05, sg*exx+0.055, eyY+0.055, efz+0.03, 0x161310);   // 目（黒）
-        const hx=sg*(exx+0.024);   // ハイライト：各目・左右対称（mirrorで重なり二重化しない）／恐竜と同様に上外側の小さな点・目の内側
-        H.box(hx-0.007, eyY+0.020, efz-0.006, hx+0.007, eyY+0.034, efz+0.018, 0xf2f0f6);
-    });
+    [-1,1].forEach(sg=>{ H.box(sg*exx-0.052, eyY-0.048, efz-0.11, sg*exx+0.052, eyY+0.050, efz, 0x161310); });   // 目（黒・前面フラッシュ）
+    { const F=new Chunk(); [-1,1].forEach(sg=>{ const hx=sg*exx-0.030; F.box(hx-0.008, eyY+0.016, efz, hx+0.008, eyY+0.034, efz+0.012, 0xf2f0f6); }); g.add(F.build()); }   // ハイライト：両目とも左上（ミラーしない＝左右反転しない）
     if(P.cheek){ const cc=(P.cheekCol!=null?P.cheekCol:AC); H.box(hsz*0.55, hb-0.02, zf-0.06+hsz*1.0, hsz+0.02, hb+hh*0.45, zf-0.06+hsz*1.6, cc); }   // 頬の差し色（目より下・+x→mirrorで左右対称）
     _dogEars(H, P, hsz, hb, hh, zf);
     attachHead(g, 0, ny, nz, H);
@@ -3046,8 +3043,9 @@ function makeDigDino(dn){
 let _preloadTimer=null;
 let PRELOAD_DONE=false;        // プリロード＋GPUウォームアップ＋出土品ロード完了フラグ（入室可否）
 let WARMUP_DONE=false, ARTIFACTS_DONE=false;
-function _maybeFinishPreload(){ if(WARMUP_DONE && ARTIFACTS_DONE){ PRELOAD_DONE=true; document.body.classList.remove("preloading");
-    if(window.__resultBuddy && window.__resultBuddy.preload) window.__resultBuddy.preload();   // 相棒(恐竜)モデルのクローンを事前生成＝リザルト時に固まらない
+function _maybeFinishPreload(){ if(WARMUP_DONE && ARTIFACTS_DONE){
+    try{ if(window.__resultBuddy && window.__resultBuddy.preload) window.__resultBuddy.preload(); }catch(_){}   // 相棒(恐竜8＋犬8)のクローンを“解錠前”に生成＝リザルトで固まらない
+    PRELOAD_DONE=true; document.body.classList.remove("preloading");   // すべて完了してから入室・各ボタン解禁
 } }
 let _warmupTTL=0;             // 残りウォームアップフレーム数（描画ループで消化）
 let _warmupModels=[];         // ウォームアップ対象（恐竜キャッシュ）
@@ -6969,7 +6967,7 @@ addEventListener("resize",()=>{
         dinoSize=b.dataset.s; updateToggles(); showModel(curIdx()); });
     // トグル：発掘モデル表示の対象（出土品/犬/恐竜）。ビューア・AR両方の表示を切替
     const kindSeg=document.getElementById("mvKindSeg");
-    function mvKindPaint(){ if(!kindSeg) return; kindSeg.querySelectorAll("button").forEach(x=>{ const on=(x.dataset.t===window.MV_VIEW_KIND); x.style.background=on?"#4a3d17":"#2a2416"; x.style.borderColor=on?"#ffd86a":"#6b5a2e"; x.style.color=on?"#fff":"#fdf3d5"; }); }
+    function mvKindPaint(){ if(!kindSeg) return; kindSeg.querySelectorAll("button").forEach(x=>{ const on=(x.dataset.t===window.MV_VIEW_KIND); x.style.background=on?"linear-gradient(135deg,#7c3aed,#1d4ed8)":"#17122e"; x.style.borderColor=on?"#a78bfa":"#4a3a7a"; x.style.color=on?"#fff":"#b9a9ee"; }); }
     window.MV_VIEW_KIND = window.MV_VIEW_KIND || "artifact"; mvKindPaint();
     if(kindSeg) kindSeg.addEventListener("click",(e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.t) return;
         window.MV_VIEW_KIND=b.dataset.t; mvKindPaint();
