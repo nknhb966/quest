@@ -1909,6 +1909,100 @@ function dinoLines(cry){
 const DINO_BUILDERS = { trex:build_trex, fukuiraptor:build_fukuiraptor, fukuititan:build_fukuititan, tri:build_tri, ptera:build_ptera, fukuisaurus:build_fukuisaurus, stego:build_stego, brachi:build_brachi };
 const DINOS = YEAR_CONFIG.dinos.map(d=>({ key:d.key, label:d.label, cry:d.cry, build:DINO_BUILDERS[d.key] }));
 
+// ===========================================================================
+//  犬種（土台）：恐竜と同じボクセル方式で作成。基本の犬1体＋犬種ごとに体型/耳/尾/毛色を差分。
+//  ここではデータ＋ボクセルモデル＋登録（DOG_BREEDS / DOG_BUILDERS / DOGS）のみ。
+//  既存の発掘/図鑑/カード/相棒フローには未接続（将来「出土品発掘＝犬種」で接続予定）。
+// ===========================================================================
+function _dogEars(H, P, hsz, hb, hh, zf){   // 耳（+x側だけ作成→attachHeadのmirrorXで左右に）
+    const col=(P.earCol!=null?P.earCol:P.M), t=P.ear||"flop";
+    const topY=hb+hh, z0=zf-0.06+hsz*0.15, z1=zf-0.06+hsz*1.0;
+    if(t==="up"){          H.box(hsz-0.03, topY-0.02, z0, hsz+0.06, topY+0.24, z1, col); }                 // 立ち耳（柴）
+    else if(t==="bigup"){  H.box(hsz-0.03, topY-0.04, z0-0.02, hsz+0.12, topY+0.30, z1+0.02, col); }        // 特大立ち耳（チワワ）
+    else if(t==="flop"){   H.box(hsz-0.01, hb+hh*0.15, z0, hsz+0.10, topY+0.04, z1, col); }                 // 垂れ耳（レトリバー）
+    else if(t==="longflop"){ H.box(hsz-0.01, hb-0.06, z0, hsz+0.09, topY+0.02, z1-0.02, col); }             // 長い垂れ耳（ビーグル/ダックス）
+    else if(t==="curly"){  H.ellip(hsz+0.03, topY-0.05, (z0+z1)/2, 0.11,0.14,0.11, col); }                  // 丸い耳（プードル）
+    else if(t==="rose"){   H.box(hsz-0.02, topY-0.03, z1-0.10, hsz+0.05, topY+0.08, z1, col); }              // 小さい耳（ブルドッグ）
+}
+function _dogTail(g, P, by0, bh, zb){   // 尾（userData.tailに登録・アイドルで振れる）
+    const col=(P.tailCol!=null?P.tailCol:P.M), t=P.tail||"up";
+    const ty=by0+bh*0.6, tz=zb+0.02;
+    let tail;
+    if(t==="long"){        tail=voxTail(g,0,ty,tz,1.0,0.18,0.06,col); }                                     // 長い（ダックス）
+    else if(t==="feather"){tail=voxTail(g,0,ty+0.04,tz,0.72,0.30,0.10,col); tail.rotation.x=-0.55; }         // ふさふさ上向き（ゴールデン）
+    else if(t==="otter"){  tail=voxTail(g,0,ty-0.02,tz,0.58,0.26,0.14,col); }                                // 太く直（ラブラドール）
+    else if(t==="up"){     tail=voxTail(g,0,ty,tz,0.5,0.18,0.06,col); tail.rotation.x=-0.95; }               // 上向き（ビーグル）
+    else if(t==="curl"){   tail=voxTail(g,0,ty+0.06,tz,0.46,0.20,0.10,col); tail.rotation.x=-1.7; }          // 巻き尾（柴）
+    else if(t==="pom"){    tail=voxTail(g,0,ty,tz,0.34,0.10,0.05,col); tail.rotation.x=-0.85; const pc=new Chunk(); pc.ellip(0,0,-0.4,0.12,0.12,0.12,col); tail.add(pc.build()); } // ポンポン（プードル）
+    else if(t==="thin"){   tail=voxTail(g,0,ty,tz,0.4,0.08,0.04,col); tail.rotation.x=-1.05; }               // 細く上（チワワ）
+    else if(t==="stub"){   tail=voxTail(g,0,ty,tz,0.18,0.14,0.06,col); }                                     // 短い（ブルドッグ）
+    else {                 tail=voxTail(g,0,ty,tz,0.5,0.16,0.06,col); }
+    return tail;
+}
+function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・耳・尾を差分
+    P=P||{};
+    const M=P.M, BE=(P.BE!=null?P.BE:M), D=(P.D!=null?P.D:0x111111), N=(P.N!=null?P.N:0x23201c), AC=(P.AC!=null?P.AC:M);
+    const g=new THREE.Group();
+    const bl=(P.bodyLen!=null?P.bodyLen:1.0), bw=(P.bodyW!=null?P.bodyW:0.24), bh=(P.bodyH!=null?P.bodyH:0.36), by0=(P.bodyY!=null?P.bodyY:0.58);
+    const legLen=(P.legLen!=null?P.legLen:0.5), legW=(P.legW!=null?P.legW:0.11);
+    const hipY=by0+0.02, zf=bl*0.5, zb=-bl*0.5;
+    // 胴
+    const B=new Chunk();
+    B.box(-bw, by0, zb+0.06, bw, by0+bh, zf-0.02, M);
+    B.box(-bw+0.01, by0, zf-0.34, bw-0.01, by0+bh*0.78, zf+0.06, M);       // 胸
+    B.box(-bw+0.03, by0, zb+0.14, bw-0.03, by0+0.12, zf-0.06, BE);          // 腹（明色）
+    if(P.saddle) B.box(-bw, by0+bh-0.07, zb+0.16, bw, by0+bh, zf-0.4, AC);  // 背の差し色
+    B.mirrorX(); g.add(B.build());
+    // 頭（ワールド座標→attachHeadで首元をピボットに）
+    const ny=by0+bh*0.55, nz=zf-0.04, hb=by0+bh-0.02;
+    const hsz=(P.headSize!=null?P.headSize:0.22), hh=(P.headH!=null?P.headH:0.34);
+    const sl=(P.snoutLen!=null?P.snoutLen:0.26), sw=(P.snoutW!=null?P.snoutW:0.12), sh=(P.snoutH!=null?P.snoutH:0.16);
+    const H=new Chunk();
+    H.box(-hsz, hb, zf-0.06, hsz, hb+hh, zf-0.06+hsz*1.7, M);               // 頭
+    if(P.topPuff) H.ellip(0, hb+hh+0.01, zf-0.06+hsz*0.7, hsz*0.95, 0.14, hsz*0.95, M);   // 頭の毛玉（プードル）
+    const sz0=zf-0.06+hsz*1.5;
+    H.box(-sw, hb+0.03, sz0, sw, hb+0.03+sh, sz0+sl, (P.snoutCol!=null?P.snoutCol:M));     // マズル
+    H.box(-0.055, hb+0.03+sh-0.03, sz0+sl-0.03, 0.055, hb+0.03+sh+0.04, sz0+sl+0.05, N);   // 鼻
+    const ey=hb+hh*0.55, ez=zf-0.06+hsz*1.15;
+    H.eye(-hsz*0.62, ey, ez, 0.95); H.eye(hsz*0.62, ey, ez, 0.95);
+    if(P.cheek){ H.box(hsz*0.5, hb, ez-0.06, hsz+0.01, hb+sh+0.06, ez+0.12, AC); }          // ほお差し色（+x側→mirror）
+    _dogEars(H, P, hsz, hb, hh, zf);
+    attachHead(g, 0, ny, nz, H);
+    // 尾
+    _dogTail(g, P, by0, bh, zb);
+    // 脚（4本）
+    const fz=zf-0.24, rz=zb+0.22, lc=(P.legCol!=null?P.legCol:M);
+    g.userData.legs=[
+        voxLeg(g,-bw*0.72,hipY,fz,legW,legLen,lc,D,0),        voxLeg(g, bw*0.72,hipY,fz,legW,legLen,lc,D,Math.PI),
+        voxLeg(g,-bw*0.72,hipY,rz,legW,legLen,lc,D,Math.PI),  voxLeg(g, bw*0.72,hipY,rz,legW,legLen,lc,D,0)
+    ];
+    return g;
+}
+// 犬種データ（レア度/ステータス/実寸cm/スペシャル）。realHは犬種セット内の相対比（cm）
+const DOG_BREEDS = [
+    { key:"golden",    label:"🦮 ゴールデンレトリバー",     fullName:"ゴールデンレトリバー",     cry:"ワン！",   realH:56, rarity:"超激レア", power:5, scope:4, bonus:4, special:{name:"ゴールデン・トレジャー",   discP:50, discN:5, digN:4} },
+    { key:"labrador",  label:"🦮 ラブラドール・レトリバー", fullName:"ラブラドール・レトリバー", cry:"ワン！",   realH:58, rarity:"激レア",   power:4, scope:5, bonus:4, special:{name:"トレジャー・サーチ",       discP:55, discN:5, digN:4} },
+    { key:"beagle",    label:"🐕 ビーグル",                 fullName:"ビーグル",                 cry:"わおーん", realH:38, rarity:"レア",     power:4, scope:5, bonus:3, special:{name:"トレジャー・ハンター",     discP:75, discN:6, digN:4} },
+    { key:"dachshund", label:"🐕 ダックスフンド",           fullName:"ダックスフンド",           cry:"きゃん",   realH:14, rarity:"プチレア", power:3, scope:4, bonus:3, special:{name:"ほりほりダッシュ",       discP:65, discN:5, digN:3} },
+    { key:"toypoodle", label:"🐩 トイプードル",             fullName:"トイプードル",             cry:"くうん",   realH:27, rarity:"プチレア", power:2, scope:3, bonus:5, special:{name:"ぴったりハント",         discP:60, discN:4, digN:3} },
+    { key:"shiba",     label:"🐕 黒柴",                     fullName:"黒柴",                     cry:"わん",     realH:38, rarity:"ノーマル", power:2, scope:3, bonus:3, special:{name:"くんくんサーチ",         discP:60, discN:4, digN:3} },
+    { key:"chihuahua", label:"🐕 チワワ",                   fullName:"チワワ",                   cry:"きゃんっ", realH:17, rarity:"ノーマル", power:1, scope:2, bonus:4, special:{name:"ちょこちょこダッシュ",   discP:50, discN:3, digN:2} },
+    { key:"bulldog",   label:"🐕 ブルドッグ",               fullName:"ブルドッグ",               cry:"ぶふー",   realH:38, rarity:"ノーマル", power:3, scope:2, bonus:3, special:{name:"どすこいほりほり",       discP:40, discN:3, digN:2} }
+];
+// 犬種ボクセルモデル生成（key→関数）。基本犬＋犬種ごとの差分パラメータ
+const DOG_BUILDERS = {
+    golden:    ()=>build_dog_breed({ M:0xd6a154, BE:0xe9cf98, D:0x9c6f2e, ear:"flop",     tail:"feather", legLen:0.55, bodyLen:1.12, bodyW:0.26, bodyH:0.38, headSize:0.24, snoutLen:0.30 }),
+    labrador:  ()=>build_dog_breed({ M:0x5a3a22, BE:0x714b2c, D:0x352209, ear:"flop",     tail:"otter",   legLen:0.56, bodyLen:1.14, bodyW:0.27, bodyH:0.38, headSize:0.24, snoutLen:0.28 }),
+    beagle:    ()=>build_dog_breed({ M:0xb98a52, BE:0xefe6d2, D:0x4a3626, AC:0x37291b, saddle:true, cheek:true, ear:"longflop", tail:"up", legLen:0.48, bodyLen:1.02, bodyW:0.24, bodyH:0.36, headSize:0.22, snoutLen:0.26 }),
+    dachshund: ()=>build_dog_breed({ M:0x8a4a24, BE:0xa9663a, D:0x532b13, ear:"longflop", tail:"long",    legLen:0.30, bodyLen:1.50, bodyW:0.19, bodyH:0.30, headSize:0.18, snoutLen:0.34, snoutW:0.10 }),
+    toypoodle: ()=>build_dog_breed({ M:0xe3c894, BE:0xefe0c0, D:0xc9a86a, ear:"curly",    tail:"pom", topPuff:true, legLen:0.42, bodyLen:0.82, bodyW:0.22, bodyH:0.34, headSize:0.22, snoutLen:0.20 }),
+    shiba:     ()=>build_dog_breed({ M:0x2b2b2b, BE:0x8a5a2e, D:0x151515, AC:0x9a6a38, cheek:true, legCol:0x7a4e28, ear:"up", tail:"curl", legLen:0.50, bodyLen:1.00, bodyW:0.24, bodyH:0.36, headSize:0.22, snoutLen:0.24 }),
+    chihuahua: ()=>build_dog_breed({ M:0xd8b070, BE:0xeadbb8, D:0xa8834a, ear:"bigup",    tail:"thin",    legLen:0.42, bodyLen:0.72, bodyW:0.18, bodyH:0.28, headSize:0.21, snoutLen:0.16, snoutW:0.09 }),
+    bulldog:   ()=>build_dog_breed({ M:0xc8a878, BE:0xe6d6b8, D:0x8a6a44, ear:"rose",     tail:"stub",    legLen:0.34, bodyLen:0.96, bodyW:0.32, bodyH:0.40, headSize:0.28, snoutLen:0.14, snoutW:0.17, snoutH:0.18 })
+};
+// 恐竜の DINOS と同じ形（key/label/cry/realH/build）＋相棒ステータス。将来の発掘/相棒接続に使用
+const DOGS = DOG_BREEDS.map(d=>({ key:d.key, label:d.label, fullName:d.fullName, cry:d.cry, realH:d.realH, rarity:d.rarity, power:d.power, scope:d.scope, bonus:d.bonus, special:d.special, build:DOG_BUILDERS[d.key] }));
+
 const BUDDY_BASE=0.35; let buddyScale=1, bubbleSpr=null;   // 相棒の基準スケール × ユーザー倍率(1.0〜2.5)
 function applyBuddyScale(){ dog.scale.setScalar(BUDDY_BASE*buddyScale);
     if(bubbleSpr) bubbleSpr.scale.set(5.28/buddyScale, 1.6/buddyScale, 1); }   // キャラが大きくてもセリフの大きさは一定に
