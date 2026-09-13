@@ -425,6 +425,12 @@
       <button class="ghost" id="openRecords">🏅 記録</button>
     </div>
 
+    <!-- 発掘モデル表示の対象トグル（出土品/犬/恐竜）。ビューア・AR両方の表示対象を制御 -->
+    <div id="mvKindSeg" style="display:flex; gap:6px; margin:12px auto 4px; max-width:360px;">
+      <button type="button" data-t="artifact" style="flex:1; padding:9px 0; border-radius:10px; border:2px solid #ffd86a; background:#4a3d17; color:#fff; font:bold 14px sans-serif; cursor:pointer;">出土品</button>
+      <button type="button" data-t="dog" style="flex:1; padding:9px 0; border-radius:10px; border:2px solid #6b5a2e; background:#2a2416; color:#fdf3d5; font:bold 14px sans-serif; cursor:pointer;">犬</button>
+      <button type="button" data-t="dino" style="flex:1; padding:9px 0; border-radius:10px; border:2px solid #6b5a2e; background:#2a2416; color:#fdf3d5; font:bold 14px sans-serif; cursor:pointer;">恐竜</button>
+    </div>
     <!-- 発掘モデル表示（タイトルメニュー最下部・あそび方／記録の次の行） -->
     <button id="mvOpenBtn">🔍 発掘モデル表示</button>
     <button id="mvArOpenBtn">📱 発掘モデル表示AR</button>
@@ -5544,6 +5550,7 @@ const _liteHP=new THREE.Vector3(), _liteCP=new THREE.Vector3(), _liteFaceQ=new T
 // 表示モデル生成（既存関数を再利用）：恐竜＝makeDigDino（標準姿勢）／出土品・遺構＝loadArtifactRoot(1024)
 // Lite用モデルキャッシュ：恐竜=専用neutralキャッシュ、出土品=(画質,idx)ごとにキャッシュ。切替時の再生成/再取得をなくす
 const _liteDino=[null,null,null,null,null,null,null,null];   // 恐竜（なめらか・neutral）
+const _liteDog=[null,null,null,null,null,null,null,null];    // 犬種（neutral）
 const _liteArt={};   // key="q_idx" → THREE.Object3D
 function _liteDinoBuild(idx){
     if(_liteDino[idx]) return _liteDino[idx];
@@ -5552,6 +5559,15 @@ function _liteDinoBuild(idx){
     try{ dinoSmooth=true; _liteDino[idx]=makeDigDino(DINOS[idx]); }finally{ try{ dinoSmooth=pv; }catch(_){ } }
     if(_liteDino[idx]) _liteDino[idx].visible=false;
     return _liteDino[idx];
+}
+function _liteDogBuild(idx){
+    if(_liteDog[idx]) return _liteDog[idx];
+    if(typeof DOG_BUILDERS==="undefined" || typeof DOGS==="undefined" || !DOGS[idx] || !DOG_BUILDERS[DOGS[idx].key]) return null;
+    const pv=(typeof VOX_CUR!=="undefined")?VOX_CUR:null, ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+    try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; if(typeof VOX!=="undefined") VOX_CUR=VOX/6; _liteDog[idx]=DOG_BUILDERS[DOGS[idx].key](); }
+    catch(_){ _liteDog[idx]=null; } finally{ if(pv!=null) VOX_CUR=pv; if(typeof dinoSmooth!=="undefined") dinoSmooth=ps; }
+    if(_liteDog[idx]) _liteDog[idx].visible=false;
+    return _liteDog[idx];
 }
 async function _liteArtLoad(idx, quality){
     const key=quality+"_"+idx; if(_liteArt[key]) return _liteArt[key];
@@ -5566,12 +5582,14 @@ function _litePurgeArtExcept(q){   // 現在の画質以外の出土品キャッ
 }
 async function litePrewarmAll(target, quality){
     if(target==="dino"){ for(let i=0;i<(DINOS?DINOS.length:8);i++) _liteDinoBuild(i); return; }
+    if(target==="dog"){ for(let i=0;i<(typeof DOGS!=="undefined"?DOGS.length:8);i++) _liteDogBuild(i); return; }
     _litePurgeArtExcept(quality);   // 画質切替時：旧画質のモデル/テクスチャをGPUごと破棄（メモリ増加を防止）
     const n=mvArtifactRows().length + (window.MV_SHOW_SITE?mvSiteRows().length:0);
     for(let i=0;i<n;i++){ await _liteArtLoad(i, quality); }   // 逐次先読み（完了までAR開始しない）
 }
 function liteBuildModel(target, idx, quality){   // キャッシュから取得（プリロード済み前提）
     if(target==="dino") return _liteDinoBuild(idx);
+    if(target==="dog") return _liteDogBuild(idx);
     return _liteArt[quality+"_"+idx] || null;
 }
 function liteEnterScene(model, intrinsicScale){
@@ -5840,8 +5858,9 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
     // 名称・説明（CSV由来）を設定：出土品/遺構＝CSV、恐竜＝DINOSラベル
     let nm="", ds="";
     if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; ds=""; }
+    else if(target==="dog"){ nm=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||""; ds=""; }
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
-    LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino");   // 恐竜フラグ（説明パネル非表示に使用）
+    LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino"||target==="dog");   // 恐竜・犬フラグ（説明パネル非表示に使用）
     LITE.target=target; LITE.quality=quality; LITE.intrinsic=intrinsicScale||1; LITE.curIdx=idx; LITE.mode="model"; LITE._lastRightPress=0;   // 段階4：セッション情報
     liteEnterScene(model, intrinsicScale);
     liteBuildUI();   // ①②をまとめて構築
@@ -6565,6 +6584,7 @@ addEventListener("resize",()=>{
 
     // 現在の「発掘する対象」（artifact / dino / dino3）
     function curDigTarget(){
+        try{ if(window.MV_VIEW_KIND) return window.MV_VIEW_KIND; }catch(_){}   // 発掘モデル表示の対象トグル（出土品/犬/恐竜）
         try{ if(typeof chosenDigTarget!=="undefined" && chosenDigTarget) return chosenDigTarget; }catch(_){}
         try{ if(typeof GAME!=="undefined" && GAME && GAME.digTarget) return GAME.digTarget; }catch(_){}
         return "artifact";
@@ -6585,20 +6605,33 @@ addEventListener("resize",()=>{
                 m.updateMatrixWorld(true); }
             return m || null;
         }
+        if(target==="dog"){
+            let m=null;
+            if(typeof DOG_BUILDERS!=="undefined" && typeof DOGS!=="undefined" && DOGS[idx] && DOG_BUILDERS[DOGS[idx].key]){
+                const pv=(typeof VOX_CUR!=="undefined")?VOX_CUR:null, ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+                try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; if(typeof VOX!=="undefined") VOX_CUR=VOX/6; m=DOG_BUILDERS[DOGS[idx].key](); }
+                catch(_){ m=null; } finally{ if(pv!=null) VOX_CUR=pv; if(typeof dinoSmooth!=="undefined") dinoSmooth=ps; }
+            }
+            if(m && m.userData){ if(m.userData.head)m.userData.head.rotation.set(0,0,0); if(m.userData.tail)m.userData.tail.rotation.set(0,0,0); (m.userData.legs||[]).forEach(pp=>pp&&pp.rotation.set(0,0,0)); if(m.updateMatrixWorld) m.updateMatrixWorld(true); }
+            return m || null;
+        }
         return (typeof artModels!=="undefined" && artModels[idx]) ? artModels[idx] : null;
     }
 
     // 対象に合わせて選択肢を作り直す
     function buildOptions(){
         const target = curDigTarget();
-        const isDino = (target==="dino");
-        const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8) : artCount();   // 出土品は8点（遺構表示時は+1）
+        const isDino = (target==="dino"), isDog = (target==="dog");
+        const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8)
+                : isDog ? (typeof DOGS!=="undefined" ? DOGS.length : 8) : artCount();   // 出土品/犬/恐竜=各8点
         curList = []; sel.innerHTML = "";
         for(let i=0;i<n;i++){
             const opt=document.createElement("option");
             opt.value=String(i);
             opt.textContent = isDino
                 ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
+                : isDog
+                ? ((typeof DOGS!=="undefined" && DOGS[i]) ? DOGS[i].label : ("犬 "+(i+1)))
                 : ((artInfo(i) && artInfo(i).name)
                     ? artInfo(i).name                                                            // CSVの名称（出土品名・遺構XXXX）
                     : (i < artModelCount() ? ("出土品 No."+String(i+1).padStart(2,"0")) : "遺構"));  // フォールバック
@@ -6768,12 +6801,13 @@ addEventListener("resize",()=>{
         const _tok = (showModel._tok = (showModel._tok||0)+1);   // 連続切替：最新の要求だけ反映
         const target = curDigTarget();
         const isDino = (target==="dino");
-        applyAnnotation(isDino, idx);   // craftARt Go：出土品の説明ホットスポット＋関連URL（非表示準備）を反映
+        const isVoxel = (target==="dino" || target==="dog");
+        applyAnnotation(isVoxel, idx);   // 恐竜・犬は注釈なし（出土品のみCSV注釈）
         setNote("読み込み中…");
         viewer.setAttribute("exposure", "1.0");
 
         // 出土品・遺構：CSVの path（フル版）を読み、全画質でテクスチャ縮小のみ変える（_smallは経由しない）
-        if(!isDino){
+        if(!isVoxel){
             const fullUrl = modelUrl(idx);
             const MAX = (artQuality==="hi") ? (typeof liteHiMax==="function"?liteHiMax():0) : (artQuality==="mid" ? 3072 : 1024);   // 軽い1024／普通3072／きれい=端末上限（iOSキャップ）
             setNote(artQuality==="hi" ? "読み込み中…（きれい）" : (artQuality==="mid" ? "読み込み中…（普通）" : "読み込み中…"));
@@ -6798,7 +6832,7 @@ addEventListener("resize",()=>{
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
         try{
-            const factor = dinoFactor(target==="dino", dinoSize);
+            const factor = (target==="dog") ? 1 : dinoFactor(target==="dino", dinoSize);
             const url = await objToBlobUrl(obj, { scaleFactor:factor, bakeVoxelColors:true });
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
@@ -6813,9 +6847,9 @@ addEventListener("resize",()=>{
 
     // 対象に応じてトグルの表示を切替（出土品=画質／恐竜=サイズ）、選択状態を反映
     function updateToggles(){
-        const isDino = (function(){ const t=curDigTarget(); return t==="dino"; })();
-        if(artLabel)  artLabel.style.display  = isDino ? "none" : "inline";
-        if(artSeg)    artSeg.style.display    = isDino ? "none" : "inline-flex";
+        const _t=curDigTarget(); const isDino=(_t==="dino"), isDog=(_t==="dog");
+        if(artLabel)  artLabel.style.display  = (!isDino && !isDog) ? "inline" : "none";
+        if(artSeg)    artSeg.style.display    = (!isDino && !isDog) ? "inline-flex" : "none";
         if(dinoLabel) dinoLabel.style.display = isDino ? "inline" : "none";
         if(dinoSeg)   dinoSeg.style.display   = isDino ? "inline-flex" : "none";
         if(artSeg)  artSeg.querySelectorAll("button").forEach(b=> b.classList.toggle("on", b.dataset.q===artQuality));
@@ -6853,7 +6887,7 @@ addEventListener("resize",()=>{
     if(arBtn) arBtn.addEventListener("click", async ()=>{
         if(window.__mvLiteMode && typeof enterLiteAR==="function"){   // Lite：カスタムWebXR ARへ（現在の画質・サイズを反映）
             const tgt=curDigTarget(), i=curIdx();
-            const intrinsic = (tgt==="dino") ? dinoFactor(true, dinoSize) : 1;   // 恐竜=サイズ倍率／出土品=原寸(1.0)
+            const intrinsic = (tgt==="dino") ? dinoFactor(true, dinoSize) : (tgt==="dog" ? ((typeof DOGS!=="undefined"&&DOGS[i]?DOGS[i].realH:38)/100) : 1);   // 恐竜=倍率／犬=realH(cm)→m／出土品=原寸
             const ok=await enterLiteAR(tgt, i, artQuality, intrinsic);
             if(ok){ modal.style.display="none"; window.__mvPreviewPause=false; }   // 入室成功でモーダルを閉じる
             else { setNote("ARを開始できませんでした。AR対応ブラウザ/端末でお試しください。"); }
@@ -6873,7 +6907,7 @@ addEventListener("resize",()=>{
         if(typeof setLiteMode==="function") setLiteMode(_view==="lite"); else window.__mvLiteMode=(_view==="lite");   // liteモード設定＋ヘッダー文言
         { const cl=document.getElementById("mvCloseBtn"); if(cl) cl.style.display="none"; }   // URL直接オープン時は閉じるボタン不要
         const t=(params.get("target")||"").toLowerCase();
-        if(["artifact","dino"].includes(t)){ try{ if(typeof chosenDigTarget!=="undefined") chosenDigTarget=t; }catch(_){ } }   // 引き継ぎは「発掘する対象」のみ
+        if(["artifact","dino","dog"].includes(t)){ try{ window.MV_VIEW_KIND=t; if(t!=="dog" && typeof chosenDigTarget!=="undefined") chosenDigTarget=t; }catch(_){ } }   // 対象トグルへ反映
         // 枠を即表示（背後のタイトルを隠す）。__mvPreviewPause はウォームアップ描画を止めないため“完了後”に true
         modal.style.display="flex";
         try{ sel.innerHTML='<option>読み込み中...</option>'; }catch(_){ }
@@ -6899,6 +6933,14 @@ addEventListener("resize",()=>{
     // トグル：恐竜のサイズ（小さい=補正後 / 大きい=補正前）
     if(dinoSeg) dinoSeg.addEventListener("click", (e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.s) return;
         dinoSize=b.dataset.s; updateToggles(); showModel(curIdx()); });
+    // トグル：発掘モデル表示の対象（出土品/犬/恐竜）。ビューア・AR両方の表示を切替
+    const kindSeg=document.getElementById("mvKindSeg");
+    function mvKindPaint(){ if(!kindSeg) return; kindSeg.querySelectorAll("button").forEach(x=>{ const on=(x.dataset.t===window.MV_VIEW_KIND); x.style.background=on?"#4a3d17":"#2a2416"; x.style.borderColor=on?"#ffd86a":"#6b5a2e"; x.style.color=on?"#fff":"#fdf3d5"; }); }
+    window.MV_VIEW_KIND = window.MV_VIEW_KIND || "artifact"; mvKindPaint();
+    if(kindSeg) kindSeg.addEventListener("click",(e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.t) return;
+        window.MV_VIEW_KIND=b.dataset.t; mvKindPaint();
+        if(modal.style.display!=="none"){ buildOptions(); updateToggles(); if(curList.length){ sel.value="0"; showModel(0); } }
+    });
     // ボタンは #menu 内にあるため、タイトルメニュー表示中だけ自然に表示される（プレイ中は #menu が非表示）
 })();
 </script>
