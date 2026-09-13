@@ -899,7 +899,7 @@ const YEAR_CONFIG = {
     //  label=一覧表示名 / askLabel=「聞く」ボタン名 / fullName=正式名 / rarity=レア度
     //  power=掘る力 / scope=探索範囲 / bonus=なで確率倍率の基準 / special=スペシャル(name,discP,discN,digN)
     companions: {
-        dog:         { label:"🐶 いぬ",         askLabel:"🐶 聞く", fullName:"いぬ",             rarity:"ノーマル", power:2, scope:2, bonus:2, special:{name:"ここほれワンワン", discP:100, discN:5, digN:0} },
+        dog:         { label:"🐕 しば犬",       askLabel:"🐕 聞く", fullName:"しば犬",           realH:38, rarity:"ノーマル", power:2, scope:2, bonus:2, special:{name:"ここほれワンワン", discP:100, discN:5, digN:0} },
         trex:        { label:"🦖 ティラノ",      askLabel:"🦖 聞く", fullName:"ティラノサウルス", rarity:"超激レア", power:5, scope:4, bonus:4, special:{name:"王者の一撃",     discP:40,  discN:5, digN:4} },
         fukuiraptor: { label:"🦖 フクイラプトル", askLabel:"🦖 聞く", fullName:"フクイラプトル",   rarity:"激レア",   power:5, scope:3, bonus:5, special:{name:"ハンティング",   discP:45,  discN:4, digN:4} },
         fukuititan:  { label:"🦕 フクイティタン", askLabel:"🦕 聞く", fullName:"フクイティタン",   rarity:"レア",     power:4, scope:4, bonus:4, special:{name:"ビッグボディ",   discP:60,  discN:5, digN:3} },
@@ -986,14 +986,16 @@ const DINO_IMGS  = YEAR_CONFIG.dinoImgs;   // 恐竜説明パネル画像URL（�
 // ※実際のフォルダ名に合わせて調整してください（index.htmlと同階層）
 const CARD_DIR_DINO = YEAR_CONFIG.cardDirDino;   // 恐竜用カード画像フォルダ
 const CARD_DIR_ART  = YEAR_CONFIG.cardDirArt;    // 出土品用カード画像フォルダ
-function cardImgPath(target, idx){         // target:"dino"/"artifact", idx:0始まり → cardXX.png
-    const dir = (target==="dino") ? CARD_DIR_DINO : CARD_DIR_ART;
+const CARD_DIR_DOG  = "card_dog/";               // 犬種用カード画像フォルダ（cardNN.png・レア度順）
+function cardImgPath(target, idx){         // target:"dino"/"dog"/"artifact", idx:0始まり → cardXX.png
+    const dir = (target==="dino") ? CARD_DIR_DINO : (target==="dog") ? CARD_DIR_DOG : CARD_DIR_ART;
     const n = String((idx|0)+1).padStart(2,"0");
     return dir + "card" + n + ".png";
 }
 // 相棒キー→カード番号（恐竜はDINOSのindex、犬は暫定でindex0）
 function companionCardPath(key){
-    if(key==="dog") return CARD_DIR_DINO + "card00.png";   // 犬用カード
+    if(key==="dog") return CARD_DIR_DINO + "card00.png";   // しば犬（既存カード）
+    if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){ const di=(typeof DOGS!=="undefined")?DOGS.findIndex(d=>d.key===key):-1; return cardImgPath("dog", di>=0?di:0); }   // 犬種→card_dog/cardNN.png
     const i=(typeof DINOS!=="undefined") ? DINOS.findIndex(d=>d.key===key) : -1;
     return cardImgPath("dino", i>=0?i:0);
 }
@@ -1074,6 +1076,10 @@ function setDigTarget(target){
     dinoSmooth = (target==="dino");   // 恐竜は常になめらか
     dexData = (curTarget==="dino") ? dexDino : dexArt;
     chosenDigTarget = target;   // dino / dino3 / artifact を保持
+    // 発掘対象が変わると相棒プールも変わる（恐竜↔犬種）。現在の相棒が新セットに無ければしば犬へ戻す
+    if(typeof curBuddyKeys==="function" && typeof companionKind!=="undefined" && curBuddyKeys().indexOf(companionKind)<0){
+        if(typeof setCompanion==="function") setCompanion("dog"); else companionKind="dog";
+    }
     // 相棒はボクセル版を切替（両版は事前生成済みなので再生成しない＝一瞬固まらない）
     if(typeof refreshBuddyBodies==="function") refreshBuddyBodies();
     if(typeof GAME!=="undefined" && GAME) GAME.digTarget = curTarget;
@@ -1980,13 +1986,13 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
 }
 // 犬種データ（レア度/ステータス/実寸cm/スペシャル）。realHは犬種セット内の相対比（cm）
 const DOG_BREEDS = [
-    { key:"golden",    label:"🦮 ゴールデンレトリバー",     fullName:"ゴールデンレトリバー",     cry:"ワン！",   realH:56, rarity:"超激レア", power:5, scope:4, bonus:4, special:{name:"ゴールデン・トレジャー",   discP:50, discN:5, digN:4} },
-    { key:"labrador",  label:"🦮 ラブラドール・レトリバー", fullName:"ラブラドール・レトリバー", cry:"ワン！",   realH:58, rarity:"激レア",   power:4, scope:5, bonus:4, special:{name:"トレジャー・サーチ",       discP:55, discN:5, digN:4} },
-    { key:"beagle",    label:"🐕 ビーグル",                 fullName:"ビーグル",                 cry:"わおーん", realH:38, rarity:"レア",     power:4, scope:5, bonus:3, special:{name:"トレジャー・ハンター",     discP:75, discN:6, digN:4} },
+    { key:"golden",    label:"🦮 ゴールデンレトリバー",     fullName:"ゴールデンレトリバー",     cry:"ワン！",   realH:56, rarity:"超激レア", power:5, scope:4, bonus:4, special:{name:"黄金の秘宝", discP:30, discN:5, digN:4} },
+    { key:"labrador",  label:"🦮 ラブラドール・レトリバー", fullName:"ラブラドール・レトリバー", cry:"ワン！",   realH:58, rarity:"激レア",   power:4, scope:5, bonus:4, special:{name:"インサイト",             discP:55, discN:5, digN:4} },
+    { key:"beagle",    label:"🐕 ビーグル",                 fullName:"ビーグル",                 cry:"わおーん", realH:38, rarity:"レア",     power:4, scope:5, bonus:3, special:{name:"ハンティング",           discP:75, discN:6, digN:4} },
     { key:"dachshund", label:"🐕 ダックスフンド",           fullName:"ダックスフンド",           cry:"きゃん",   realH:14, rarity:"プチレア", power:3, scope:4, bonus:3, special:{name:"ほりほりダッシュ",       discP:65, discN:5, digN:3} },
     { key:"toypoodle", label:"🐩 トイプードル",             fullName:"トイプードル",             cry:"くうん",   realH:27, rarity:"プチレア", power:2, scope:3, bonus:5, special:{name:"ぴったりハント",         discP:60, discN:4, digN:3} },
     { key:"shiba",     label:"🐕 黒柴",                     fullName:"黒柴",                     cry:"わん",     realH:38, rarity:"ノーマル", power:2, scope:3, bonus:3, special:{name:"くんくんサーチ",         discP:60, discN:4, digN:3} },
-    { key:"chihuahua", label:"🐕 チワワ",                   fullName:"チワワ",                   cry:"きゃんっ", realH:17, rarity:"ノーマル", power:1, scope:2, bonus:4, special:{name:"ちょこちょこダッシュ",   discP:50, discN:3, digN:2} },
+    { key:"chihuahua", label:"🐕 チワワ",                   fullName:"チワワ",                   cry:"きゃんっ", realH:17, rarity:"ノーマル", power:1, scope:2, bonus:4, special:{name:"ちょこダッシュ",         discP:50, discN:3, digN:2} },
     { key:"bulldog",   label:"🐕 ブルドッグ",               fullName:"ブルドッグ",               cry:"ぶふー",   realH:38, rarity:"ノーマル", power:3, scope:2, bonus:3, special:{name:"どすこいほりほり",       discP:40, discN:3, digN:2} }
 ];
 // 犬種ボクセルモデル生成（key→関数）。基本犬＋犬種ごとの差分パラメータ
@@ -2034,7 +2040,7 @@ function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基
     return _dogNatH;
 }
 function scaleBuddyIfDino(key, body){   // 恐竜の相棒は等倍(1.0)。ただし犬の1.2倍を上限で頭打ち（小さくなるのは可）
-    if(key==="dog") return;
+    if(key==="dog" || (typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key])) return;   // しば犬・犬種はスケール調整なし
     body.updateMatrixWorld(true);
     const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
     const sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
@@ -2083,7 +2089,7 @@ function line(key){
 }
 // 切り替えUI（相棒が2種類以上あるときだけ表示）
 function refreshBuddyUI(){
-    const order=(typeof COMPANION_ORDER!=="undefined")?COMPANION_ORDER.filter(k=>COMPANIONS[k]):Object.keys(COMPANIONS);
+    const order=curBuddyKeys().filter(k=>COMPANIONS[k]);
     const keys=order;
     const seg=document.getElementById("segBuddy"), wrap=document.getElementById("optBuddy"), btn=document.getElementById("dBuddy");
     const many=keys.length>1;
@@ -2117,7 +2123,7 @@ function companionStats(){
     return { power:POWER_LV[g(pw)-1], scope:SCOPE_LV[g(sc)-1], bonus:BONUS_LV[g(bo)-1], bonusLv:g(bo) };
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/scope/bonus は 1〜5
-const COMPANION_ORDER=["dog"].concat(YEAR_CONFIG.dinos.map(d=>d.key));   // 合計降順（犬先頭）
+function curBuddyKeys(){ const set=(typeof curTarget!=="undefined" && curTarget!=="dino" && typeof DOGS!=="undefined")?DOGS:DINOS; return ["dog"].concat((set||[]).map(d=>d.key)); }   // 発掘対象連動：恐竜=しば犬+恐竜8 / 出土品=しば犬+犬種8
 let buddyRandom=false;   // ブラウザのトグル：相棒を選ぶ／ランダム
 let dogOnly=true;        // 既定：犬のみモード
 let buddyListOpen=false; // スタンバイの相棒一覧の開閉（▼/▲）。リロード・リザルト戻りは閉じた状態が既定
@@ -2144,8 +2150,8 @@ function unlockBuddy(key){ if(key && key!=="dog" && unlockedBuddies.indexOf(key)
 function buddyKeyForCard(target, idx){ const di=(target==="dino")?idx:linkedDinoIdx(idx); return (typeof DINOS!=="undefined" && DINOS[di]) ? DINOS[di].key : null; }   // 出土品は id を LINK_COUNT で頭打ちして恐竜に紐づけ
 // 現在の相棒候補（COMPANION_ORDER順）
 function buddyCandidates(){
-    if(buddyMode!=="unlock") return COMPANION_ORDER.filter(k=>COMPANIONS[k]);
-    return COMPANION_ORDER.filter(k=>COMPANIONS[k] && (k==="dog" || unlockedBuddies.indexOf(k)>=0));
+    if(buddyMode!=="unlock") return curBuddyKeys().filter(k=>COMPANIONS[k]);
+    return curBuddyKeys().filter(k=>COMPANIONS[k] && (k==="dog" || unlockedBuddies.indexOf(k)>=0));
 }
 function onlyDogBuddy(){ return (typeof buddyCandidates==="function") && buddyCandidates().length<=1; }   // 選べる相棒が犬だけ（獲得モードで他を未獲得等）
 function drawRandomCompanion(){
@@ -2168,7 +2174,7 @@ function updateBuddyStandbyUI(){
     el.innerHTML="";
     if(dogOnly){
         if(companionKind!=="dog") setCompanion("dog");
-        const lab=document.createElement("div"); lab.textContent="相棒：いぬ"+(dogLevelUp?"（レベルアップ制）":"（固定）"); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
+        const lab=document.createElement("div"); lab.textContent="相棒：しば犬"+(dogLevelUp?"（レベルアップ制）":"（固定）"); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
         const st=document.createElement("div"); st.textContent="POWER:"+dogStats[0]+"  SCOPE:"+dogStats[1]+"  BONUS:"+dogStats[2]; st.style.cssText="color:#fdf3d5;font:bold 15px sans-serif;width:100%;text-align:center;margin-top:4px;"; el.appendChild(st);
         const start=document.createElement("button"); start.textContent="▶ スタート";
         start.style.cssText="font:bold 14px sans-serif;padding:8px 18px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:8px;";
@@ -2178,7 +2184,7 @@ function updateBuddyStandbyUI(){
     }
     if(typeof onlyDogBuddy==="function" && onlyDogBuddy()){   // 候補が犬だけ：▼・一覧・カードをひくは出さず「相棒：いぬ」表示（全モード共通）
         if(companionKind!=="dog") setCompanion("dog");
-        const lab=document.createElement("div"); lab.textContent="相棒：いぬ"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
+        const lab=document.createElement("div"); lab.textContent="相棒：しば犬"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
         const start=document.createElement("button"); start.textContent="▶ スタート";
         start.style.cssText="font:bold 14px sans-serif;padding:8px 18px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:8px;";
         start.onclick=()=>{ taAdvance(); };
@@ -2208,8 +2214,8 @@ function updateBuddyStandbyUI(){
 
         // 恐竜一覧（▼で開いているときだけ表示。リロード/リザルト戻りは閉じた状態が既定）
         if(buddyListOpen){
-            const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():COMPANION_ORDER;
-            const dispOrder=COMPANION_ORDER.filter(k=>k!=="dog").concat(["dog"]);   // いぬを最後に
+            const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():curBuddyKeys();
+            const dispOrder=curBuddyKeys().filter(k=>k!=="dog").concat(["dog"]);   // しば犬を最後に
             dispOrder.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
                 const b=document.createElement("button"); b.textContent=(c.label||k).replace(/^\S+\s+/,"");
                 const flexCss = IS_TOUCH ? "flex:1 1 96px;min-width:88px;" : "flex:0 0 calc(33.3% - 8px);box-sizing:border-box;";
@@ -2243,6 +2249,12 @@ registerCompanion("ptera", Object.assign({ builder:build_ptera, lines:dinoLines(
 registerCompanion("fukuisaurus", Object.assign({ builder:build_fukuisaurus, lines:fukuiLines("モーゥ") }, YEAR_CONFIG.companions.fukuisaurus));
 registerCompanion("stego", Object.assign({ builder:build_stego, lines:dinoLines("のっしり") }, YEAR_CONFIG.companions.stego));
 registerCompanion("brachi", Object.assign({ builder:build_brachi, lines:dinoLines("にょろん") }, YEAR_CONFIG.companions.brachi));
+// 犬種8種も相棒として登録（builder=DOG_BUILDERS / stats=DOG_BREEDS / セリフはしば犬と共通）。COMPANION_ORDER未登録なのでこの段階では未使用（出土品発掘時の切替はPhase2で接続）
+if(typeof DOG_BREEDS!=="undefined") DOG_BREEDS.forEach(d=>registerCompanion(d.key, {
+    builder:DOG_BUILDERS[d.key], lines:dogLines(),
+    label:d.label, askLabel:"🐕 聞く", fullName:d.fullName, realH:d.realH,
+    rarity:d.rarity, power:d.power, scope:d.scope, bonus:d.bonus, special:d.special
+}));
 setCompanion("dog");
 // 相棒選択時に情報カードを目の前に表示（開始前）
 function showCompanionCard(k, bag){
@@ -2346,7 +2358,7 @@ const buddyGridVR=(function(){
     const cols=3,rows=3,pad=28,top=170,gx=32;
     const cw=(W-gx*2-pad*(cols-1))/cols, chh=(H-top-32-pad*(rows-1))/rows;
     function rectOf(i){ const r=(i/cols)|0,c=i%cols; return {x:gx+c*(cw+pad), y:top+r*(chh+pad), w:cw, h:chh}; }
-    function dinoKeys(){ return (typeof COMPANION_ORDER!=="undefined") ? COMPANION_ORDER.filter(k=>k!=="dog") : []; }
+    function dinoKeys(){ return curBuddyKeys().filter(k=>k!=="dog"); }
     function shortName(k){ const c=COMPANIONS[k]; const s=(c&&c.label)?c.label:k; return s.replace(/^\S+\s+/,""); }
     function fitFont(text, maxW, base){ let s=base; ctx.font="bold "+s+"px sans-serif"; while(ctx.measureText(text).width>maxW && s>20){ s-=2; ctx.font="bold "+s+"px sans-serif"; } return s; }
     let hoverIdx=-1;
@@ -2519,8 +2531,9 @@ const dexPanel=(function(){
         let found=0; for(let i=0;i<8;i++) if(dexData[i]&&dexData[i].found) found++;
         ctx.fillStyle="#f0d98a"; ctx.font="bold 40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
         ctx.fillText((curTarget==="dino"?"🦖 恐竜図鑑  ":"🏺 発掘図鑑  ")+found+" / 8", 256, 52);
-        const DINO_DEX_ORDER=(typeof COMPANION_ORDER!=="undefined"&&typeof DINOS!=="undefined")
-            ? COMPANION_ORDER.filter(k=>k!=="dog").map(k=>DINOS.findIndex(d=>d.key===k)).filter(x=>x>=0) : [0,1,2,3,4,5,6,7];
+        const _dexSet=(typeof curTarget!=="undefined"&&curTarget!=="dino"&&typeof DOGS!=="undefined")?DOGS:DINOS;
+        const DINO_DEX_ORDER=_dexSet
+            ? curBuddyKeys().filter(k=>k!=="dog").map(k=>_dexSet.findIndex(d=>d.key===k)).filter(x=>x>=0) : [0,1,2,3,4,5,6,7];
         for(let p=0;p<8;p++){
             const i = (curTarget==="dino" && DINO_DEX_ORDER[p]!==undefined) ? DINO_DEX_ORDER[p] : p;   // 恐竜は相棒順で並べる
             const R=rectOf(p), x=R.x,y=R.y, e=dexData[i];
@@ -3011,7 +3024,7 @@ function preloadEverything(done){
     if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
     const jobs=[];
     for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});   // 恐竜（なめらか・実寸）
-    if(typeof COMPANION_ORDER!=="undefined") for(const k of COMPANION_ORDER){ jobs.push({companion:k, smooth:true}); }   // 相棒9種（なめらか）
+    if(typeof DINOS!=="undefined"){ const _all=["dog"].concat(DINOS.map(d=>d.key)).concat((typeof DOGS!=="undefined"?DOGS:[]).map(d=>d.key)); for(const k of _all) jobs.push({companion:k, smooth:true}); }   // しば犬＋恐竜8＋犬種8（なめらか）
     // カード画像も事前読み込み（恐竜 card00〜card08／出土品 card01〜card08）
     jobs.push({card:CARD_DIR_DINO+"card00.png"});
     for(let i=0;i<8;i++){ jobs.push({card:cardImgPath("dino",i)}); jobs.push({card:cardImgPath("artifact",i)}); }
@@ -4209,7 +4222,10 @@ const worldHud=(function(){
 const resultBuddy=(function(){
     let holder=null, cont=null, idx=-1, active=false;
     let fitGeo=1, halfDepthGeo=0.2;
-    const _cache=new Array(8).fill(null);   // idxごとにクローンを保持（2度目以降は即時＝スムーズ）
+    const _cache={};   // "x"+i(恐竜)/"d"+i(犬種) 別にモデル保持（発掘対象で中身が変わるため）
+    let   lastKey="";
+    function _isDog(){ return (typeof curTarget!=="undefined" && curTarget!=="dino"); }
+    function _ckey(i){ return (_isDog()?"d":"x")+i; }
     const TARGET_H=1.15, TARGET_W=1.02;   // 板ローカル(ジオメトリ)単位の基準サイズ（板は幅1.3×高2.098）
     const SIZE_MUL=0.5;                    // モデル0.5倍（1・2ターン目共通）
     const Y_GEO=-0.20;                     // 板中央よりやや下
@@ -4221,48 +4237,55 @@ const resultBuddy=(function(){
     let   _preloadKicked=false;            // クローンの事前生成を一度だけ起動
     const _bb=new THREE.Box3(), _c=new THREE.Vector3(), _sz=new THREE.Vector3(), _off=new THREE.Vector3(), _fwd=new THREE.Vector3();
     function ensureHolder(){ if(holder) return; holder=new THREE.Group(); holder.visible=false; scene.add(holder); }
-    function makeBuddy(i){
-        // プリロード済みのなめらか恐竜からクローン（フリーズ回避）。無ければその場生成（フォールバック）
-        const src=(typeof dinoDigModels!=="undefined"&&dinoDigModels[i]) ? dinoDigModels[i]
-                 : ((typeof _dinoCacheS!=="undefined"&&_dinoCacheS[i]) ? _dinoCacheS[i] : null);
+    function makeBuddy(i, dog){
         let m=null;
-        if(src && typeof cloneCont==="function"){ try{ m=cloneCont(src); }catch(e){ m=null; } }
-        if(!m){ const dn=(typeof DINOS!=="undefined")?DINOS[i]:null; if(!dn) return null;
-            const prev=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
-            try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; m=makeDigDino(dn); }catch(e){ m=null; }
-            finally{ if(typeof dinoSmooth!=="undefined") dinoSmooth=prev; } }
+        if(dog){   // 犬種：ビルダーから直接生成（なめらか）
+            const dn=(typeof DOGS!=="undefined")?DOGS[i]:null, bd=(dn&&typeof DOG_BUILDERS!=="undefined")?DOG_BUILDERS[dn.key]:null;
+            if(bd){ const pv=(typeof VOX_CUR!=="undefined")?VOX_CUR:null, ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+                try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; if(typeof VOX!=="undefined") VOX_CUR=VOX/6; m=bd(); }catch(e){ m=null; }
+                finally{ if(pv!=null) VOX_CUR=pv; if(typeof dinoSmooth!=="undefined") dinoSmooth=ps; } }
+        } else {   // 恐竜：プリロード済みキャッシュからクローン（無ければその場生成）
+            const src=(typeof dinoDigModels!=="undefined"&&dinoDigModels[i]) ? dinoDigModels[i]
+                     : ((typeof _dinoCacheS!=="undefined"&&_dinoCacheS[i]) ? _dinoCacheS[i] : null);
+            if(src && typeof cloneCont==="function"){ try{ m=cloneCont(src); }catch(e){ m=null; } }
+            if(!m){ const dn=(typeof DINOS!=="undefined")?DINOS[i]:null; if(dn){ const ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+                try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; m=makeDigDino(dn); }catch(e){ m=null; }
+                finally{ if(typeof dinoSmooth!=="undefined") dinoSmooth=ps; } } }
+        }
         if(!m) return null;
-        m.visible=true;   // キャッシュ元は非表示(visible=false)なので、クローンは必ず表示に戻す
+        m.visible=true;   // キャッシュ元は非表示のことがあるので必ず表示に
         m.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; });
         m.position.set(0,0,0); m.rotation.set(0,0,0); m.scale.setScalar(1); m.updateMatrixWorld(true);
         _bb.setFromObject(m); _bb.getCenter(_c); _bb.getSize(_sz);
         const sy=_sz.y>0?_sz.y:1, sx=_sz.x>0?_sz.x:1, sd=_sz.z>0?_sz.z:0.4;
         const fit=Math.min(TARGET_H/sy, TARGET_W/sx);
-        m.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ（holder.scaleでまとめて拡縮／回転軸も中心）
+        m.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ
         return { model:m, fit, halfDepth:(sd*fit)/2 };
     }
     function build(i){
         ensureHolder();
-        if(!_cache[i]) _cache[i]=makeBuddy(i);
-        const rec=_cache[i]; if(!rec){ active=false; return; }
+        const ck=_ckey(i);
+        if(!_cache[ck]) _cache[ck]=makeBuddy(i, _isDog());
+        const rec=_cache[ck]; if(!rec){ active=false; return; }
         if(cont && cont!==rec.model && cont.parent===holder) holder.remove(cont);
         cont=rec.model; if(cont.parent!==holder) holder.add(cont);
-        fitGeo=rec.fit; halfDepthGeo=rec.halfDepth; idx=i;
+        fitGeo=rec.fit; halfDepthGeo=rec.halfDepth; idx=i; lastKey=ck;
     }
     return {
-        set(i){ if(i==null||i<0){ this.clear(); return; } if(i!==idx||!cont) build(i); active=!!cont; },
+        set(i){ if(i==null||i<0){ this.clear(); return; } const ck=_ckey(i); if(ck!==lastKey||!cont){ build(i); } active=!!cont; },
         clear(){ active=false; if(holder) holder.visible=false; },
-        // 全8体のクローンをバックグラウンドで事前生成（1体ずつ間隔をあけてカクつき回避）。リザルト時は即時表示＝固まらない
+        // 全モデルをバックグラウンドで事前生成（恐竜x0..7＋犬種d0..7）。リザルト時は即時表示＝固まらない
         preload(){ if(_preloadKicked) return; _preloadKicked=true; ensureHolder();
             let i=0;
             const stepB=()=>{
-                if(i>=_cache.length) return;
-                try{ if(!_cache[i]){ const src=(typeof dinoDigModels!=="undefined"&&dinoDigModels[i])||(typeof _dinoCacheS!=="undefined"&&_dinoCacheS[i]); if(src) _cache[i]=makeBuddy(i); } }catch(e){}
-                i++; setTimeout(stepB, 180);
+                if(i>=8) return;
+                try{ if(!_cache["x"+i]){ const src=(typeof dinoDigModels!=="undefined"&&dinoDigModels[i])||(typeof _dinoCacheS!=="undefined"&&_dinoCacheS[i]); if(src) _cache["x"+i]=makeBuddy(i,false); } }catch(e){}
+                try{ if(!_cache["d"+i]) _cache["d"+i]=makeBuddy(i,true); }catch(e){}
+                i++; setTimeout(stepB, 150);
             };
-            setTimeout(stepB, 180);
+            setTimeout(stepB, 150);
         },
-        invalidate(){ if(holder&&cont&&cont.parent===holder) holder.remove(cont); for(let k=0;k<_cache.length;k++) _cache[k]=null; cont=null; idx=-1; active=false; _preloadKicked=false; if(holder) holder.visible=false; },
+        invalidate(){ if(holder&&cont&&cont.parent===holder) holder.remove(cont); for(const k in _cache) delete _cache[k]; cont=null; idx=-1; lastKey=""; active=false; _preloadKicked=false; if(holder) holder.visible=false; },
         // 板(worldHud.mesh)の位置・向き・スケール s に合わせて配置。板よりさらに1.0m奥・0.8倍・ゆっくり回転
         update(s){
             if(!holder) return;
@@ -4550,7 +4573,8 @@ function chOnTurnFinish(score){
     GAME.ch.scores.push(score);
     const idx = chPickBuddyIdx(score, GAME.ch.turn);
     let buddyKey=null, buddyName=null;
-    if(idx!=null && typeof DINOS!=="undefined" && DINOS[idx]){ buddyKey=DINOS[idx].key; unlockBuddy(buddyKey); GAME.ch.buddies.push(buddyKey); GAME.ch.cards.push(idx);
+    const _bset=(typeof curTarget!=="undefined"&&curTarget!=="dino"&&typeof DOGS!=="undefined")?DOGS:DINOS;
+    if(idx!=null && _bset && _bset[idx]){ buddyKey=_bset[idx].key; unlockBuddy(buddyKey); GAME.ch.buddies.push(buddyKey); GAME.ch.cards.push(idx);
         const c=(typeof COMPANIONS!=="undefined")?COMPANIONS[buddyKey]:null; buddyName=(c&&c.fullName)?c.fullName:buddyKey; }
     GAME.ch.lastBuddyName=buddyName;
     if(buddyName && !(GAME.ch && GAME.ch.turn>=3)) setTimeout(()=>{ try{ bubble.say("相棒 "+buddyName+" が加わった！", 3500, true); GAME.dogHappyUntil=performance.now()+3500; }catch(e){} }, 300);   // 3ターン目（最終）は相棒に「加わった」を言わせない
@@ -4683,7 +4707,8 @@ function pickCardIdxByRarity(rar){
 }
 // 相棒候補として既に持っているか（＝そのindexのカードを獲得済みか）
 function cardOwned(idx){
-    const k=(typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null;
+    const _oset=(typeof curTarget!=="undefined"&&curTarget!=="dino"&&typeof DOGS!=="undefined")?DOGS:DINOS;
+    const k=(_oset&&_oset[idx])?_oset[idx].key:null;
     return !!k && (typeof unlockedBuddies!=="undefined") && unlockedBuddies.indexOf(k)>=0;
 }
 function cardCount(){ return (curTarget==="dino" && typeof DINOS!=="undefined")?DINOS.length:8; }
