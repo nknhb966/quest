@@ -1848,7 +1848,7 @@ function build_dog(P){
   H.box(-0.3,1.4,0.42, -0.14,1.82,0.6, M);              // 耳L（mirrorで右も）
   H.box(-0.28,1.42,0.46, -0.16,1.7,0.58, D);            // 耳の内側（影）
   H.eye(-0.15,1.24,0.9,1.0); H.eye(0.15,1.24,0.9,1.0);
-  H.box(0.170,1.262,0.84, 0.185,1.280,0.89, 0xf2f0f6);   // 目のハイライト（+x側のみ→mirrorで左右対称・小・目の内側）
+  [-1,1].forEach(sg=>{ const hx=sg*0.172; H.box(hx-0.007,1.264,0.87, hx+0.007,1.278,0.905, 0xf2f0f6); });   // 目のハイライト：各目・左右対称（mirrorで重なり二重化しない）／恐竜同様の上外側の小さな点
   attachHead(g, 0, 1.0, 0.36, H);                       // 首の付け根（頭の手前下）をピボットに
   // 立ち上がってカールした尻尾（左右に振る）
   const tail=new THREE.Group(); tail.position.set(0,1.0,-0.5); g.add(tail);
@@ -1989,9 +1989,10 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
     // 目（黒）＋ハイライト（白）：全犬種で確実に表示・左右同サイズ
     const efz=zf-0.06+hsz*1.7, eyY=hb+hh*0.62, exx=hsz*0.5;
     [-1,1].forEach(sg=>{
-        H.box(sg*exx-0.055, eyY-0.05, efz-0.05, sg*exx+0.055, eyY+0.055, efz+0.03, 0x161310);   // 目（黒・少し前へ）
+        H.box(sg*exx-0.055, eyY-0.05, efz-0.05, sg*exx+0.055, eyY+0.055, efz+0.03, 0x161310);   // 目（黒）
+        const hx=sg*(exx+0.024);   // ハイライト：各目・左右対称（mirrorで重なり二重化しない）／恐竜と同様に上外側の小さな点・目の内側
+        H.box(hx-0.007, eyY+0.020, efz-0.006, hx+0.007, eyY+0.034, efz+0.018, 0xf2f0f6);
     });
-    H.box(exx+0.020, eyY+0.012, efz-0.03, exx+0.036, eyY+0.030, efz+0.02, 0xf2f0f6);   // 目のハイライト（+x側のみ→mirrorで左右対称・小・目の内側に収める）
     if(P.cheek){ const cc=(P.cheekCol!=null?P.cheekCol:AC); H.box(hsz*0.55, hb-0.02, zf-0.06+hsz*1.0, hsz+0.02, hb+hh*0.45, zf-0.06+hsz*1.6, cc); }   // 頬の差し色（目より下・+x→mirrorで左右対称）
     _dogEars(H, P, hsz, hb, hh, zf);
     attachHead(g, 0, ny, nz, H);
@@ -2071,7 +2072,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
     if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
         let targetH=Math.min(dogNaturalH()*(R/38), 1.2*dogNaturalH());
-        if(key==="chihuahua") targetH*=1.5;   // チワワは小さいので相棒表示を1.5倍
+        if(key==="chihuahua"||key==="dachshund") targetH*=1.5;   // チワワ・ダックスフントは小さいので相棒表示を1.5倍
         body.scale.setScalar(targetH/H0); return;
     }
     let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
@@ -4295,7 +4296,7 @@ const resultBuddy=(function(){
         let fit=Math.min(TARGET_H/sy, TARGET_W/sx);
         if(dog && typeof DOGS!=="undefined" && DOGS[i]){
             const R=DOGS[i].realH||38; fit*=Math.min(R/38, 1.2);           // realH連動（しば犬38基準・上限1.2倍）
-            if(DOGS[i].key==="chihuahua") fit*=1.5;                       // チワワは小さいため結果表示1.5倍
+            if(DOGS[i].key==="chihuahua"||DOGS[i].key==="dachshund") fit*=1.5;   // チワワ・ダックスフントは小さいため結果表示1.5倍
         } else if(!dog && typeof DINOS!=="undefined" && DINOS[i] && DINOS[i].key==="ptera") fit*=1.5;   // プテラは結果表示1.5倍
         m.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ
         return { model:m, fit, halfDepth:(sd*fit)/2 };
