@@ -1832,6 +1832,13 @@ function build_brachi(){
 }
 
 // 相棒の犬（タン＆クリームの柴犬風）
+function _dogEyes(g, exx, eyY, frontZ){   // 片目分を作って左右に複製配置＝左右完全一致／ハイライトは両目とも左上・眼球前面と同深さ（前に出ない）・厚み確保で必ず表示
+    const E=new Chunk();
+    E.box(-0.052, eyY-0.048, frontZ-0.09, 0.052, eyY+0.050, frontZ+0.016, 0x161310);   // 目（黒・x=0中心・頭より約1ボクセル前でz-fight回避）
+    E.box(-0.040, eyY+0.010, frontZ-0.006, -0.020, eyY+0.038, frontZ+0.016, 0xf2f0f6); // ハイライト（左上）
+    const m=E.build(); m.position.set(exx,0,0); g.add(m);
+    const m2=m.clone(); m2.position.set(-exx,0,0); g.add(m2);
+}
 function build_dog(P){
   P=P||{}; const g=new THREE.Group(); const M=(P.M!=null?P.M:0xc98f57),D=(P.D!=null?P.D:0x9a6a3a),C=(P.C!=null?P.C:0xf1e7d2),N=(P.N!=null?P.N:0x241f1a);
   const B=new Chunk();
@@ -1847,8 +1854,7 @@ function build_dog(P){
   H.box(-0.16,1.06,1.04, 0.16,1.12,1.14, D);            // 口
   H.box(-0.3,1.4,0.42, -0.14,1.82,0.6, M);              // 耳L（mirrorで右も）
   H.box(-0.28,1.42,0.46, -0.16,1.7,0.58, D);            // 耳の内側（影）
-  H.eye(-0.15,1.24,0.9,1.0); H.eye(0.15,1.24,0.9,1.0);   // 目（頭前面の既存ボクセルを黒に＝はみ出さない）
-  { const F=new Chunk(); [-1,1].forEach(sg=>{ const hx=sg*0.15-0.030; F.box(hx-0.008,1.262,0.9, hx+0.008,1.280,0.912, 0xf2f0f6); }); g.add(F.build()); }   // ハイライト：両目とも左上・ミラーしない
+  _dogEyes(g, 0.15, 1.24, 0.9);   // 目＋ハイライト（左右複製で完全一致）
   attachHead(g, 0, 1.0, 0.36, H);                       // 首の付け根（頭の手前下）をピボットに
   // 立ち上がってカールした尻尾（左右に振る）
   const tail=new THREE.Group(); tail.position.set(0,1.0,-0.5); g.add(tail);
@@ -1858,7 +1864,7 @@ function build_dog(P){
   tc.box(-0.07,0.38,0.08, 0.07,0.54,0.22, C);           // 先端（クリーム）
   tc.mirrorX(); tail.add(tc.build());
   g.userData.tail=tail;
-  g.userData.legs=[ voxLeg(g,-0.15,0.66,0.3,0.12,0.66,M,C,0), voxLeg(g,0.15,0.66,0.3,0.12,0.66,M,C,Math.PI),
+  g.userData.legs=[ voxLeg(g,-0.15,0.66,0.24,0.12,0.66,M,C,0), voxLeg(g,0.15,0.66,0.24,0.12,0.66,M,C,Math.PI),
                     voxLeg(g,-0.15,0.66,-0.38,0.12,0.66,M,C,Math.PI), voxLeg(g,0.15,0.66,-0.38,0.12,0.66,M,C,0) ];
   return g;
 }
@@ -1986,10 +1992,9 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
     const sz0=zf-0.06+hsz*1.5;
     H.box(-sw, hb+0.03, sz0, sw, hb+0.03+sh, sz0+sl, (P.snoutCol!=null?P.snoutCol:M));     // マズル
     H.box(-0.055, hb+0.03+sh-0.03, sz0+sl-0.03, 0.055, hb+0.03+sh+0.04, sz0+sl+0.05, N);   // 鼻
-    // 目（黒）：頭前面にフラッシュ（efzまで＝はみ出さない）。ハイライトは別チャンクで両目とも左上に固定
+    // 目（黒）＋ハイライト：片目分を左右複製で完全一致・両目とも左上・確実に表示・眼球より前に出ない
     const efz=zf-0.06+hsz*1.7, eyY=hb+hh*0.62, exx=hsz*0.5;
-    [-1,1].forEach(sg=>{ H.box(sg*exx-0.052, eyY-0.048, efz-0.11, sg*exx+0.052, eyY+0.050, efz, 0x161310); });   // 目（黒・前面フラッシュ）
-    { const F=new Chunk(); [-1,1].forEach(sg=>{ const hx=sg*exx-0.030; F.box(hx-0.008, eyY+0.016, efz, hx+0.008, eyY+0.034, efz+0.012, 0xf2f0f6); }); g.add(F.build()); }   // ハイライト：両目とも左上（ミラーしない＝左右反転しない）
+    _dogEyes(g, exx, eyY, efz);
     if(P.cheek){ const cc=(P.cheekCol!=null?P.cheekCol:AC); H.box(hsz*0.55, hb-0.02, zf-0.06+hsz*1.0, hsz+0.02, hb+hh*0.45, zf-0.06+hsz*1.6, cc); }   // 頬の差し色（目より下・+x→mirrorで左右対称）
     _dogEars(H, P, hsz, hb, hh, zf);
     attachHead(g, 0, ny, nz, H);
