@@ -1594,7 +1594,8 @@ Chunk.prototype.eye=function(x,y,z,r){
   r=r||1;
   const s=x<0?-1:1, hw=0.045*r, hh=0.058*r;
   const cx=s*Math.max(0.07+hw, Math.abs(x));
-  const ix0=Math.round((cx-hw)/this.vox), ix1=Math.round((cx+hw)/this.vox);
+  const cix=Math.round(cx/this.vox), hwv=Math.round(hw/this.vox);
+  const ix0=cix-hwv, ix1=cix+hwv;   // 目の中心グリッド基準で左右対称に（左右のズレ防止＝複製と同等）
   const iy0=Math.round((y-hh)/this.vox), iy1=Math.round((y+hh)/this.vox);
   const izmin=Math.round((z-0.4)/this.vox), izmax=Math.round((z+0.12)/this.vox);
   for(let ix=ix0;ix<=ix1;ix++) for(let iy=iy0;iy<=iy1;iy++){
@@ -1832,10 +1833,13 @@ function build_brachi(){
 }
 
 // 相棒の犬（タン＆クリームの柴犬風）
-function _dogEyes(g, exx, eyY, frontZ){   // 片目分を作って左右に複製配置＝左右完全一致／ハイライトは両目とも左上・眼球前面と同深さ（前に出ない）・厚み確保で必ず表示
+function _dogEyes(g, exx, eyY, frontZ){   // 片目分を作って左右に複製配置＝左右完全一致／ハイライトは両目とも左上・眼球前面と同深さ（前に出ない）
     const E=new Chunk();
     E.box(-0.052, eyY-0.048, frontZ-0.09, 0.052, eyY+0.050, frontZ+0.016, 0x161310);   // 目（黒・x=0中心・頭より約1ボクセル前でz-fight回避）
-    E.box(-0.040, eyY+0.010, frontZ-0.006, -0.020, eyY+0.038, frontZ+0.016, 0xf2f0f6); // ハイライト（左上）
+    // ハイライト：前面レイヤーの左上に 2×2 の正方形（縦横同サイズ・全頭サイズで確実表示）
+    let maxIz=-1e9; for(const k of E.v.keys()){ const iz=+k.split("|")[2]; if(iz>maxIz) maxIz=iz; }
+    const vox=E.vox, hx0=Math.round(-0.026/vox), hy0=Math.round((eyY+0.016)/vox);
+    for(let dx=0;dx<2;dx++) for(let dy=0;dy<2;dy++) E.set(hx0+dx, hy0+dy, maxIz, 0xf2f0f6);
     const m=E.build(); m.position.set(exx,0,0); g.add(m);
     const m2=m.clone(); m2.position.set(-exx,0,0); g.add(m2);
 }
