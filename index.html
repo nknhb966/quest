@@ -1935,6 +1935,12 @@ function _dogEars(H, P, hsz, hb, hh, zf){   // 耳（+x側だけ作成→attachH
     else if(t==="flop"){   H.box(hsz-0.01, hb+hh*0.15, z0, hsz+0.10, topY+0.04, z1, col); }                 // 垂れ耳（レトリバー）
     else if(t==="longflop"){ H.box(hsz-0.01, hb-0.06, z0, hsz+0.09, topY+0.02, z1-0.02, col); }             // 長い垂れ耳（ビーグル/ダックス）
     else if(t==="curly"){  /* プードルの丸耳は build_dog_breed で粗ボクセル生成 */ }
+    else if(t==="butterfly"){   // 大きく立って外へ広がる房耳（パピヨン）
+        const fr=(P.earFringe!=null?P.earFringe:(P.BE!=null?P.BE:0xf4efe6));
+        H.box(hsz-0.02, topY-0.02, z0, hsz+0.10, topY+0.20, z1, col);            // 付け根
+        H.box(hsz+0.04, topY+0.12, z0+0.02, hsz+0.20, topY+0.42, z1-0.02, col);  // 上部が外へ広がる
+        H.box(hsz+0.03, topY+0.02, z0+0.05, hsz+0.13, topY+0.34, z1-0.05, fr);   // 内側の房（明色）
+    }
     else if(t==="rose"){   H.box(hsz-0.02, topY-0.03, z1-0.10, hsz+0.05, topY+0.08, z1, col); }              // 小さい耳（ブルドッグ）
 }
 function _dogTail(g, P, by0, bh, zb){   // 尾（userData.tailに登録・アイドルで振れる）
@@ -1948,6 +1954,7 @@ function _dogTail(g, P, by0, bh, zb){   // 尾（userData.tailに登録・アイ
     else if(t==="curl"){   tail=voxTail(g,0,ty+0.06,tz,0.46,0.20,0.10,col); tail.rotation.x=-1.7; }          // 巻き尾（柴）
     else if(t==="pom"){    tail=voxTail(g,0,ty,tz,0.30,0.09,0.05,col); tail.rotation.x=-0.85; const pc=new Chunk(); pc.vox=0.09; pc.ellip(0,0,-0.34,0.20,0.20,0.20,col); tail.add(pc.build()); }   // ポンポン（粗ボクセル・大胆） // ポンポン（プードル）
     else if(t==="thin"){   tail=voxTail(g,0,ty,tz,0.4,0.08,0.04,col); tail.rotation.x=-1.05; }               // 細く上（チワワ）
+    else if(t==="plume"){  tail=voxTail(g,0,ty+0.06,tz,0.66,0.26,0.10,col); tail.rotation.x=-1.95; }         // 背に反った房尾（パピヨン）
     else if(t==="stub"){   tail=voxTail(g,0,ty,tz,0.18,0.14,0.06,col); }                                     // 短い（ブルドッグ）
     else {                 tail=voxTail(g,0,ty,tz,0.5,0.16,0.06,col); }
     return tail;
@@ -1974,6 +1981,7 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
     const sl=(P.snoutLen!=null?P.snoutLen:0.26), sw=(P.snoutW!=null?P.snoutW:0.12), sh=(P.snoutH!=null?P.snoutH:0.16);
     const H=new Chunk();
     H.box(-hsz, hb, zf-0.06, hsz, hb+hh, zf-0.06+hsz*1.7, M);               // 頭
+    if(P.mask){ H.box(hsz*0.30, hb+hh*0.42, zf-0.06, hsz, hb+hh, zf-0.06+hsz*1.35, P.mask); }   // 顔の差し色（+x→mirrorで両側・中央は白ブレーズ／パピヨン）
     // 頭の毛玉（プードル）は attachHead 後に粗ボクセルで生成
     const sz0=zf-0.06+hsz*1.5;
     H.box(-sw, hb+0.03, sz0, sw, hb+0.03+sh, sz0+sl, (P.snoutCol!=null?P.snoutCol:M));     // マズル
@@ -2018,7 +2026,7 @@ const DOG_BUILDERS = {
     labrador:  ()=>build_dog_breed({ M:0xead7a2, BE:0xf5ead0, D:0xc4ad78, ear:"flop", tail:"otter", legLen:0.56, bodyLen:1.10, bodyW:0.28, bodyH:0.36, headSize:0.28, headH:0.30, snoutLen:0.22, snoutW:0.14 }),   // 淡イエロー・短毛・幅広頭/短マズル・オッター尾
     beagle:    ()=>build_dog_breed({ M:0xb07b3e, BE:0xf2ede2, D:0x3a2f22, AC:0x231e17, saddle:true, snoutCol:0xf2ede2, earCol:0xb07b3e, tail:"up", tailCol:0xf2ede2, ear:"longflop", legLen:0.48, bodyLen:1.02, bodyW:0.24, bodyH:0.36, headSize:0.22, snoutLen:0.26 }),   // 黒ブランケット/タン頭耳/白マズル・胸・尾先
     dachshund: ()=>build_dog_breed({ M:0x8a4a24, BE:0xa9663a, D:0x532b13, ear:"longflop", tail:"long",    legLen:0.30, bodyLen:1.15, bodyW:0.19, bodyH:0.30, headSize:0.18, snoutLen:0.30, snoutW:0.10 }),   // 少し短め
-    toypoodle: ()=>build_dog_breed({ M:0xc98a5a, BE:0xd9a878, D:0xa8683c, ear:"curly",    tail:"pom", topPuff:true, legLen:0.42, bodyLen:0.82, bodyW:0.22, bodyH:0.34, headSize:0.22, snoutLen:0.20 }),   // レッド・フォーン
+    toypoodle: ()=>build_dog_breed({ M:0xf4efe6, BE:0xf8f5ee, D:0xcfc6b6, earCol:0x7a4a28, earFringe:0xf4efe6, mask:0x7a4a28, ear:"butterfly", tail:"plume", tailCol:0xf4efe6, legLen:0.44, bodyLen:0.84, bodyW:0.19, bodyH:0.30, headSize:0.19, headH:0.30, snoutLen:0.20, snoutW:0.085 }),   // パピヨン（白地＋差し色耳/顔・バタフライ耳・房尾）
     shiba:     ()=>build_dog({ M:0x2a2a2a, D:0x151515, C:0x9a6a38, N:0x0d0d0d }),   // 黒柴＝しば犬の色違い（構造同じ・黒＋タン）
     chihuahua: ()=>build_dog_breed({ M:0xead9b0, BE:0xf3e8cc, D:0xc9b487, ear:"bigup",    tail:"thin",    legLen:0.42, bodyLen:0.72, bodyW:0.18, bodyH:0.28, headSize:0.21, snoutLen:0.16, snoutW:0.09 }),   // クリーム
     bulldog:   ()=>build_dog_breed({ M:0xecdcc0, BE:0xf5eeda, D:0xc9b48f, ear:"rose",     tail:"stub",    legLen:0.34, bodyLen:0.96, bodyW:0.32, bodyH:0.40, headSize:0.31, headH:0.42, snoutLen:0.14, snoutW:0.17, snoutH:0.18 })   // クリーム（頭を少し大きく・縦の潰れ解消）
