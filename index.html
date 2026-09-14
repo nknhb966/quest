@@ -1603,7 +1603,7 @@ Chunk.prototype.eye=function(x,y,z,r){
     for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(ix+"|"+iy+"|"+iz)){ this.set(ix,iy,iz,EYE); break; } }  // 最前面を黒に
   }
   if(VOX_VARY){   // 目のハイライト（上寄りに小さな光）
-    const hix=cix, hiy=iy1;   // 目の中心x＝mirrorに対して不変（左右で必ず同位置＝両目のハイライトが揃う）
+    const hix=cix+Math.round(hw*0.4/this.vox), hiy=iy1;   // 中心から一定オフセット（元の見た目）
     for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(hix+"|"+hiy+"|"+iz)){ this.set(hix,hiy,iz,0xf2f0f6); break; } }
   }
 };
@@ -1790,7 +1790,7 @@ function build_fukuisaurus(){
   H.box(-0.2,1.72,0.78, 0.2,2.06,1.12, M);              // 頭
   H.box(-0.22,1.74,1.08, 0.22,1.94,1.42, BK);           // くちばし
   H.box(-0.15,1.98,0.72, 0.15,2.12,0.98, M);            // 頭頂
-  H.eye(-0.18,1.96,1.08); H.eye(0.18,1.96,1.08);
+  H.eye(-0.13,1.96,1.08); H.eye(0.13,1.96,1.08);   // 目を内側へ寄せ、目・ハイライトを頭の内側に収める（左右対称化）
   attachHead(g, 0, 1.42, 0.4, H);
   voxTail(g,0,1.0,-0.65,1.7,0.42,0.1,M);                // 長い尾（カウンターバランス）
   g.userData.legs=[ voxLeg(g,-0.2,0.98,-0.32,0.18,0.98,M,D,0), voxLeg(g,0.2,0.98,-0.32,0.18,0.98,M,D,Math.PI) ]; // 強い後ろ足（2本＝二足）
@@ -3703,7 +3703,6 @@ function applyAutoForTarget(target){   // おすすめオン(TA/コレクショ�
             segSelect("segArtLine","off");    showArtInfo=false;            // 出土品の説明パネル・線：非表示
             segSelect("segSite","show");      setSiteVisible(true);  syncSiteSeg();   // サイトモデル：表示
             segSelect("segDigPos","fixed");   digPosRandom=false;
-            if(typeof setSiteMode==="function") setSiteMode(3,true);        // サイトの大きさ：3倍
         } else {
             segSelect("segRarity","on");      rarityOn=true;                // レア度：あり
             segSelect("segBuddyPool","unlock"); buddyMode="unlock";        // 相棒の候補：獲得した相棒
@@ -3711,9 +3710,9 @@ function applyAutoForTarget(target){   // おすすめオン(TA/コレクショ�
             segSelect("segDigPos","random");  digPosRandom=true;
             realCapToActual=false; segSelect("segRealCap","off");          // 恐竜の原寸比：上限なし
             if(typeof setRealRefShort==="function") setRealRefShort(20);    // 実寸になるフィールド短辺：20
-            if(typeof setWorldX==="function"){ setWorldX(30); setWorldZ(30); }   // ワールドの広さ：30×30m
         }
         if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
+        if(typeof applyDeviceAutoSize==="function") applyDeviceAutoSize();   // サイト3倍／ワールド30m（実績ある非ハング経路：setSiteMode(3,false)＋setWorldX/Z(30)）
         return;
     }
     // ===== おすすめオフ：従来の対象別デフォルト =====
@@ -6741,7 +6740,7 @@ addEventListener("resize",()=>{
     function bakeVoxelColorTexture(root){
         const meshes=[];
         root.traverse(o=>{ if(o.isMesh && o.geometry && o.geometry.getAttribute && o.geometry.getAttribute("color")) meshes.push(o); });
-        if(!meshes.length) return;
+        if(!meshes.length) return false;
         const q=(x)=>Math.max(0,Math.min(255,Math.round(x*255)));
         const key=(r,g,b)=>((r<<16)|(g<<8)|b);
         const map=new Map(), pal=[];
@@ -6770,6 +6769,7 @@ addEventListener("resize",()=>{
             m.geometry=g;
             m.material=mat;
         }
+        return true;
     }
 
     // Object3D → GLB(blob URL)。元モデルは非表示なので clone を表示状態にして書き出す
@@ -6788,12 +6788,16 @@ addEventListener("resize",()=>{
             clone.scale.setScalar(opts.scaleFactor);
         }
         // 恐竜：iOS(クイックルック)で白くならないよう、頂点カラーをテクスチャに焼き込む
-        if(opts.bakeVoxelColors){ try{ bakeVoxelColorTexture(clone); }catch(_){ } }
+        let _baked=false;
+        if(opts.bakeVoxelColors){ try{ _baked=!!bakeVoxelColorTexture(clone); }catch(_){ _baked=false; } }
+        const _disposeClone=()=>{ if(!_baked) return; try{ clone.traverse(o=>{ if(o.isMesh){ if(o.geometry) o.geometry.dispose(); const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{ if(m){ if(m.map) m.map.dispose(); m.dispose(); } }); } }); }catch(_){ } };   // 焼き込みで作った新規ジオメトリ/テクスチャ/マテリアルを解放（共有元は非破壊）＝連続切替のメモリ増加を防止
         return await new Promise((resolve,reject)=>{
             exporter.parse(clone, (result)=>{
-                try{ resolve(URL.createObjectURL(new Blob([result], {type:"model/gltf-binary"}))); }
-                catch(e){ reject(e); }
-            }, (err)=>reject(err), { binary:true, onlyVisible:false });
+                let url=null, err=null;
+                try{ url=URL.createObjectURL(new Blob([result], {type:"model/gltf-binary"})); }catch(e){ err=e; }
+                _disposeClone();
+                if(err) reject(err); else resolve(url);
+            }, (err)=>{ _disposeClone(); reject(err); }, { binary:true, onlyVisible:false });
         });
     }
 
@@ -6901,15 +6905,19 @@ addEventListener("resize",()=>{
         // 恐竜：既存の生成モデルをGLB化（色はテクスチャ焼き込み）。サイズは fit(補正) or raw(等倍)
         const obj = getObject(target, idx);
         if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
+        const _freshVoxel = (target==="dog");   // 犬は毎回新規生成（非キャッシュ）＝使い終わりに破棄。恐竜はキャッシュのため破棄しない
+        const _disposeVox=(o)=>{ if(!o||!o.traverse) return; try{ o.traverse(x=>{ if(x.geometry) x.geometry.dispose(); if(x.material){ const ms=Array.isArray(x.material)?x.material:[x.material]; ms.forEach(m=>{ if(m){ if(m.map) m.map.dispose(); m.dispose(); } }); } }); }catch(_){ } };
         try{
             const factor = (target==="dog") ? 1 : dinoFactor(target==="dino", dinoSize);
             const url = await objToBlobUrl(obj, { scaleFactor:factor, bakeVoxelColors:true });
-            if(_tok !== showModel._tok){ try{ URL.revokeObjectURL(url); }catch(_){ } return; }   // 新しい切替が来た＝この結果は破棄（連続切替のクラッシュ防止）
+            if(_tok !== showModel._tok){ try{ URL.revokeObjectURL(url); }catch(_){ } if(_freshVoxel) _disposeVox(obj); return; }   // 新しい切替が来た＝破棄（犬は生成物も解放）
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
             lastBlobUrl = url;
             viewer.setAttribute("src", url);
             setNote("");
+            if(_freshVoxel) _disposeVox(obj);   // 犬モデルの生成物を解放（メモリ増加＝連続切替クラッシュ防止）
         }catch(e){
+            if(_freshVoxel) _disposeVox(obj);
             if(_tok !== showModel._tok) return;   // 古い要求は無視
             setNote("このモデルは表示に失敗しました。");
             viewer.removeAttribute("src");
