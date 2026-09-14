@@ -1834,15 +1834,16 @@ function build_brachi(){
 }
 
 // 相棒の犬（タン＆クリームの柴犬風）
-function _dogEyes(g, exx, eyY, frontZ){   // 片目分を作って左右に複製配置＝左右完全一致／ハイライトは両目とも左上・眼球前面と同深さ（前に出ない）
+function _dogEyes(parent, exx, eyY, frontZ, ox, oy, oz){   // 目＋ハイライトを頭グループに追加（嗅ぐ等の頭アニメに追従）。ox/oy/oz=頭グループのpivot位置ぶんの補正で世界座標は不変
+    ox=ox||0; oy=oy||0; oz=oz||0;
     const E=new Chunk();
     E.box(-0.052, eyY-0.048, frontZ-0.09, 0.052, eyY+0.050, frontZ+0.016, 0x161310);   // 目（黒・x=0中心・頭より約1ボクセル前でz-fight回避）
     // ハイライト：前面レイヤーの左上に 2×2 の正方形（縦横同サイズ・全頭サイズで確実表示）
     let maxIz=-1e9; for(const k of E.v.keys()){ const iz=+k.split("|")[2]; if(iz>maxIz) maxIz=iz; }
     const vox=E.vox, hx0=Math.round(-0.026/vox), hy0=Math.round((eyY+0.016)/vox);
     for(let dx=0;dx<2;dx++) for(let dy=0;dy<2;dy++) E.set(hx0+dx, hy0+dy, maxIz, 0xf2f0f6);
-    const m=E.build(); m.position.set(exx,0,0); g.add(m);
-    const m2=m.clone(); m2.position.set(-exx,0,0); g.add(m2);
+    const m=E.build(); m.position.set(exx-ox, -oy, -oz); parent.add(m);
+    const m2=m.clone(); m2.position.set(-exx-ox, -oy, -oz); parent.add(m2);
 }
 function build_dog(P){
   P=P||{}; const g=new THREE.Group(); const M=(P.M!=null?P.M:0xc98f57),D=(P.D!=null?P.D:0x9a6a3a),C=(P.C!=null?P.C:0xf1e7d2),N=(P.N!=null?P.N:0x241f1a);
@@ -1859,8 +1860,8 @@ function build_dog(P){
   H.box(-0.16,1.06,1.04, 0.16,1.12,1.14, D);            // 口
   H.box(-0.3,1.4,0.42, -0.14,1.82,0.6, M);              // 耳L（mirrorで右も）
   H.box(-0.28,1.42,0.46, -0.16,1.7,0.58, D);            // 耳の内側（影）
-  _dogEyes(g, 0.15, 1.24, 0.9);   // 目＋ハイライト（左右複製で完全一致）
   attachHead(g, 0, 1.0, 0.36, H);                       // 首の付け根（頭の手前下）をピボットに
+  _dogEyes(g.userData.head, 0.15, 1.24, 0.9, 0, 1.0, 0.36);   // 目＋ハイライトを頭グループへ（嗅ぐ動きに追従）
   // 立ち上がってカールした尻尾（左右に振る）
   const tail=new THREE.Group(); tail.position.set(0,1.0,-0.5); g.add(tail);
   const tc=new Chunk();
@@ -1999,10 +2000,10 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
     H.box(-0.055, hb+0.03+sh-0.03, sz0+sl-0.03, 0.055, hb+0.03+sh+0.04, sz0+sl+0.05, N);   // 鼻
     // 目（黒）＋ハイライト：片目分を左右複製で完全一致・両目とも左上・確実に表示・眼球より前に出ない
     const efz=zf-0.06+hsz*1.7, eyY=hb+hh*0.62, exx=hsz*0.5;
-    _dogEyes(g, exx, eyY, efz);
     if(P.cheek){ const cc=(P.cheekCol!=null?P.cheekCol:AC); H.box(hsz*0.55, hb-0.02, zf-0.06+hsz*1.0, hsz+0.02, hb+hh*0.45, zf-0.06+hsz*1.6, cc); }   // 頬の差し色（目より下・+x→mirrorで左右対称）
     _dogEars(H, P, hsz, hb, hh, zf);
     attachHead(g, 0, ny, nz, H);
+    _dogEyes(g.userData.head, exx, eyY, efz, 0, ny, nz);   // 目＋ハイライトを頭グループへ（嗅ぐ動きに追従）
     if(P.topPuff) g.add(_coarseBall(0, hb+hh+0.06, zf-0.06+hsz*0.7, hsz*1.25, 0.24, hsz*1.1, M, 0.09));   // 頭の毛玉（粗ボクセルで大胆に）
     if((P.ear||"flop")==="curly"){ const ecz=(zf-0.06+hsz*0.15 + zf-0.06+hsz*1.0)/2, ecy=hb+hh-0.03, ecol=(P.earCol!=null?P.earCol:M);
         g.add(_coarseBall( hsz+0.06, ecy, ecz, 0.18,0.19,0.18, ecol, 0.09));
@@ -4123,7 +4124,7 @@ const worldHud=(function(){
                     else { im.addEventListener("load", ()=>{ if(colData===d && colPage===0) worldHud.renderCollectPage(); }, {once:true}); }
                     if(dogOnly){ if(GAME.dogLvMsg){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText(GAME.dogLvMsg,384,244+875+30); } }   // 犬のみ：レベルアップ表示
                     else if(curTarget!=="dino"){ const _li=linkedDinoIdx(d.card.idx); const dn=(typeof DOGS!=="undefined"&&DOGS[_li])?(DOGS[_li].fullName||(DOGS[_li].label||"").replace(/^\S+\s*/,"")):"";
-                        if(GAME.buddyNew){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" が加わった！",384,244+875+30); } }   // 画像の下（全獲得済み＝重複時は非表示）
+                        if(GAME.buddyNew && buddyMode!=="all"){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" が加わった！",384,244+875+30); } }   // 画像の下（全獲得済み＝重複時は非表示）
                 }
                 if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.8)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でおわる",384,1180); }
             } else {
@@ -4177,7 +4178,7 @@ const worldHud=(function(){
                     else { im.addEventListener("load", ()=>{ if(resData===d && resPage===0) worldHud.renderResultPage(); }, {once:true}); }
                     if(dogOnly){ if(GAME.dogLvMsg){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText(GAME.dogLvMsg,384,244+875+30); } }   // 犬のみ：レベルアップ表示
                     else if(tg!=="dino"){ const _li=linkedDinoIdx(d.calc.card.idx); const dn=(typeof DOGS!=="undefined"&&DOGS[_li])?(DOGS[_li].fullName||(DOGS[_li].label||"").replace(/^\S+\s*/,"")):"";
-                        if(GAME.buddyNew){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" が加わった！",384,244+875+30); } }   // 画像の下（全獲得済み＝重複時は非表示）
+                        if(GAME.buddyNew && buddyMode!=="all"){ ctx.fillStyle="#ffd86a"; ctx.font="bold 28px sans-serif"; ctx.textAlign="center"; ctx.fillText("相棒に "+dn+" が加わった！",384,244+875+30); } }   // 画像の下（全獲得済み＝重複時は非表示）
                 }
                 if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でおわる",384,1180); }
             } else {
@@ -4258,7 +4259,7 @@ const worldHud=(function(){
                          : ((typeof DINOS!=="undefined"&&DINOS[c.card.idx])?((DINOS[c.card.idx].fullName||DINOS[c.card.idx].label||"").replace(/^\S+\s*/,"")):"");
                 const rar=(typeof cardRarityOf==="function")?cardRarityOf(c.card.idx):"";
                 if(rar){ ctx.fillStyle=(typeof RARITY_COL!=="undefined"&&RARITY_COL[rar])||"#fff"; ctx.font="bold 28px sans-serif"; ctx.fillText("レア度: "+rar,384,y+30); }   // レア度（合計と相棒の中間・上下に余白）
-                if(!GAME.ch || GAME.ch.buddyNew!==false){ ctx.fillStyle="#ffd86a"; ctx.font="bold 32px sans-serif"; ctx.fillText("相棒に "+bn+" が加わった！",384,y+66); }   // 全獲得済み＝重複時は非表示
+                if((!GAME.ch || GAME.ch.buddyNew!==false) && buddyMode!=="all"){ ctx.fillStyle="#ffd86a"; ctx.font="bold 32px sans-serif"; ctx.fillText("相棒に "+bn+" が加わった！",384,y+66); }   // 全獲得済み＝重複時は非表示
                 advY = y+66+40;   // ガイド文言は「相棒◯◯…」の直下（短縮板の中）
                 if(window.__resultBuddy) window.__resultBuddy.set(c.card.idx);   // 3Dモデル（板の下に表示）
             }
