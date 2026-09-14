@@ -2081,6 +2081,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
         let targetH=Math.min(dogNaturalH()*(R/38), 1.2*dogNaturalH());
         if(key==="chihuahua"||key==="dachshund") targetH*=1.5;   // チワワ・ダックスフントは小さいので相棒表示を1.5倍
+        if(key==="golden"||key==="labrador"||key==="beagle"||key==="bulldog") targetH*=0.6;   // 歩き回る相棒を0.6倍（大型犬は大きすぎるため）
         body.scale.setScalar(targetH/H0); return;
     }
     let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
@@ -4478,7 +4479,16 @@ function taStartRun(){
     GAME.playStart=performance.now();     // ③開始＝計測開始（コレクションのクリアタイム用）
     GAME.endT = (GAME.mode==="time") ? performance.now()+TIME_LIMIT*1000 : Infinity;   // コレクションは時間無制限
     worldHud.hide();
-    afterSite(()=>{ clearTargets(); spawnAllTargets(); });   // spawnAllTargets内で②の位置にスター表示
+    afterSite(()=>{ clearTargets(); spawnAllTargets();   // spawnAllTargets内で②の位置にスター表示
+        if(!GAME.challenge){   // タイムアタック／じっくりコレクション：スタート直後、プレイヤーに最も近い発掘ポイントを1つだけブロック表示
+            try{
+                const o=camera.getWorldPosition(new THREE.Vector3());
+                let best=null, bd=1e9;
+                for(const t of GAME.targets){ if(!t || t.discovered || t.done) continue; const d=Math.hypot(o.x-t.pos.x, o.z-t.pos.z); if(d<bd){ bd=d; best=t; } }
+                if(best && typeof discoverTarget==="function") discoverTarget(best, true);   // silent：告知音・トーストなしでブロックだけ表示
+            }catch(_){}
+        }
+    });
     chord([523,784,1047],0.05,"triangle",0.5);
     updateGoal(); updateTAButton();
 }
