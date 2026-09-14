@@ -5443,6 +5443,7 @@ function currentHitProb(){ let base=0.5; const tg=GAME.targets.find(x=>!x.discov
 let lastPetLine="", dogSpinT=0, dogTailWagT=0;
 function petDog(){
     if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）は不可（暗転中）
+    if(typeof dogAttentive!=="undefined" && !dogAttentive) return;   // 歩行中／プレイヤーを向いていない時は撫でられない（全入力方式共通）
     if(GAME.complete) return;   // コンプリート後は反応しない
     if(GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil) return;   // 喜びセリフ中は撫でられない（掘り優先）
     if(petCooldown>0) return;
@@ -6495,7 +6496,7 @@ function updateDog(dt, now){
     {
         const fwd=_udW1.set(Math.sin(dog.rotation.y),0,Math.cos(dog.rotation.y));
         const toP=_udW2.set(playerPos.x-dog.position.x,0,playerPos.z-dog.position.z);
-        dogAttentive = !digBusy && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>0.5;   // 相棒が正面を向いているときだけ（横向き・背中は不可）
+        dogAttentive = !digBusy && !moving && toP.lengthSq()>1e-4 && fwd.dot(toP.normalize())>0.5;   // 停止中かつ正面を向いているときだけ（歩行中・横向き・背中は不可）
     }
     petBoost=Math.max(0, petBoost - dt*0.02);   // 撫でボーナスはゆっくり減衰
     // 当てる確率のキラキラ（頭上）：100%多め / 80%以上ふつう / 60%以上少し / 未満なし
