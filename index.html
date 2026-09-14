@@ -2092,8 +2092,11 @@ function ensureBody(key){
     const smooth=true;   // 恐竜（相棒）は常になめらか
     const slot = smooth?"bodyS":"bodyB";
     if(!def[slot]){
-        const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
-        let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
+        const isDog=(typeof DOGS!=="undefined" && DOGS.some(d=>d.key===key)) || key==="dog";
+        const pv=VOX_CUR, ps=dinoSmooth, pvv=VOX_VARY;
+        VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
+        if(!isDog) VOX_VARY=true;   // 恐竜の相棒も発掘モデルと同様に目のハイライト＋肌の微陰影を付ける
+        let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; VOX_VARY=pvv; }
         scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
         body.updateMatrixWorld(true);
         { const bb=new THREE.Box3().setFromObject(body);  // 全相棒とも足を接地(y=0)＝相棒プテラノドンも他と同じ高さ
@@ -6540,7 +6543,7 @@ function updateDog(dt, now){
         // 探す（嗅ぐ）のは「探知音が鳴る かつ 発見ポイントに付いていない かつ 喜んでいない」ときだけ
         const sig=(GAME&&GAME.active&&!GAME.complete)?(GAME.sniffSig||0):0;
         const atBlock = !!(dog.userData && dog.userData.atBlock);   // 発見済みブロックの横に立っている
-        const celebrating = (typeof dogCelebrateT!=="undefined" && dogCelebrateT>0) || (GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil);
+        const celebrating = (typeof dogCelebrateT!=="undefined" && dogCelebrateT>0) || (typeof dogSpinT!=="undefined" && dogSpinT>0) || (typeof dogTailWagT!=="undefined" && dogTailWagT>0) || (typeof petWiggle!=="undefined" && petWiggle>0) || (GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil);   // 撫での喜び動作（ジャンプ/回転/しっぽ/ぴょこ）中も嗅がない
         const active = sig>0.02 && !atBlock && !celebrating;           // 掘り優先：付いている/喜んでいる間は嗅がない
         const target = active ? THREE.MathUtils.degToRad(38) : 0;      // 一律に深く頭を下げる（+＝鼻先を下へ）
         const wob = active ? Math.sin(now*0.012*0.8)*(0.05*1.5) : 0;   // 嗅ぐ動き：角度1.5倍・速さ0.8倍
