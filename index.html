@@ -2081,7 +2081,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
         let targetH=Math.min(dogNaturalH()*(R/38), 1.2*dogNaturalH());
         if(key==="chihuahua"||key==="dachshund") targetH*=1.5;   // チワワ・ダックスフントは小さいので相棒表示を1.5倍
-        if(key==="golden"||key==="labrador"||key==="beagle"||key==="bulldog") targetH*=0.6;   // 歩き回る相棒を0.6倍（大型犬は大きすぎるため）
+        if(key==="golden") targetH*=0.80; else if(key==="labrador") targetH*=0.75; else if(key==="beagle") targetH*=0.70; else if(key==="bulldog") targetH*=0.60;   // 大型犬は歩き回る相棒を縮小（種別に調整）
         body.scale.setScalar(targetH/H0); return;
     }
     let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
