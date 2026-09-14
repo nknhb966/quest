@@ -2112,8 +2112,10 @@ function refreshBuddyBodies(){   // 現在の相棒＆現在のボクセル版�
 function preloadCompanionBody(key, smooth){   // プリロード用：指定ボクセル版を生成
     const def=COMPANIONS[key]; if(!def || !def.builder) return;
     const slot=smooth?"bodyS":"bodyB"; if(def[slot]) return;
-    const pv=VOX_CUR, ps=dinoSmooth; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
-    let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; }
+    const isDog=(typeof DOGS!=="undefined" && DOGS.some(d=>d.key===key)) || key==="dog";
+    const pv=VOX_CUR, ps=dinoSmooth, pvv=VOX_VARY; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
+    if(!isDog) VOX_VARY=true;   // 恐竜の相棒も発掘モデルと同様に目のハイライト＋肌の微陰影を付ける
+    let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; VOX_VARY=pvv; }
     scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
     body.updateMatrixWorld(true);
     { const bb=new THREE.Box3().setFromObject(body); if(isFinite(bb.min.y)) body.position.y-=bb.min.y; }   // 全相棒とも足を接地（相棒プテラノドンも他と同じ高さ）
