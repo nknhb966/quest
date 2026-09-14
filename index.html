@@ -2081,7 +2081,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
         let targetH=Math.min(dogNaturalH()*(R/38), 1.2*dogNaturalH());
         if(key==="chihuahua"||key==="dachshund") targetH*=1.5;   // チワワ・ダックスフントは小さいので相棒表示を1.5倍
-        if(key==="golden") targetH*=0.65; else if(key==="labrador") targetH*=0.60; else if(key==="beagle") targetH*=0.80; else if(key==="bulldog") targetH*=0.60;   // 大型犬は歩き回る相棒を縮小（種別に調整）
+        if(key==="golden") targetH*=0.70; else if(key==="labrador") targetH*=0.65; else if(key==="beagle") targetH*=0.80; else if(key==="bulldog") targetH*=0.60;   // 大型犬は歩き回る相棒を縮小（種別に調整）
         body.scale.setScalar(targetH/H0); return;
     }
     let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
@@ -6549,20 +6549,19 @@ function updateDog(dt, now){
         const sy=dog.scale.y||1; bubbleSpr.position.y = 3.3 - (dog.position.y-(GROUND_Y+DOG_Y))/sy - 0.30/sy;   // 絶対高さに固定（ジャンプ/弾みを打ち消し）
     }
 
-    // ── 頭の向き：撫での喜び中は中立（撫で優先）／探す時は鼻を下げる／撫でられる状態（プレイヤーを向いて待機）は顔を見る（自然な角度にクランプ）──
+    // ── 頭の向き：歩く・探す(嗅ぐ)以外はプレイヤーの顔を見る（自然な角度にクランプ）／嗅ぐ時は鼻を下げる ──
     { const body=(typeof activeBody==="function")?activeBody():null;
       const head=body&&body.userData?body.userData.head:null;
       if(head){
         const sig=(GAME&&GAME.active&&!GAME.complete)?(GAME.sniffSig||0):0;
         const atBlock = !!(dog.userData && dog.userData.atBlock);   // 発見済みブロックの横に立っている
-        const celebrating = (typeof dogCelebrateT!=="undefined" && dogCelebrateT>0) || (typeof dogSpinT!=="undefined" && dogSpinT>0) || (typeof dogTailWagT!=="undefined" && dogTailWagT>0) || (typeof petWiggle!=="undefined" && petWiggle>0) || (GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil);   // 撫での喜び動作中
-        const sniffing = sig>0.02 && !atBlock && !celebrating;         // 掘り優先：付いている/喜んでいる間は嗅がない
+        const celebrating = (typeof dogCelebrateT!=="undefined" && dogCelebrateT>0) || (typeof dogSpinT!=="undefined" && dogSpinT>0) || (typeof dogTailWagT!=="undefined" && dogTailWagT>0) || (typeof petWiggle!=="undefined" && petWiggle>0) || (GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil);   // 撫で/掘り当ての喜び動作中
+        const sniffing = sig>0.02 && !atBlock && !celebrating;         // 探す（嗅ぐ）：喜び中・ブロック横では嗅がない
         let wantX=0, wantY=0;
-        if(celebrating){ wantX=0; wantY=0; }                           // 撫での喜び動作を優先＝頭は中立
-        else if(sniffing){
+        if(sniffing){
             wantX = THREE.MathUtils.degToRad(38) + Math.sin(now*0.012*0.8)*(0.05*1.5);   // 鼻先を下げて嗅ぐ（+＝下）
             wantY = 0;
-        } else if(typeof dogAttentive!=="undefined" && dogAttentive){   // プレイヤーを向いて待機（撫でられる）＝顔を見る
+        } else if(!moving){                                            // 歩く・嗅ぐ以外（停止中）＝喜び中・ブロック横・セリフ中も含めて顔を見る
             const hw=head.getWorldPosition(new THREE.Vector3());
             const face=camera.getWorldPosition(new THREE.Vector3());
             const dx=face.x-hw.x, dy=face.y-hw.y, dz=face.z-hw.z;
@@ -6572,7 +6571,7 @@ function updateDog(dt, now){
             const MAXY=THREE.MathUtils.degToRad(22), MAXX=THREE.MathUtils.degToRad(26);   // 不自然にならない範囲にクランプ
             wantY=Math.max(-MAXY,Math.min(MAXY,wy));
             wantX=Math.max(-MAXX,Math.min(MAXX,wx));
-        }
+        }   // moving（歩行中）＝中立(0,0)
         head.rotation.x += (wantX - head.rotation.x)*Math.min(1, dt*6);   // なめらかに追従／戻り
         head.rotation.y += (wantY - head.rotation.y)*Math.min(1, dt*6);
       }
