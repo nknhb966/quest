@@ -3612,7 +3612,7 @@ function clearNewStamps(){ let ch=false; for(const k in dexData){ if(dexData[k].
  * UI 配線（メニュー）
  * ===================================================== */
 const menu=document.getElementById("menu");
-document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; withParamLoading(()=>{ if(recoOn && chosenMode!=="challenge" && typeof applyAutoForTarget==="function") applyAutoForTarget(chosenDigTarget); if(typeof updateTimeLimitUI==="function") updateTimeLimitUI(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); }); });
+document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; withParamLoading(()=>{ if(chosenMode!=="challenge" && typeof applyAutoForTarget==="function") applyAutoForTarget(chosenDigTarget); if(typeof updateTimeLimitUI==="function") updateTimeLimitUI(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); }); });
 // デスクトップHUDボタンの並び：dTA（スタンバイに戻る等）を先頭・黄色で目立たせ、リセットは「やめる」の直前
 (function(){
     const dTA=document.getElementById("dTA"), taCard=document.getElementById("taCardBtn"), dReset=document.getElementById("dReset"), dQuit=document.getElementById("dQuit");
@@ -3690,54 +3690,34 @@ function regenerateSiteRandomSpots(){
 function segSelect(segId, v){   // 指定セグの値を選択状態にし、対応する内部変数も更新
     document.querySelectorAll("#"+segId+" button").forEach(x=>x.classList.toggle("on", x.dataset.v===v));
 }
-function applyAutoForTarget(target){   // おすすめオン(TA/コレクション)＝ユーザー指定フルプリセット／オフ＝従来の対象別デフォルト
-    if(recoOn && chosenMode!=="challenge"){
-        setTimeLimit(90);                                                    // 制限時間：90秒（TAのみ有効）
-        segSelect("segCardShow","on");    cardShown=true;                    // 獲得カード：表示
-        segSelect("segBuddyMode","pick"); buddyRandom=false; dogOnly=false;  // 相棒の決め方：えらぶ
-        segSelect("segStar","on");        starEnabled=true;                  // スター：あり
-        segSelect("segToolSwap","off");   toolSwapAllowed=false;             // 道具の持ち替え：持ち替えない
-        segSelect("segHoloFreeze","off"); holoFreezeTime=false;             // 図鑑カード表示中の時間：止まらない
-        if(target==="artifact"){
-            segSelect("segRarity","off");     rarityOn=false;               // レア度：なし
-            segSelect("segBuddyPool","all");  buddyMode="all";              // 相棒の候補：全ての相棒
-            segSelect("segArtLine","off");    showArtInfo=false;            // 出土品の説明パネル・線：非表示
-            segSelect("segSite","show");      setSiteVisible(true);  syncSiteSeg();   // サイトモデル：表示
-            segSelect("segDigPos","fixed");   digPosRandom=false;
-        } else {
-            segSelect("segRarity","on");      rarityOn=true;                // レア度：あり
-            segSelect("segBuddyPool","unlock"); buddyMode="unlock";        // 相棒の候補：獲得した相棒
-            segSelect("segSite","hide");      setSiteVisible(false); syncSiteSeg();   // サイトモデル：非表示
-            segSelect("segDigPos","random");  digPosRandom=true;
-            realCapToActual=false; segSelect("segRealCap","off");          // 恐竜の原寸比：上限なし
-            if(typeof setRealRefShort==="function") setRealRefShort(20);    // 実寸になるフィールド短辺：20
-        }
-        if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
-        if(typeof applyDeviceAutoSize==="function") applyDeviceAutoSize();   // サイト3倍／ワールド30m（実績ある非ハング経路：setSiteMode(3,false)＋setWorldX/Z(30)）
-        return;
-    }
-    // ===== おすすめオフ：従来の対象別デフォルト =====
+function applyAutoForTarget(target){   // 発掘対象/モード切替時の推奨プリセット。おすすめon/offとも同じ値をセット（オン=各トグルを隠して固定／オフ=全表示で編集可）。チャレンジはapplyChallengePresetが担当
+    if(chosenMode==="challenge") return;
+    setTimeLimit(90);                                                    // 制限時間：90秒（TAのみ有効）
+    segSelect("segCardShow","on");    cardShown=true;                    // 獲得カード：表示
+    segSelect("segBuddyMode","pick"); buddyRandom=false; dogOnly=false;  // 相棒の決め方：えらぶ
+    segSelect("segStar","on");        starEnabled=true;                  // スター：あり
+    segSelect("segToolSwap","off");   toolSwapAllowed=false;             // 道具の持ち替え：持ち替えない
+    segSelect("segHoloFreeze","off"); holoFreezeTime=false;             // 図鑑カード表示中の時間：止まらない
     if(target==="artifact"){
-        setTimeLimit(90);
-        segSelect("segCardShow","on");    cardShown=true;
-        segSelect("segRarity","off");     rarityOn=false;
-        segSelect("segBuddyMode","dogonly"); buddyRandom=false; dogOnly=true;
-        segSelect("segDogLevel","fixed"); dogLevelUp=false; if(typeof resetDogStats==="function") resetDogStats();
-        segSelect("segStar","off");       starEnabled=false;
-        segSelect("segDigPos","fixed");    digPosRandom=false;
-        segSelect("segSite","show");      setSiteVisible(true); syncSiteSeg();
-    } else {   // dino / dino3
-        setTimeLimit(90);
-        segSelect("segCardShow","on");    cardShown=true;
-        segSelect("segRarity","on");      rarityOn=true;
-        segSelect("segBuddyMode","pick"); buddyRandom=false; dogOnly=false;
-        segSelect("segBuddyPool","unlock"); buddyMode="unlock";
-        segSelect("segStar","on");        starEnabled=true;
+        segSelect("segRarity","off");     rarityOn=false;               // レア度：なし
+        segSelect("segBuddyPool","all");  buddyMode="all";              // 相棒の候補：全ての相棒
+        segSelect("segArtLine","off");    showArtInfo=false;            // 出土品の説明パネル・線：非表示
+        segSelect("segSite","show");      setSiteVisible(true);  syncSiteSeg();   // サイトモデル：表示
+        segSelect("segDigPos","fixed");   digPosRandom=false;
+    } else {
+        segSelect("segRarity","on");      rarityOn=true;                // レア度：あり
+        segSelect("segBuddyPool","unlock"); buddyMode="unlock";        // 相棒の候補：獲得した相棒
+        segSelect("segSite","hide");      setSiteVisible(false); syncSiteSeg();   // サイトモデル：非表示
         segSelect("segDigPos","random");  digPosRandom=true;
-        segSelect("segSite","hide");      setSiteVisible(false); syncSiteSeg();
+        realCapToActual=false; segSelect("segRealCap","off");          // 恐竜の原寸比：上限なし
+        if(typeof setRealRefShort==="function") setRealRefShort(20);    // 実寸になるフィールド短辺：20
     }
-    updateWorldSizeUI && updateWorldSizeUI();
-    if(typeof applyDeviceAutoSize==="function") applyDeviceAutoSize();   // スマホ/PC＋おすすめオン：サイト3倍／ワールド30m
+    if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
+    // サイト3倍／ワールド30m（スマホ/PCのみ・ヘッドセットは従来どおり）。おすすめon/offとも同じ値
+    if(typeof headsetDetected!=="undefined" && headsetDetected && !IS_HEADSET){
+        if(typeof setSiteMode==="function") setSiteMode(3,false);
+        if(typeof setWorldX==="function"){ setWorldX(30); setWorldZ(30); }
+    }
 }
 function applyChallengePreset(){   // 発掘チャレンジの自動設定。必須項目は常時、5項目（時間/道具/サイト/原寸比/短辺）はおすすめオン時のみ自動固定
     segSelect("segCardShow","on");    cardShown=true;                 // 獲得カード：表示
