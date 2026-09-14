@@ -3063,6 +3063,7 @@ let _warmupModels=[];         // ウォームアップ対象（恐竜キャッ�
 function preloadEverything(done){
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
     PRELOAD_DONE=false; document.body.classList.add("preloading");   // 完了まで入室不可
+    _finishingPreload=false; WARMUP_DONE=false;   // 再プリロード（対象/モード切替など）でも完全ゲートを再入可能に（一度きりガードで固まるのを防止）
     if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
     const jobs=[];
     for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});   // 恐竜（なめらか・実寸）
