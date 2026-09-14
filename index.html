@@ -1602,7 +1602,7 @@ Chunk.prototype.eye=function(x,y,z,r){
     for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(ix+"|"+iy+"|"+iz)){ this.set(ix,iy,iz,EYE); break; } }  // 最前面を黒に
   }
   if(VOX_VARY){   // 目のハイライト（上寄りに小さな光）
-    const hix=Math.round((cx+hw*0.4)/this.vox), hiy=iy1;
+    const hix=cix+Math.round(hw*0.4/this.vox), hiy=iy1;   // 中心から一定オフセット＝左右で同じ相対位置（複製と同等）
     for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(hix+"|"+hiy+"|"+iz)){ this.set(hix,hiy,iz,0xf2f0f6); break; } }
   }
 };
