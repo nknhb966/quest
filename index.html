@@ -430,14 +430,14 @@
     <!-- ここから独立パート：発掘モデルを見る（区切り線＋見出しで上の各種ボタンと分離） -->
     <div id="mvSection">
       <div class="mvSectionTitle">🔍 発掘モデルを見る</div>
-      <!-- 発掘モデル表示の対象トグル（出土品/犬/恐竜）。ビューア・AR両方の表示対象を制御 -->
-      <div id="mvKindSeg" style="display:flex; gap:8px; margin:0 0 8px; width:100%;">
-        <button type="button" data-t="artifact" style="flex:1; padding:12px 0; border-radius:11px; border:2px solid #a78bfa; background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; font:bold 15px sans-serif; cursor:pointer;">出土品</button>
-        <button type="button" data-t="dog" style="flex:1; padding:12px 0; border-radius:11px; border:2px solid #4a3a7a; background:#17122e; color:#b9a9ee; font:bold 15px sans-serif; cursor:pointer;">犬</button>
-        <button type="button" data-t="dino" style="flex:1; padding:12px 0; border-radius:11px; border:2px solid #4a3a7a; background:#17122e; color:#b9a9ee; font:bold 15px sans-serif; cursor:pointer;">恐竜</button>
-      </div>
       <button id="mvOpenBtn">🔍 発掘モデル表示</button>
       <button id="mvArOpenBtn">📱 発掘モデル表示AR</button>
+      <!-- 表示する対象（出土品/犬/恐竜）。他のトグルと同じ .seg UI -->
+      <div class="seg" id="mvKindSeg" style="margin-top:10px;">
+        <button type="button" data-t="artifact" class="on">出土品</button>
+        <button type="button" data-t="dog">犬</button>
+        <button type="button" data-t="dino">恐竜</button>
+      </div>
     </div>
 
   </div>
@@ -5743,6 +5743,7 @@ function liteEnterScene(model, intrinsicScale){
     while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; }   // 旧モデルはキャッシュのため破棄せず外すだけ
     LITE._worldVis=(typeof stage!=="undefined")?stage.visible:null; if(typeof stage!=="undefined") stage.visible=false;   // ゲーム世界を隠す
     LITE._dogVis=(typeof dog!=="undefined")?dog.visible:null; if(typeof dog!=="undefined") dog.visible=false;
+    try{ if(typeof toolHolder!=="undefined") toolHolder.visible=false; }catch(_){ }   // 発掘道具を手から外す（発掘体験後にLiteへ入っても道具を持たない）
     try{ if(typeof taClock!=="undefined") taClock.show(false); }catch(_){ }   // カウントダウン/時計を隠す
     try{ if(typeof dexHolder!=="undefined") dexHolder.visible=false; }catch(_){ }
     try{ if(typeof chRoundPanel!=="undefined") chRoundPanel.mesh.visible=false; }catch(_){ }
@@ -5972,7 +5973,7 @@ async function liteSwitchModel(idx){
     LITE.curIdx=idx;
     // 名称・説明を更新
     if(LITE.target==="dino"){ LITE.curName=(DINOS[idx]&&DINOS[idx].label)||""; LITE.curDesc=""; }
-    else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; LITE.curName=info?(info.name||""):""; LITE.curDesc=info?(info.description||""):""; }
+    else if(LITE.target==="dog"){ LITE.curName=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||"しば犬"; LITE.curDesc=""; }   // 犬：犬種名（出土品名にフォールバックさせない）
     const m=liteBuildModel(LITE.target, idx, LITE.quality);   // キャッシュから同期取得（固まらない）
     while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; }   // 旧モデルはキャッシュのため破棄せず外すだけ
     LITE.model=null;
@@ -7106,7 +7107,7 @@ addEventListener("resize",()=>{
         dinoSize=b.dataset.s; updateToggles(); showModel(curIdx()); });
     // トグル：発掘モデル表示の対象（出土品/犬/恐竜）。ビューア・AR両方の表示を切替
     const kindSeg=document.getElementById("mvKindSeg");
-    function mvKindPaint(){ if(!kindSeg) return; kindSeg.querySelectorAll("button").forEach(x=>{ const on=(x.dataset.t===window.MV_VIEW_KIND); x.style.background=on?"linear-gradient(135deg,#7c3aed,#1d4ed8)":"#17122e"; x.style.borderColor=on?"#a78bfa":"#4a3a7a"; x.style.color=on?"#fff":"#b9a9ee"; }); }
+    function mvKindPaint(){ if(!kindSeg) return; kindSeg.querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x.dataset.t===window.MV_VIEW_KIND); }); }   // .seg標準スタイル（onクラス）で強調
     window.MV_VIEW_KIND = window.MV_VIEW_KIND || "artifact"; mvKindPaint();
     if(kindSeg) kindSeg.addEventListener("click",(e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.t) return;
         window.MV_VIEW_KIND=b.dataset.t; mvKindPaint();
