@@ -167,10 +167,10 @@
         cursor:pointer; touch-action:manipulation; }
     .dexreset:hover{ background:rgba(120,30,45,.75); color:#fff; }
 
-    /* ── あそび方モーダル ── */
-    #help{ position:fixed; inset:0; z-index:45; display:none; align-items:center; justify-content:center;
+    /* ── あそび方 / 仕組みモーダル ── */
+    #help, #scoring{ position:fixed; inset:0; z-index:45; display:none; align-items:center; justify-content:center;
         background:rgba(3,2,10,.92); padding:18px; }
-    #help.open{ display:flex; }
+    #help.open, #scoring.open{ display:flex; }
     .helpbox{ width:min(680px,96vw); max-height:92vh; max-height:92dvh; display:flex; flex-direction:column; gap:12px; position:relative;
         background:linear-gradient(150deg,#160f0a,#0c1024); border:1px solid rgba(210,180,120,.35);
         border-radius:16px; padding:20px 22px; }
@@ -423,6 +423,7 @@
 
     <div class="row">
       <button class="ghost" id="openHelp">❓ あそび方</button>
+      <button class="ghost" id="openScoring">📊 得点・カードの仕組み</button>
       <button class="ghost" id="openRecords">🏅 記録</button>
     </div>
 
@@ -498,7 +499,7 @@
       <section>
         <h3>🕹 入室とおすすめ設定</h3>
         <p>タイトルで入室方法を選びます。<b>VR・ARで入る</b>（ヘッドセット）か、<b>ヘッドセットなしで試す</b>（PC・スマホ）です。</p>
-        <p><b>おすすめ設定オン</b>（既定）では設定を自動でととのえ、<b>使っている端末に合う入室ボタンだけ</b>を表示します。スマホ・PCのときは広さも自動で最適化（サイト表示＝<b>3倍</b>／サイト非表示＝<b>30×30m</b>）。<b>おすすめ設定オフ</b>にすると、すべての項目を自分で調整でき、入室ボタンも両方表示されます。</p>
+        <p><b>おすすめ設定オン</b>（既定）では各トグルを自動で固定し、<b>使っている端末に合う入室ボタンだけ</b>を表示します。スマホ・PCのときは広さも自動で最適化（サイト表示＝<b>3倍</b>／サイト非表示＝<b>30×30m</b>）。<b>おすすめ設定オフ</b>にすると、すべての項目を自分で調整でき、入室ボタンも両方表示されます。<b>モードや発掘対象を切り替えると、オン・オフに関わらず、その組み合わせのおすすめ値が自動でセット</b>されます（オフのときはそこから手動で変えられます）。</p>
       </section>
       <section>
         <h3>🗺 3つのモード</h3>
@@ -521,7 +522,7 @@
       <section>
         <h3>🔎 探す</h3>
         <p>遺跡を歩いて、埋まった反応をたどります。発掘ポイントに近いほど<b>振動と音のパルスが速く</b>なります（金属探知のイメージ）。反応をたどって<b>近づくと発掘ポイントが見つかり</b>、土のブロックが現れます。相棒に「聞く」と、見つける手助けもしてくれます。</p>
-        <p class="k">最初から見えているのは<b>発掘チャレンジ1ターン目</b>の近くの3か所だけ。それ以外は歩いて発見します。</p>
+        <p class="k"><b>タイムアタック・じっくりコレクション</b>はスタート直後に<b>最も近い1か所</b>が見えます。<b>発掘チャレンジ1ターン目</b>は近くの<b>5か所</b>が最初から見えます。それ以外は歩いて発見します。</p>
         <p class="k">VR：歩きながらコントローラーを左右に振る／PC・スマホ：歩くと自動で探知</p>
       </section>
       <section>
@@ -546,7 +547,7 @@
       </section>
       <section>
         <h3>🎴 獲得カード</h3>
-        <p>リザルトで<b>カードをゲット</b>（結果パネルに大きく表示）。発掘チャレンジは各ターンで<b>相棒（恐竜）カード</b>、最終ターンで<b>合計スコアに応じた獲得カード</b>。タイムアタックは<b>スコア</b>、じっくりコレクションは<b>クリアタイム</b>でレア度が決まります（レア度なしのときはランダム）。同じカードは重複しません。</p>
+        <p>リザルトで<b>カードをゲット</b>し、同じ番号の<b>相棒</b>も仲間になります（出土品→犬種／恐竜→恐竜）。レア度は、タイムアタックは<b>スコア</b>、じっくりコレクションは<b>クリアタイム</b>、発掘チャレンジは<b>各ターン／合計スコア</b>で決まります（レア度なしのときは掘った対象からランダム）。同じカードは重複しません。<b>くわしい配点・確率はタイトルの「📊 得点・カードの仕組み」へ。</b></p>
       </section>
       <section>
         <h3>🏅 記録（TOP5）</h3>
@@ -566,6 +567,60 @@
         <h3>🛠 会場セットアップ（サイト非表示時）</h3>
         <p>メニューでサイトを<b>「非表示」</b>にすると、ワールドの広さ（横X・奥行Z）を指定できます（スマホ・PC＋おすすめオンは<b>30×30m</b>）。会場の中央に立って向きを合わせ、<b>左手中指グリップ＋Ｙ長押し</b>で、その位置を中央・前方(-Z)として基準を確定します。以降のリセットでは発掘ポイントだけが再配置されます。</p>
         <p class="k">左手Ｘ長押し：フィールドの矩形オーラ＋発掘ポイントのヒントを表示。</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 得点・カードの仕組みモーダル ═══ -->
+<div id="scoring">
+  <div class="helpbox">
+    <button class="dexclose" id="scoringClose">×</button>
+    <h2>📊 得点・カードの仕組み</h2>
+    <div class="helpscroll">
+      <section>
+        <h3>🧩 カード・相棒・レア度の対応</h3>
+        <p>カードと相棒は<b>0〜7の番号</b>で対応します。<b>出土品</b>を掘ると同じ番号の<b>犬種</b>が、<b>恐竜</b>を掘ると同じ番号の<b>恐竜</b>が相棒になります（しば犬は最初から仲間で、カード対象外）。</p>
+        <p>レア度は番号ごとに固定です：<b>0＝超激レア／1＝激レア／2＝レア／3・4＝プチレア／5・6・7＝ノーマル</b>（出土品・犬種・恐竜とも同じ並び）。順位は 超激レア＞激レア＞レア＞プチレア＞ノーマル。</p>
+      </section>
+      <section>
+        <h3>💯 得点（スコア）</h3>
+        <p><b>タイムアタック・発掘チャレンジ</b>：1回発掘するごとに <b>110＋（7−発掘スポット番号）×40</b> ポイント（番号0＝390pt、番号7＝110pt。レアなスポットほど高得点）。スポットは<b>正面ほど出やすく</b>、狙って選ぶことはできません。</p>
+        <p>合計スコア＝<b>発掘ポイントの合計＋残り秒×30</b>。</p>
+        <p><b>じっくりコレクション</b>：スコアはなく、<b>全8種を掘り切るまでのタイム</b>で評価します（速いほど高評価）。</p>
+      </section>
+      <section>
+        <h3>🎴 タイムアタックの獲得</h3>
+        <p><b>レア度あり</b>：スコアで基準レア度が決まり（<b>≥4000 超激／≥3000 激／≥2200 レア／≥1400 プチ／未満 ノーマル</b>）、そのレア度から<b>下位方向へ「まだ持っていない」カード</b>を1枚もらえます。全部そろっていれば基準レア度からランダム。</p>
+        <p><b>レア度なし</b>：スコアに関係なく、<b>その回に掘った対象からランダム</b>。</p>
+        <p><b>相棒</b>：獲得カードと<b>同じ番号・同じレア度</b>の相棒を1体獲得（すでに持っていれば増えません）。</p>
+      </section>
+      <section>
+        <h3>⏱ じっくりコレクションの獲得</h3>
+        <p><b>レア度あり</b>：クリアタイムでレア度が決まり（<b>≤60秒 超激／≤90秒 激／≤120秒 レア／≤180秒 プチ／超 ノーマル</b>）、以降はタイムアタックと同じ「下位方向へ未獲得」。</p>
+        <p><b>レア度なし</b>：その回に掘った対象からランダム。</p>
+        <p><b>相棒</b>：獲得カードと同じ番号の相棒を獲得。</p>
+      </section>
+      <section>
+        <h3>🏆 発掘チャレンジ（3ターン）</h3>
+        <p>各ターンのスコア式は同じ（発掘pt＋残り秒×30）。制限時間は<b>1ターン目30秒／2ターン目60秒／3ターン目は設定した秒数</b>。</p>
+        <p><b>1・2ターン目</b>：そのターンのスコアで<b>相棒を1体獲得</b>し、それが獲得カードになります。1ターン目は<b>1200点以上でプチレア／未満でノーマル</b>の未獲得から。2ターン目はスコアで中心レア度（<b>≥2400超激／≥1800激／≥1320レア／≥840プチ／他ノーマル</b>）を決め、<b>中心60%・隣±20%</b>で抽選して未獲得から選びます。</p>
+        <p><b>3ターン目（最終）</b>：<b>3ターン合計スコア</b>で最終カードのレア度（<b>≥6000超激／≥3600激／≥1800レア／≥600プチ／他ノーマル</b>）を中心60%±20%で抽選（<b>重複あり</b>）。合計スコアは<b>チャレンジTOP5</b>に記録されます。</p>
+        <p class="k">相棒・カードは掘る対象に連動（出土品→犬種／恐竜→恐竜）。設定は自動です。</p>
+      </section>
+      <section>
+        <h3>⭐ スターブロック</h3>
+        <p>「スターあり」のとき、フィールドに星が1つ出ます。掘ると相棒の<b>スペシャル（特技）</b>が発動します。</p>
+      </section>
+      <section>
+        <h3>🔁 レア度あり／なしの違い</h3>
+        <p><b>あり</b>：成績（スコア・タイム）が良いほど上位レア度が出やすく、<b>持っていないカードを上位から埋めていきます</b>。</p>
+        <p><b>なし</b>：成績に関係なく、その回に掘った対象から<b>ランダム</b>（レア度表示自体は出ます）。</p>
+        <p class="k">どのモードでも<b>同じカードは重複しません</b>（未獲得を優先）。全部そろった後だけレア度どおりに重複します。</p>
+      </section>
+      <section>
+        <h3>🐾 相棒のレベルアップ（犬のみモード）</h3>
+        <p>「犬のみ」かつ「レベルアップ」設定のとき、クリア時のレア度が<b>レア以上</b>だと、相棒犬のステータス（Power／Scope／Bonus）がランダムに<b>＋1</b>（上限5）されます。</p>
       </section>
     </div>
   </div>
@@ -3954,6 +4009,9 @@ document.getElementById("dexReset").onclick=()=>{
 document.getElementById("openHelp").onclick=()=>{ document.getElementById("help").classList.add("open"); };
 document.getElementById("helpClose").onclick=()=>{ document.getElementById("help").classList.remove("open"); };
 document.getElementById("help").addEventListener("click", e=>{ if(e.target.id==="help") e.currentTarget.classList.remove("open"); });
+document.getElementById("openScoring").onclick=()=>{ document.getElementById("scoring").classList.add("open"); };
+document.getElementById("scoringClose").onclick=()=>{ document.getElementById("scoring").classList.remove("open"); };
+document.getElementById("scoring").addEventListener("click", e=>{ if(e.target.id==="scoring") e.currentTarget.classList.remove("open"); });
 
 function startGame(desktop){
     buddyListOpen=false;   // 再入室時は相棒一覧を必ず閉じた状態から
