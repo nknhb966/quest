@@ -2031,7 +2031,7 @@ const DOG_BREEDS = [
 ];
 // 犬種ボクセルモデル生成（key→関数）。基本犬＋犬種ごとの差分パラメータ
 const DOG_BUILDERS = {
-    golden:    ()=>build_dog_breed({ M:0xd8a94e, BE:0xecd398, D:0xb5842f, ruff:true, ear:"flop", tail:"feather", legLen:0.54, bodyLen:1.14, bodyW:0.27, bodyH:0.40, headSize:0.23, headH:0.34, snoutLen:0.33 }),   // 中金・ふさふさ（胸のラフ＋房尾・長めマズル）
+    golden:    ()=>build_dog_breed({ M:0xd8a94e, BE:0xecd398, D:0xb5842f, ruff:true, ear:"flop", tail:"feather", legLen:0.54, bodyLen:1.14, bodyW:0.27, bodyH:0.40, headSize:0.25, headH:0.38, snoutLen:0.30, snoutW:0.13, snoutH:0.17 }),   // 中金・ふさふさ（丸みのある頭・充実マズルで愛嬌）
     labrador:  ()=>build_dog_breed({ M:0xead7a2, BE:0xf5ead0, D:0xc4ad78, ear:"flop", tail:"otter", legLen:0.56, bodyLen:1.10, bodyW:0.28, bodyH:0.36, headSize:0.25, headH:0.38, snoutLen:0.26, snoutW:0.14, snoutH:0.17 }),   // 淡イエロー・短毛・丸みのある頭/充実マズル・オッター尾（平べったさを解消し愛嬌を出す）
     beagle:    ()=>build_dog_breed({ M:0xb07b3e, BE:0xf2ede2, D:0x3a2f22, AC:0x231e17, saddle:true, snoutCol:0xf2ede2, earCol:0xb07b3e, tail:"up", tailCol:0xf2ede2, ear:"longflop", legLen:0.48, bodyLen:1.02, bodyW:0.24, bodyH:0.36, headSize:0.22, snoutLen:0.26 }),   // 黒ブランケット/タン頭耳/白マズル・胸・尾先
     dachshund: ()=>build_dog_breed({ M:0x8a4a24, BE:0xa9663a, D:0x532b13, ear:"longflop", tail:"long",    legLen:0.30, bodyLen:1.15, bodyW:0.19, bodyH:0.30, headSize:0.18, snoutLen:0.30, snoutW:0.10 }),   // 少し短め
@@ -2066,8 +2066,7 @@ function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 const LOCK_YAW_OVERRIDE = {};
 function lockYawOnCelebrate(key){
     if(Object.prototype.hasOwnProperty.call(LOCK_YAW_OVERRIDE, key)) return !!LOCK_YAW_OVERRIDE[key];
-    const isDog=(typeof DOGS!=="undefined" && DOGS.some(d=>d.key===key)) || key==="dog";
-    return !isDog;   // 恐竜＝喜び中ヨー固定ON／犬＝OFF（各犬種はOVERRIDEで個別ONに）
+    return true;   // 既定＝恐竜・犬とも喜び中はヨー固定（個別に外すには LOCK_YAW_OVERRIDE[key]=false）
 }
 // 実際のボクセル生成は「その相棒が必要になったとき」に一度だけ行う（起動を軽く保つ）
 let _dogNatH=null;
@@ -6424,7 +6423,7 @@ function updateDog(dt, now){
     if(dog.userData.rushTo){
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=_udGoal.set(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 0.6);   // 発掘場所の横に近づく（従来1.0→0.6）
+        goal=_udGoal.set(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 0.65);   // 発掘場所の横に近づく（従来1.0→0.65）
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.3){ dog.userData.rushTo=null; }   // 横に到着したら解除→その場で発掘セリフを言って留まる
         else { rushing=true; }
@@ -6439,7 +6438,7 @@ function updateDog(dt, now){
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=_udGoal.set(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 0.6);   // ブロック横に近づく（従来1.0→0.6）
+        goal=_udGoal.set(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 0.65);   // ブロック横に近づく（従来1.0→0.65）
     } else if(dog.userData.hintActive && dog.userData.hintPos){
         dog.userData.atBlock=false;
         goal=_udGoal.copy(dog.userData.hintPos); goal.y=0;
