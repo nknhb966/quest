@@ -2133,6 +2133,13 @@ function lockYawOnCelebrate(key){
     if(Object.prototype.hasOwnProperty.call(LOCK_YAW_OVERRIDE, key)) return !!LOCK_YAW_OVERRIDE[key];
     return true;   // 既定＝恐竜・犬とも喜び中はヨー固定（個別に外すには LOCK_YAW_OVERRIDE[key]=false）
 }
+// 首の軽い揺れ（歩行中・注視中）。犬=既定ON、恐竜=既定OFF（準備。NECK_SWAY_OVERRIDE[key]=true/falseで個別に）
+const NECK_SWAY_OVERRIDE = {};
+function neckSwayEnabled(key){
+    if(Object.prototype.hasOwnProperty.call(NECK_SWAY_OVERRIDE, key)) return !!NECK_SWAY_OVERRIDE[key];
+    const isDog=(typeof DOGS!=="undefined" && DOGS.some(d=>d.key===key)) || key==="dog";
+    return isDog;
+}
 // 実際のボクセル生成は「その相棒が必要になったとき」に一度だけ行う（起動を軽く保つ）
 let _dogNatH=null;
 function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基準）。単独生成して計測しキャッシュ
@@ -5766,10 +5773,10 @@ function liteEnterScene(model, intrinsicScale){
             _sc=(realH/100)/h0;
         }
         model.scale.setScalar(_sc);   // 出土品=原寸(1.0)／恐竜=サイズ倍率／犬=実寸(cm)
-        model.updateMatrixWorld(true);
+        model.position.set(0,0,0); model.updateMatrixWorld(true);   // 計測前に位置リセット（キャッシュ再利用でも正しく中心化＝自然な回転中心）
         const box=new THREE.Box3().setFromObject(model); const ctr=box.getCenter(new THREE.Vector3()); const sz=box.getSize(new THREE.Vector3());
         LITE.modelDepth = sz.z || 0;   // 奥行き(ローカルZ・intrinsic適用後)
-        model.position.set(-ctr.x, -ctr.y, -ctr.z);   // 中心を原点へ（原寸を維持）
+        model.position.set(-ctr.x, -ctr.y, -ctr.z);   // 体の中央（重心≒バウンディング中心）を原点へ＝回転中心を自然に
         model.traverse(o=>{ if(o.isMesh && o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{ m.depthTest=true; m.depthWrite=true; m.needsUpdate=true; }); } });   // 深度テスト有効
         model.visible=true; LITE.model=model; LITE.group.add(model);
     }
@@ -5853,15 +5860,15 @@ function litePlaceHandUI(){   // ①②を左手のワールド位置に追従�
 function liteArTick(){
     if(!LITE.group) return;
     litePlaceHandUI();
-    // アイドルアニメ（犬・恐竜）：ONで足踏み＋尻尾振り、OFFで中立姿勢
+    // アイドルアニメ（犬・恐竜）：ONで「歩いているような」協調した足運び＋尻尾＋首（足・尻尾・首は同周期）、OFFで中立姿勢
     if((LITE.target==="dog"||LITE.target==="dino") && LITE.model){
         const pv=(LITE.model.userData && LITE.model.userData.model)?LITE.model.userData.model:LITE.model;
         if(pv&&pv.userData){
             if(window.MV_ANIM!==false){
-                const t=performance.now()*0.004;
-                (pv.userData.legs||[]).forEach((lg,i)=>{ if(lg) lg.rotation.x=Math.sin(t*2 + i*Math.PI/2)*0.22; });   // 足踏み（脚ごとに位相ずらし）
-                if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(t*3)*0.5;                                    // 尻尾ふりふり
-                if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(t*1.3)*0.05;                                 // 軽い首の揺れ
+                const w=performance.now()*0.006;   // 共通周期（足・尻尾・首で同じ）
+                (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=Math.sin(w + (lg.userData.phase||0))*0.32; });   // 各脚の内蔵位相＝発掘相棒と同じ協調歩行
+                if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(w)*0.4;   // 尻尾（同周期）
+                if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(w)*0.06;  // 軽い首の揺れ（同周期）
             } else {
                 (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=0; });
                 if(pv.userData.tail) pv.userData.tail.rotation.y=0;
@@ -5980,6 +5987,7 @@ function litePickAny(){   // 右手レイで①ボタン・②セルを判定（
 // ② モデルえらび（3列×N・列幅2倍。camera前方右側HUD）。右手レイ＋パネル操作モードで選択
 function liteSelList(){   // 現在の対象のモデル一覧 [{idx,name}]
     if(LITE.target==="dino"){ const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
+    if(LITE.target==="dog"){ const a=[]; const N=(typeof DOGS!=="undefined"?DOGS.length:8); for(let i=0;i<N;i++) a.push({idx:i, name:((typeof DOGS!=="undefined"&&DOGS[i])?DOGS[i].label:("犬"+(i+1)))}); a.push({idx:N, name:"しば犬"}); return a; }   // 犬種＋末尾しば犬
     const arts=mvArtifactRows(), sites=mvSiteRows(), a=[]; arts.forEach((r,i)=>a.push({idx:i, name:r.name||("出土品"+(i+1))}));
     if(window.MV_SHOW_SITE) sites.forEach((r,j)=>a.push({idx:arts.length+j, name:r.name||"遺構"})); return a;
 }
@@ -6695,6 +6703,13 @@ function updateDog(dt, now){
         }   // moving（歩行中）＝中立(0,0)
         head.rotation.x += (wantX - head.rotation.x)*Math.min(1, dt*6);   // なめらかに追従／戻り
         head.rotation.y += (wantY - head.rotation.y)*Math.min(1, dt*6);
+        // 軽い首の揺れ：歩行中・プレイヤー注視中（犬=既定ON／恐竜は準備）。足・尻尾と同周期（歩行時は歩調に同期）
+        let wantZ=0;
+        if(typeof neckSwayEnabled==="function" && neckSwayEnabled(companionKind) && (moving || (typeof dogAttentive!=="undefined" && dogAttentive))){
+            const swp = moving ? _dogWalkPhase : performance.now()*0.0065;
+            wantZ = Math.sin(swp)*0.06;
+        }
+        head.rotation.z += (wantZ - head.rotation.z)*Math.min(1, dt*6);
       }
     }
 }
