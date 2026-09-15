@@ -441,14 +441,6 @@
           <button type="button" data-t="dino">恐竜</button>
         </div>
       </div>
-      <!-- アニメーション（犬・恐竜のときだけ表示。出土品は非表示）。既定オン -->
-      <div class="opt wide" id="optMvAnim" style="margin-top:10px; display:none;">
-        <div class="lbl">アニメーション</div>
-        <div class="seg" id="segMvAnim">
-          <button type="button" data-a="on" class="on">オン</button>
-          <button type="button" data-a="off">オフ</button>
-        </div>
-      </div>
     </div>
 
   </div>
@@ -5861,14 +5853,20 @@ function litePlaceHandUI(){   // ①②を左手のワールド位置に追従�
 function liteArTick(){
     if(!LITE.group) return;
     litePlaceHandUI();
-    // アイドルアニメ（犬・恐竜／アニメーションONのとき）：足踏み＋尻尾振り
-    if(window.MV_ANIM!==false && (LITE.target==="dog"||LITE.target==="dino") && LITE.model){
+    // アイドルアニメ（犬・恐竜）：ONで足踏み＋尻尾振り、OFFで中立姿勢
+    if((LITE.target==="dog"||LITE.target==="dino") && LITE.model){
         const pv=(LITE.model.userData && LITE.model.userData.model)?LITE.model.userData.model:LITE.model;
-        const t=performance.now()*0.004;
         if(pv&&pv.userData){
-            (pv.userData.legs||[]).forEach((lg,i)=>{ if(lg) lg.rotation.x=Math.sin(t*2 + i*Math.PI/2)*0.22; });   // 足踏み（脚ごとに位相ずらし）
-            if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(t*3)*0.5;                                    // 尻尾ふりふり
-            if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(t*1.3)*0.05;                                 // 軽い首の揺れ
+            if(window.MV_ANIM!==false){
+                const t=performance.now()*0.004;
+                (pv.userData.legs||[]).forEach((lg,i)=>{ if(lg) lg.rotation.x=Math.sin(t*2 + i*Math.PI/2)*0.22; });   // 足踏み（脚ごとに位相ずらし）
+                if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(t*3)*0.5;                                    // 尻尾ふりふり
+                if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(t*1.3)*0.05;                                 // 軽い首の揺れ
+            } else {
+                (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=0; });
+                if(pv.userData.tail) pv.userData.tail.rotation.y=0;
+                if(pv.userData.head) pv.userData.head.rotation.z=0;
+            }
         }
     }
     if(LITE.placeFrames>0){   // 入室直後の数フレーム：正面(0.8m＋奥行き/2)へ配置
@@ -5922,7 +5920,13 @@ function liteBuildUI(){
     const resetY=top-bh/2-(bh+gap), opY=resetY-(bh+gap);
     const rb=liteMakePanel(bw,bh); rb.position.set(colL, resetY, 0); rb.userData.kind="btn"; rb.userData.act="reset"; LITE.ui.add(rb); LITE.buttons.push(rb);
     const ob=liteMakePanel(bw,bh); ob.position.set(colL, opY, 0); ob.userData.kind="btn"; ob.userData.act="op"; LITE.ui.add(ob); LITE.buttons.push(ob);
-    LITE._descTop = opY - bh/2 - gap;   // 説明パネルの上辺基準
+    let _lastBtnY=opY;
+    if(LITE.isDino){   // 犬・恐竜のみ：アニメーションON/OFFボタンを「モデル操作」の次に追加
+        const animY=opY-(bh+gap);
+        const anb=liteMakePanel(bw,bh); anb.position.set(colL, animY, 0); anb.userData.kind="btn"; anb.userData.act="anim"; LITE.ui.add(anb); LITE.buttons.push(anb);
+        _lastBtnY=animY;
+    }
+    LITE._descTop = _lastBtnY - bh/2 - gap;   // 説明パネルの上辺基準（ボタン群の下）
     LITE._colL=colL; LITE._descW=bw;
     LITE.descPanel=null;
     // ② モデルえらび（右A4：3列×N）
@@ -5931,7 +5935,8 @@ function liteBuildUI(){
 }
 function liteDrawButtons(){
     const st={reset:{t:"サイズ＋回転リセット",bg:"#333",fg:"#fff"},
-              op:{t:LITE.opEnabled?"モデル操作可能":"モデル操作不可", bg:LITE.opEnabled?"#e0533a":"#f3d3cc", fg:LITE.opEnabled?"#fff":"#8a2a17"}};
+              op:{t:LITE.opEnabled?"モデル操作可能":"モデル操作不可", bg:LITE.opEnabled?"#e0533a":"#f3d3cc", fg:LITE.opEnabled?"#fff":"#8a2a17"},
+              anim:{t:(window.MV_ANIM!==false)?"アニメーション オン":"アニメーション オフ", bg:(window.MV_ANIM!==false)?"#2f7d4f":"#dfeee5", fg:(window.MV_ANIM!==false)?"#fff":"#245a38"}};
     LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; if(!s) return; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,3,3,cw-6,ch-6,18); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });
 }
 function liteRebuildDesc(){   // 説明パネルを毎回破棄→新規生成（文字統一・伸縮なし・見切れなし）。説明ボタン廃止＝説明があれば表示
@@ -5967,6 +5972,7 @@ function litePickAny(){   // 右手レイで①ボタン・②セルを判定（
     const o=hit.object;
     if(o.userData.act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); try{ chord([784,523,392],0.05,"triangle",0.45); }catch(_){ } }
     else if(o.userData.act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); try{ beep(LITE.opEnabled?660:330,0.09,0.3,"square"); }catch(_){ } }
+    else if(o.userData.act==="anim"){ window.MV_ANIM=(window.MV_ANIM===false); liteDrawButtons(); try{ beep(window.MV_ANIM!==false?660:330,0.09,0.3,"square"); }catch(_){ } }   // アイドルアニメON/OFF
     else if(o.userData.kind==="sel"){ const idx=o.userData.selIdx; if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } }
     return true;
 }
@@ -7150,19 +7156,23 @@ addEventListener("resize",()=>{
         dinoSize=b.dataset.s; updateToggles(); showModel(curIdx()); });
     // トグル：発掘モデル表示の対象（出土品/犬/恐竜）。ビューア・AR両方の表示を切替
     const kindSeg=document.getElementById("mvKindSeg");
-    if(typeof window.MV_ANIM==="undefined") window.MV_ANIM=true;   // アイドルアニメ既定オン
-    const animOpt=document.getElementById("optMvAnim"), animSeg=document.getElementById("segMvAnim");
-    function mvAnimVisSync(){ if(animOpt) animOpt.style.display=(window.MV_VIEW_KIND==="dog"||window.MV_VIEW_KIND==="dino")?"":"none"; }   // 犬・恐竜のみ表示
-    function mvAnimPaint(){ if(!animSeg) return; animSeg.querySelectorAll("button").forEach(x=>x.classList.toggle("on", (x.dataset.a==="on")===!!window.MV_ANIM)); }
-    if(animSeg) animSeg.addEventListener("click",(e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.a) return; window.MV_ANIM=(b.dataset.a==="on"); mvAnimPaint(); });
-    mvAnimPaint();
-    function mvKindPaint(){ if(!kindSeg) return; kindSeg.querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x.dataset.t===window.MV_VIEW_KIND); }); mvAnimVisSync(); }   // .seg標準スタイル（onクラス）で強調＋アニメトグルの表示制御
+    if(typeof window.MV_ANIM==="undefined") window.MV_ANIM=true;   // アイドルアニメ既定オン（Lite内のボタンで切替）
+    function mvKindPaint(){ if(!kindSeg) return; kindSeg.querySelectorAll("button").forEach(x=>{ x.classList.toggle("on", x.dataset.t===window.MV_VIEW_KIND); }); }   // .seg標準スタイル（onクラス）で強調
     window.MV_VIEW_KIND = window.MV_VIEW_KIND || "artifact"; mvKindPaint();
     if(kindSeg) kindSeg.addEventListener("click",(e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.t) return;
         window.MV_VIEW_KIND=b.dataset.t; mvKindPaint();
         if(modal.style.display!=="none"){ buildOptions(); updateToggles(); if(curList.length){ sel.value="0"; showModel(0); } }
     });
     // ボタンは #menu 内にあるため、タイトルメニュー表示中だけ自然に表示される（プレイ中は #menu が非表示）
+    // 初回オープンの重さ軽減：起動後（プリロード完了後）にGLTFExporter/焼き込みを一度だけ空回し（JITウォームアップ）
+    (function warmMvExporter(){ let tries=0;
+        const go=()=>{ try{
+            if(typeof PRELOAD_DONE!=="undefined" && !PRELOAD_DONE && tries++<200){ setTimeout(go,150); return; }
+            let obj=null; try{ obj=getObject("dino",0); }catch(_){ }
+            if(obj && typeof objToBlobUrl==="function"){ objToBlobUrl(obj,{scaleFactor:(typeof dinoFactor==="function"?dinoFactor(true,dinoSize):1),bakeVoxelColors:true}).then(u=>{ try{ URL.revokeObjectURL(u); }catch(_){ } }).catch(()=>{}); }
+        }catch(_){ } };
+        setTimeout(go, 900);
+    })();
 })();
 </script>
 </body>
