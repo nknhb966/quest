@@ -2044,8 +2044,8 @@ function _dogTail(g, P, by0, bh, zb){   // 尾（userData.tailに登録・アイ
     else if(t==="up"){     tail=voxTail(g,0,ty,tz,0.5,0.18,0.06,col); tail.rotation.x=-0.95; }               // 上向き（ビーグル）
     else if(t==="curl"){   tail=voxTail(g,0,ty+0.06,tz,0.46,0.20,0.10,col); tail.rotation.x=-1.7; }          // 巻き尾（柴）
     else if(t==="pom"){    tail=voxTail(g,0,ty,tz,0.30,0.09,0.05,col); tail.rotation.x=-0.85; const pc=new Chunk(); pc.vox=0.09; pc.ellip(0,0,-0.34,0.20,0.20,0.20,col); tail.add(pc.build()); }   // ポンポン（粗ボクセル・大胆） // ポンポン（プードル）
-    else if(t==="thin"){   tail=voxTail(g,0,ty,tz,0.4,0.08,0.04,col); tail.rotation.x=-1.7; }                // チワワ：しば犬角
-    else if(t==="plume"){  tail=voxTail(g,0,ty+0.06,tz,0.66,0.26,0.10,col); tail.rotation.x=-1.7; }          // パピヨン：房尾＋しば犬角
+    else if(t==="thin"){   tail=voxTail(g,0,ty,tz,0.4,0.08,0.04,col); tail.rotation.x=1.3; }                 // チワワ：先端を上へ
+    else if(t==="plume"){  tail=voxTail(g,0,ty+0.06,tz,0.66,0.26,0.10,col); tail.rotation.x=1.3; }           // パピヨン：房尾・先端を上へ
     else if(t==="stub"){   tail=voxTail(g,0,ty,tz,0.18,0.14,0.06,col); }                                     // 短い（ブルドッグ）
     else {                 tail=voxTail(g,0,ty,tz,0.5,0.16,0.06,col); }
     return tail;
@@ -2177,7 +2177,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         body.scale.setScalar(targetH/H0); return;
     }
     let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
-    if(key==="ptera") sf*=1.5;
+    if(key==="ptera") sf*=0.85;   // 歩き回る相棒のプテラノドンは0.85倍
     body.scale.setScalar(sf);
 }
 function ensureBody(key){
@@ -4171,9 +4171,10 @@ const worldHud=(function(){
     try{ tex.colorSpace = THREE.SRGBColorSpace; }catch(_){ try{ tex.encoding = THREE.sRGBEncoding; }catch(__){} }   // カード色の退色を防ぐ
     const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:true, toneMapped:false, alphaTest:0.01});   // 透明帯は描画スキップ（背景グリッドを隠さない）
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.098), mat);
+    mesh.renderOrder=700;   // リザルト暗幕(500)より手前＝暗転しない（図鑑膜1050より奥は維持）
     mesh.visible=false; scene.add(mesh);   // 高さ調整(stage)とは切り離し、常に目線基準
     const cardMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.04,1.46), new THREE.MeshBasicMaterial({transparent:true, depthTest:true, toneMapped:false}));
-    cardMesh.position.set(1.24,0,0.02); cardMesh.visible=false; mesh.add(cardMesh);   // 獲得カード（VRは右横／モバイルは中央でボタン切替）
+    cardMesh.renderOrder=705; cardMesh.position.set(1.24,0,0.02); cardMesh.visible=false; mesh.add(cardMesh);   // 獲得カード（暗幕より手前）
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function bg(bottomY){ ctx.clearRect(0,0,768,1240);
