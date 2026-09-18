@@ -2933,7 +2933,7 @@ function updateHologram(){
     }
     const now=performance.now(), ph=now*0.006;
     if(holo.dino){ const m=holo.dino.userData.model;
-        if(m){ if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x=Math.sin(ph+p.userData.phase)*0.3; });
+        if(m){ if(m.userData.legs && !m.userData.wings) m.userData.legs.forEach(p=>{ p.rotation.x=Math.sin(ph+p.userData.phase)*0.3; });   // プテラノドンは脚を動かさない
                if(m.userData.tail) m.userData.tail.rotation.y=Math.sin(now*0.003)*0.28;
                if(m.userData.wings) m.userData.wings.forEach(w=>{ w.rotation.z=w.userData.sign*(0.22+Math.sin(now*0.004)*0.4); }); }
     }
@@ -4471,10 +4471,10 @@ const resultBuddy=(function(){
             const el=now-t0;
             const yaw = (el<=HOLD_MS) ? 0 : SWING*Math.sin((el-HOLD_MS)*OSC);   // 出現→少し正面→ -60..+60をゆっくり往復
             holder.rotateY(yaw);
-            holder.scale.setScalar(fitGeo*s*SIZE_MUL);      // 0.8倍
+            holder.scale.setScalar(fitGeo*s*SIZE_MUL*((cont&&cont.userData&&cont.userData.wings)?1.25:1));      // 0.8倍（プテラノドンは×1.25）
             if(cont && cont.userData){       // 足/羽・尻尾のみ動かす（触る等の操作は不可）
                 const legs=cont.userData.legs, tail=cont.userData.tail, wings=cont.userData.wings;
-                if(legs) legs.forEach(pg=>{ if(pg) pg.rotation.x=Math.sin(p2+(pg.userData.phase||0))*0.30; });
+                if(legs && !(cont.userData&&cont.userData.wings)) legs.forEach(pg=>{ if(pg) pg.rotation.x=Math.sin(p2+(pg.userData.phase||0))*0.30; });   // プテラノドンは脚を動かさない
                 if(tail) tail.rotation.y=Math.sin(now*0.003)*0.28;
                 if(wings) wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*(0.22+Math.sin(now*0.004)*0.40); });
             }
@@ -5881,7 +5881,7 @@ function liteArTick(){
         if(pv&&pv.userData){
             if(window.MV_ANIM!==false){
                 const w=performance.now()*0.006;   // 共通周期（足・尻尾・首で同じ）
-                (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=Math.sin(w + (lg.userData.phase||0))*0.32; });   // 各脚の内蔵位相＝発掘相棒と同じ協調歩行
+                if(!pv.userData.wings) (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=Math.sin(w + (lg.userData.phase||0))*0.32; });   // 各脚の内蔵位相＝発掘相棒と同じ協調歩行（プテラノドンは脚を動かさない）
                 if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(w)*0.4;   // 尻尾（同周期）
                 if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(w)*0.06;  // 軽い首の揺れ（同周期）
             } else {
@@ -6654,7 +6654,7 @@ function updateDog(dt, now){
     // 歩行アニメ（脚の振り＋上下バウンド）
     _dogWalkPhase += (moving?6.5:0)*dt;   // 歩調をゆっくり（重量感）。移動速度自体は不変
     const body=activeBody();
-    if(body.userData.legs){ body.userData.legs.forEach(p=>{ const sw=Math.sin(_dogWalkPhase + p.userData.phase)*(moving?0.5:0.0); p.rotation.x += (sw - p.rotation.x)*0.2; }); }
+    if(body.userData.legs && !body.userData.wings){ body.userData.legs.forEach(p=>{ const sw=Math.sin(_dogWalkPhase + p.userData.phase)*(moving?0.5:0.0); p.rotation.x += (sw - p.rotation.x)*0.2; }); }   // プテラノドンは脚を動かさない
     // 羽を持つ相棒（将来のマスコット等）は羽ばたく
     if(body.userData.wings){
         const flapSpeed = moving ? 0.028 : 0.010;
