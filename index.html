@@ -2177,7 +2177,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         body.scale.setScalar(targetH/H0); return;
     }
     let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
-    if(key==="ptera") sf*=0.85;   // 歩き回る相棒のプテラノドンは0.85倍
+    if(key==="ptera") sf*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
     body.scale.setScalar(sf);
 }
 function ensureBody(key){
@@ -4435,7 +4435,7 @@ const resultBuddy=(function(){
         const rec=_cache[ck]; if(!rec){ active=false; return; }
         if(cont && cont!==rec.model && cont.parent===holder) holder.remove(cont);
         cont=rec.model; if(cont.parent!==holder) holder.add(cont);
-        try{ cont.traverse(o=>{ if(o.isMesh){ o.renderOrder=600; if(o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{ if(m) m.depthTest=true; }); } } }); }catch(_){ }   // リザルト暗幕(500)より手前＝相棒は明るいまま
+        try{ cont.traverse(o=>{ if(o.isMesh){ o.renderOrder=600; if(o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{ if(m){ m.transparent=true; m.depthWrite=true; m.depthTest=true; m.needsUpdate=true; } }); } } }); }catch(_){ }   // 透明パス化＋renderOrder600でリザルト暗幕(500)より後に描画＝暗転しない（自己遮蔽はdepthWriteで維持）
         fitGeo=rec.fit; halfDepthGeo=rec.halfDepth; idx=i; lastKey=ck;
     }
     return {
