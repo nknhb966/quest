@@ -3175,7 +3175,7 @@ function preloadEverything(done){
     if(typeof DINOS!=="undefined"){ const _all=["dog"].concat(DINOS.map(d=>d.key)).concat((typeof DOGS!=="undefined"?DOGS:[]).map(d=>d.key)); for(const k of _all) jobs.push({companion:k, smooth:true}); }   // しば犬＋恐竜8＋犬種8（なめらか）
     // カード画像も事前読み込み（恐竜 card00〜card08／出土品 card01〜card08）
     jobs.push({card:CARD_DIR_DINO+"card00.png"});
-    for(let i=0;i<8;i++){ jobs.push({card:cardImgPath("dino",i)}); jobs.push({card:cardImgPath("artifact",i)}); }
+    for(let i=0;i<8;i++){ jobs.push({card:cardImgPath("dino",i)}); jobs.push({card:cardImgPath("artifact",i)}); jobs.push({card:cardImgPath("dog",i)}); }   // 犬カードも事前ロード（出土品発掘で初表示する瞬間の読み込みを防止）
     let j=0;
     const step=()=>{
         _preloadTimer=null;
@@ -6537,7 +6537,7 @@ function handleVRDig(){
 let _playerPrev = new THREE.Vector3();
 let _dogWalkPhase = 0;
 let _dogInit = false;
-const _udPlayer=new THREE.Vector3(),_udVel=new THREE.Vector3(),_udGoal=new THREE.Vector3(),_udTo=new THREE.Vector3(),_udS=new THREE.Vector3(),_udF=new THREE.Vector3(),_udFace=new THREE.Vector3(),_udW1=new THREE.Vector3(),_udW2=new THREE.Vector3(),_udW3=new THREE.Vector3();   // updateDog用スクラッチ（毎フレームVector3生成を排除）
+const _udPlayer=new THREE.Vector3(),_udVel=new THREE.Vector3(),_udGoal=new THREE.Vector3(),_udTo=new THREE.Vector3(),_udS=new THREE.Vector3(),_udF=new THREE.Vector3(),_udFace=new THREE.Vector3(),_udW1=new THREE.Vector3(),_udW2=new THREE.Vector3(),_udW3=new THREE.Vector3(),_hkA=new THREE.Vector3(),_hkB=new THREE.Vector3();   // updateDog用スクラッチ（毎フレームVector3生成を排除）＋頭注視用スクラッチ
 function updateDog(dt, now){
     const camWorld=camera.getWorldPosition(tmpV);
     const playerPos=_udPlayer.set(camWorld.x,0,camWorld.z);
@@ -6706,8 +6706,8 @@ function updateDog(dt, now){
             wantX = THREE.MathUtils.degToRad(38) + Math.sin(now*0.012*0.8)*(0.05*1.5);   // 鼻先を下げて嗅ぐ（+＝下）
             wantY = 0;
         } else if(!moving){                                            // 歩く・嗅ぐ以外（停止中）＝喜び中・ブロック横・セリフ中も含めて顔を見る
-            const hw=head.getWorldPosition(new THREE.Vector3());
-            const face=camera.getWorldPosition(new THREE.Vector3());
+            const hw=head.getWorldPosition(_hkA);
+            const face=camera.getWorldPosition(_hkB);
             const dx=face.x-hw.x, dy=face.y-hw.y, dz=face.z-hw.z;
             const horiz=Math.hypot(dx,dz)||1e-4;
             let wy=Math.atan2(dx,dz) - dog.rotation.y; while(wy>Math.PI)wy-=2*Math.PI; while(wy<-Math.PI)wy+=2*Math.PI;   // 本体向き基準のヨー
