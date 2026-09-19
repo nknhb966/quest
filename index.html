@@ -6055,10 +6055,20 @@ async function liteSwitchModel(idx){
     const m=liteBuildModel(LITE.target, idx, LITE.quality);   // キャッシュから同期取得（固まらない）
     while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; }   // 旧モデルはキャッシュのため破棄せず外すだけ
     LITE.model=null;
-    if(m){ m.scale.setScalar(LITE.intrinsic||1); m.updateMatrixWorld(true);
-        const box=new THREE.Box3().setFromObject(m), ctr=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3()); LITE.modelDepth=sz.z||0; m.position.set(-ctr.x,-ctr.y,-ctr.z);
+    if(m){
+        if(m.parent) m.parent.remove(m);   // 完全に親から切り離す（親変形の影響を排除）
+        const _pv=(m.userData&&m.userData.model)?m.userData.model:m;   // アニメ姿勢を中立化＝毎回同じbbox
+        if(_pv&&_pv.userData){ (_pv.userData.legs||[]).forEach(l=>{ if(l) l.rotation.x=0; }); if(_pv.userData.tail) _pv.userData.tail.rotation.y=0; if(_pv.userData.head) _pv.userData.head.rotation.z=0; if(_pv.userData.wings) _pv.userData.wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*0.22; }); }
+        m.position.set(0,0,0); m.quaternion.identity();
+        let _sc=LITE.intrinsic||1;
+        if(LITE.target==="dog"){ m.scale.setScalar(1); m.updateMatrixWorld(true); const h0=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3()).y||1; const realH=(typeof DOGS!=="undefined" && idx<DOGS.length && DOGS[idx])?(DOGS[idx].realH||38):38; _sc=(realH/100)/h0; }
+        m.scale.setScalar(_sc); m.updateMatrixWorld(true);   // 親なし＝純粋な局所bbox
+        const box=new THREE.Box3().setFromObject(m), ctr=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
+        LITE.modelDepth=sz.z||0; LITE.modelH=sz.y||0; LITE.modelSize=Math.max(sz.x||0,sz.y||0,sz.z||0);
+        m.position.set(-ctr.x,-ctr.y,-ctr.z);   // 体の中央を原点へ＝回転中心を常にモデル中心に
         m.traverse(o=>{ if(o.isMesh&&o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(mm=>{ mm.depthTest=true; mm.depthWrite=true; mm.needsUpdate=true; }); } });
-        m.visible=true; LITE.model=m; LITE.group.add(m); }
+        m.visible=true; LITE.model=m; LITE.group.add(m);
+    }
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4;   // 切替時：サイズ/回転/位置リセット→正面(0.8+奥行き/2)へ再配置
     liteDrawInfo(); liteRebuildDesc(); liteDrawSelect();
 }
