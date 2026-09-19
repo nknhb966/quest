@@ -2166,20 +2166,23 @@ function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基
     }catch(_){ _dogNatH=1; }
     return _dogNatH;
 }
-function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)。犬種=realHで大きさ差(しば犬38基準・上限1.2×)。プテラは相棒表示のみ1.5倍
-    if(key==="dog") return;   // しば犬＝基準
+function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)。犬種=realHで大きさ差(しば犬38基準・上限1.2×)。プテラは相棒表示のみ1.25倍。＋各相棒の前後半分(halfDepthZ)を保存し、鼻先(近い面)をしば犬基準に揃える
     body.updateMatrixWorld(true);
-    const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
+    const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y); const D0=Math.max(0.001, bb.max.z-bb.min.z);
+    if(key==="dog"){ body.userData.halfDepthZ=D0*0.5; SHIBA_HALFDEPTH=D0*0.5; return; }   // しば犬＝基準（スケール1）
+    let sc=1;
     if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
         let targetH=Math.min(dogNaturalH()*(R/38), 1.2*dogNaturalH());
         if(key==="chihuahua"||key==="dachshund") targetH*=1.5;   // チワワ・ダックスフントは小さいので相棒表示を1.5倍
         if(key==="golden") targetH*=0.70; else if(key==="labrador") targetH*=0.65; else if(key==="beagle") targetH*=0.80; else if(key==="bulldog") targetH*=0.60;   // 大型犬は歩き回る相棒を縮小（種別に調整）
-        body.scale.setScalar(targetH/H0); return;
+        sc=targetH/H0;
+    } else {
+        sc=Math.min(1.0, 1.2*dogNaturalH()/H0);
+        if(key==="ptera") sc*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
     }
-    let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
-    if(key==="ptera") sf*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
-    body.scale.setScalar(sf);
+    body.scale.setScalar(sc);
+    body.userData.halfDepthZ=D0*0.5*sc;   // スケール後の前後半分（鼻先＝近い面までの距離）
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
@@ -5901,7 +5904,7 @@ function liteArTick(){
                 if(!pv.userData.wings) (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=Math.sin(w + (lg.userData.phase||0))*0.32; });   // 各脚の内蔵位相＝発掘相棒と同じ協調歩行（プテラノドンは脚を動かさない）
                 if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(w)*0.4;   // 尻尾（同周期）
                 if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(w)*0.06;  // 軽い首の揺れ（同周期）
-                if(pv.userData.wings) pv.userData.wings.forEach(wg=>{ if(wg) wg.rotation.z=(wg.userData.sign||1)*(0.22+Math.sin(performance.now()*0.004)*0.40); });   // プテラノドンの羽ばたき（発掘時と同じ）
+                if(pv.userData.wings) pv.userData.wings.forEach(wg=>{ if(wg) wg.rotation.z=(wg.userData.sign||1)*(0.22+Math.sin(w)*0.40); });   // プテラノドンの羽ばたき（首振り・尻尾と同じ周期 w）
             } else {
                 (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=0; });
                 if(pv.userData.tail) pv.userData.tail.rotation.y=0;
@@ -6615,7 +6618,10 @@ function updateDog(dt, now){
         const q=camQuat();
         const fwd =_udF.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=_udGoal.copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
+        { const _b=(typeof activeBody==="function")?activeBody():null;
+          const _hd=(_b&&_b.userData&&_b.userData.halfDepthZ!=null)?_b.userData.halfDepthZ:SHIBA_HALFDEPTH;
+          const _fwdDist=DOG_FWD + (_hd - SHIBA_HALFDEPTH);   // 鼻先(プレイヤーに近い面)をしば犬基準に固定＝小さい相棒は近く/大きい相棒は遠く
+          goal=_udGoal.copy(playerPos).addScaledVector(fwd,_fwdDist).addScaledVector(side,DOG_SIDE); goal.y=0; }
     }
     }   // end if(!rushing)
 
@@ -6686,9 +6692,9 @@ function updateDog(dt, now){
     if(body.userData.legs && !body.userData.wings){ body.userData.legs.forEach(p=>{ const sw=Math.sin(_dogWalkPhase + p.userData.phase)*(moving?0.5:0.0); p.rotation.x += (sw - p.rotation.x)*0.2; }); }   // プテラノドンは脚を動かさない
     // 羽を持つ相棒（将来のマスコット等）は羽ばたく
     if(body.userData.wings){
-        const flapSpeed = moving ? 0.028 : 0.010;
         const amp = moving ? 0.85 : 0.35;
-        const f = Math.sin(now*flapSpeed);
+        const flapPhase = moving ? _dogWalkPhase : performance.now()*0.0065;   // 首振り(と脚)と同じ周期＝同調（現状より遅く≒1/2）
+        const f = Math.sin(flapPhase);
         body.userData.wings.forEach(w=>{ w.rotation.z = w.userData.sign * (0.25 + f*amp*0.5); w.rotation.y = w.userData.sign * f*0.15; });
         if(body.userData.petals) body.userData.petals.rotation.y += (moving?0.012:0.004);
     }
