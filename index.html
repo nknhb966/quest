@@ -2166,10 +2166,10 @@ function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基
     }catch(_){ _dogNatH=1; }
     return _dogNatH;
 }
-function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)。犬種=realHで大きさ差(しば犬38基準・上限1.2×)。プテラは相棒表示のみ1.25倍。＋原点から前方(鼻先/くちばし=+z面)までの到達距離(frontZ)を保存し、近い面をしば犬基準に揃える
+function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)。犬種=realHで大きさ差。プテラは相棒表示のみ1.25倍。＋原点からbbox中心zまでのオフセット(centerZ)を保存し、胴体(bbox中心)を一定距離にそろえる（口先の長短に左右されない）
     body.updateMatrixWorld(true);   // ※この時点でbodyはまだdogに未追加＝親変形なしの局所bbox
-    const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y); const front0=Math.max(0.001, bb.max.z);   // +z＝前方（相棒はプレイヤーを向くとこの面が手前に来る）
-    if(key==="dog"){ body.userData.frontZ=front0; SHIBA_HALFDEPTH=front0; return; }   // しば犬＝基準（スケール1）
+    const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y); const center0=(bb.max.z+bb.min.z)*0.5;   // bbox中心z（原点基準）
+    if(key==="dog"){ body.userData.centerZ=center0; return; }   // しば犬＝基準（スケール1）
     let sc=1;
     if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
@@ -2182,7 +2182,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         if(key==="ptera") sc*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
     }
     body.scale.setScalar(sc);
-    body.userData.frontZ=front0*sc;   // スケール後の前方到達距離（原点→近い面＝鼻先）
+    body.userData.centerZ=center0*sc;   // スケール後のbbox中心zオフセット
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
@@ -6622,8 +6622,8 @@ function updateDog(dt, now){
         const fwd =_udF.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
         { const _b=(typeof activeBody==="function")?activeBody():null;
-          const _fz=(_b&&_b.userData&&_b.userData.frontZ!=null)?_b.userData.frontZ:SHIBA_HALFDEPTH;
-          const _fwdDist=DOG_FWD + (_fz - SHIBA_HALFDEPTH);   // 鼻先(プレイヤーに近い面)をしば犬基準に固定＝小さい相棒は近く/大きい相棒は遠く
+          const _cz=(_b&&_b.userData&&_b.userData.centerZ!=null)?_b.userData.centerZ:0;
+          const _fwdDist=DOG_FWD + _cz;   // 胴体(bbox中心)を常にDOG_FWDにそろえる（+zがプレイヤー方向＝中心はorigin-cz手前なので+czで補正）
           goal=_udGoal.copy(playerPos).addScaledVector(fwd,_fwdDist).addScaledVector(side,DOG_SIDE); goal.y=0; }
     }
     }   // end if(!rushing)
