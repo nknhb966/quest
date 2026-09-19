@@ -5780,26 +5780,26 @@ function liteEnterScene(model, intrinsicScale){
     try{ if(typeof worldHud!=="undefined") worldHud.mesh.visible=false; }catch(_){ }
     LITE.model=null;
     if(model){
-        LITE.group.add(model);   // 先にLITE.groupへ付け替え（キャッシュ親の変形を排除）
-        LITE.group.position.set(0,0,0); LITE.group.quaternion.identity(); LITE.group.scale.set(1,1,1);   // 計測は単位状態で（ワールドbbox＝モデル局所bbox）
+        if(model.parent) model.parent.remove(model);   // 完全に親から切り離す（親の変形＝ワールドbboxの誤差を排除）
         const _pv=(model.userData&&model.userData.model)?model.userData.model:model;   // アニメ姿勢を中立化＝毎回同じbbox
-        if(_pv&&_pv.userData){ (_pv.userData.legs||[]).forEach(l=>{ if(l) l.rotation.x=0; }); if(_pv.userData.tail) _pv.userData.tail.rotation.y=0; if(_pv.userData.head) _pv.userData.head.rotation.z=0; }
+        if(_pv&&_pv.userData){ (_pv.userData.legs||[]).forEach(l=>{ if(l) l.rotation.x=0; }); if(_pv.userData.tail) _pv.userData.tail.rotation.y=0; if(_pv.userData.head) _pv.userData.head.rotation.z=0; if(_pv.userData.wings) _pv.userData.wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*0.22; }); }
+        model.position.set(0,0,0); model.quaternion.identity();
         let _sc=intrinsicScale||1;
         if(LITE.target==="dog"){   // 犬：実高さ＝realH(cm)＝100%実寸になるよう、作成上の高さで正規化
-            model.scale.setScalar(1); model.position.set(0,0,0); LITE.group.updateMatrixWorld(true);
+            model.scale.setScalar(1); model.updateMatrixWorld(true);
             const h0=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).y||1;
             const realH=(typeof DOGS!=="undefined" && LITE.curIdx<DOGS.length && DOGS[LITE.curIdx])?(DOGS[LITE.curIdx].realH||38):38;
             _sc=(realH/100)/h0;
         }
         model.scale.setScalar(_sc);   // 出土品=原寸(1.0)／恐竜=サイズ倍率／犬=実寸(cm)
-        model.position.set(0,0,0); LITE.group.updateMatrixWorld(true);   // 単位groupの下で局所bboxを計測
+        model.updateMatrixWorld(true);   // 親なし＝matrixWorld＝局所matrix（純粋な局所bbox）
         const box=new THREE.Box3().setFromObject(model); const ctr=box.getCenter(new THREE.Vector3()); const sz=box.getSize(new THREE.Vector3());
-        LITE.modelDepth = sz.z || 0;   // 奥行き(ローカルZ・intrinsic適用後)
+        LITE.modelDepth = sz.z || 0;   // 奥行き
         LITE.modelH = sz.y || 0;       // 高さ
         LITE.modelSize = Math.max(sz.x||0, sz.y||0, sz.z||0);   // 最大寸法（移動量のサイズ連動に使用）
-        model.position.set(-ctr.x, -ctr.y, -ctr.z);   // 体の中央（重心≒バウンディング中心）を原点へ＝回転中心を常にモデル中心に
+        model.position.set(-ctr.x, -ctr.y, -ctr.z);   // 体の中央を原点へ＝回転中心を常にモデル中心に
         model.traverse(o=>{ if(o.isMesh && o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{ m.depthTest=true; m.depthWrite=true; m.needsUpdate=true; }); } });   // 深度テスト有効
-        model.visible=true; LITE.model=model;
+        model.visible=true; LITE.model=model; LITE.group.add(model);   // 計測後にgroupへ付ける
     }
     LITE.placeFrames=4;   // 入室直後の数フレームで確実に正面80cmへ配置
     LITE.targetPos.set(0,1.3,-0.8); LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
@@ -5832,7 +5832,8 @@ function liteGesture(){
         if(!LITE.scaling){ LITE.initDist=dist; LITE.initScale=LITE.targetScale.x; LITE.lastCenter=center.clone(); LITE.lastVDiff=vDiff; LITE.scaling=true; LITE.rotating=false; }
         else{
             const ns=LITE.initScale*(dist/(LITE.initDist||dist)); LITE.targetScale.set(ns,ns,ns);
-            const mvGain=Math.max(1, (LITE.modelSize||0.5)/0.5);   // 50cm以下=等倍、1mで2倍…（サイズ連動）
+            const dispSize=(LITE.modelSize||0.5)*(LITE.targetScale.x||1);   // 現在の表示サイズ＝基準サイズ×拡大率（200%なら2倍として連動）
+            const mvGain=Math.max(1, dispSize/0.5);   // 50cm以下=等倍、1mで2倍…（サイズ連動）
             LITE.targetPos.x+=(center.x-LITE.lastCenter.x)*mvGain; LITE.targetPos.y+=(center.y-LITE.lastCenter.y)*mvGain; LITE.targetPos.z+=(center.z-LITE.lastCenter.z)*mvGain;
             LITE.lastCenter.copy(center);
             // Z軸回転：両手の上下差（左手上／右手下 など）で視線軸まわりに回す
