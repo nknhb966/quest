@@ -5883,13 +5883,16 @@ function litePlaceHandUI(){   // ①②を左手のワールド位置に追従�
     if(LITE.ui.parent!==scene){ if(LITE.ui.parent) LITE.ui.parent.remove(LITE.ui); scene.add(LITE.ui); }
     _liteOff.set(0, 0.02, 0).applyQuaternion(_liteFaceQ); LITE.ui.position.copy(_liteHP).add(_liteOff); LITE.ui.quaternion.copy(_liteFaceQ);
     LITE.ui.visible=true;
-    // 手のひら＝開いて全表示／手の甲＝閉じて名称倍率だけ残す
-    const open=litePalmFacing();
-    if(open!==LITE.palmOpen){ try{ if(open) chord([131,165,196],0.06,"sine",0.4); else chord([196,165,131],0.06,"sine",0.4); }catch(_){ } }   // 開く/閉じる音（低音）
-    LITE.palmOpen=open;
-    LITE.buttons.forEach(b=>b.visible=open);
-    LITE.selPanels.forEach(c=>c.visible=open);
-    if(LITE.descPanel) LITE.descPanel.visible = open && !LITE.isDino && !!LITE.curDesc;
+    // 手のひら＝開いて全表示／手の甲＝閉じて名称倍率だけ残す（誤作動防止のため0.5秒維持で確定）
+    const raw=litePalmFacing(); const _pnow=performance.now();
+    if(raw!==LITE._palmRaw){ LITE._palmRaw=raw; LITE._palmSince=_pnow; }   // 生の状態が変わったら計測開始
+    if(raw!==LITE.palmOpen && (_pnow-(LITE._palmSince||0))>=500){          // 0.5秒維持したら開閉を確定
+        LITE.palmOpen=raw;
+        try{ if(raw) chord([131,165,196],0.06,"sine",0.4); else chord([196,165,131],0.06,"sine",0.4); }catch(_){ }   // 開く/閉じる音
+    }
+    LITE.buttons.forEach(b=>b.visible=LITE.palmOpen);
+    LITE.selPanels.forEach(c=>c.visible=LITE.palmOpen);
+    if(LITE.descPanel) LITE.descPanel.visible = LITE.palmOpen && !LITE.isDino && !!LITE.curDesc;
     if(LITE.infoPanel) LITE.infoPanel.visible=true;   // 名称・倍率は常時
 }
 function liteArTick(){
