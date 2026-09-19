@@ -1016,6 +1016,7 @@ const HEAT_WARM     = 0.40;              // 中央リング：橙
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
+let   SHIBA_HALFDEPTH = 0;               // しば犬の前後半分（鼻先基準の距離計算用。相棒のサイズで定位置を可変に）
 // VR/AR：右中指グリップ＋右スティックで調整するパラメータ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
 const DOG_DIST_SPEED= 2.2;               // 相棒距離調整の速さ（m/秒）
@@ -5900,10 +5901,12 @@ function liteArTick(){
                 if(!pv.userData.wings) (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=Math.sin(w + (lg.userData.phase||0))*0.32; });   // 各脚の内蔵位相＝発掘相棒と同じ協調歩行（プテラノドンは脚を動かさない）
                 if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(w)*0.4;   // 尻尾（同周期）
                 if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(w)*0.06;  // 軽い首の揺れ（同周期）
+                if(pv.userData.wings) pv.userData.wings.forEach(wg=>{ if(wg) wg.rotation.z=(wg.userData.sign||1)*(0.22+Math.sin(performance.now()*0.004)*0.40); });   // プテラノドンの羽ばたき（発掘時と同じ）
             } else {
                 (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x=0; });
                 if(pv.userData.tail) pv.userData.tail.rotation.y=0;
                 if(pv.userData.head) pv.userData.head.rotation.z=0;
+                if(pv.userData.wings) pv.userData.wings.forEach(wg=>{ if(wg) wg.rotation.z=(wg.userData.sign||1)*0.22; });   // 中立（軽く開いた姿勢）
             }
         }
     }
