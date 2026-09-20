@@ -2158,7 +2158,9 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         if(key==="ptera") sc*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
     }
     body.scale.setScalar(sc);
-    body.userData.sizeRatio = (dim0*sc)/(SHIBA_MAXDIM||dim0);   // 表示サイズ比（しば犬=1）
+    let ratio=(dim0*sc)/(SHIBA_MAXDIM||dim0);   // 表示サイズ比（しば犬=1、最大寸法で比較）
+    if(key!=="brachi" && key!=="fukuititan" && ratio>1.2){ sc*=1.2/ratio; body.scale.setScalar(sc); ratio=1.2; }   // ブラキオ・フクイティタン以外は最大しば犬の1.2倍まで
+    body.userData.sizeRatio = ratio;
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
