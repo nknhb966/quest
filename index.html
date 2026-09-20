@@ -6558,9 +6558,8 @@ function updateDog(dt, now){
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
         { const _b=(typeof activeBody==="function")?activeBody():null;
           const r=(_b&&_b.userData&&_b.userData.sizeRatio!=null)?_b.userData.sizeRatio:1;
-          let off=0;   // しば犬比のサイズで段階的に前後（＋=離れる/−=近づく、範囲 −0.2〜+0.3m）
-          if(r>=1.3) off=0.30; else if(r>=1.2) off=0.20; else if(r>=1.1) off=0.10;
-          else if(r<=0.8) off=-0.20; else if(r<=0.9) off=-0.10;
+          // しば犬比の表示サイズで距離を調整：0.9倍以下は10cm近づく／1.1倍以上は10cm離れる／間は変化なし
+          const off = (r>=1.1) ? 0.10 : (r<=0.9 ? -0.10 : 0);
           goal=_udGoal.copy(playerPos).addScaledVector(fwd,DOG_FWD+off).addScaledVector(side,DOG_SIDE); goal.y=0; }
     }
     }   // end if(!rushing)
