@@ -2151,7 +2151,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
         let targetH=Math.min(dogNaturalH()*(R/38), 1.2*dogNaturalH());
         if(key==="chihuahua"||key==="dachshund") targetH*=1.5;   // チワワ・ダックスフントは小さいので相棒表示を1.5倍
-        if(key==="golden") targetH*=0.70; else if(key==="labrador") targetH*=0.65; else if(key==="beagle") targetH*=0.80; else if(key==="bulldog") targetH*=0.60;   // 大型犬は歩き回る相棒を縮小（種別に調整）
+        if(key==="golden") targetH*=0.75; else if(key==="labrador") targetH*=0.70; else if(key==="beagle") targetH*=0.80; else if(key==="bulldog") targetH*=0.65;   // 大型犬は歩き回る相棒を縮小（種別に調整）
         sc=targetH/H0;
     } else {
         sc=Math.min(1.0, 1.2*dogNaturalH()/H0);
@@ -2159,7 +2159,8 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
     }
     body.scale.setScalar(sc);
     let ratio=(dim0*sc)/(SHIBA_MAXDIM||dim0);   // 表示サイズ比（しば犬=1、最大寸法で比較）
-    if(key!=="brachi" && key!=="fukuititan" && ratio>1.2){ sc*=1.2/ratio; body.scale.setScalar(sc); ratio=1.2; }   // ブラキオ・フクイティタン以外は最大しば犬の1.2倍まで
+    const capR=(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key])?1.2:1.8;   // 犬系は最大1.2倍、恐竜系は最大1.8倍
+    if(key!=="brachi" && key!=="fukuititan" && ratio>capR){ sc*=capR/ratio; body.scale.setScalar(sc); ratio=capR; }   // ブラキオ・フクイティタン以外は上限まで
     body.userData.sizeRatio = ratio;
 }
 function ensureBody(key){
