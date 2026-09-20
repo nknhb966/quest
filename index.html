@@ -2159,8 +2159,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
     }
     body.scale.setScalar(sc);
     let ratio=(dim0*sc)/(SHIBA_MAXDIM||dim0);   // 表示サイズ比（しば犬=1、最大寸法で比較）
-    const capR=(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key])?1.2:1.8;   // 犬系は最大1.2倍、恐竜系は最大1.8倍
-    if(key!=="brachi" && key!=="fukuititan" && ratio>capR){ sc*=capR/ratio; body.scale.setScalar(sc); ratio=capR; }   // ブラキオ・フクイティタン以外は上限まで
+    if(key!=="brachi" && key!=="fukuititan" && ratio>1.8){ sc*=1.8/ratio; body.scale.setScalar(sc); ratio=1.8; }   // ブラキオ・フクイティタン以外は最大しば犬の1.8倍まで
     body.userData.sizeRatio = ratio;
 }
 function ensureBody(key){
