@@ -823,6 +823,7 @@ function placeAtStart(){
 // 基準の位置・向き設定（左手グリップ＋Y長押しのときだけ）：現在地をフィールド中央、向きを-Z軸に
 function recenterFieldHere(){
     if(typeof player==="undefined") return;
+    applyXRHeight();   // 右中指グリップ＋スティックで変えたワールド高さをデフォルト（目線から1.5m下）に戻す
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); d.y=0;
     if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
@@ -6232,10 +6233,9 @@ function handleVRLocomotion(dt){
         else if(src.handedness==="right"){ turn=ax[2]||0; rStickX=ax[2]||0; rStickY=ax[3]||0;
             rGrip = !!(gp.buttons && gp.buttons[1] && gp.buttons[1].pressed); }   // buttons[1]=中指グリップ(squeeze)
     }
-    // 右中指グリップ＋右スティック：ワールド高さ（上下）＆相棒距離（左右）を調整
+    // 右中指グリップ＋右スティック上下：ワールド高さを調整
     if(rGrip){
         if(Math.abs(rStickY)>0.15) adjustWorldHeight(-rStickY*WORLD_H_SPEED*dt);   // 上に倒す(負)＝サイトを上げる
-        if(Math.abs(rStickX)>0.15) adjustDogDist(rStickX*DOG_DIST_SPEED*dt);        // 右＝相棒を遠ざける／左＝近づける
         turn=0;   // 調整中はスナップ回転しない
     }
     // 移動（頭の向き基準）
@@ -6520,9 +6520,12 @@ function updateDog(dt, now){
     const speed=vel.length()/Math.max(dt,1e-3);
     _playerPrev.copy(playerPos);
 
-    // 目線の高さで距離・サイズを線形補正：1.5m以上=1.0（現状）／1.0m以下=0.5（半分）／間は線形。camWorld.y＝目線の高さ（VRは実ヘッドセット高、非VRは1.6m固定＝1.0）
-    const eyeF = 0.5 + 0.5*Math.max(0, Math.min(1, (camWorld.y-1.0)/0.5));
-    // サイズ補正はbody本体のみ（吹き出し等は等倍のまま）。足の接地を保つため位置yも同率。係数が変わった時だけ更新＝毎フレーム負荷なし
+    // 目線の高さ＝相棒の足元(stage)からのカメラ高さ。物理的なしゃがみ・ワールド高さ変更にリアルタイム追従
+    const eyeH = camWorld.y - ((typeof stage!=="undefined" && stage.position)?stage.position.y:0);
+    const eyeT = Math.max(0, Math.min(1, (eyeH-1.0)/0.5));   // 1.0m以下=0／1.5m以上=1／間は線形
+    const eyeF = 0.5 + 0.5*eyeT;                             // 距離・サイズ係数（1.0m以下=0.5／1.5m以上=1.0）
+    const pteraFloat = 0.15 + 0.15*eyeT;                     // プテラノドンの浮き量（1.0m以下=0.15m／1.5m以上=0.30m）
+    // サイズ補正はbody本体のみ（吹き出し等は等倍のまま）。足の接地を保つため位置yも同率。係数が変わった時だけ更新
     { const _ab=(typeof activeBody==="function")?activeBody():null;
       if(_ab && _ab.userData._appliedEyeF!==eyeF){
           const bs=(_ab.userData.baseScale!=null)?_ab.userData.baseScale:1;
@@ -6671,6 +6674,7 @@ function updateDog(dt, now){
         dog.position.y=GROUND_Y+DOG_Y+Math.abs(Math.sin(petWiggle*6.5))*0.08;        // 小さくぴょこぴょこ
     }
     else dog.position.y=GROUND_Y+DOG_Y+bob;
+    if(companionKind==="ptera") dog.position.y += pteraFloat;   // プテラノドンは少し浮かせる（目線の高さで0.15〜0.30m）
     // セリフは絶対高さに固定：ジャンプ/弾み(dog.position.yの上下)を打ち消し、基本姿勢時の高さを保つ
     // セリフ吹き出し：全回転更新の後で計算（プレイヤーから見て相棒の奥側／向き・なで揺れに影響されない）
     if(bubbleSpr){
