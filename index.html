@@ -1017,6 +1017,7 @@ const PET_REACH     = 6.0;               // 相棒をなでられる距離（m�
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
 let   SHIBA_HALFDEPTH = 0;               // しば犬の前後半分（鼻先基準の距離計算用。相棒のサイズで定位置を可変に）
+let   LOOK_AT_PLAYER = false;            // 【一時停止中】相棒がプレイヤーの顔を見る動作＋首の揺れ（頭が動くと鼻先が前後するため、鼻先距離の検証中はfalse。確認後trueに戻す）
 // VR/AR：右中指グリップ＋右スティックで調整するパラメータ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
 const DOG_DIST_SPEED= 2.2;               // 相棒距離調整の速さ（m/秒）
@@ -6747,7 +6748,7 @@ function updateDog(dt, now){
         if(sniffing){
             wantX = THREE.MathUtils.degToRad(38) + Math.sin(now*0.012*0.8)*(0.05*1.5);   // 鼻先を下げて嗅ぐ（+＝下）
             wantY = 0;
-        } else if(!moving){                                            // 歩く・嗅ぐ以外（停止中）＝喜び中・ブロック横・セリフ中も含めて顔を見る
+        } else if(!moving && LOOK_AT_PLAYER){                           // 歩く・嗅ぐ以外（停止中）＝顔を見る（LOOK_AT_PLAYER=falseの間は中立＝鼻先距離の検証用）
             const hw=head.getWorldPosition(_hkA);
             const face=camera.getWorldPosition(_hkB);
             const dx=face.x-hw.x, dy=face.y-hw.y, dz=face.z-hw.z;
@@ -6763,7 +6764,7 @@ function updateDog(dt, now){
         head.rotation.y += (wantY - head.rotation.y)*Math.min(1, dt*6);
         // 軽い首の揺れ：歩行中・プレイヤー注視中（犬=既定ON／恐竜は準備）。足・尻尾と同周期（歩行時は歩調に同期）
         let wantZ=0;
-        if(typeof neckSwayEnabled==="function" && neckSwayEnabled(companionKind) && (moving || (typeof dogAttentive!=="undefined" && dogAttentive) || (dog.userData && dog.userData.atBlock))){
+if(LOOK_AT_PLAYER && typeof neckSwayEnabled==="function" && neckSwayEnabled(companionKind) && (moving || (typeof dogAttentive!=="undefined" && dogAttentive) || (dog.userData && dog.userData.atBlock))){
             const swp = moving ? _dogWalkPhase : performance.now()*0.0065;
             wantZ = Math.sin(swp)*0.06;
         }
