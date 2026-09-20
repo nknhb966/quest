@@ -5635,11 +5635,12 @@ function tapAt(ndcX, ndcY){
         return false;   // 発光中は相棒をなでない
     }
 
-    // 発光しているブロックが無いときだけ、相棒をなでられる
+    // 発光しているブロックが無いときだけ、相棒をなでられる（判定エリアは相棒の大きさに依らずしば犬と同じ固定球）
+    const _pc=dog.getWorldPosition(new THREE.Vector3()); _pc.y+=0.4;   // しば犬の胴〜頭あたり
     for(const [ox,oy] of offsets){
         _aimRay.setFromCamera({x:ndcX+ox, y:ndcY+oy}, camera);
         _aimRay.far=PET_REACH;
-        if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
+        if(_aimRay.distanceToPoint(_pc) < 0.6){ petDog(); return true; }   // VRと同じ0.6m固定エリア（相棒サイズ非依存）
     }
     return false;
 }
