@@ -787,9 +787,7 @@ import {VRButton} from "three/addons/webxr/VRButton.js";
 import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
 
-/* =====================================================
- * 定数
- * ===================================================== */
+/* ===================================================== * 定数 * ===================================================== */
 // ワールド単位＝メートル（XR local-floor基準）。プレイヤーは等身大なので全て実寸で扱う。
 const GROUND_Y      = 0;
 let   FIELD_R       = 18;                 // 発掘フィールド半径（m）※発掘場所に合わせ後で拡張
@@ -931,8 +929,8 @@ function updateFieldBorder(){
     fieldBorder.visible=true;
 }
 // ============================================================================
-//  YEAR_CONFIG … 年度・遺跡ごとに差し替える設定を一箇所に集約（毎年ここだけ直せばよい）
-//  前半＝①年度/遺跡で必ず変わる値＋恐竜セット、後半＝②挙動チューニング用（コメントで区切り）
+// YEAR_CONFIG … 年度・遺跡ごとに差し替える設定を一箇所に集約（毎年ここだけ直せばよい）
+// 前半＝①年度/遺跡で必ず変わる値＋恐竜セット、後半＝②挙動チューニング用（コメントで区切り）
 // ============================================================================
 const YEAR_CONFIG = {
     // ---- ① 年度・遺跡ごとに変わる（毎年差し替え）----
@@ -955,7 +953,7 @@ const YEAR_CONFIG = {
     dinoImgs:    ["","","","","","","",""], // 恐竜説明パネル画像URL（未設定=空＝プレースホルダー表示）
 
     // ---- 恐竜セット（年度で恐竜が変わる場合はここを差し替え。build は key に対応する build_<key> 関数を使用）----
-    //  key=内部キー / label=表示名 / cry=鳴き声 / realH=実寸の高さ(m・ホログラムの高さ比に使用)
+    // key=内部キー / label=表示名 / cry=鳴き声 / realH=実寸の高さ(m・ホログラムの高さ比に使用)
     dinos: [
         { key:"trex",        label:"🦖 ティラノサウルス", cry:"ガオー",   realH:4.0 },
         { key:"fukuiraptor", label:"🦖 フクイラプトル",   cry:"ガオォ",   realH:2.0 },
@@ -968,8 +966,8 @@ const YEAR_CONFIG = {
     ],
 
     // ---- 相棒（コンパニオン）のステータス（build/セリフはコード側。ここは表示・能力値のみ）----
-    //  label=一覧表示名 / askLabel=「聞く」ボタン名 / fullName=正式名 / rarity=レア度
-    //  power=掘る力 / scope=探索範囲 / bonus=なで確率倍率の基準 / special=スペシャル(name,discP,discN,digN)
+    // label=一覧表示名 / askLabel=「聞く」ボタン名 / fullName=正式名 / rarity=レア度
+    // power=掘る力 / scope=探索範囲 / bonus=なで確率倍率の基準 / special=スペシャル(name,discP,discN,digN)
     companions: {
         dog:         { label:"🐕 しば犬",       askLabel:"🐕 聞く", fullName:"しば犬",           realH:38, rarity:"ノーマル", power:2, scope:2, bonus:2, special:{name:"ここほれワンワン", discP:100, discN:5, digN:0} },
         trex:        { label:"🦖 ティラノ",      askLabel:"🦖 聞く", fullName:"ティラノサウルス", rarity:"超激レア", power:5, scope:4, bonus:4, special:{name:"王者の一撃",     discP:40,  discN:5, digN:4} },
@@ -1032,10 +1030,10 @@ function applyWorldParams(){
     const diam = customWorldOn()? Math.min(WORLD_X,WORLD_Z) : Math.min(SITE_X,SITE_Z);
     const k = Math.max(0.35, Math.min(3.0, (diam||34)/34));   // 現状(約34m)で1.0
     WALK_SPEED = BASE_WALK * k;          // 広いほど速く／狭いほど遅く（移動速度のみ広さ連動）
-    DOG_FWD    = BASE_DOG_FWD;            // 相棒の定位置：一定（旧コードの距離感／広さ非連動）
+    DOG_FWD    = BASE_DOG_FWD;            // 相棒の定位置：一定
     DOG_STAY_R = BASE_DOG_STAY;          // 待機範囲：一定（7.0m。発見距離を必ず超える）
     const k2 = Math.max(0.3, Math.min(3, (diam||20)/20));   // 一辺20m（倍率3倍相当）で1.0
-    DETECT_SCALE = k2;                                      // ①②（旧コードの距離）を倍率/広さで拡縮
+    DETECT_SCALE = k2;                                      // ①②を倍率/広さで拡縮
     DIG_REACH_BASE = BASE_DIG_REACH;                       // ③：倍率/広さで縮小しない（小さくても厳しくならない）＝最適値で固定
     DIG_REACH  = DIG_REACH_BASE;   // ③黄色距離：VR/AR・スマホ・PC 共通（1.0倍）
 }
@@ -1054,7 +1052,7 @@ const MV_CFG = {
 };
 const ART_IMGS   = YEAR_CONFIG.artImgCodes.map(n=>YEAR_CONFIG.assetBase+n+YEAR_CONFIG.assetSuffix+".png");   // 出土品説明パネル画像URL
 // 恐竜の説明パネル画像（8種）。※パスは後で共有される予定。空文字のあいだはプレースホルダー表示。
-//   順番は DINOS と同じ：0ティラノ 1フクイラプトル 2フクイティタン 3トリケラ 4プテラノ 5フクイサウルス 6ステゴ 7ブラキオ
+// 順番は DINOS と同じ：0ティラノ 1フクイラプトル 2フクイティタン 3トリケラ 4プテラノ 5フクイサウルス 6ステゴ 7ブラキオ
 const DINO_IMGS  = YEAR_CONFIG.dinoImgs;   // 恐竜説明パネル画像URL（未設定=空）
 // ===== カードPNG（1:1.5）の共通パス取得 =====
 // ※実際のフォルダ名に合わせて調整してください（index.htmlと同階層）
@@ -1066,7 +1064,7 @@ function cardImgPath(target, idx){         // target:"dino"/"dog"/"artifact", id
     const n = String((idx|0)+1).padStart(2,"0");
     return dir + "card" + n + ".png";
 }
-// 相棒キー→カード番号（恐竜はDINOSのindex、犬は暫定でindex0）
+// 相棒キー→カード番号
 function companionCardPath(key){
     if(key==="dog") return CARD_DIR_DINO + "card00.png";   // しば犬（既存カード）
     if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){ const di=(typeof DOGS!=="undefined")?DOGS.findIndex(d=>d.key===key):-1; return cardImgPath("dog", di>=0?di:0); }   // 犬種→card_dog/cardNN.png
@@ -1094,10 +1092,7 @@ function cardTexture(target, idx){
 }
 let TIME_LIMIT = YEAR_CONFIG.defaultTimeLimit; // タイムアタック秒数（60〜180・スライダーで可変）
 
-/* =====================================================
- * 図鑑データ（localStorage 永続化）
- *   dex[idx] = {found:true, date:"YYYY/MM/DD"} または未定義
- * ===================================================== */
+/* ===================================================== * 図鑑データ（localStorage 永続化） * dex[idx] = {found:true, date:"YYYY/MM/DD"} または未定義 * ===================================================== */
 const DEX_KEY = "echizen_dex_v1";
 const TA_KEY  = "echizen_timeattack_top5_v1";
 function loadTA(){ try{ return JSON.parse(localStorage.getItem(TA_KEY)||"[]"); }catch(e){ return []; } }
@@ -1163,9 +1158,7 @@ function setDigTarget(target){
 }
 function saveDex(){ /* 保存しない（リロードでリセットするため） */ }
 
-/* =====================================================
- * Web Audio（合成SFX）— 既存アプリの手法を踏襲
- * ===================================================== */
+/* ===================================================== * Web Audio（合成SFX）— 既存アプリの手法を踏襲 * ===================================================== */
 const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
 function unlockAudio(){ if(audioCtx.state==="suspended") audioCtx.resume(); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio));
@@ -1221,9 +1214,7 @@ function sfxCry(){
         o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+0.6); });
 }
 
-/* =====================================================
- * シーン / レンダラ / カメラ / プレイヤーリグ
- * ===================================================== */
+/* ===================================================== * シーン / レンダラ / カメラ / プレイヤーリグ * ===================================================== */
 const scene    = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a16);
 scene.fog = new THREE.FogExp2(0x0a0a16, 0.006);
@@ -1392,11 +1383,7 @@ try{
     hands.forEach(h=>{ player.add(h); h.userData.prevPos=new THREE.Vector3(); h.userData.shakeSpeed=0; });
 }catch(e){ console.warn("hand tracking unavailable", e); hands=[]; }
 
-/* =====================================================
- * サイトモデル読み込み
- *   - サイト＋発掘スポットを world グループに入れ、丸ごとリスケール
- *   - こうすると「最初のHTMLの発掘場所」を相対関係そのままで縮小できる
- * ===================================================== */
+/* ===================================================== * サイトモデル読み込み * - サイト＋発掘スポットを world グループに入れ、丸ごとリスケール * - こうすると「最初のHTMLの発掘場所」を相対関係そのままで縮小できる * ===================================================== */
 const gltfLoader = new GLTFLoader();
 let siteReady=false;
 document.body.classList.add("loading");   // 読み込み完了までゲーム開始を無効化
@@ -1607,16 +1594,10 @@ function mvHideCsvError(){ const el=document.getElementById("mvCsvErr"); if(el) 
 // 図鑑カード用の画像テクスチャ（発掘演出パネル）
 const texLoader = new THREE.TextureLoader();
 
-/* =====================================================
- * 相棒（プリミティブ製）＋ 吹き出し
- *   dog … 移動を担うルート。実際の見た目は子の「ボディ」グループが持つ（差し替え可能）。
- * ===================================================== */
+/* ===================================================== * 相棒（プリミティブ製）＋ 吹き出し * dog … 移動を担うルート。実際の見た目は子の「ボディ」グループが持つ（差し替え可能）。 * ===================================================== */
 const dog = new THREE.Group();          // 相棒のルート（位置・向きはこれを動かす）
 
-/* ── 3Dドット（ボクセル）ビルダー ───────────────────────
- *  大きめの立方体で頭は大きなキューブ・胴/脚/尾は直方体という
- *  Minecraftのモブ風。左右対称(mirrorX)を強制し、恐竜の特徴を表現。
- *  脚・尾・翼は別グループ(userData.legs/tail/wings)でアニメを維持。      */
+/* ── 3Dドット（ボクセル）ビルダー ─────────────────────── * 大きめの立方体で頭は大きなキューブ・胴/脚/尾は直方体という * Minecraftのモブ風。左右対称(mirrorX)を強制し、恐竜の特徴を表現。 * 脚・尾・翼は別グループ(userData.legs/tail/wings)でアニメを維持。 */
 const VOX=0.10;                         // 立方体サイズ（ボクセルの粗さを保ちつつ特徴が出る粗さ）
 let VOX_CUR=VOX;                          // ③なめらか恐竜のときは細かい解像度にする
 let VOX_VARY=false;                       // ③のとき肌にわずかな陰影（リアル寄せ）
@@ -2016,9 +1997,9 @@ const DINO_BUILDERS = { trex:build_trex, fukuiraptor:build_fukuiraptor, fukuitit
 const DINOS = YEAR_CONFIG.dinos.map(d=>({ key:d.key, label:d.label, cry:d.cry, build:DINO_BUILDERS[d.key] }));
 
 // ===========================================================================
-//  犬種（土台）：恐竜と同じボクセル方式で作成。基本の犬1体＋犬種ごとに体型/耳/尾/毛色を差分。
-//  ここではデータ＋ボクセルモデル＋登録（DOG_BREEDS / DOG_BUILDERS / DOGS）のみ。
-//  既存の発掘/図鑑/カード/相棒フローには未接続（将来「出土品発掘＝犬種」で接続予定）。
+// 犬種（土台）：恐竜と同じボクセル方式で作成。基本の犬1体＋犬種ごとに体型/耳/尾/毛色を差分。
+// ここではデータ＋ボクセルモデル＋登録（DOG_BREEDS / DOG_BUILDERS / DOGS）のみ。
+// 既存の発掘/図鑑/カード/相棒フローには未接続（将来「出土品発掘＝犬種」で接続予定）。
 // ===========================================================================
 function _dogEars(H, P, hsz, hb, hh, zf){   // 耳（+x側だけ作成→attachHeadのmirrorXで左右に）
     const col=(P.earCol!=null?P.earCol:P.M), t=P.ear||"flop";
@@ -2131,14 +2112,7 @@ stage.add(dog);
 applyBuddyScale();
 dog.position.set(2,GROUND_Y,2);
 
-/* =====================================================
- * 相棒の登録・切り替え（拡張ポイント）
- *   将来マスコット等を追加する場合は registerCompanion() を呼ぶだけ。
- *     registerCompanion("xxx", { label:"🌼 なまえ", body:<THREE.Group>, lines:{...} });
- *   body には userData.legs（脚ピボット配列）、任意で userData.tail / userData.wings を持たせると
- *   歩行アニメ・尻尾ふり・羽ばたきが自動で適用されます。
- *   相棒が1種類だけのときは切り替えUIは自動的に隠れます。
- * ===================================================== */
+/* ===================================================== * 相棒の登録・切り替え（拡張ポイント） * 将来マスコット等を追加する場合は registerCompanion() を呼ぶだけ。 * registerCompanion("xxx", { label:"🌼 なまえ", body:<THREE.Group>, lines:{...} }); * body には userData.legs（脚ピボット配列）、任意で userData.tail / userData.wings を持たせると * 歩行アニメ・尻尾ふり・羽ばたきが自動で適用されます。 * 相棒が1種類だけのときは切り替えUIは自動的に隠れます。 * ===================================================== */
 const COMPANIONS={};
 let companionKind=DEFAULT_KIND;
 function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
@@ -2485,11 +2459,7 @@ function updateBuddyRandomBtn(){
     _buddyRandomBtn.quaternion.copy(q);   // プレイヤーに正対
 }
 
-/* =====================================================
- * VR相棒えらびパネル（右手前方に固定・3×3）。左手の発掘図鑑とは色/位置/見出しで区別
- *   セル0-7=恐竜8種（獲得済み=選択可／未獲得=名称は見えるが不可）、セル8=🎲ランダム
- *   手動選択でもランダムでも同じこのUI。右手レイ＋右トリガーで選択。スタンバイのみ表示。
- * ===================================================== */
+/* ===================================================== * VR相棒えらびパネル（右手前方に固定・3×3）。左手の発掘図鑑とは色/位置/見出しで区別 * セル0-7=恐竜8種（獲得済み=選択可／未獲得=名称は見えるが不可）、セル8=🎲ランダム * 手動選択でもランダムでも同じこのUI。右手レイ＋右トリガーで選択。スタンバイのみ表示。 * ===================================================== */
 const buddyGridVR=(function(){
     const W=1080,H=1120;   // 解像度2倍（文字くっきり）
     const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
@@ -2630,9 +2600,7 @@ const bubble = (function(){
     };
 })();
 
-/* =====================================================
- * 右手の発掘道具モデル（持ち替えで見た目が変わる）
- * ===================================================== */
+/* ===================================================== * 右手の発掘道具モデル（持ち替えで見た目が変わる） * ===================================================== */
 function buildToolModel(kind){
     const g=new THREE.Group();
     const wood=new THREE.MeshStandardMaterial({color:0x8a5a2b, roughness:0.95});   // 木の棒
@@ -2656,9 +2624,7 @@ const toolWide=buildToolModel("wide"), toolNarrow=buildToolModel("narrow");
 toolNarrow.visible=false; toolHolder.add(toolWide); toolHolder.add(toolNarrow);
 function refreshToolModel(){ const w=(GAME.tool==="wide"); toolWide.visible=w; toolNarrow.visible=!w; }
 
-/* =====================================================
- * 左手のひら側の発掘図鑑パネル（VRセッション中に確認できる）
- * ===================================================== */
+/* ===================================================== * 左手のひら側の発掘図鑑パネル（VRセッション中に確認できる） * ===================================================== */
 let dexPinned=false;
 const dexPanel=(function(){
     const cv=document.createElement("canvas"); cv.width=512; cv.height=640;
@@ -2946,9 +2912,7 @@ function updateHologram(){
 }
 function toggleHologram(idx){ if(idx<0) return; if(holo && holo.idx===idx){ closeHologram(); sfxLocate(); vibrate(70,0.5); } else { buildHologram(idx); } }   // 開く時の音/バイブはbuildHologram内（暗転直前）で鳴らす
 
-/* =====================================================
- * ゲーム状態
- * ===================================================== */
+/* ===================================================== * ゲーム状態 * ===================================================== */
 const GAME = {
     active:false, mode:"collect", tool:"wide", desktop:false, digTarget:"artifact",
     collectedCount:0,          // コレクション：発掘済み数（＝難易度ティア）
@@ -3046,7 +3010,7 @@ function spawnTarget(tier, forcedIdx=null){
     }
     const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
     // ボクセルの「掘れるブロック」＋照準時の枠線
-    const fs=Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍（従来0.6→0.9）。あたり判定もこのブロックで拡大
+    const fs=Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍。あたり判定もこのブロックで拡大
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0, depthWrite:false}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
@@ -3107,9 +3071,7 @@ function spawnAllTargets(){
     if(typeof spawnStarPoint==="function" && !GAME.starUsed) spawnStarPoint();   // スターポイント1個（崩したら以後このプレイでは復活しない）
 }
 
-/* =====================================================
- * 発掘演出（出土品ポップアウト）
- * ===================================================== */
+/* ===================================================== * 発掘演出（出土品ポップアウト） * ===================================================== */
 const popAnims=[];
 // ── 恐竜モードの発掘演出：岩→たまご→孵化→恐竜（鳴き声＋セリフ） ──
 const _dinoCacheS=new Array(8).fill(null);   // 恐竜（実寸）＝なめらか・実寸
@@ -3365,7 +3327,7 @@ function animateDigDinos(now, dt){
         if(m.userData.head){
             const pmul=m.userData.peekMul||1;
             const longNeck=!!m.userData.longNeck;
-            // 長首種は頭を物理的にプレイヤー目線付近まで下ろせるよう、俯角上限を大きく（他種は従来の固定俯角）
+            // 長首種は頭を物理的にプレイヤー目線付近まで下ろせるよう、俯角上限を大きく
             const maxDeg = longNeck ? 88 : (DINO_FACE.pitchDeg+(DINO_FACE.pitchBias||0))*pmul;
             const maxPeek = THREE.MathUtils.degToRad(maxDeg);
             let peek=0;
@@ -3465,9 +3427,7 @@ function excavate(t, byPlayer){
     return firstTime;
 }
 
-/* =====================================================
- * 出土品のオーラ（発掘後ずっと光る）＋ 説明パネルとの関連づけ
- * ===================================================== */
+/* ===================================================== * 出土品のオーラ（発掘後ずっと光る）＋ 説明パネルとの関連づけ * ===================================================== */
 // 出土品ごとの色（パネルの帯・つなぐ線と共通にして対応を分かりやすく）
 const ART_COLORS = YEAR_CONFIG.artColors;   // 出土品のオーラ/パネル色
 // 放射グラデーションのオーラ用テクスチャ（中心は透明＝出土品がはっきり見える）
@@ -3589,9 +3549,7 @@ function updatePanelScale(){
     applyArtInfoVis();   // 表示/非表示（既定：非表示）を反映
 }
 
-/* =====================================================
- * 犬のふるまい（常時同行＋ヒント／たまに外す）
- * ===================================================== */
+/* ===================================================== * 犬のふるまい（常時同行＋ヒント／たまに外す） * ===================================================== */
 let dogCelebrateT=0;
 const HINT_WAIT_MS=3500;   // ヒント地点で待つ時間
 // 犬に「聞く」＝場所ヒント。信頼度に応じて当たり/はずれ。教えた場所へ行って少し待つ。
@@ -3630,9 +3588,7 @@ function askDog(){
 }
 function dogCelebrate(){ dogCelebrateT=2.4; }   // ゆっくり数回ジャンプして喜ぶ
 
-/* =====================================================
- * ハプティクス
- * ===================================================== */
+/* ===================================================== * ハプティクス * ===================================================== */
 function _pulseGamepad(gp, dur, intensity){
     if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return false;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）はバイブ不要（全経路をここで停止）
     if(!gp) return false;
@@ -3660,9 +3616,7 @@ function vibrateHand(handedness, dur, intensity){
     if(!any && navigator.vibrate){ try{ navigator.vibrate(Math.max(30,Math.round(dur*1.5))); }catch(e){} }   // フォールバック
 }
 
-/* =====================================================
- * 図鑑（HTML）描画
- * ===================================================== */
+/* ===================================================== * 図鑑（HTML）描画 * ===================================================== */
 const dexGrid=document.getElementById("dexGrid");
 // トレカをタップ → 前面に大きく表示（読みやすく）
 const dexView=document.getElementById("dexView"), dexViewCard=document.getElementById("dexViewCard");
@@ -3719,9 +3673,7 @@ function refreshDexHTML(){
 refreshDexHTML();
 function clearNewStamps(){ let ch=false; for(const k in dexData){ if(dexData[k].isNew){ dexData[k].isNew=false; ch=true; } } if(ch){ saveDex(dexData); } }
 
-/* =====================================================
- * UI 配線（メニュー）
- * ===================================================== */
+/* ===================================================== * UI 配線（メニュー） * ===================================================== */
 const menu=document.getElementById("menu");
 document.querySelectorAll("#segMode button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segMode button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); chosenMode=b.dataset.v; withParamLoading(()=>{ if(chosenMode!=="challenge" && typeof applyAutoForTarget==="function") applyAutoForTarget(chosenDigTarget); if(typeof updateTimeLimitUI==="function") updateTimeLimitUI(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); }); });
 // デスクトップHUDボタンの並び：dTA（スタンバイに戻る等）を先頭・黄色で目立たせ、リセットは「やめる」の直前
@@ -3826,7 +3778,7 @@ function applyAutoForTarget(target){   // 発掘対象/モード切替時の推�
         if(typeof setRealRefShort==="function") setRealRefShort(20);    // 実寸になるフィールド短辺：20
     }
     if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
-    // サイト3倍／ワールド30m（スマホ/PCのみ・ヘッドセットは従来どおり）。おすすめon/offとも同じ値
+    // サイト3倍／ワールド30m。おすすめon/offとも同じ値
     if(typeof headsetDetected!=="undefined" && headsetDetected && !IS_HEADSET){
         if(typeof setSiteMode==="function") setSiteMode(3,false);
         if(typeof setWorldX==="function"){ setWorldX(30); setWorldZ(30); }
@@ -4156,14 +4108,7 @@ function recordTimeAttack(score){
     arr.sort((a,b)=> (b.score-a.score) || ((b.id||0)-(a.id||0)) ); saveTA(arr.slice(0,5));
 }
 
-/* =====================================================
- * タイムアタックの進行（ワールドから出ずに繰り返し挑戦できる）
- *   ready    … 開始待ち（右トリガーでカウントダウン）
- *   countdown… 3秒前カウント
- *   run      … 計測中（右トリガーは「相棒に聞く」）
- *   results  … 記録表示（移動可・右トリガーで閉じる）
- *   free     … 記録非表示・移動可（右トリガーでリセットして再挑戦）
- * ===================================================== */
+/* ===================================================== * タイムアタックの進行（ワールドから出ずに繰り返し挑戦できる） * ready … 開始待ち（右トリガーでカウントダウン） * countdown… 3秒前カウント * run … 計測中（右トリガーは「相棒に聞く」） * results … 記録表示（移動可・右トリガーで閉じる） * free … 記録非表示・移動可（右トリガーでリセットして再挑戦） * ===================================================== */
 const TA={ state:"idle", cdEnd:0, lastScore:0, lockUntil:0 };
 const COUNTDOWN_MS=3000;
 
@@ -4330,7 +4275,7 @@ const worldHud=(function(){
         },
         renderChallengePage(){   // 発掘チャレンジ：各ターン（得点計算＋相棒カード1.5倍）／3ターン目（2ページ）。フォント/TOP5はタイムアタック準拠
             if(!resData) return; const d=resData; const c=d.calc;
-            const shortBoard = (!c.chFinal);   // 1・2ターン目は出土品・恐竜どちらもモデル表示＝板を短縮（3ターン目カードは従来）
+            const shortBoard = (!c.chFinal);   // 1・2ターン目は出土品・恐竜どちらもモデル表示＝板を短縮
             const shortBottom = GAME.desktop ? 372 : 416;            // 板の下端＝内容の直下（VRはガイド文言ぶん少し長い）
             bg( shortBoard ? shortBottom : undefined ); ctx.textAlign="center"; ctx.textBaseline="middle";
             if(window.__resultBuddy) window.__resultBuddy.clear();   // 既定は非表示（出土品の1・2ターン目のみ下で表示）
@@ -4385,8 +4330,8 @@ const worldHud=(function(){
     };
 })();
 // ===== 発掘チャレンジ 1・2ターン目（出土品発掘時）のリザルト：相棒(恐竜)3Dモデルを短縮した板の下に表示 =====
-//  ・カードは出さず、この動くモデルを見せる（プレイヤー向き・足/羽と尻尾が動く・触る等の操作は不可）
-//  ・プリロード済みキャッシュから cloneCont で複製（生成のカクつき回避・ジオメトリ共有で軽量）＝メインシーンで通常描画
+// ・カードは出さず、この動くモデルを見せる（プレイヤー向き・足/羽と尻尾が動く・触る等の操作は不可）
+// ・プリロード済みキャッシュから cloneCont で複製（生成のカクつき回避・ジオメトリ共有で軽量）＝メインシーンで通常描画
 const resultBuddy=(function(){
     let holder=null, cont=null, idx=-1, active=false;
     let fitGeo=1, halfDepthGeo=0.2;
@@ -4969,9 +4914,9 @@ function updateTAButton(){
 }
 
 /* HUD更新 */
-function gamePhase(){   // ①standby ②count ③play ④result ⑤review（発掘チャレンジ3ターン目リザルト後の追加フェーズ：役割は従来のまま）
+function gamePhase(){   // ①standby ②count ③play ④result ⑤review
     if(!GAME.active) return "standby";
-    if(GAME.challenge && GAME.ch && GAME.ch.extra) return "review";   // 3ターン終了後の見返しフェーズ（従来はresult扱いだったサブ状態を独立フェーズ名に。挙動は不変）
+    if(GAME.challenge && GAME.ch && GAME.ch.extra) return "review";   // 3ターン終了後の見返しフェーズ
     if(GAME.reviewing) return "review";                                // タイムアタック／コレクションの見返しフェーズ（リザルト→review→スタンバイ）
     if(GAME.mode!=="time" && GAME.complete) return "result";        // コレクション④（TA.stateに依らず）
     if(GAME.mode==="time" && TA.state==="results") return "result"; // タイムアタック④
@@ -4994,7 +4939,7 @@ function updateHudButtons(){
 function updateGoal(){
     if(typeof updateHudButtons==="function") updateHudButtons();
     const el=document.getElementById("dGoal");
-    if(GAME.desktop && typeof gamePhase==="function" && (gamePhase()==="result"||gamePhase()==="review")){ if(el.style.display!=="none") el.style.display="none"; return; }   // リザルト・見返し(review)は非表示（reviewは従来resultだったため同挙動）
+    if(GAME.desktop && typeof gamePhase==="function" && (gamePhase()==="result"||gamePhase()==="review")){ if(el.style.display!=="none") el.style.display="none"; return; }   // リザルト・見返し(review)は非表示
     if(el.style.display==="none") el.style.display="";
     const tgt=(GAME.digTarget==="dino")?"恐竜":"出土品";
     const modeLbl = GAME.challenge ? "チャレンジ" : "タイムアタック";
@@ -5076,9 +5021,7 @@ function showCenterHint(msg, ms=4000){
 }
 function showToast(msg, ms=2400){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); if(toastT)clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),ms); }
 
-/* =====================================================
- * デスクトップ操作（WASD＋ポインタロック＋クリック掘り）
- * ===================================================== */
+/* ===================================================== * デスクトップ操作（WASD＋ポインタロック＋クリック掘り） * ===================================================== */
 const keys={};
 addEventListener("keydown",e=>{ keys[e.code]=true;
     if(!GAME.active) return;
@@ -5103,10 +5046,7 @@ addEventListener("mousemove",e=>{
     pitch = Math.max(-Math.PI/4, Math.min(Math.PI/9, pitch));   // 下45度・上20度
 });
 
-/* =====================================================
- * タッチ操作（スマホ）
- *   左半分＝バーチャルスティックで移動 / 右半分ドラッグ＝見回す / 「掘る」ボタン＝発掘
- * ===================================================== */
+/* ===================================================== * タッチ操作（スマホ） * 左半分＝バーチャルスティックで移動 / 右半分ドラッグ＝見回す / 「掘る」ボタン＝発掘 * ===================================================== */
 const IS_TOUCH = (matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
 if(IS_TOUCH) document.body.classList.add("touch");
 const touchJoy  = { id:null, cx:0, cy:0, x:0, z:0 };
@@ -5184,9 +5124,7 @@ function digOnly(){
     if(!digAimed()){ sfxDig(); showToast("光っているブロックを狙って掘ろう（近づくと光ります）"); }
 }
 
-/* =====================================================
- * ボクセルの当たり判定（照準したブロックだけ掘れる）＋ 土しぶき
- * ===================================================== */
+/* ===================================================== * ボクセルの当たり判定（照準したブロックだけ掘れる）＋ 土しぶき * ===================================================== */
 let aimedTarget=null;
 const _aimRay=new THREE.Raycaster();
 // 指定の起点・向きで掘れるブロックを狙う
@@ -5540,9 +5478,7 @@ function updateCoach(dt){
 
 let handDigCooldown=0;
 
-/* =====================================================
- * おまけ：相棒をなでる
- * ===================================================== */
+/* ===================================================== * おまけ：相棒をなでる * ===================================================== */
 let petCooldown=0, petWiggle=0;
 let petBoost=0;                 // 撫でるほど上がる「当てる確率」ボーナス(0〜0.5)
 let dogAttentive=false;         // 相棒がプレイヤーを向いて待っている（撫でられる状態）
@@ -5700,9 +5636,7 @@ function updateSparkles(dt){
     }
 }
 
-/* =====================================================
- * メインループ
- * ===================================================== */
+/* ===================================================== * メインループ * ===================================================== */
 const tmpV=new THREE.Vector3(), tmpV2=new THREE.Vector3();
 const _cq=new THREE.Quaternion();
 function camQuat(){ return camera.getWorldQuaternion(_cq); } // カメラのワールド回転（スナップ回転込み）
@@ -5711,9 +5645,9 @@ let scanPulseAccum=0;
 let prevTriggers=[false,false];
 
 // ============================================================================
-//  Lite AR（発掘モデル表示AR）：カスタムWebXR ARでCSVモデルを1体表示し、ジェスチャで操作
-//   ・片手トリガー保持＝回転／両手トリガー保持＝拡大縮小・移動・Z回転（craftARt Lite相当）
-//   ・段階2＝表示＋ジェスチャのみ（パネル①〜④・二モードは段階3/4）
+// Lite AR（発掘モデル表示AR）：カスタムWebXR ARでCSVモデルを1体表示し、ジェスチャで操作
+// ・片手トリガー保持＝回転／両手トリガー保持＝拡大縮小・移動・Z回転（craftARt Lite相当）
+// ・段階2＝表示＋ジェスチャのみ（パネル①〜④・二モードは段階3/4）
 // ============================================================================
 const LITE = { active:false, group:null, model:null, needPlace:false, placeFrames:0,
     showInfo:true, opEnabled:true, curName:"", curDesc:"", ui:null, buttons:[], _uiScale:-1, isDino:false,
@@ -6257,8 +6191,7 @@ renderer.setAnimationLoop(()=>{
     }
 });
 
-/* VR移動：左スティックで前後左右、右スティックXでスナップ回転
-   右中指グリップ押下中は、右スティック 上下＝ワールド高さ／左右＝相棒との距離 を調整 */
+/* VR移動：左スティックで前後左右、右スティックXでスナップ回転 右中指グリップ押下中は、右スティック 上下＝ワールド高さ／左右＝相棒との距離 を調整 */
 let snapCooldown=0;
 function handleFieldLock(){   // 全フェーズ：右手グリップ+トリガー ＋ 左手グリップ+トリガー ＋ 左Y 長押しでフィールド固定をトグル
     const s=renderer.xr.getSession(); if(!s) return;
@@ -6591,7 +6524,7 @@ function updateDog(dt, now){
     if(dog.userData.rushTo){
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=_udGoal.set(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 0.65);   // 発掘場所の横に近づく（従来1.0→0.65）
+        goal=_udGoal.set(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 0.65);   // 発掘場所の横に近づく
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.3){ dog.userData.rushTo=null; }   // 横に到着したら解除→その場で発掘セリフを言って留まる
         else { rushing=true; }
@@ -6606,7 +6539,7 @@ function updateDog(dt, now){
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        goal=_udGoal.set(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 0.65);   // ブロック横に近づく（従来1.0→0.65）
+        goal=_udGoal.set(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 0.65);   // ブロック横に近づく
     } else if(dog.userData.hintActive && dog.userData.hintPos){
         dog.userData.atBlock=false;
         goal=_udGoal.copy(dog.userData.hintPos); goal.y=0;
@@ -6772,24 +6705,13 @@ if(LOOK_AT_PLAYER && typeof neckSwayEnabled==="function" && neckSwayEnabled(comp
     }
 }
 
-/* =====================================================
- * リサイズ
- * ===================================================== */
+/* ===================================================== * リサイズ * ===================================================== */
 addEventListener("resize",()=>{
     camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
     renderer.setSize(innerWidth,innerHeight);
 });
 
-/* =====================================================
- * 【追加】発掘モデル表示（model-viewer プレビュー）
- *   ・「発掘する対象」(chosenDigTarget: artifact/dino/dino3) に応じて一覧を切替
- *   ・表示するモデルはセレクトで選択
- *   ・URLからの読み込みはせず、既存の読み込み/生成済みモデル
- *     （出土品: artModels[idx] ／ 恐竜: _dinoCacheB,_dinoCacheS[idx]）を
- *     GLTFExporter で GLB(blob) 化して model-viewer に渡す
- *   ・スマホ等でAR可能なときだけARボタンを表示してアクティベート
- *   既存のロジックは変更せず、この追加ブロックだけで完結させる。
- * ===================================================== */
+/* ===================================================== * 【追加】発掘モデル表示（model-viewer プレビュー） * ・「発掘する対象」(chosenDigTarget: artifact/dino/dino3) に応じて一覧を切替 * ・表示するモデルはセレクトで選択 * ・URLからの読み込みはせず、既存の読み込み/生成済みモデル * （出土品: artModels[idx] ／ 恐竜: _dinoCacheB,_dinoCacheS[idx]）を * GLTFExporter で GLB(blob) 化して model-viewer に渡す * ・スマホ等でAR可能なときだけARボタンを表示してアクティベート * 既存のロジックは変更せず、この追加ブロックだけで完結させる。 * ===================================================== */
 (function initModelViewerPreview(){
     const openBtn = document.getElementById("mvOpenBtn");
     const modal   = document.getElementById("mvModal");
@@ -6917,7 +6839,7 @@ addEventListener("resize",()=>{
     }
 
     // 恐竜の共通倍率：ティラノ(DINOS内 key="trex")の高さを基準に「全種へ同じ倍率」をかける（種ごとの大小比率は保持）。
-    //   小さい=ティラノ0.30m ／ 普通=ティラノ1.5m ／ 大きい=等倍
+    // 小さい=ティラノ0.30m ／ 普通=ティラノ1.5m ／ 大きい=等倍
     const DINO_SMALL_H = YEAR_CONFIG.dinoSmallH, DINO_MID_H = YEAR_CONFIG.dinoMidH;
     let _dinoTrexHCache = {};
     function dinoTrexHeight(smooth){
@@ -6942,9 +6864,9 @@ addEventListener("resize",()=>{
     }
 
     // 恐竜の頂点カラーを「パレットテクスチャ＋UV」に焼き込む。
-    //   iOSのクイックルックはGLB→USDZ変換で頂点カラー(COLOR_0)を反映できず真っ白になるため、
-    //   使用色を1行パレット化してUVで参照し、baseColorテクスチャとして持たせる（AR/プレビュー共通で着色）。
-    //   ※ 共有ジオメトリを壊さないよう、ジオメトリはクローンしてから改変する。
+    // iOSのクイックルックはGLB→USDZ変換で頂点カラー(COLOR_0)を反映できず真っ白になるため、
+    // 使用色を1行パレット化してUVで参照し、baseColorテクスチャとして持たせる（AR/プレビュー共通で着色）。
+    // ※ 共有ジオメトリを壊さないよう、ジオメトリはクローンしてから改変する。
     function bakeVoxelColorTexture(root){
         const meshes=[];
         root.traverse(o=>{ if(o.isMesh && o.geometry && o.geometry.getAttribute && o.geometry.getAttribute("color")) meshes.push(o); });
@@ -6981,7 +6903,7 @@ addEventListener("resize",()=>{
     }
 
     // Object3D → GLB(blob URL)。元モデルは非表示なので clone を表示状態にして書き出す
-    //   opts.scaleFactor: 書き出し全体に掛ける倍率（恐竜は全種共通の倍率＝サイズ比率を保つ）
+    // opts.scaleFactor: 書き出し全体に掛ける倍率（恐竜は全種共通の倍率＝サイズ比率を保つ）
     async function objToBlobUrl(obj, opts){
         opts = opts || {};
         const GLTFExporter = await getExporter();
