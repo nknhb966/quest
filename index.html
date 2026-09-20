@@ -6527,8 +6527,8 @@ function updateDog(dt, now){
     const _ph=(typeof gamePhase==="function")?gamePhase():"standby";
     if(_ph==="standby") GAME._eyeTFrozen=eyeT_live;
     const eyeT=(_ph==="standby")?eyeT_live:((GAME._eyeTFrozen!=null)?GAME._eyeTFrozen:eyeT_live);
-    const sizeF = 2/3 + (1/3)*eyeT;        // サイズ：目線1.0m以下=2/3／1.5m以上=1.0
-    const distF = 0.5 + 0.5*eyeT;          // 距離：目線1.0m以下=1/2／1.5m以上=1.0
+    const sizeF = 2/3 + (1/3)*eyeT;        // サイズ係数：目線1.0m以下=2/3／1.5m以上=1.0（距離とは独立に保持）
+    const distF = 2/3 + (1/3)*eyeT;        // 距離係数：目線1.0m以下=2/3／1.5m以上=1.0（サイズとは独立に保持）
     const pteraFloat = 0.12 + 0.06*eyeT;   // プテラノドンの浮き量：目線1.0m以下=0.12m／1.5m以上=0.18m
     // サイズ補正はbody本体のみ（吹き出し等は等倍）。足の接地を保つため位置yも同率。係数が変わった時だけ更新
     { const _ab=(typeof activeBody==="function")?activeBody():null;
