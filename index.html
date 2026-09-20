@@ -1017,7 +1017,7 @@ const PET_REACH     = 6.0;               // 相棒をなでられる距離（m�
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
 let   SHIBA_HALFDEPTH = 0;               // しば犬の前後半分（鼻先基準の距離計算用。相棒のサイズで定位置を可変に）
-let   LOOK_AT_PLAYER = false;            // 【一時停止中】相棒がプレイヤーの顔を見る動作＋首の揺れ（頭が動くと鼻先が前後するため、鼻先距離の検証中はfalse。確認後trueに戻す）
+let   LOOK_AT_PLAYER = true;             // 相棒がプレイヤーの顔を見る動作＋首の揺れ（有効）
 // VR/AR：右中指グリップ＋右スティックで調整するパラメータ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
 const DOG_DIST_SPEED= 2.2;               // 相棒距離調整の速さ（m/秒）
@@ -2167,26 +2167,20 @@ function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基
     }catch(_){ _dogNatH=1; }
     return _dogNatH;
 }
-function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)。犬種=realHで大きさ差。プテラは相棒表示のみ1.25倍。＋頭(くちばし/鼻/口)の先端zを保存し、全相棒の頭先端をしば犬の頭先端と同じ距離にそろえる（しば犬は当初位置のまま）
-    body.updateMatrixWorld(true);   // ※この時点でbodyはまだdogに未追加＝親変形なしの局所
+function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)。犬種=realHで大きさ差(しば犬38基準・上限1.2×)。プテラは相棒表示のみ1.25倍
+    if(key==="dog") return;   // しば犬＝基準
+    body.updateMatrixWorld(true);
     const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
-    const _head=body.userData && body.userData.head;
-    let nose0 = _head ? new THREE.Box3().setFromObject(_head).max.z : bb.max.z;   // 頭グループの+z先端＝鼻先/くちばし/口の先端（原点基準・スケール1）
-    if(!isFinite(nose0)) nose0=bb.max.z;
-    if(key==="dog"){ body.userData.noseZ=nose0; SHIBA_HALFDEPTH=nose0; return; }   // しば犬＝基準（スケール1・当初位置）
-    let sc=1;
     if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
         let targetH=Math.min(dogNaturalH()*(R/38), 1.2*dogNaturalH());
         if(key==="chihuahua"||key==="dachshund") targetH*=1.5;   // チワワ・ダックスフントは小さいので相棒表示を1.5倍
         if(key==="golden") targetH*=0.70; else if(key==="labrador") targetH*=0.65; else if(key==="beagle") targetH*=0.80; else if(key==="bulldog") targetH*=0.60;   // 大型犬は歩き回る相棒を縮小（種別に調整）
-        sc=targetH/H0;
-    } else {
-        sc=Math.min(1.0, 1.2*dogNaturalH()/H0);
-        if(key==="ptera") sc*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
+        body.scale.setScalar(targetH/H0); return;
     }
-    body.scale.setScalar(sc);
-    body.userData.noseZ=nose0*sc;   // スケール後の頭先端z（原点→鼻先/くちばし/口の先端）
+    let sf=Math.min(1.0, 1.2*dogNaturalH()/H0);
+    if(key==="ptera") sf*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
+    body.scale.setScalar(sf);
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
@@ -6626,10 +6620,7 @@ function updateDog(dt, now){
         const q=camQuat();
         const fwd =_udF.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        { const _b=(typeof activeBody==="function")?activeBody():null;
-          const _nz=(_b&&_b.userData&&_b.userData.noseZ!=null)?_b.userData.noseZ:SHIBA_HALFDEPTH;
-          const _fwdDist=DOG_FWD + (_nz - SHIBA_HALFDEPTH);   // 頭先端(鼻/くちばし/口)をしば犬の頭先端と同じ距離に固定（しば犬は当初位置DOG_FWDのまま）
-          goal=_udGoal.copy(playerPos).addScaledVector(fwd,_fwdDist).addScaledVector(side,DOG_SIDE); goal.y=0; }
+        goal=_udGoal.copy(playerPos).addScaledVector(fwd,DOG_FWD).addScaledVector(side,DOG_SIDE); goal.y=0;
     }
     }   // end if(!rushing)
 
@@ -6660,8 +6651,6 @@ function updateDog(dt, now){
         const mvx=nx-dog.position.x, mvz=nz-dog.position.z, mv=Math.hypot(mvx,mvz), cap=maxSpeed*dt;
         if(mv>cap){ nx=dog.position.x+mvx*cap/mv; nz=dog.position.z+mvz*cap/mv; }
         dog.position.x=nx; dog.position.z=nz;
-    } else if(dist<=0.05 && !dogHappy){   // 停止圏内は目標へスナップ＝停止位置を常に一定に（接近方向＝直前の相棒による履歴差を解消。鼻先が基準距離に一致）
-        dog.position.x=goal.x; dog.position.z=goal.z;
     }
     const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
     const moving = moved > 0.004;
