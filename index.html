@@ -6660,6 +6660,8 @@ function updateDog(dt, now){
         const mvx=nx-dog.position.x, mvz=nz-dog.position.z, mv=Math.hypot(mvx,mvz), cap=maxSpeed*dt;
         if(mv>cap){ nx=dog.position.x+mvx*cap/mv; nz=dog.position.z+mvz*cap/mv; }
         dog.position.x=nx; dog.position.z=nz;
+    } else if(dist<=0.05 && !dogHappy){   // 停止圏内は目標へスナップ＝停止位置を常に一定に（接近方向＝直前の相棒による履歴差を解消。鼻先が基準距離に一致）
+        dog.position.x=goal.x; dog.position.z=goal.z;
     }
     const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
     const moving = moved > 0.004;
