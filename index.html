@@ -6522,16 +6522,21 @@ function updateDog(dt, now){
 
     // 目線の高さ＝相棒の足元(stage)からのカメラ高さ。物理的なしゃがみ・ワールド高さ変更にリアルタイム追従
     const eyeH = camWorld.y - ((typeof stage!=="undefined" && stage.position)?stage.position.y:0);
-    const eyeT = Math.max(0, Math.min(1, (eyeH-1.0)/0.5));   // 1.0m以下=0／1.5m以上=1／間は線形
-    const eyeF = 0.5 + 0.5*eyeT;                             // 距離・サイズ係数（1.0m以下=0.5／1.5m以上=1.0）
-    const pteraFloat = 0.15 + 0.15*eyeT;                     // プテラノドンの浮き量（1.0m以下=0.15m／1.5m以上=0.30m）
-    // サイズ補正はbody本体のみ（吹き出し等は等倍のまま）。足の接地を保つため位置yも同率。係数が変わった時だけ更新
+    const eyeT_live = Math.max(0, Math.min(1, (eyeH-1.0)/0.5));   // 1.0m以下=0／1.5m以上=1／間は線形
+    // スタンバイ中はリアルタイム連動。カウントダウン以降(count/play/result/review)は直前スタンバイの高さで固定
+    const _ph=(typeof gamePhase==="function")?gamePhase():"standby";
+    if(_ph==="standby") GAME._eyeTFrozen=eyeT_live;
+    const eyeT=(_ph==="standby")?eyeT_live:((GAME._eyeTFrozen!=null)?GAME._eyeTFrozen:eyeT_live);
+    const sizeF = 2/3 + (1/3)*eyeT;        // サイズ：目線1.0m以下=2/3／1.5m以上=1.0
+    const distF = 0.5 + 0.5*eyeT;          // 距離：目線1.0m以下=1/2／1.5m以上=1.0
+    const pteraFloat = 0.12 + 0.06*eyeT;   // プテラノドンの浮き量：目線1.0m以下=0.12m／1.5m以上=0.18m
+    // サイズ補正はbody本体のみ（吹き出し等は等倍）。足の接地を保つため位置yも同率。係数が変わった時だけ更新
     { const _ab=(typeof activeBody==="function")?activeBody():null;
-      if(_ab && _ab.userData._appliedEyeF!==eyeF){
+      if(_ab && _ab.userData._appliedSizeF!==sizeF){
           const bs=(_ab.userData.baseScale!=null)?_ab.userData.baseScale:1;
-          _ab.scale.setScalar(bs*eyeF);
-          if(_ab.userData.basePosY!=null) _ab.position.y=_ab.userData.basePosY*eyeF;
-          _ab.userData._appliedEyeF=eyeF;
+          _ab.scale.setScalar(bs*sizeF);
+          if(_ab.userData.basePosY!=null) _ab.position.y=_ab.userData.basePosY*sizeF;
+          _ab.userData._appliedSizeF=sizeF;
       } }
 
     const dogHappy = (GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil);   // 喜びセリフ中はその場・他セリフ抑制
@@ -6578,7 +6583,7 @@ function updateDog(dt, now){
           const r=(_b&&_b.userData&&_b.userData.sizeRatio!=null)?_b.userData.sizeRatio:1;
           // サイズ段階（停止中：SIZE_DIST_ON=trueで有効）：0.9倍以下は10cm近づく／1.1倍以上は10cm離れる
           const off = SIZE_DIST_ON ? ((r>=1.1)?0.10:(r<=0.9?-0.10:0)) : 0;
-          const _fwdDist=(DOG_FWD+off)*eyeF;   // 目線が低いほど近づく（1.5m以上=現状／1.0m以下=半分）
+          const _fwdDist=(DOG_FWD+off)*distF;   // 目線が低いほど近づく（1.5m以上=現状／1.0m以下=半分）
           goal=_udGoal.copy(playerPos).addScaledVector(fwd,_fwdDist).addScaledVector(side,DOG_SIDE); goal.y=0; }
     }
     }   // end if(!rushing)
