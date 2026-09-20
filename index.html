@@ -1015,6 +1015,7 @@ const PET_REACH     = 6.0;               // 相棒をなでられる距離（m�
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
 let   SHIBA_MAXDIM = 0;                  // しば犬の最大寸法（相棒の表示サイズ比＝距離段階の基準）
+let   SIZE_DIST_ON = false;             // サイズ比による距離段階（≤0.9倍で10cm近づく/≥1.1倍で10cm離れる）。停止中（trueで有効化）
 let   LOOK_AT_PLAYER = true;             // 相棒がプレイヤーの顔を見る動作＋首の揺れ（有効）
 // VR/AR：右中指グリップ＋右スティックで調整するパラメータ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
@@ -2145,7 +2146,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
     body.updateMatrixWorld(true);   // ※この時点でbodyはまだdogに未追加＝親変形なしの局所bbox
     const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
     const dim0=Math.max(bb.max.x-bb.min.x, bb.max.y-bb.min.y, bb.max.z-bb.min.z);   // 最大寸法（スケール1）
-    if(key==="dog"){ SHIBA_MAXDIM=dim0; body.userData.sizeRatio=1; return; }   // しば犬＝基準
+    if(key==="dog"){ SHIBA_MAXDIM=dim0; body.userData.sizeRatio=1; body.userData.baseScale=1; return; }   // しば犬＝基準
     let sc=1;
     if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
@@ -2161,6 +2162,7 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
     let ratio=(dim0*sc)/(SHIBA_MAXDIM||dim0);   // 表示サイズ比（しば犬=1、最大寸法で比較）
     if(key!=="brachi" && key!=="fukuititan" && ratio>1.8){ sc*=1.8/ratio; body.scale.setScalar(sc); ratio=1.8; }   // ブラキオ・フクイティタン以外は最大しば犬の1.8倍まで
     body.userData.sizeRatio = ratio;
+    body.userData.baseScale = sc;   // 目線サイズ補正の基準スケール
 }
 function ensureBody(key){
     const def=COMPANIONS[key]; if(!def || !def.builder) return null;
@@ -2175,7 +2177,7 @@ function ensureBody(key){
         scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
         body.updateMatrixWorld(true);
         { const bb=new THREE.Box3().setFromObject(body);  // 全相棒とも足を接地(y=0)＝相棒プテラノドンも他と同じ高さ
-          if(isFinite(bb.min.y)) body.position.y -= bb.min.y; }
+          if(isFinite(bb.min.y)) body.position.y -= bb.min.y; body.userData.basePosY=body.position.y; }
         body.visible=false; dog.add(body); def[slot]=body;
     }
     return def[slot];
@@ -2193,7 +2195,7 @@ function preloadCompanionBody(key, smooth){   // プリロード用：指定ボ�
     let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; VOX_VARY=pvv; }
     scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
     body.updateMatrixWorld(true);
-    { const bb=new THREE.Box3().setFromObject(body); if(isFinite(bb.min.y)) body.position.y-=bb.min.y; }   // 全相棒とも足を接地（相棒プテラノドンも他と同じ高さ）
+    { const bb=new THREE.Box3().setFromObject(body); if(isFinite(bb.min.y)) body.position.y-=bb.min.y; body.userData.basePosY=body.position.y; }   // 全相棒とも足を接地（相棒プテラノドンも他と同じ高さ）
     body.visible=false; dog.add(body); def[slot]=body;
 }
 function activeBody(){ return ensureBody(companionKind) || ensureBody(DEFAULT_KIND); }
@@ -6518,6 +6520,17 @@ function updateDog(dt, now){
     const speed=vel.length()/Math.max(dt,1e-3);
     _playerPrev.copy(playerPos);
 
+    // 目線の高さで距離・サイズを線形補正：1.5m以上=1.0（現状）／1.0m以下=0.5（半分）／間は線形。camWorld.y＝目線の高さ（VRは実ヘッドセット高、非VRは1.6m固定＝1.0）
+    const eyeF = 0.5 + 0.5*Math.max(0, Math.min(1, (camWorld.y-1.0)/0.5));
+    // サイズ補正はbody本体のみ（吹き出し等は等倍のまま）。足の接地を保つため位置yも同率。係数が変わった時だけ更新＝毎フレーム負荷なし
+    { const _ab=(typeof activeBody==="function")?activeBody():null;
+      if(_ab && _ab.userData._appliedEyeF!==eyeF){
+          const bs=(_ab.userData.baseScale!=null)?_ab.userData.baseScale:1;
+          _ab.scale.setScalar(bs*eyeF);
+          if(_ab.userData.basePosY!=null) _ab.position.y=_ab.userData.basePosY*eyeF;
+          _ab.userData._appliedEyeF=eyeF;
+      } }
+
     const dogHappy = (GAME.dogHappyUntil && performance.now()<GAME.dogHappyUntil);   // 喜びセリフ中はその場・他セリフ抑制
 
     let goal, waitingAtHint=false;
@@ -6560,9 +6573,10 @@ function updateDog(dt, now){
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
         { const _b=(typeof activeBody==="function")?activeBody():null;
           const r=(_b&&_b.userData&&_b.userData.sizeRatio!=null)?_b.userData.sizeRatio:1;
-          // しば犬比の表示サイズで距離を調整：0.9倍以下は10cm近づく／1.1倍以上は10cm離れる／間は変化なし
-          const off = (r>=1.1) ? 0.10 : (r<=0.9 ? -0.10 : 0);
-          goal=_udGoal.copy(playerPos).addScaledVector(fwd,DOG_FWD+off).addScaledVector(side,DOG_SIDE); goal.y=0; }
+          // サイズ段階（停止中：SIZE_DIST_ON=trueで有効）：0.9倍以下は10cm近づく／1.1倍以上は10cm離れる
+          const off = SIZE_DIST_ON ? ((r>=1.1)?0.10:(r<=0.9?-0.10:0)) : 0;
+          const _fwdDist=(DOG_FWD+off)*eyeF;   // 目線が低いほど近づく（1.5m以上=現状／1.0m以下=半分）
+          goal=_udGoal.copy(playerPos).addScaledVector(fwd,_fwdDist).addScaledVector(side,DOG_SIDE); goal.y=0; }
     }
     }   // end if(!rushing)
 
