@@ -1660,15 +1660,22 @@ Chunk.prototype.eye=function(x,y,z,r){
   const s=x<0?-1:1, hw=0.045*r, hh=0.058*r;
   const cx=s*Math.max(0.07+hw, Math.abs(x));
   const cix=Math.round(cx/this.vox), hwv=Math.round(hw/this.vox);
-  const ix0=cix-hwv, ix1=cix+hwv;   // 目の中心グリッド基準で左右対称に（左右のズレ防止＝複製と同等）
+  const ix0=cix-hwv, ix1=cix+hwv;   // 目の中心グリッド基準で左右対称に
   const iy0=Math.round((y-hh)/this.vox), iy1=Math.round((y+hh)/this.vox);
   const izmin=Math.round((z-0.4)/this.vox), izmax=Math.round((z+0.12)/this.vox);
+  const front=(ix,iy)=>{ for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(ix+"|"+iy+"|"+iz)) return iz; } return null; };
+  const refIz=front(cix, Math.round(y/this.vox));   // 目の中心の頭表面の奥行き（基準）
+  const FWD_TOL=3;                                   // これ以上前方に突き出た面（口先/くちばし）には塗らない＝目のはみ出し（黒い線）防止
   for(let ix=ix0;ix<=ix1;ix++) for(let iy=iy0;iy<=iy1;iy++){
-    for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(ix+"|"+iy+"|"+iz)){ this.set(ix,iy,iz,EYE); break; } }  // 最前面を黒に
+    const fz=front(ix,iy);
+    if(fz===null) continue;
+    if(refIz!==null && fz>refIz+FWD_TOL) continue;   // 口先にはみ出す列はスキップ
+    this.set(ix,iy,fz,EYE);                          // 頭表面の最前面を黒に
   }
   if(VOX_VARY){   // 目のハイライト（上寄りに小さな光）
-    const hix=cix+Math.round(hw*0.4/this.vox), hiy=iy1;   // 中心から一定オフセット（元の見た目）
-    for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(hix+"|"+hiy+"|"+iz)){ this.set(hix,hiy,iz,0xf2f0f6); break; } }
+    const hix=cix+Math.round(hw*0.4/this.vox), hiy=iy1;
+    const fz=front(hix,hiy);
+    if(fz!==null && (refIz===null || fz<=refIz+FWD_TOL)) this.set(hix,hiy,fz,0xf2f0f6);
   }
 };
 Chunk.prototype.build=function(){
