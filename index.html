@@ -792,67 +792,64 @@
     #tabarGlow{ --tg:120,180,255; position:fixed; inset:0; z-index:13; pointer-events:none; opacity:0;
         box-shadow:inset 0 0 90px 34px rgb(var(--tg)); transition:opacity .25s; }
 
+    /* 文字サイズ・余白は既存UIの段階にそろえる（トースト＝本文、見出し＝.dexbox h2、主ボタン＝入室ボタン、副ボタン＝.ghost、説明＝.helpbox p） */
     /* 探知メーター：近いほど多く・暖色に点灯（中央リングと同じ色の区切り） */
-    #tabarRadar{ position:fixed; top:calc(env(safe-area-inset-top) + 74px); left:50%; transform:translateX(-50%); z-index:9996;
-        display:none; align-items:center; gap:8px; padding:10px 18px 10px 14px; border-radius:999px; pointer-events:none;
-        background:rgba(10,7,22,.74); border:2px solid rgba(143,240,255,.4); }
+    #tabarRadar{ position:fixed; top:calc(env(safe-area-inset-top) + 64px); left:50%; transform:translateX(-50%); z-index:9996;
+        display:none; align-items:center; gap:5px; padding:6px 12px 6px 10px; border-radius:99px; pointer-events:none;
+        background:rgba(10,7,26,.8); border:1px solid rgba(143,240,255,.4); }
     body.tabar #tabarRadar.on{ display:flex; }
-    #tabarRadar .ic{ font-size:26px; line-height:1; }
-    #tabarRadar i{ display:block; width:30px; height:24px; border-radius:7px; background:rgba(255,255,255,.14); transition:background .15s; }
+    #tabarRadar .ic{ font-size:15px; line-height:1; margin-right:2px; }
+    #tabarRadar i{ display:block; width:20px; height:14px; border-radius:4px; background:rgba(255,255,255,.14); transition:background .15s; }
     #tabarRadar[data-lvl="1"] i:nth-of-type(-n+1), #tabarRadar[data-lvl="2"] i:nth-of-type(-n+2){ background:rgb(120,180,255); }
     #tabarRadar[data-lvl="3"] i:nth-of-type(-n+3), #tabarRadar[data-lvl="4"] i:nth-of-type(-n+4){ background:rgb(255,180,60); }
     #tabarRadar[data-lvl="5"] i:nth-of-type(-n+5){ background:rgb(255,90,50); }
 
-    #tabarDig{ position:fixed; top:calc(env(safe-area-inset-top) + 142px); left:50%; transform:translateX(-50%); z-index:9996; display:none;
-        padding:14px 26px; border-radius:18px; background:#f7c948; color:#3a2600; font-weight:900; font-size:22px; line-height:1.3;
-        box-shadow:0 6px 0 #b8871c, 0 12px 30px rgba(0,0,0,.4); pointer-events:none; white-space:nowrap; }
+    #tabarDig{ position:fixed; top:calc(env(safe-area-inset-top) + 106px); left:50%; transform:translateX(-50%); z-index:9996; display:none;
+        padding:12px 22px; border-radius:12px; background:#f7c948; color:#3a2600; font-weight:800; letter-spacing:1px;
+        box-shadow:0 4px 0 #b8871c, 0 8px 22px rgba(0,0,0,.35); pointer-events:none; white-space:nowrap; }
     #tabarDig.show{ display:block; animation:tabarBob 1.1s ease-in-out infinite; }
-    @keyframes tabarBob{ 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-6px); } }
+    @keyframes tabarBob{ 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-4px); } }
 
     #tabarWarn{ position:fixed; left:50%; top:40%; transform:translate(-50%,-50%); z-index:9999; display:none; max-width:88vw;
-        padding:18px 28px; border-radius:22px; font-weight:900; font-size:24px; line-height:1.5; text-align:center; white-space:pre-line;
-        pointer-events:none; color:#fff; background:rgba(28,18,8,.9); border:4px solid #ffb13d; }
+        padding:12px 22px; border-radius:12px; font-weight:800; letter-spacing:1px; line-height:1.6; text-align:center; white-space:pre-line;
+        pointer-events:none; color:#fff; background:rgba(28,18,8,.92); border:2px solid #ffb13d; }
     #tabarWarn.show{ display:block; }
-    #tabarWarn.out, #tabarWarn.run{ background:rgba(70,10,4,.93); border-color:#ff5a32; }
-    #tabarWarn.track{ border-color:#8ff0ff; background:rgba(8,20,30,.9); }
+    #tabarWarn.out, #tabarWarn.run{ background:rgba(70,10,4,.94); border-color:#ff5a32; }
+    #tabarWarn.track{ border-color:#8ff0ff; background:rgba(8,20,30,.92); }
 
     /* 準備・終了確認 */
     #tabarPrep, #tabarConfirm{ position:fixed; inset:0; z-index:13000; display:none; align-items:center; justify-content:center;
         padding:20px; background:rgba(8,5,18,.88); }
     #tabarConfirm{ z-index:13001; }
     #tabarPrep.open, #tabarConfirm.open{ display:flex; }
-    .tabar-sheet{ width:min(560px,94vw); max-height:92vh; overflow-y:auto; display:flex; flex-direction:column; gap:14px;
-        background:#140e24; border:2px solid #e6c26a; border-radius:24px; padding:26px 24px; color:#efe6ff; }
-    .tabar-sheet h2{ margin:0 0 4px; font-size:26px; color:#f7c948; text-align:center; letter-spacing:1px; }
-    .tabar-rules{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
-    .tabar-rules li{ font-size:18px; line-height:1.55; padding:10px 14px; border-radius:14px; background:rgba(143,240,255,.08); border-left:5px solid #8ff0ff; }
-    .tabar-status{ margin:0; min-height:1.6em; font-size:16px; line-height:1.6; color:#c9bcff; text-align:center; white-space:pre-line; }
+    .tabar-sheet{ width:min(480px,92vw); max-height:92vh; overflow-y:auto; display:flex; flex-direction:column; gap:12px;
+        background:#140e24; border:1px solid rgba(210,180,120,.5); border-radius:16px; padding:22px 20px; color:#efe6ff; }
+    .tabar-sheet h2{ margin:0 0 2px; font-size:clamp(17px,2.4vw,23px); color:var(--gold); text-align:center; letter-spacing:3px; }
+    .tabar-rules{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+    .tabar-rules li{ font-size:13.5px; line-height:1.7; color:rgba(226,216,255,.9); padding:7px 12px; border-radius:10px;
+        background:rgba(143,240,255,.07); border-left:3px solid #8ff0ff; }
+    .tabar-status{ margin:0; min-height:1.6em; font-size:13px; line-height:1.6; letter-spacing:.5px; color:#c9bcff; text-align:center; white-space:pre-line; }
     .tabar-status.err{ color:#ffb3a1; }
-    .tabar-go{ min-height:72px; border:none; border-radius:20px; font-family:inherit; font-weight:900; font-size:24px; color:#3a2600;
-        background:#f7c948; box-shadow:0 6px 0 #b8871c; cursor:pointer; touch-action:manipulation; }
-    .tabar-go:active{ transform:translateY(3px); box-shadow:0 3px 0 #b8871c; }
+    .tabar-go{ padding:15px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; letter-spacing:1px;
+        font-size:clamp(16px,2.6vw,21px); color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; cursor:pointer; touch-action:manipulation; }
+    .tabar-go:active{ transform:translateY(2px); box-shadow:0 2px 0 #b8871c; }
     .tabar-go:disabled{ opacity:.4; box-shadow:none; transform:none; }
-    .tabar-back{ min-height:60px; border:2px solid rgba(180,140,255,.55); border-radius:18px; background:rgba(20,14,40,.75); color:#e3d8ff;
-        font-family:inherit; font-weight:800; font-size:20px; cursor:pointer; touch-action:manipulation; }
+    .tabar-back{ padding:13px 0; border:1px solid rgba(180,140,255,.35); border-radius:11px; background:rgba(18,12,40,.6); color:#c9bcff;
+        font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; touch-action:manipulation; }
 
     /* 床さがし（AR開始直後） */
     #tabarScan{ position:fixed; inset:0; z-index:9998; display:none; flex-direction:column; justify-content:space-between; align-items:center;
-        padding:calc(env(safe-area-inset-top) + 20px) 18px calc(env(safe-area-inset-bottom) + 24px); pointer-events:none; }
+        padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 22px); pointer-events:none; }
     #tabarScan.open{ display:flex; }
-    #tabarScan .tabar-card{ max-width:92vw; text-align:center; background:rgba(10,7,22,.84); border:2px solid #8ff0ff; border-radius:20px; padding:16px 22px; }
-    .tabar-lead{ margin:0; font-size:22px; font-weight:900; line-height:1.5; color:#fff; }
-    .tabar-sub{ margin:6px 0 0; font-size:17px; font-weight:700; color:#8ff0ff; }
-    #tabarScan .tabar-actions{ width:min(480px,92vw); display:flex; flex-direction:column; gap:12px; pointer-events:auto; }
+    #tabarScan .tabar-card{ max-width:92vw; text-align:center; background:rgba(10,7,26,.88); border:1px solid rgba(143,240,255,.6); border-radius:12px; padding:12px 20px; }
+    .tabar-lead{ margin:0; font-size:15px; font-weight:800; letter-spacing:1px; line-height:1.6; color:#f2e6c4; }
+    .tabar-sub{ margin:4px 0 0; font-size:13px; color:#8ff0ff; }
+    #tabarScan .tabar-actions{ width:min(420px,92vw); display:flex; flex-direction:column; gap:10px; pointer-events:auto; }
 
-    /* プレイ中のHUDをタッチしやすい大きさに（内容・並びは既存と同じ） */
-    body.tabar #dhud{ padding:10px 10px calc(env(safe-area-inset-bottom) + 12px); }
-    body.tabar #dhud .bar{ max-width:96vw; gap:12px; padding:12px 14px; border-radius:20px; }
-    body.tabar #dhud button{ min-height:60px; min-width:104px; padding:10px 20px; font-size:19px; border-radius:16px; }
-    body.tabar #dhud .pill{ font-size:18px; padding:10px 20px; }
-    body.tabar #dexBtn{ top:calc(env(safe-area-inset-top) + 12px); font-size:19px; padding:14px 20px; border-radius:16px; }
-    body.tabar #buddyStandby button{ min-height:56px; font-size:18px; }
-    body.tabar #toast{ font-size:20px; padding:14px 26px; max-width:90vw; }
-    body.tabar #heat{ width:120px; height:120px; border-width:5px; }
+    /* プレイ中のHUD：文字サイズは既存のまま、指で押しやすい高さ（44px）だけ確保 */
+    body.tabar #dhud button{ min-height:44px; }
+    body.tabar #dexBtn{ min-height:44px; }
+    body.tabar #buddyStandby button{ min-height:44px; }
     @media (prefers-reduced-motion: reduce){ #tabarDig.show{ animation:none; } #tabarGlow{ transition:none; } }
 </style>
 <video id="tabarVideo" playsinline muted autoplay></video>
