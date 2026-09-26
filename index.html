@@ -6924,10 +6924,14 @@ const _TA_DEG=Math.PI/180;
 /* ---------- 準備画面（メニュー → 対応確認 → ロード完了待ち → 開始） ---------- */
 function tabarReady(){ const b=document.body.classList; return siteReady && PRELOAD_DONE && !b.contains("loading") && !b.contains("preloading"); }
 async function tabarDetect(){
-    const r={ secure:(window.isSecureContext!==false), webxr:false,
+    const r={ secure:(window.isSecureContext!==false), webxr:false, xrApi:!!(navigator.xr && navigator.xr.isSessionSupported),
               camera:!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), orient:("DeviceOrientationEvent" in window) };
     try{ if(navigator.xr && navigator.xr.isSessionSupported) r.webxr = await navigator.xr.isSessionSupported("immersive-ar").catch(()=>false); }catch(_){ r.webxr=false; }
     return r;
+}
+function tabarNoXRReason(sup){
+    if(!sup.xrApi) return "このブラウザはWebXRに対応していません。\nAndroidでは Chrome を使ってください。";
+    return "この端末ではWebXRのARが使えません。\nARCore対応端末か、「Google Play 開発者サービス（AR）」がインストール・更新済みかを確認してください。";
 }
 function tabarPrepStatus(msg, isErr){ tabarUI.prepStatus.textContent=msg||""; tabarUI.prepStatus.classList.toggle("err", !!isErr); }
 function tabarOpenPrep(){
@@ -6948,7 +6952,8 @@ function tabarRefreshPrep(){
     if(!sup.secure){ tabarPrepStatus._final=true; tabarPrepStatus("カメラARは https:// で開いたページでだけ使えます。\nURLを確認してください。", true); return; }
     if(!sup.webxr && !(sup.camera && sup.orient)){ tabarPrepStatus._final=true; tabarPrepStatus("この端末・ブラウザではカメラARを使えません。\nメニューの「ヘッドセットなしで試す」で遊べます。", true); return; }
     tabarUI.startBtn.disabled=false;
-    tabarPrepStatus(sup.webxr ? "じゅんびができました（AR：床と位置をカメラで認識）" : "じゅんびができました（AR：カメラ映像＋向きセンサー＋歩数）");
+    tabarPrepStatus(sup.webxr ? "じゅんびができました（AR：床と位置をカメラで認識）"
+        : "じゅんびができました（AR：カメラ映像＋向きセンサー＋歩数）\n※"+tabarNoXRReason(sup).replace(/\n/g,""));
 }
 function tabarClosePrep(){
     tabarUI.prep.classList.remove("open");
@@ -6974,20 +6979,22 @@ async function tabarStart(){
     const sup=TABAR.support||{};
     TABAR.starting=true; tabarUI.startBtn.disabled=true; unlockAudio();
     tabarPrepStatus("カメラをじゅんびしています…");
-    let err=null;
+    const errs=[];   // 方式ごとの失敗理由（どちらで止まったか分かるように全て表示）
     if(sup.webxr){
         const r=await tabarStartWebXR();   // requestSession はタップ直後に呼ぶ（ユーザー操作が必要）
         if(r===true){ TABAR.starting=false; return; }
-        err=r;
+        errs.push("【AR（ARCore）】"+r);
+    } else {
+        errs.push("【AR（ARCore）】"+tabarNoXRReason(sup));
     }
     if(sup.camera && sup.orient){
         const r=await tabarStartCamera();
         if(r===true){ TABAR.starting=false; return; }
-        err=r;
+        errs.push("【カメラ＋センサー】"+r);
     }
     TABAR.starting=false;
     tabarUI.startBtn.disabled=false;
-    tabarPrepStatus(err || "カメラARを開始できませんでした。", true);
+    tabarPrepStatus(errs.join("\n\n") || "カメラARを開始できませんでした。", true);
 }
 
 /* ---------- webxr バックエンド（Android Chrome＋ARCore） ---------- */
@@ -7044,12 +7051,14 @@ async function tabarStartCamera(){
     const v=tabarUI.video; v.muted=true; v.setAttribute("playsinline",""); v.srcObject=stream;
     try{ await v.play(); }catch(e){ stop(); return "カメラの映像を表示できませんでした。"; }
     if(!v.videoWidth) await new Promise(r=>{ v.addEventListener("loadedmetadata", ()=>r(), { once:true }); setTimeout(r, 1500); });
-    TABAR.orient.has=false;
+    const O=TABAR.orient; O.has=false; O.relT=0; O.evRel=0; O.evAbs=0; O.nullEv=0;
     window.addEventListener("deviceorientation", tabarOnOrient);
+    window.addEventListener("deviceorientationabsolute", tabarOnOrientAbs);
     window.addEventListener("devicemotion", tabarOnMotion);
-    const got=await new Promise(r=>{ const t0=performance.now(); (function w(){ if(TABAR.orient.has) return r(true); if(performance.now()-t0>2000) return r(false); setTimeout(w, 100); })(); });
-    if(!got){ window.removeEventListener("deviceorientation", tabarOnOrient); window.removeEventListener("devicemotion", tabarOnMotion); stop();
-        return "向きセンサーの値を取得できませんでした。\nこの端末ではタブレットARを使えません。"; }
+    const got=await new Promise(r=>{ const t0=performance.now(); (function w(){ if(O.has) return r(true); if(performance.now()-t0>2500) return r(false); setTimeout(w, 100); })(); });
+    if(!got){ tabarRemoveSensorListeners(); stop();
+        if(O.evRel+O.evAbs===0) return "向きセンサーのイベントが届きませんでした。\nChrome の「サイトの設定 → モーション センサー」が許可になっているか確認してください。";
+        return "この端末には向きを測るセンサー（ジャイロ／方位）が無いため、この方式は使えません。"; }
     TABAR.stream=stream;
     stream.getVideoTracks().forEach(t=>t.addEventListener("ended", ()=>{ if(TABAR.on && TABAR.backend==="camera"){ tabarCleanup(); showToast("カメラが止まったので、メニューにもどりました", 3200); } }));
     tabarEnterCommon("camera");
@@ -7059,9 +7068,21 @@ async function tabarStartCamera(){
     tabarBeginScan();
     return true;
 }
-function tabarOnOrient(e){
-    if(e.beta==null) return;
-    const o=TABAR.orient; o.a=(e.alpha||0)*_TA_DEG; o.b=e.beta*_TA_DEG; o.g=(e.gamma||0)*_TA_DEG; o.has=true;
+function tabarOnOrient(e){   // 相対方位（ジャイロ）。値があればこちらを優先
+    const o=TABAR.orient; o.evRel++;
+    if(e.beta==null){ o.nullEv++; return; }
+    o.relT=performance.now(); o.a=(e.alpha||0)*_TA_DEG; o.b=e.beta*_TA_DEG; o.g=(e.gamma||0)*_TA_DEG; o.has=true;
+}
+function tabarOnOrientAbs(e){   // 絶対方位（加速度＋地磁気）。ジャイロが無い端末の代替
+    const o=TABAR.orient; o.evAbs++;
+    if(e.beta==null){ o.nullEv++; return; }
+    if(o.relT && performance.now()-o.relT<500) return;
+    o.a=(e.alpha||0)*_TA_DEG; o.b=e.beta*_TA_DEG; o.g=(e.gamma||0)*_TA_DEG; o.has=true;
+}
+function tabarRemoveSensorListeners(){
+    window.removeEventListener("deviceorientation", tabarOnOrient);
+    window.removeEventListener("deviceorientationabsolute", tabarOnOrientAbs);
+    window.removeEventListener("devicemotion", tabarOnMotion);
 }
 // 歩数検出：重力込み加速度の大きさの山を1歩とみなし、その時点の向きへ歩幅ぶん進む
 function tabarOnMotion(e){
@@ -7199,8 +7220,7 @@ function tabarCleanup(){
     if(GAME.active) endGame(false);
     if(TABAR.hitSource){ try{ TABAR.hitSource.cancel(); }catch(_){} TABAR.hitSource=null; }
     TABAR.session=null;
-    window.removeEventListener("deviceorientation", tabarOnOrient);
-    window.removeEventListener("devicemotion", tabarOnMotion);
+    tabarRemoveSensorListeners();
     if(TABAR.stream){ try{ TABAR.stream.getTracks().forEach(t=>t.stop()); }catch(_){} TABAR.stream=null; }
     tabarUI.video.srcObject=null;
     tabarRemoveSiteBorder(); TABAR.area=null;
