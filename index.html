@@ -248,6 +248,7 @@
     <p id="loadingNote"><i></i>データを読み込み中…</p>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
+    <button class="desktop-btn" id="startTabletAR" style="display:none">📷 タブレットARであそぶ（カメラ）</button>
 
     <div class="cardgrid">
       <div class="opt wide" id="optReco">
@@ -570,6 +571,12 @@
         <p class="k">VR/AR：左スティックで歩く／右スティックでスナップ回転。右手中指グリップ＋右スティック上下＝サイトの高さ／左右＝相棒との距離。<br>PC：WASD＋マウス（クリックで視点固定）<br>スマホ：画面左半分でスティック／右半分をなぞって見回す</p>
       </section>
       <section>
+        <h3>📷 タブレットAR</h3>
+        <p>タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。タイトルの<b>「タブレットARであそぶ」</b>から始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
+        <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
+        <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します。終わるときは「やめる」→「おわる」。</p>
+      </section>
+      <section>
         <h3>🛠 会場セットアップ（サイト非表示時）</h3>
         <p>メニューでサイトを<b>「非表示」</b>にすると、ワールドの広さ（横X・奥行Z）を指定できます（スマホ・PC＋おすすめオンは<b>30×30m</b>）。会場の中央に立って向きを合わせ、<b>左手中指グリップ＋Ｙ長押し</b>で、その位置を中央・前方(-Z)として基準を確定します。以降のリセットでは発掘ポイントだけが再配置されます。</p>
         <p class="k">左手Ｘ長押し：フィールドの矩形オーラ＋発掘ポイントのヒントを表示。</p>
@@ -771,6 +778,120 @@
     </div>
 </div>
 <!-- ▲▲ 追加ここまで ▲▲ -->
+<!-- ═══ タブレットAR（カメラ映像・画面上の表示・準備／床検出／終了確認） ═══ -->
+<style>
+    #tabarVideo{ position:fixed; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; display:none; background:#000; }
+    body.tabar-cam #tabarVideo{ display:block; }
+    body.tabar-cam > canvas{ position:fixed; inset:0; z-index:1; }          /* 透明な3D描画をカメラ映像の上に重ねる */
+    body.tabar-xr{ background:transparent !important; }                      /* WebXR：カメラ映像はXR側が描画。DOMは上に重なるUIだけ */
+    body.tabar-xr > canvas{ visibility:hidden; }
+    body.loading #startTabletAR, body.preloading #startTabletAR{ opacity:.45; pointer-events:none; filter:grayscale(.4); }
+
+    #tabarTouch{ position:fixed; inset:0; z-index:12; display:none; touch-action:none; -webkit-user-select:none; user-select:none; }
+    body.tabar.playing #tabarTouch{ display:block; }
+    #tabarGlow{ --tg:120,180,255; position:fixed; inset:0; z-index:13; pointer-events:none; opacity:0;
+        box-shadow:inset 0 0 90px 34px rgb(var(--tg)); transition:opacity .25s; }
+
+    /* 探知メーター：近いほど多く・暖色に点灯（中央リングと同じ色の区切り） */
+    #tabarRadar{ position:fixed; top:calc(env(safe-area-inset-top) + 74px); left:50%; transform:translateX(-50%); z-index:9996;
+        display:none; align-items:center; gap:8px; padding:10px 18px 10px 14px; border-radius:999px; pointer-events:none;
+        background:rgba(10,7,22,.74); border:2px solid rgba(143,240,255,.4); }
+    body.tabar #tabarRadar.on{ display:flex; }
+    #tabarRadar .ic{ font-size:26px; line-height:1; }
+    #tabarRadar i{ display:block; width:30px; height:24px; border-radius:7px; background:rgba(255,255,255,.14); transition:background .15s; }
+    #tabarRadar[data-lvl="1"] i:nth-of-type(-n+1), #tabarRadar[data-lvl="2"] i:nth-of-type(-n+2){ background:rgb(120,180,255); }
+    #tabarRadar[data-lvl="3"] i:nth-of-type(-n+3), #tabarRadar[data-lvl="4"] i:nth-of-type(-n+4){ background:rgb(255,180,60); }
+    #tabarRadar[data-lvl="5"] i:nth-of-type(-n+5){ background:rgb(255,90,50); }
+
+    #tabarDig{ position:fixed; top:calc(env(safe-area-inset-top) + 142px); left:50%; transform:translateX(-50%); z-index:9996; display:none;
+        padding:14px 26px; border-radius:18px; background:#f7c948; color:#3a2600; font-weight:900; font-size:22px; line-height:1.3;
+        box-shadow:0 6px 0 #b8871c, 0 12px 30px rgba(0,0,0,.4); pointer-events:none; white-space:nowrap; }
+    #tabarDig.show{ display:block; animation:tabarBob 1.1s ease-in-out infinite; }
+    @keyframes tabarBob{ 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-6px); } }
+
+    #tabarWarn{ position:fixed; left:50%; top:40%; transform:translate(-50%,-50%); z-index:9999; display:none; max-width:88vw;
+        padding:18px 28px; border-radius:22px; font-weight:900; font-size:24px; line-height:1.5; text-align:center; white-space:pre-line;
+        pointer-events:none; color:#fff; background:rgba(28,18,8,.9); border:4px solid #ffb13d; }
+    #tabarWarn.show{ display:block; }
+    #tabarWarn.out, #tabarWarn.run{ background:rgba(70,10,4,.93); border-color:#ff5a32; }
+    #tabarWarn.track{ border-color:#8ff0ff; background:rgba(8,20,30,.9); }
+
+    /* 準備・終了確認 */
+    #tabarPrep, #tabarConfirm{ position:fixed; inset:0; z-index:13000; display:none; align-items:center; justify-content:center;
+        padding:20px; background:rgba(8,5,18,.88); }
+    #tabarConfirm{ z-index:13001; }
+    #tabarPrep.open, #tabarConfirm.open{ display:flex; }
+    .tabar-sheet{ width:min(560px,94vw); max-height:92vh; overflow-y:auto; display:flex; flex-direction:column; gap:14px;
+        background:#140e24; border:2px solid #e6c26a; border-radius:24px; padding:26px 24px; color:#efe6ff; }
+    .tabar-sheet h2{ margin:0 0 4px; font-size:26px; color:#f7c948; text-align:center; letter-spacing:1px; }
+    .tabar-rules{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+    .tabar-rules li{ font-size:18px; line-height:1.55; padding:10px 14px; border-radius:14px; background:rgba(143,240,255,.08); border-left:5px solid #8ff0ff; }
+    .tabar-status{ margin:0; min-height:1.6em; font-size:16px; line-height:1.6; color:#c9bcff; text-align:center; white-space:pre-line; }
+    .tabar-status.err{ color:#ffb3a1; }
+    .tabar-go{ min-height:72px; border:none; border-radius:20px; font-family:inherit; font-weight:900; font-size:24px; color:#3a2600;
+        background:#f7c948; box-shadow:0 6px 0 #b8871c; cursor:pointer; touch-action:manipulation; }
+    .tabar-go:active{ transform:translateY(3px); box-shadow:0 3px 0 #b8871c; }
+    .tabar-go:disabled{ opacity:.4; box-shadow:none; transform:none; }
+    .tabar-back{ min-height:60px; border:2px solid rgba(180,140,255,.55); border-radius:18px; background:rgba(20,14,40,.75); color:#e3d8ff;
+        font-family:inherit; font-weight:800; font-size:20px; cursor:pointer; touch-action:manipulation; }
+
+    /* 床さがし（AR開始直後） */
+    #tabarScan{ position:fixed; inset:0; z-index:9998; display:none; flex-direction:column; justify-content:space-between; align-items:center;
+        padding:calc(env(safe-area-inset-top) + 20px) 18px calc(env(safe-area-inset-bottom) + 24px); pointer-events:none; }
+    #tabarScan.open{ display:flex; }
+    #tabarScan .tabar-card{ max-width:92vw; text-align:center; background:rgba(10,7,22,.84); border:2px solid #8ff0ff; border-radius:20px; padding:16px 22px; }
+    .tabar-lead{ margin:0; font-size:22px; font-weight:900; line-height:1.5; color:#fff; }
+    .tabar-sub{ margin:6px 0 0; font-size:17px; font-weight:700; color:#8ff0ff; }
+    #tabarScan .tabar-actions{ width:min(480px,92vw); display:flex; flex-direction:column; gap:12px; pointer-events:auto; }
+
+    /* プレイ中のHUDをタッチしやすい大きさに（内容・並びは既存と同じ） */
+    body.tabar #dhud{ padding:10px 10px calc(env(safe-area-inset-bottom) + 12px); }
+    body.tabar #dhud .bar{ max-width:96vw; gap:12px; padding:12px 14px; border-radius:20px; }
+    body.tabar #dhud button{ min-height:60px; min-width:104px; padding:10px 20px; font-size:19px; border-radius:16px; }
+    body.tabar #dhud .pill{ font-size:18px; padding:10px 20px; }
+    body.tabar #dexBtn{ top:calc(env(safe-area-inset-top) + 12px); font-size:19px; padding:14px 20px; border-radius:16px; }
+    body.tabar #buddyStandby button{ min-height:56px; font-size:18px; }
+    body.tabar #toast{ font-size:20px; padding:14px 26px; max-width:90vw; }
+    body.tabar #heat{ width:120px; height:120px; border-width:5px; }
+    @media (prefers-reduced-motion: reduce){ #tabarDig.show{ animation:none; } #tabarGlow{ transition:none; } }
+</style>
+<video id="tabarVideo" playsinline muted autoplay></video>
+<div id="tabarTouch"></div>
+<div id="tabarGlow"></div>
+<div id="tabarRadar" data-lvl="0" aria-hidden="true"><span class="ic">🔍</span><i></i><i></i><i></i><i></i><i></i></div>
+<div id="tabarDig">光っている土のブロックをタップして掘ろう！</div>
+<div id="tabarWarn" role="alert"></div>
+<div id="tabarScan">
+    <div class="tabar-card">
+        <p class="tabar-lead" id="tabarScanMsg"></p>
+        <p class="tabar-sub" id="tabarScanSub"></p>
+    </div>
+    <div class="tabar-actions">
+        <button id="tabarPlaceBtn" class="tabar-go" disabled>ここではじめる</button>
+        <button id="tabarScanBack" class="tabar-back">もどる</button>
+    </div>
+</div>
+<div id="tabarPrep">
+    <div class="tabar-sheet" role="dialog" aria-modal="true" aria-label="タブレットARの準備">
+        <h2>📷 タブレットARであそぶ</h2>
+        <ul class="tabar-rules">
+            <li>🚶 歩いてさがそう。走らないでね</li>
+            <li>👀 画面だけでなく、まわりもよく見よう</li>
+            <li>🟦 水色の線の外には出ないでね</li>
+            <li>🤲 タブレットは両手で持とう。掘るときは片手で持って、もう片方の手で土をタップ</li>
+        </ul>
+        <p id="tabarPrepStatus" class="tabar-status"></p>
+        <button id="tabarStartBtn" class="tabar-go" disabled>カメラをはじめる</button>
+        <button id="tabarPrepBack" class="tabar-back">もどる</button>
+    </div>
+</div>
+<div id="tabarConfirm">
+    <div class="tabar-sheet" role="dialog" aria-modal="true" aria-label="終了の確認">
+        <h2>おわりにする？</h2>
+        <button id="tabarConfirmYes" class="tabar-go">おわる</button>
+        <button id="tabarConfirmNo" class="tabar-back">つづける</button>
+    </div>
+</div>
 <div id="toast"></div>
 
 <script type="importmap">
@@ -786,6 +907,26 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRButton} from "three/addons/webxr/VRButton.js";
 import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
+
+/* ===================================================== * プラットフォーム判定（Quest / タブレットAR） * questXR()      … ヘッドセット（Quest）でXR表示中。コントローラー・手元パネル等のQuest固有UIはこれで分岐 * worldScaleXR() … 実寸スケールで表示中（Quest と タブレットAR）。恐竜/出土品の大きさ・高さ・パネル倍率はこれで分岐 * タブレットAR中は GAME.desktop=true（タッチ経路）でゲームを動かし、見た目のスケールだけ Quest と共通にする。 * ===================================================== */
+const TABAR = { on:false, backend:null, phase:"idle" };   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
+const TABAR_CFG = {
+    questSiteMode: 1,   // Quest入室時の既定サイト倍率（siteMode の初期値）。おすすめオン時はタブレットARもこれに合わせる
+    questWorld:    10,  // Quest入室時の既定ワールド広さ（WORLD_X/Z の初期値）
+    digNear:       1.2, // 掘れる距離：タブレット位置→ブロック外周の水平距離(m)。発掘ポイントに着いてから掘る
+    dogFwd:        1.5, // 相棒の前方距離(m)。縦持ちタブレットの画面下端に見える距離
+    edgeWarn:      1.0, // 活動範囲の境界の手前この距離(m)で注意表示
+    siteMargin:    1.5, // サイト表示時：発掘点の外側に取る活動範囲の余白(m)
+    runSpeed:      1.4, // 移動の速さ(m/s)がこれを超え続けたら「ゆっくり歩こう」（webxr）
+    runSteps:      4,   // 1.2秒あたりの歩数がこれ以上で「ゆっくり歩こう」（camera）
+    stride:        0.45,// 1歩の歩幅(m)：年長児の目安（camera）
+    stepThresh:    1.2, // 歩数検出：加速度の山のしきい値(m/s²)（camera）
+    deviceH:       0.9, // 床からタブレットまでの高さ(m)：年長児が胸の前で持つ目安（camera／ヒットテスト非対応時）
+    camLongFov:    64,  // 背面カメラ映像の長辺方向の画角(度)。端末ごとに微調整（camera）
+    camDpr:        1.5  // cameraバックエンド時の描画解像度の上限（カメラ映像と合成するため負荷を抑える）
+};
+function questXR(){ return renderer.xr.isPresenting && !TABAR.on; }
+function worldScaleXR(){ return (typeof renderer!=="undefined" && renderer.xr.isPresenting) || TABAR.on; }
 
 /* ===================================================== * 定数 * ===================================================== */
 // ワールド単位＝メートル（XR local-floor基準）。プレイヤーは等身大なので全て実寸で扱う。
@@ -808,7 +949,7 @@ function dinoScale(){
 }
 function artScale(){
     // 出土品：VR/ARは常に原寸（実物大）固定／PC・スマホは倍率・広さに比例
-    if(typeof renderer!=="undefined" && renderer.xr.isPresenting) return 1.0;
+    if(typeof renderer!=="undefined" && worldScaleXR()) return 1.0;
     const f = customWorldOn()? Math.min(WORLD_X,WORLD_Z)/10 : siteMode;
     return Math.max(0.3, f);
 }
@@ -823,7 +964,7 @@ function placeAtStart(){
 // 基準の位置・向き設定（左手グリップ＋Y長押しのときだけ）：現在地をフィールド中央、向きを-Z軸に
 function recenterFieldHere(){
     if(typeof player==="undefined") return;
-    applyXRHeight();   // 右中指グリップ＋スティックで変えたワールド高さをデフォルト（目線から1.5m下）に戻す
+    if(!TABAR.on) applyXRHeight();   // 右中指グリップ＋スティックで変えたワールド高さをデフォルト（目線から1.5m下）に戻す
     const cw=camera.getWorldPosition(new THREE.Vector3());
     const d=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())); d.y=0;
     if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
@@ -867,7 +1008,7 @@ let worldAura=null, worldAuraT=0;
 function showWorldAura(rectOnly){
     if(worldAura){ stage.remove(worldAura); worldAura=null; }
     const g=new THREE.Group();
-    const presenting = (typeof renderer!=="undefined") && renderer.xr.isPresenting;
+    const presenting = (typeof renderer!=="undefined") && worldScaleXR();
     if(customWorldOn() && !presenting){   // VR/ARは常時fieldBorderが出すので、ここでは矩形を出さない（＝grip+Yは発掘ポイントのみ）
         const hx=WORLD_X/2, hz=WORLD_Z/2;
         for(const yoff of [0.05, 0.14]){   // 二重線
@@ -910,7 +1051,7 @@ function updateWorldAura(dt){
 let fieldBorder=null;
 const _fbPts=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
 function updateFieldBorder(){
-    const show = (typeof renderer!=="undefined") && renderer.xr.isPresenting && customWorldOn();
+    const show = (typeof renderer!=="undefined") && worldScaleXR() && customWorldOn();
     if(!show){ if(fieldBorder) fieldBorder.visible=false; return; }
     if(!fieldBorder){
         fieldBorder=new THREE.Group();
@@ -998,7 +1139,7 @@ const GROUND_BELOW_EYE = 1.5;            // 目線から地面までの距離（
 function applyXRHeight(){ if(typeof camera==="undefined"||typeof stage==="undefined") return 0;
     const cy=camera.getWorldPosition(new THREE.Vector3()).y;
     const baseY=cy-GROUND_BELOW_EYE; worldYAdjust=baseY; stage.position.y=baseY; return cy; }
-function dinoFootY(){ return (typeof renderer!=="undefined" && renderer.xr.isPresenting) ? 1.5 : (popY()-0.05); }   // 恐竜の足元：VR/ARは床から1.5m、PC/スマホは従来
+function dinoFootY(){ return (typeof renderer!=="undefined" && worldScaleXR()) ? 1.5 : (popY()-0.05); }   // 恐竜の足元：VR/ARは床から1.5m、PC/スマホは従来
 let   WALK_SPEED    = 3.5;               // 歩行速度（m/s）※ワールドサイズで自動調整
 const BASE_WALK=3.5, BASE_DOG_FWD=3.4, BASE_DOG_STAY=7.0;   // 現状(約34m)基準
 const SNAP_DEG      = 30;                 // スナップ回転
@@ -2422,7 +2563,7 @@ const _bcQ=new THREE.Quaternion(),_bcLo=new THREE.Vector3(),_bcFwd=new THREE.Vec
 function updateBuddyCardVR(){
     if(!_buddyCardVR || !_buddyCardVR.visible) return;                 // 自動では消さない（閉じるボタン/スタートまで表示）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    if(renderer.xr.isPresenting && inStandby && typeof placeYawFront==="function"){
+    if(questXR() && inStandby && typeof placeYawFront==="function"){
         _buddyCardVR.scale.setScalar(1.875);   // 現状(1.25)の1.5倍
         const yOff = 0.0;   // プレイヤー正面の中央（上下追従なし・左右追従あり）
         placeYawFront(_buddyCardVR, yOff, 2.2);   // 正面・ヨーのみ追従
@@ -2452,7 +2593,7 @@ function makeBuddyRandomBtnTex(){
 }
 function updateBuddyRandomBtn(){
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = renderer.xr.isPresenting && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // ランダムモードのみ・選択パネルの直下／TA・コレクションで候補が犬だけ／暗転中は非表示
+    const show = questXR() && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // ランダムモードのみ・選択パネルの直下／TA・コレクションで候補が犬だけ／暗転中は非表示
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); _buddyRandomBtn.scale.setScalar(1.0); }   // 幅=図鑑と同じ0.30。位置/向きは placeBuddyPanels で毎フレーム設定
     _buddyRandomBtn.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
@@ -2529,7 +2670,7 @@ function placeYawFront(obj, yOff, dist){   // 正面・指定の高さオフセ�
 let _bgKey="";
 const _pbH=new THREE.Vector3(),_pbP=new THREE.Vector3(),_pbUp=new THREE.Vector3(),_pbHq=new THREE.Quaternion(),_pbFwd=new THREE.Vector3(),_pbRight=new THREE.Vector3(),_pbAway=new THREE.Vector3(),_pbM4=new THREE.Matrix4();
 function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」を、発掘図鑑から水平右70cmの固定点に置き、向きだけプレイヤーへ正対
-    if(!renderer.xr.isPresenting || !leftCtrl || typeof dexPanel==="undefined") return;
+    if(!questXR() || !leftCtrl || typeof dexPanel==="undefined") return;
     player.updateMatrixWorld(true);
     const H=camera.getWorldPosition(_pbH);
     const P=dexPanel.mesh.getWorldPosition(_pbP);   // 発掘図鑑の位置（左手に追従）
@@ -2552,7 +2693,7 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
 function updateBuddyGridVR(){
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = renderer.xr.isPresenting && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy) && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // チャレンジ1ターン目は犬固定／TA・コレクションで候補が犬だけ／暗転中は非表示
+    const show = questXR() && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy) && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // チャレンジ1ターン目は犬固定／TA・コレクションで候補が犬だけ／暗転中は非表示
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
@@ -2561,7 +2702,7 @@ function updateBuddyGridVR(){
 const _bgRay=new THREE.Raycaster();
 const _bghO=new THREE.Vector3(),_bghD=new THREE.Vector3(),_bghQ=new THREE.Quaternion();
 function updateBuddyGridHover(){
-    if(!renderer.xr.isPresenting || !buddyGridVR.mesh.visible || !rightCtrl){ buddyGridVR.setHover(-1); return; }
+    if(!questXR() || !buddyGridVR.mesh.visible || !rightCtrl){ buddyGridVR.setHover(-1); return; }
     const o=_bghO; rightCtrl.getWorldPosition(o);
     const d=_bghD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_bghQ)).normalize();
     _bgRay.set(o,d);
@@ -2580,7 +2721,7 @@ const bubble = (function(){
     const _baseSX=5.28/buddyScale, _baseSY=1.6/buddyScale;
     spr.scale.set(_baseSX,_baseSY,1); spr.position.set(0,3.3,-1.0); spr.visible=false;   // 少し上＆奥（相棒の後ろ側）へ
     dog.add(spr); bubbleSpr=spr;
-    function applyBubbleScale(){ const m=(typeof renderer!=="undefined" && renderer.xr.isPresenting)?0.75:1.0; spr.scale.set(_baseSX*m,_baseSY*m,1); }
+    function applyBubbleScale(){ const m=(typeof renderer!=="undefined" && worldScaleXR())?0.75:1.0; spr.scale.set(_baseSX*m,_baseSY*m,1); }
     function draw(text){
         ctx.clearRect(0,0,W,H);
         ctx.fillStyle="rgba(255,252,244,0.96)";
@@ -2711,7 +2852,7 @@ const taClock=(function(){
     return { spr, draw, show(v){ spr.visible=v; } };
 })();
 function updateTAClock(){
-    if(!renderer.xr.isPresenting){ taClock.show(false); return; }
+    if(!questXR()){ taClock.show(false); return; }
     if(GAME._heightReady===false){ taClock.draw("高さ調整中…",false); taClock.show(true); return; }   // 安定するまで開始不可
     if(GAME.mode!=="time"){   // コレクション：スタンバイ/カウントダウン/リザルトのサイン
         if(GAME.active && GAME.standby){ taClock.draw("右トリガー2回で開始",false); taClock.show(true); }
@@ -2755,7 +2896,7 @@ function updateChRoundPanel(){
     const active = (typeof GAME!=="undefined") && GAME.challenge && GAME.ch && ((TA.state==="ready" && GAME.active) || TA.state==="countdown");
     // DOM（デスクトップ/スマホ）
     let dom=document.getElementById("chRoundDom");
-    if(active && !renderer.xr.isPresenting){
+    if(active && !questXR()){
         if(!dom){ dom=document.createElement("div"); dom.id="chRoundDom";
             dom.style.cssText="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:40;background:rgba(18,14,30,.93);border:3px solid #ffcf5a;border-radius:18px;padding:16px 26px;text-align:center;color:#eafff9;font-weight:800;pointer-events:none;width:min(680px,94vw);box-sizing:border-box;";
             document.body.appendChild(dom); }
@@ -2774,13 +2915,13 @@ function updateChRoundPanel(){
         dom.style.display="block";
     } else if(dom){ dom.style.display="none"; dom._key=""; }
     // VR 3Dパネル（相棒えらびの上・同じ追従＝placeBuddyPanelsで配置）
-    if(!(active && renderer.xr.isPresenting) || (typeof _sceneDimmed!=="undefined" && _sceneDimmed)){ chRoundPanel.mesh.visible=false; return; }   // 暗転中（図鑑カード表示中）は非表示
+    if(!(active && questXR()) || (typeof _sceneDimmed!=="undefined" && _sceneDimmed)){ chRoundPanel.mesh.visible=false; return; }   // 暗転中（図鑑カード表示中）は非表示
     chRoundPanel.mesh.visible=true;
     const key=GAME.ch.turn+"|"+((GAME.ch.userTime)||TIME_LIMIT);
     if(key!==_chRoundKey){ _chRoundKey=key; chRoundPanel.draw(GAME.ch.turn); }
 }
 function updateDexPanel(){
-    if(!renderer.xr.isPresenting || !leftCtrl){ dexHolder.visible=false; return; }
+    if(!questXR() || !leftCtrl){ dexHolder.visible=false; return; }
     dexHolder.visible = true;
     dexPanel.mesh.lookAt(camera.getWorldPosition(new THREE.Vector3()));
 }
@@ -2788,7 +2929,7 @@ function updateDexPanel(){
 const _dexRay=new THREE.Raycaster();
 const _dhO=new THREE.Vector3(),_dhD=new THREE.Vector3(),_dhQ=new THREE.Quaternion();
 function updateDexHover(){
-    if(!renderer.xr.isPresenting || !dexHolder.visible || !rightCtrl){ dexPanel.setHover(-1); return; }
+    if(!questXR() || !dexHolder.visible || !rightCtrl){ dexPanel.setHover(-1); return; }
     const o=_dhO; rightCtrl.getWorldPosition(o);
     const d=_dhD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_dhQ)).normalize();
     _dexRay.set(o,d);
@@ -2886,7 +3027,7 @@ function updateHologram(){
     const mg=g.userData.mg, card=g.userData.card;
     const camDir=camera.getWorldDirection(_hCamDir); camDir.y=0; if(camDir.lengthSq()<1e-4) camDir.set(0,0,-1); camDir.normalize();
     const viewYaw=Math.atan2(-camDir.x, -camDir.z);   // gの+x=プレイヤーの右／-z=奥 になるヨー
-    if(renderer.xr.isPresenting && leftCtrl){
+    if(questXR() && leftCtrl){
         const base=leftCtrl.getWorldPosition(_hBase); base.y+=0.30;
         g.position.lerp(base, 0.4);
         g.rotation.set(0, viewYaw, 0);                                   // プレイヤー基準：カード左・モデル右を固定
@@ -3202,7 +3343,7 @@ function preloadEverything(done){
 function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg, eggSize()); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);   // 卵は発掘ポイントに出現
-    const _eggDrop=(typeof renderer!=="undefined" && renderer.xr && renderer.xr.isPresenting)?0.25:0;   // VR/ARのみ卵の最高点・最終位置を25cm下げる（恐竜の高さは変えない）
+    const _eggDrop=(typeof renderer!=="undefined" && renderer.xr && worldScaleXR())?0.25:0;   // VR/ARのみ卵の最高点・最終位置を25cm下げる（恐竜の高さは変えない）
     popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15-_eggDrop, endY:popY()-0.25-_eggDrop, t:0, dur:0.7, spin:true });
     // 卵出現直前のプレイヤー位置から「奥方向」を一度だけ確定（Player→発掘ポイントの水平単位ベクトル）
     let backDir=null;
@@ -3267,7 +3408,7 @@ function animateDigDinos(now, dt){
         const sph = (now - (cont.userData.settleAt||now));
 
         // ── 気づく／対面 判定（VR/ARのみ。PC/スマホは気づかない）──
-        const _isXR=(typeof renderer!=="undefined" && renderer.xr.isPresenting);
+        const _isXR=(typeof renderer!=="undefined" && worldScaleXR());
         let facing=false, faceAmt=cont.userData._faceAmt||0;
         if(_isXR && camW && cont.userData.settled){
             const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
@@ -3395,7 +3536,7 @@ function excavate(t, byPlayer){
     if(GAME.digTarget==="dino"){
         revealDino(t.idx, t.pos, auraColor);       // 恐竜：オーラなし。岩→卵→孵化→恐竜
     } else {
-        const _artDrop=(typeof renderer!=="undefined" && renderer.xr && renderer.xr.isPresenting)?0.25:0;   // VR/ARのみ出土品・名称パネル・オーラ光球を25cm下げる
+        const _artDrop=(typeof renderer!=="undefined" && renderer.xr && worldScaleXR())?0.25:0;   // VR/ARのみ出土品・名称パネル・オーラ光球を25cm下げる
         const aura = addAura(t.idx, t.pos, 1);     // 出土品：脈動オーラあり
         if(_artDrop && aura && aura.glow) aura.glow.position.y -= _artDrop;   // 出土品を下げた分オーラ光球も下げる（足元の輪は地面のまま）
         const model = artModels[t.idx];
@@ -3502,7 +3643,7 @@ function showInfoPanel(idx, pos, color, imgUrl, title, sizeMul){
     sizeMul = sizeMul||1;
     const px = pos.x, pz = pos.z;                       // 発掘ポイントの真上に配置
     const build=(tex, ratio)=>{
-        const isXR = renderer.xr.isPresenting;
+        const isXR = worldScaleXR();
         const panelMul = isXR ? 0.4 : 1.0;   // VR/ARのみ0.4倍、PC/スマホは従来
         const h=PANEL_BASE_H*fieldScale()*0.5*panelMul, w=h*ratio;
         const grp=new THREE.Group();
@@ -3553,7 +3694,7 @@ function makeLabelSprite(text, color, width, y){
 }
 // 表示環境に応じてパネルの大きさを調整（高さは常に出土品のすぐ上）
 function updatePanelScale(){
-    const isVR=renderer.xr.isPresenting;
+    const isVR=worldScaleXR();
     const s = isVR ? 1.9 : (document.body.classList.contains("touch") ? 0.8 : 1.5);
     infoPanels.forEach(p=>{
         p.scale.setScalar(s);
@@ -3724,6 +3865,8 @@ function updateEntryButtons(){   // 入室ボタン＋発掘モデル表示ボ�
         if(IS_HEADSET){ if(wrap) wrap.style.display=""; if(dtop) dtop.style.display="none"; if(mvB) mvB.style.display="none"; if(mvAr) mvAr.style.display=""; }   // ヘッドセット：VR/ARで入室＋発掘モデル表示AR
         else { if(wrap) wrap.style.display="none"; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display=""; if(mvAr) mvAr.style.display="none"; }             // スマホ/PC：ヘッドセットなしで入室＋発掘モデル表示
     } else { if(wrap) wrap.style.display=""; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display=""; if(mvAr) mvAr.style.display=""; }                        // おすすめオフ：入室・発掘モデル表示とも両方表示
+    const tab=document.getElementById("startTabletAR");
+    if(tab) tab.style.display = (_coarsePtr && !IS_HEADSET) ? "" : "none";   // タブレットAR：タッチ端末（ヘッドセット以外）のみ
 }
 function applyDeviceAutoSize(){   // スマホ/PC＋おすすめオンのとき、サイト表示=3倍／サイト非表示=30×30m を自動設定（全モード共通）。ヘッドセットはこれまで通り
     if(!headsetDetected || IS_HEADSET || !recoOn) return;   // 判定完了まで／ヘッドセット／おすすめオフ：既定のまま
@@ -3957,7 +4100,7 @@ function updateHudReset(){
     const sa=document.getElementById("dShowAll"); if(sa) sa.style.display = (GAME.desktop && typeof gamePhase==="function" && gamePhase()==="play") ? "inline-block":"none";   // ③プレイ中のみ（スタンバイ/リザルトは非表示）
     const s=document.getElementById("dSite"); if(s) s.style.display = GAME.desktop? "none":"inline-block";   // ヘッドセットなし時はサイト切替ボタン不要
 }
-{ const r=document.getElementById("dReset"); if(r) r.onclick=()=>{ resetDexAndStandby(true); }; }   // grip+Y相当：中央＋向き(-z)に再センター
+{ const r=document.getElementById("dReset"); if(r) r.onclick=()=>{ resetDexAndStandby(!TABAR.on); }; }   // タブレットARはフィールドを現実空間に固定したまま（再センターしない）   // grip+Y相当：中央＋向き(-z)に再センター
 { const a=document.getElementById("dShowAll"); if(a) a.onclick=()=>{ completeAllDigs(); }; }         // grip+X相当：全発掘一斉完了（全表示）
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ if(GAME.mode!=="time" && GAME.complete) worldHud.toggleCollectPage(); else worldHud.toggleResultsPage(); updateResultBtn(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
@@ -4062,7 +4205,8 @@ function startGame(desktop){
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw(); updateTAButton();
     bubble.say(line("start"), 2600);
-    if(IS_TOUCH && desktop){ showCenterHint("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
+    if(TABAR.on){ showCenterHint("歩いて発掘ポイントをさがそう\n光っている土のブロックをタップで発掘・相棒をタップでなでる", 4600); }
+    else if(IS_TOUCH && desktop){ showCenterHint("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     unlockAudio();
 }
@@ -4071,6 +4215,7 @@ document.getElementById("startDesktop").onclick=()=> startGame(true);
 // VR開始/終了
 let _savedBg=null, _savedFog=null;
 renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
+    if(TABAR.on) return;   // タブレットARのセッションは tabarStartWebXR 側で初期化（Quest用の入室処理は行わない）
     const session=renderer.xr.getSession();
     try{ renderer.xr.setReferenceSpaceType("local-floor"); }catch(_){}   // 床基準を確実に
     // AR判定：セッションモード優先（初回はenvironmentBlendModeが未確定なことがある）
@@ -4093,6 +4238,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     if(!GAME.active) startGame(false);
 });
 renderer.xr.addEventListener("sessionend", ()=>{
+    if(TABAR.on){ tabarCleanup(); return; }   // タブレットAR終了（Quest用の退室処理は行わない）
     GAME.moveLock=false;   // 退室でフィールド固定を解除
     GAME._heightReady=false;   // 高さ確定フラグをリセット
     if(inAR){ scene.background=_savedBg; scene.fog=_savedFog; renderer.setClearColor(0x000000,1); }
@@ -4461,15 +4607,15 @@ function updateWorldHud(){
     const panelPhase=(ph==="result");
     if(panelPhase){
         // ④リザルト：横幅は据え置き、縦のみPC/スマホで0.85倍（上辺固定＝下辺だけ上げる）
-        const dist = renderer.xr.isPresenting ? 1.9 : 2.2;
+        const dist = questXR() ? 1.9 : 2.2;
         const meshH=2.098;
         const visH=2*dist*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2);  // その距離で画面いっぱいの高さ
         const targetH=visH*0.80;                            // 画面の高さに対する縦サイズ
         let s=targetH/meshH;
-        if(renderer.xr.isPresenting) s*=0.8*0.85;           // VR/ARはさらに縮小（現状の0.85倍）
+        if(questXR()) s*=0.8*0.85;           // VR/ARはさらに縮小（現状の0.85倍）
         worldHud.mesh.scale.set(s,s,1);   // 縦横同率＝潰さない
         const realH = meshH*s;                              // 実際の縦サイズ
-        if(renderer.xr.isPresenting){
+        if(questXR()){
             // プレイヤー位置に追従。水平（左右）を見た方向にパネルが来るが、上下は追従しない
             const yaw=Math.atan2(dir.x, dir.z);              // 水平の向きだけ取り出す
             const hdir=_whH.set(Math.sin(yaw),0,Math.cos(yaw));   // 水平前方（上下成分なし）
@@ -4485,14 +4631,14 @@ function updateWorldHud(){
         { const raise = visH*0.03; const topY = visH/2 - topMargin + raise; upOff = topY - realH/2; }   // PC/スマホは上辺固定＋3%上げ
         const p=_whP.copy(cam).addScaledVector(dir, dist).addScaledVector(up, upOff);
         worldHud.mesh.position.copy(p);
-        if(renderer.xr.isPresenting){ worldHud.mesh.lookAt(cam); }   // VRは常にカメラを向く
+        if(questXR()){ worldHud.mesh.lookAt(cam); }   // VRは常にカメラを向く
         else { worldHud.mesh.quaternion.copy(camQ); }                // PC/スマホは常に画面の真正面
         resultBuddy.update(s);   // 相棒(恐竜)モデルを板の手前へ
         return;
     }
     resultBuddy.update(1);   // リザルト以外＝相棒モデルは非表示
     worldHud.mesh.scale.set(1,1,1);
-    if(renderer.xr.isPresenting){
+    if(questXR()){
         // ②カウントダウン等：正面・ヨーのみ追従（首の縦振りには追従しない）
         const yaw=Math.atan2(dir.x, dir.z);
         const hdir=_whH.set(Math.sin(yaw),0,Math.cos(yaw));
@@ -4572,7 +4718,7 @@ function cardRevealFX(rarity){
     let lv=RARITY_FX_LV[rarity]||1; let col=RARITY_COL[rarity]||"#fff";
     if(!rarityOn){ lv=4; col=RARITY_COL["激レア"]; }   // レア度なしは演出を激レア相当に固定
     try{ playRevealSound(lv); }catch(_){}
-    if(renderer.xr.isPresenting) cardRevealFX3D(lv, col); else cardRevealFXDom(lv, col);
+    if(questXR()) cardRevealFX3D(lv, col); else cardRevealFXDom(lv, col);
 }
 function playRevealSound(lv){
     if(lv<=1){ beep(523,0.12,0.28,"sine"); return; }                                  // ノーマル（現状維持）
@@ -4886,7 +5032,7 @@ function taAdvance(){
     if((typeof holo!=="undefined"&&holo) && (GAME.complete || TA.state==="results")) return true;   // ホログラム表示中はリザルト→スタンバイに戻さない（先にカードを閉じる）
     if(TA.lockUntil && now<TA.lockUntil) return true;    // 連続入力の取りこぼし防止
     // XR入室直後、高さが安定するまでは開始（①→②）を受け付けない
-    const heightPending = renderer.xr.isPresenting && GAME._heightReady===false;
+    const heightPending = questXR() && GAME._heightReady===false;
     const startingUp = heightPending && ((GAME.mode!=="time" && GAME.standby) || TA.state==="ready");
     if(startingUp){ return true; }   // 調整中は開始しない（表示はupdateTAClock側）
     if(GAME.mode!=="time"){   // じっくりコレクション
@@ -5022,7 +5168,7 @@ document.getElementById("taResetAll").onclick=()=>{ if(confirm("タイムアタ�
 { const cb=document.getElementById("chResetBtn"); if(cb) cb.onclick=()=>{ if(confirm("発掘チャレンジの記録を削除しますか？")){ saveCh([]); openTAModal(); } }; }
 { const ab=document.getElementById("allResetBtn"); if(ab) ab.onclick=()=>{ if(confirm("じっくりコレクション・タイムアタック・発掘チャレンジ、すべての記録を削除しますか？")){ saveCol([]); saveTA([]); saveCh([]); openTAModal(); } }; }
 document.getElementById("taModal").addEventListener("click",e=>{ if(e.target.id==="taModal") e.currentTarget.style.display="none"; });
-document.getElementById("dQuit").onclick=()=> endGame(true);
+document.getElementById("dQuit").onclick=()=>{ if(TABAR.on){ tabarConfirmExit(); return; } endGame(true); };   // タブレットARは確認してからAR終了
 
 let toastT=null;
 function showCenterHint(msg, ms=4000){
@@ -5230,6 +5376,7 @@ function updateDigReady(){
             const to=c.clone().sub(o);
             const dist=to.length();
             if(dist<=DIG_REACH && to.normalize().dot(d)>=cosMax) ready=true;
+            if(ready && TABAR.on && Math.hypot(c.x-o.x, c.z-o.z) > TABAR_CFG.digNear + (t.block.userData.hitR||0.5)) ready=false;   // タブレットAR：その場まで歩いてきたら掘れる
         }
         t.digReady=ready;
         if(ready) anyDigReady=true;
@@ -5237,6 +5384,7 @@ function updateDigReady(){
     if(GAME.star && !GAME.star.done && GAME.star.block){   // スターポイントも黄色判定
         const c=GAME.star.block.getWorldPosition(_dv2); const to=c.clone().sub(o); const dist=to.length();
         GAME.star.digReady = allow && dist<=DIG_REACH && to.normalize().dot(d)>=cosMax;
+        if(GAME.star.digReady && TABAR.on && Math.hypot(c.x-o.x, c.z-o.z) > TABAR_CFG.digNear + (GAME.star.block.userData.hitR||0.5)) GAME.star.digReady=false;
         if(GAME.star.digReady) anyDigReady=true;
     }
 }
@@ -5543,7 +5691,7 @@ function petDog(){
 // VR：道具を持たず・相棒が注視中で・忙しくない時、相棒の近くで手を往復（撫でる）させたら喜ぶ
 const _cpC=new THREE.Vector3();
 function checkPetVR(){
-    if(!renderer.xr.isPresenting) return;
+    if(!questXR()) return;
     if(!GAME.canPet || digBusy || !dogAttentive) return;    // 道具が出ている時/発掘中/相棒が向いていない時はなでない
     const c=dog.getWorldPosition(_cpC); c.y += 0.4;
     for(const pr of lastProbes){
@@ -6071,7 +6219,8 @@ renderer.setAnimationLoop(()=>{
     if(window.__mvPreviewPause) return;   // 「発掘モデル表示」プレビュー中はゲーム描画を止め、メモリを空ける（追加機能）
     const now=performance.now();
     const dt=Math.min(0.05,(now-lastTime)/1000); lastTime=now;
-    const isVR=renderer.xr.isPresenting;
+    const isVR=questXR();
+    if(TABAR.on) tabarTick(dt, now);   // タブレットAR：カメラ姿勢・床検出・反応表示・安全チェック
 
     // ── 出土品ポップアニメ ──
     for(let i=popAnims.length-1;i>=0;i--){
@@ -6120,7 +6269,7 @@ renderer.setAnimationLoop(()=>{
     if(GAME.active){
         // ── 移動（VR：左スティック / デスクトップ：WASD） ──
         if(isVR){ handleVRLocomotion(dt); }
-        else if(GAME.desktop){ handleDesktopMove(dt); }
+        else if(GAME.desktop && !TABAR.on){ handleDesktopMove(dt); }   // タブレットARは実際に歩いて移動
 
         // ── 探査（プローブ位置と最寄りターゲットの信号） ──
         updateScan(dt, isVR, now);
@@ -6155,7 +6304,7 @@ renderer.setAnimationLoop(()=>{
         }
     }
     updateWorldHud();
-    if(renderer.xr.isPresenting && GAME._heightApplyUntil && performance.now()<GAME._heightApplyUntil){ applyXRHeight(); }   // 入室後の高さ追従
+    if(questXR() && GAME._heightApplyUntil && performance.now()<GAME._heightApplyUntil){ applyXRHeight(); }   // 入室後の高さ追従
     if(typeof updateRevealFX3D==="function") updateRevealFX3D();   // カード獲得3D演出（XR対応）
     if(GAME.desktop){ const want=(GAME.active && typeof gamePhase==="function"&&gamePhase()==="standby");
         if(want){ const key=dogOnly?("dog|"+dogLevelUp+"|"+dogStats.join(",")):(buddyRandom?"rnd|"+companionKind+"|"+buddyMode:"pick|"+companionKind+"|"+buddyMode)+"|"+buddyCandidates().join(",");
@@ -6186,7 +6335,7 @@ renderer.setAnimationLoop(()=>{
     updateHologram();   // 左手に追従＋カメラ向き＋モデルのモーション
 
     // デスクトップのカメラ向き適用
-    if(GAME.desktop && !isVR){
+    if(GAME.desktop && !isVR && !TABAR.on){   // タブレットARの向きはARトラッキングが決める
         camera.rotation.set(0,0,0);
         camera.rotateY(yaw); camera.rotateX(pitch);
     }
@@ -6309,7 +6458,7 @@ function updateScan(dt, isVR, now){
                 probes.push({pos:p, shaking:sp>1.0, sp, haptic:false, isHand:true}); }
         });
     } else if(GAME.desktop){
-        probes.push({pos:desktopProbe().clone(), shaking:true, sp:99, haptic:false, isHand:false}); // デスクトップは常時探査
+        probes.push({pos:(TABAR.on? tabarProbe() : desktopProbe()).clone(), shaking:true, sp:99, haptic:false, isHand:false}); // デスクトップは常時探査（タブレットARは足元の少し前＝Questの手元に相当）
     }
     lastProbes = probes;   // 撫で判定（手/コントローラー共通）に使う
 
@@ -6334,6 +6483,7 @@ function updateScan(dt, isVR, now){
             if(t._pulse<=0){
                 t._pulse=interval;
                 if(soundAllowed) sfxScan(bestSig);
+                if(TABAR.on) tabarPulse(bestSig);   // 音と同じリズムで画面の反応メーターを脈動
                 if(bestProbe.haptic){ if(bestProbe.handedness) vibrateHand(bestProbe.handedness, 26, 0.25+0.7*bestSig); else vibrate(26,0.25+0.7*bestSig); }
             }
         }
@@ -6347,6 +6497,7 @@ function updateScan(dt, isVR, now){
             break;
         }
     }
+    GAME.scanHeat = heat;       // 最寄りポイントの反応強度（タブレットARの画面表示に使用）
     GAME.sniffSig = sniffSig;   // 相棒が探す度合い（未発見ポイントの探知強度）
     // 中央リング（スマホ/PC）：①4m=青／②2.5m=橙／③2m=赤。振らなくても近づくだけで変化
     if(GAME.desktop){
@@ -6738,6 +6889,462 @@ if(LOOK_AT_PLAYER && typeof neckSwayEnabled==="function" && neckSwayEnabled(comp
       }
     }
 }
+
+/* =====================================================
+ * タブレットARモード（iPad / Androidタブレット）
+ * ゲーム進行は既存のタッチ経路（GAME.desktop=true）をそのまま使い、入力と表示だけを置き換える。
+ *   見る向き・位置 … ARトラッキング（スティック／なぞり見回しは使わない＝実際に歩いて探す）
+ *   背景           … カメラ映像
+ *   発掘           … 光っている土のブロックを直接タップ（既存の tapAt）
+ *   大きさ・高さ   … Quest と同じ（worldScaleXR）
+ * バックエンド（端末の対応状況で自動選択）
+ *   "webxr"  … WebXR immersive-ar（Android Chrome＋ARCore）。6DoF追跡＋床のヒットテスト＋DOMオーバーレイ
+ *   "camera" … WebXR AR が無い端末（iPadOS Safari 等）。getUserMedia の映像＋DeviceOrientation の向き＋歩数検出の移動
+ * ===================================================== */
+const tabarUI = {
+    video:document.getElementById("tabarVideo"), touch:document.getElementById("tabarTouch"), glow:document.getElementById("tabarGlow"),
+    radar:document.getElementById("tabarRadar"), dig:document.getElementById("tabarDig"), warn:document.getElementById("tabarWarn"),
+    scan:document.getElementById("tabarScan"), scanMsg:document.getElementById("tabarScanMsg"), scanSub:document.getElementById("tabarScanSub"),
+    placeBtn:document.getElementById("tabarPlaceBtn"), scanBack:document.getElementById("tabarScanBack"),
+    prep:document.getElementById("tabarPrep"), prepStatus:document.getElementById("tabarPrepStatus"),
+    startBtn:document.getElementById("tabarStartBtn"), prepBack:document.getElementById("tabarPrepBack"),
+    confirm:document.getElementById("tabarConfirm"), yes:document.getElementById("tabarConfirmYes"), no:document.getElementById("tabarConfirmNo")
+};
+Object.assign(TABAR, {
+    support:null, session:null, hitSource:null, stream:null, saved:null, savedSize:null,
+    floorY:0, floorN:0, floorOk:false, reticle:null, area:null, siteBorder:null,
+    orient:{ has:false, a:0, b:0, g:0 }, step:{ lp:null, base:null, up:false, lastT:0, times:[] },
+    walk:new THREE.Vector3(), tracking:true, spd:0, prevPos:new THREE.Vector3(), prevOk:false, runT:0,
+    keepPrep:false, warnKey:"", warnBeepT:0, lvl:-1, radarOn:false, digShown:false, pointers:new Map(), tapHintT:0, starting:false
+});
+const _taCp=new THREE.Vector3(), _taF=new THREE.Vector3(), _taU=new THREE.Vector3(), _taD=new THREE.Vector3(), _taN=new THREE.Vector3(), _taFw=new THREE.Vector3(), _taProbe=new THREE.Vector3();
+const _taQ=new THREE.Quaternion(), _taQ0=new THREE.Quaternion(), _taQ1=new THREE.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), _taZee=new THREE.Vector3(0,0,1), _taEul=new THREE.Euler();
+const _TA_DEG=Math.PI/180;
+
+/* ---------- 準備画面（メニュー → 対応確認 → ロード完了待ち → 開始） ---------- */
+function tabarReady(){ const b=document.body.classList; return siteReady && PRELOAD_DONE && !b.contains("loading") && !b.contains("preloading"); }
+async function tabarDetect(){
+    const r={ secure:(window.isSecureContext!==false), webxr:false,
+              camera:!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), orient:("DeviceOrientationEvent" in window) };
+    try{ if(navigator.xr && navigator.xr.isSessionSupported) r.webxr = await navigator.xr.isSessionSupported("immersive-ar").catch(()=>false); }catch(_){ r.webxr=false; }
+    return r;
+}
+function tabarPrepStatus(msg, isErr){ tabarUI.prepStatus.textContent=msg||""; tabarUI.prepStatus.classList.toggle("err", !!isErr); }
+function tabarOpenPrep(){
+    if(TABAR.on || TABAR.phase!=="idle") return;
+    if(document.body.classList.contains("loading") || document.body.classList.contains("preloading")) return;
+    TABAR.phase="prep"; TABAR.support=null; TABAR.starting=false;
+    tabarUI.prep.classList.add("open");
+    tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしています…");
+    tabarApplyQuestSize();
+    tabarDetect().then(r=>{ TABAR.support=r; });
+    const poll=()=>{ if(TABAR.phase!=="prep") return; tabarRefreshPrep(); if(tabarUI.startBtn.disabled && !tabarPrepStatus._final) setTimeout(poll, 200); };
+    tabarPrepStatus._final=false; poll();
+}
+function tabarRefreshPrep(){
+    if(TABAR.starting) return;
+    const sup=TABAR.support;
+    if(!sup || !tabarReady()){ tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしています…"); return; }
+    if(!sup.secure){ tabarPrepStatus._final=true; tabarPrepStatus("カメラARは https:// で開いたページでだけ使えます。\nURLを確認してください。", true); return; }
+    if(!sup.webxr && !(sup.camera && sup.orient)){ tabarPrepStatus._final=true; tabarPrepStatus("この端末・ブラウザではカメラARを使えません。\nメニューの「ヘッドセットなしで試す」で遊べます。", true); return; }
+    tabarUI.startBtn.disabled=false;
+    tabarPrepStatus(sup.webxr ? "じゅんびができました（AR：床と位置をカメラで認識）" : "じゅんびができました（AR：カメラ映像＋向きセンサー＋歩数）");
+}
+function tabarClosePrep(){
+    tabarUI.prep.classList.remove("open");
+    if(TABAR.phase==="prep"){ TABAR.phase="idle"; tabarRestoreSize(); }
+}
+// おすすめオン時は、フィールドの広さ・サイト倍率をQuest入室時の既定値にそろえる（恐竜・出土品のスケールもQuestと同じになる）
+function tabarApplyQuestSize(){
+    TABAR.savedSize=null;
+    if(!recoOn || IS_HEADSET) return;   // おすすめオフはメニューで選んだ値をそのまま使う
+    const q=TABAR_CFG.questSiteMode, w=TABAR_CFG.questWorld;
+    if(siteMode===q && WORLD_X===w && WORLD_Z===w) return;
+    TABAR.savedSize={ site:siteMode, wx:WORLD_X, wz:WORLD_Z };
+    if(siteMode!==q) setSiteMode(q, true);
+    if(WORLD_X!==w || WORLD_Z!==w){ setWorldX(w); setWorldZ(w); }
+}
+function tabarRestoreSize(){
+    const s=TABAR.savedSize; TABAR.savedSize=null; if(!s) return;
+    if(siteMode!==s.site) setSiteMode(s.site, true);
+    if(WORLD_X!==s.wx || WORLD_Z!==s.wz){ setWorldX(s.wx); setWorldZ(s.wz); }
+}
+async function tabarStart(){
+    if(TABAR.starting || TABAR.phase!=="prep" || !tabarReady()) return;
+    const sup=TABAR.support||{};
+    TABAR.starting=true; tabarUI.startBtn.disabled=true; unlockAudio();
+    tabarPrepStatus("カメラをじゅんびしています…");
+    let err=null;
+    if(sup.webxr){
+        const r=await tabarStartWebXR();   // requestSession はタップ直後に呼ぶ（ユーザー操作が必要）
+        if(r===true){ TABAR.starting=false; return; }
+        err=r;
+    }
+    if(sup.camera && sup.orient){
+        const r=await tabarStartCamera();
+        if(r===true){ TABAR.starting=false; return; }
+        err=r;
+    }
+    TABAR.starting=false;
+    tabarUI.startBtn.disabled=false;
+    tabarPrepStatus(err || "カメラARを開始できませんでした。", true);
+}
+
+/* ---------- webxr バックエンド（Android Chrome＋ARCore） ---------- */
+async function tabarStartWebXR(){
+    let session;
+    try{
+        session = await navigator.xr.requestSession("immersive-ar", {
+            requiredFeatures:["hit-test"], optionalFeatures:["dom-overlay","local-floor"], domOverlay:{ root:document.body } });
+    }catch(e){ console.warn("tabar webxr", e); return "ARを開始できませんでした（"+((e&&e.name)||"error")+"）。"; }
+    if(!session.domOverlayState){   // 画面のボタン類を重ねられない＝操作できないため、カメラ映像方式へ切り替える
+        try{ await session.end(); }catch(_){}
+        return "この端末ではAR画面にボタンを表示できません。";
+    }
+    tabarEnterCommon("webxr");
+    try{
+        renderer.xr.setReferenceSpaceType("local");   // 原点＝開始時の端末位置。床の高さはヒットテストで確定
+        await renderer.xr.setSession(session);
+    }catch(e){ console.warn("tabar setSession", e); TABAR.keepPrep=true; try{ await session.end(); }catch(_){} tabarCleanup(); return "ARを開始できませんでした。"; }
+    TABAR.session=session;
+    try{ const vs=await session.requestReferenceSpace("viewer"); TABAR.hitSource=await session.requestHitTestSource({ space:vs }); }
+    catch(e){ console.warn("tabar hit-test", e); TABAR.hitSource=null; }   // 無ければ端末の高さから床を推定
+    tabarBeginScan();
+    return true;
+}
+function tabarXRFrame(){
+    const frame=renderer.xr.getFrame ? renderer.xr.getFrame() : null;
+    const ref=renderer.xr.getReferenceSpace ? renderer.xr.getReferenceSpace() : null;
+    if(!frame || !ref) return null;
+    const vp=frame.getViewerPose(ref);
+    TABAR.tracking = !!vp && !vp.emulatedPosition;   // emulatedPosition＝位置を見失っている
+    return { frame, ref };
+}
+
+/* ---------- camera バックエンド（iPadOS Safari 等） ---------- */
+function tabarCamErrMsg(e){
+    const n=(e&&e.name)||"";
+    if(n==="NotAllowedError" || n==="SecurityError") return "カメラの使用が許可されませんでした。\nブラウザの設定でカメラを「許可」にしてから、もう一度お試しください。";
+    if(n==="NotFoundError" || n==="OverconstrainedError") return "カメラが見つかりませんでした。";
+    if(n==="NotReadableError" || n==="AbortError") return "カメラを使用できません。\nほかのアプリがカメラを使っていないか確認してください。";
+    return "カメラを開始できませんでした（"+(n||"error")+"）。";
+}
+async function tabarStartCamera(){
+    // iOS：モーションセンサーの許可はタップ直後（他の非同期処理より前）に要求する
+    let perm;
+    try{ const DOE=window.DeviceOrientationEvent; perm=(DOE && typeof DOE.requestPermission==="function") ? DOE.requestPermission() : Promise.resolve("granted"); }
+    catch(_){ perm=Promise.resolve("denied"); }
+    let st; try{ st=await perm; }catch(_){ st="denied"; }
+    if(st!=="granted") return "動きと向きのセンサーが許可されませんでした。\nページを再読み込みして、確認が出たら「許可」を選んでください。";
+    try{ const DME=window.DeviceMotionEvent; if(DME && typeof DME.requestPermission==="function") await DME.requestPermission(); }catch(_){}   // 向きの許可と共通（通常は確認なしで許可）
+    let stream;
+    try{ stream=await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1280 }, height:{ ideal:960 } } }); }
+    catch(e){ console.warn("tabar camera", e); return tabarCamErrMsg(e); }
+    const stop=()=>{ try{ stream.getTracks().forEach(t=>t.stop()); }catch(_){} tabarUI.video.srcObject=null; };
+    const v=tabarUI.video; v.muted=true; v.setAttribute("playsinline",""); v.srcObject=stream;
+    try{ await v.play(); }catch(e){ stop(); return "カメラの映像を表示できませんでした。"; }
+    if(!v.videoWidth) await new Promise(r=>{ v.addEventListener("loadedmetadata", ()=>r(), { once:true }); setTimeout(r, 1500); });
+    TABAR.orient.has=false;
+    window.addEventListener("deviceorientation", tabarOnOrient);
+    window.addEventListener("devicemotion", tabarOnMotion);
+    const got=await new Promise(r=>{ const t0=performance.now(); (function w(){ if(TABAR.orient.has) return r(true); if(performance.now()-t0>2000) return r(false); setTimeout(w, 100); })(); });
+    if(!got){ window.removeEventListener("deviceorientation", tabarOnOrient); window.removeEventListener("devicemotion", tabarOnMotion); stop();
+        return "向きセンサーの値を取得できませんでした。\nこの端末ではタブレットARを使えません。"; }
+    TABAR.stream=stream;
+    stream.getVideoTracks().forEach(t=>t.addEventListener("ended", ()=>{ if(TABAR.on && TABAR.backend==="camera"){ tabarCleanup(); showToast("カメラが止まったので、メニューにもどりました", 3200); } }));
+    tabarEnterCommon("camera");
+    camera.position.set(0, TABAR_CFG.deviceH, 0);   // 床(y=0)からの端末の高さ
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, TABAR_CFG.camDpr)); renderer.setSize(innerWidth, innerHeight);
+    tabarFitCameraFov();
+    tabarBeginScan();
+    return true;
+}
+function tabarOnOrient(e){
+    if(e.beta==null) return;
+    const o=TABAR.orient; o.a=(e.alpha||0)*_TA_DEG; o.b=e.beta*_TA_DEG; o.g=(e.gamma||0)*_TA_DEG; o.has=true;
+}
+// 歩数検出：重力込み加速度の大きさの山を1歩とみなし、その時点の向きへ歩幅ぶん進む
+function tabarOnMotion(e){
+    const a=e.accelerationIncludingGravity; if(!a || a.x==null) return;
+    const m=Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z), S=TABAR.step;
+    S.lp = (S.lp==null) ? m : S.lp*0.8 + m*0.2;          // 手ぶれを平滑化
+    S.base = (S.base==null) ? m : S.base*0.98 + m*0.02;  // 重力の基準値
+    if(!(TABAR.phase==="play" && GAME.active)) return;
+    const t=performance.now();
+    if(!S.up && S.lp > S.base + TABAR_CFG.stepThresh){ S.up=true; }
+    else if(S.up && S.lp < S.base + 0.3){ S.up=false; if(t-S.lastT > 280){ S.lastT=t; tabarOnStep(t); } }
+}
+function tabarOnStep(t){
+    TABAR.step.times.push(t);
+    TABAR.walk.addScaledVector(tabarForwardH(_taFw), TABAR_CFG.stride);
+}
+function tabarCamPose(dt){
+    const o=TABAR.orient;
+    if(o.has){
+        const sa=((screen.orientation && screen.orientation.angle) || window.orientation || 0)*_TA_DEG;
+        _taEul.set(o.b, o.a, -o.g, "YXZ");
+        camera.quaternion.setFromEuler(_taEul).multiply(_taQ1).multiply(_taQ0.setFromAxisAngle(_taZee, -sa));
+    }
+    const k=Math.min(1, dt*6);   // 1歩ぶんをなめらかに進む
+    player.position.x += (TABAR.walk.x - player.position.x)*k;
+    player.position.z += (TABAR.walk.z - player.position.z)*k;
+}
+// カメラ映像（object-fit:cover）と3Dの画角を合わせる
+function tabarFitCameraFov(){
+    const v=tabarUI.video, sw=innerWidth, sh=innerHeight;
+    camera.aspect=sw/sh;
+    const vw=v.videoWidth, vh=v.videoHeight;
+    if(vw && vh){
+        const s=Math.max(sw/vw, sh/vh);
+        const T=Math.tan(TABAR_CFG.camLongFov*_TA_DEG/2);
+        const longIsV=(vh>=vw);
+        const tLong=T*(longIsV ? sh/(vh*s) : sw/(vw*s));   // 画面に見えている長辺方向の範囲
+        const tV=longIsV ? tLong : tLong/camera.aspect;
+        camera.fov=2*Math.atan(tV)/_TA_DEG;
+    }
+    camera.updateProjectionMatrix();
+}
+addEventListener("resize", ()=>{ if(TABAR.on && TABAR.backend==="camera") setTimeout(tabarFitCameraFov, 60); });
+
+/* ---------- 共通：AR開始・床の決定・終了 ---------- */
+function tabarEnterCommon(backend){
+    TABAR.on=true; TABAR.backend=backend;
+    tabarUI.prep.classList.remove("open");
+    document.body.classList.add("tabar", backend==="webxr" ? "tabar-xr" : "tabar-cam");
+    menu.style.display="none";
+    TABAR.saved={ bg:scene.background, fog:scene.fog, camPos:camera.position.clone(), fov:camera.fov, dpr:renderer.getPixelRatio() };
+    scene.background=null; scene.fog=null; renderer.setClearColor(0x000000, 0);   // 背景＝現実（カメラ映像）
+    inAR=true; updateSiteVis(); updatePanelScale();
+    player.position.set(0,0,0); player.rotation.set(0,0,0); camera.quaternion.identity();
+    controllers.forEach(c=>{ c.visible=false; if(c.userData.grip) c.userData.grip.visible=false; });   // 画面タップの入力元にレーザー等を出さない
+    hands.forEach(h=>{ h.visible=false; });
+    TABAR.walk.set(0,0,0); TABAR.step.times.length=0; TABAR.step.up=false; TABAR.spd=0; TABAR.prevOk=false; TABAR.runT=0;
+    TABAR.warnKey=""; TABAR.lvl=-1; TABAR.radarOn=false; TABAR.digShown=false; TABAR.tracking=true; TABAR.pointers.clear();
+    tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on"); tabarUI.glow.style.opacity="0";
+}
+function tabarReticle(){
+    if(TABAR.reticle) return TABAR.reticle;
+    const g=new THREE.Group();
+    const mat=new THREE.MeshBasicMaterial({ color:0x8ff0ff, transparent:true, opacity:0.95, side:THREE.DoubleSide, depthTest:false, depthWrite:false });
+    const ring=new THREE.Mesh(new THREE.RingGeometry(0.16, 0.22, 40), mat); ring.rotation.x=-Math.PI/2; g.add(ring);
+    const dot=new THREE.Mesh(new THREE.CircleGeometry(0.035, 20), mat); dot.rotation.x=-Math.PI/2; g.add(dot);
+    g.traverse(o=>{ o.renderOrder=999; }); g.visible=false; scene.add(g);
+    TABAR.reticle=g; return g;
+}
+function tabarBeginScan(){
+    TABAR.phase="scan"; TABAR.floorOk=false; TABAR.floorN=0;
+    stage.visible=false;   // 床が決まるまでフィールドは出さない
+    tabarReticle().visible=false;
+    tabarUI.placeBtn.disabled=true;
+    tabarUI.scanMsg.textContent="あそぶ場所のまん中に立って、タブレットを床に向けてね";
+    tabarUI.scanSub.textContent="床をさがしています… ゆっくり左右に動かしてね";
+    tabarUI.scan.classList.add("open");
+}
+function tabarFloorSample(y, x, z){
+    const ret=tabarReticle();
+    if(y==null){ ret.visible=false; return; }
+    if(TABAR.floorN===0 || Math.abs(y-TABAR.floorY)>0.08){ TABAR.floorY=y; TABAR.floorN=1; }
+    else { TABAR.floorY += (y-TABAR.floorY)*0.2; TABAR.floorN++; }
+    ret.position.set(x, TABAR.floorY+0.005, z); ret.visible=true;
+    if(!TABAR.floorOk && TABAR.floorN>=18){   // 安定して見つかったら確定できる（以後は保持）
+        TABAR.floorOk=true; tabarUI.placeBtn.disabled=false;
+        tabarUI.scanSub.textContent="床が見つかりました！「ここではじめる」をタップしてね";
+        try{ chord([523,659],0.06,"triangle",0.35); }catch(_){}
+    }
+}
+function tabarScanTick(fr){
+    const cp=camera.getWorldPosition(_taCp);
+    const d=_taD.set(0,0,-1).applyQuaternion(camera.getWorldQuaternion(_taQ));
+    if(TABAR.backend==="webxr" && TABAR.hitSource){
+        let hit=null;
+        if(fr){ const res=fr.frame.getHitTestResults(TABAR.hitSource);
+            for(const r of res){ const p=r.getPose(fr.ref); if(!p) continue;
+                const o=p.transform.orientation; _taN.set(0,1,0).applyQuaternion(_taQ0.set(o.x,o.y,o.z,o.w));
+                const q=p.transform.position;
+                if(_taN.y>0.85 && q.y<cp.y-0.3){ hit=q; break; } } }   // 端末より下の水平面＝床
+        tabarFloorSample(hit?hit.y:null, hit?hit.x:0, hit?hit.z:0);
+        return;
+    }
+    // 床の推定（camera／ヒットテスト非対応）：端末の高さ deviceH の下に床があるとみなす
+    const fy = (TABAR.backend==="camera") ? 0 : cp.y-TABAR_CFG.deviceH;
+    if(d.y < -0.2){ const t=(fy-cp.y)/d.y; if(t>0 && t<5){ tabarFloorSample(fy, cp.x+d.x*t, cp.z+d.z*t); return; } }
+    tabarFloorSample(null);
+}
+function tabarPlace(){
+    if(TABAR.phase!=="scan" || !TABAR.floorOk) return;
+    const fy=TABAR.floorY;
+    stage.position.y=fy; worldYAdjust=fy;
+    recenterFieldHere();   // 現在地＝フィールド中央、向いている方向＝奥(-Z)（Quest の基準設定と同じ処理）
+    stage.position.y=fy; worldYAdjust=fy;
+    stage.visible=true;
+    tabarReticle().visible=false;
+    tabarUI.scan.classList.remove("open");
+    TABAR.area=tabarComputeArea(); tabarBuildSiteBorder();
+    TABAR.phase="play";
+    TABAR.walk.copy(player.position);
+    startGame(true);   // 既存のタッチ経路で開始（スタンバイ→カウントダウン→プレイ）
+    DOG_FWD=TABAR_CFG.dogFwd;
+    GAME._heightReady=true;
+}
+function tabarConfirmExit(){ tabarUI.confirm.classList.add("open"); }
+function tabarExit(){
+    tabarUI.confirm.classList.remove("open");
+    if(TABAR.backend==="webxr" && TABAR.session && renderer.xr.isPresenting){
+        try{ TABAR.session.end(); return; }catch(_){}   // sessionend → tabarCleanup
+    }
+    tabarCleanup();
+}
+function tabarCleanup(){
+    if(!TABAR.on) return;
+    if(GAME.active) endGame(false);
+    if(TABAR.hitSource){ try{ TABAR.hitSource.cancel(); }catch(_){} TABAR.hitSource=null; }
+    TABAR.session=null;
+    window.removeEventListener("deviceorientation", tabarOnOrient);
+    window.removeEventListener("devicemotion", tabarOnMotion);
+    if(TABAR.stream){ try{ TABAR.stream.getTracks().forEach(t=>t.stop()); }catch(_){} TABAR.stream=null; }
+    tabarUI.video.srcObject=null;
+    tabarRemoveSiteBorder(); TABAR.area=null;
+    if(TABAR.reticle) TABAR.reticle.visible=false;
+    const sv=TABAR.saved||{};
+    scene.background=(sv.bg!==undefined)?sv.bg:scene.background; scene.fog=(sv.fog!==undefined)?sv.fog:scene.fog; renderer.setClearColor(0x000000, 1);
+    inAR=false; stage.position.y=0; worldYAdjust=0; stage.visible=true;
+    player.position.set(0,0,0); player.rotation.set(0,0,0);
+    camera.position.copy(sv.camPos||new THREE.Vector3(0,1.6,0)); camera.quaternion.identity();
+    camera.fov=sv.fov||60; camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+    if(sv.dpr) renderer.setPixelRatio(sv.dpr); renderer.setSize(innerWidth, innerHeight);
+    try{ renderer.xr.setReferenceSpaceType("local-floor"); }catch(_){}
+    controllers.forEach(c=>{ c.visible=true; if(c.userData.grip) c.userData.grip.visible=true; if(c.userData.line) c.userData.line.visible=true; });
+    hands.forEach(h=>{ h.visible=true; });
+    tabarUI.scan.classList.remove("open"); tabarUI.confirm.classList.remove("open"); tabarUI.prep.classList.remove("open");
+    tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on"); tabarUI.glow.style.opacity="0";
+    document.body.classList.remove("tabar","tabar-xr","tabar-cam");
+    TABAR.on=false; TABAR.backend=null;
+    updateSiteVis(); updatePanelScale(); applyWorldParams();   // 相棒距離などを通常値へ
+    menu.style.display="flex"; refreshDexHTML();
+    if(TABAR.keepPrep){ TABAR.keepPrep=false; TABAR.phase="prep"; tabarUI.prep.classList.add("open"); return; }   // 開始に失敗：準備画面に戻って別方式を試す
+    TABAR.phase="idle"; TABAR.starting=false;
+    tabarRestoreSize();
+}
+
+/* ---------- 活動範囲（安全）：境界の表示・接近/はみ出し/走りすぎの警告 ---------- */
+function tabarComputeArea(){
+    if(customWorldOn()) return { cx:fieldCX, cz:fieldCZ, yaw:fieldYaw, hx:WORLD_X/2, hz:WORLD_Z/2 };   // 既存のフィールド境界（水色の線）と同じ
+    // サイト表示：発掘点の分布＋開始位置を囲む範囲（余白つき）
+    const cp=camera.getWorldPosition(_taCp);
+    let minX=cp.x-1, maxX=cp.x+1, minZ=cp.z-1, maxZ=cp.z+1;
+    for(const p of ARTPOS){ if(!p) continue; minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minZ=Math.min(minZ,p.z); maxZ=Math.max(maxZ,p.z); }
+    const m=TABAR_CFG.siteMargin;
+    return { cx:(minX+maxX)/2, cz:(minZ+maxZ)/2, yaw:0, hx:(maxX-minX)/2+m, hz:(maxZ-minZ)/2+m };
+}
+function tabarBuildSiteBorder(){   // カスタムワールドは既存の fieldBorder が表示するので、サイト表示時のみ作る
+    tabarRemoveSiteBorder();
+    const A=TABAR.area; if(!A || customWorldOn()) return;
+    const g=new THREE.Group();
+    const cs=[[-A.hx,-A.hz],[A.hx,-A.hz],[A.hx,A.hz],[-A.hx,A.hz],[-A.hx,-A.hz]];
+    for(const yoff of [0.05,0.14]){
+        const pts=cs.map(([x,z])=>new THREE.Vector3(A.cx+x, GROUND_Y+yoff, A.cz+z));
+        const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color:0x8ff0ff, transparent:true, opacity:1, depthTest:true }));
+        ln.frustumCulled=false; g.add(ln);
+    }
+    stage.add(g); TABAR.siteBorder=g;
+}
+function tabarRemoveSiteBorder(){
+    const g=TABAR.siteBorder; if(!g) return;
+    stage.remove(g); g.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); TABAR.siteBorder=null;
+}
+function tabarWarnBeep(){ beep(392,0.18,0.35,"square"); setTimeout(()=>beep(330,0.22,0.35,"square"), 200); }
+function tabarSafety(dt, now){
+    const cp=camera.getWorldPosition(_taCp);
+    let edge=Infinity;
+    const A=TABAR.area;
+    if(A){ const dx=cp.x-A.cx, dz=cp.z-A.cz, c=Math.cos(A.yaw), s=Math.sin(A.yaw);
+        const lx=dx*c-dz*s, lz=dx*s+dz*c; edge=Math.min(A.hx-Math.abs(lx), A.hz-Math.abs(lz)); }   // worldToField と同じ回転
+    let running=false;
+    if(TABAR.backend==="webxr"){
+        if(TABAR.prevOk && dt>0){ const v=Math.hypot(cp.x-TABAR.prevPos.x, cp.z-TABAR.prevPos.z)/dt; TABAR.spd=TABAR.spd*0.85 + Math.min(v,6)*0.15; }
+        TABAR.prevPos.copy(cp); TABAR.prevOk=true;
+        TABAR.runT = (TABAR.spd>TABAR_CFG.runSpeed) ? TABAR.runT+dt : Math.max(0, TABAR.runT-dt*2);
+        running = TABAR.runT>0.5;
+    } else {
+        const ts=TABAR.step.times; while(ts.length && now-ts[0]>1200) ts.shift();
+        running = ts.length>=TABAR_CFG.runSteps;
+    }
+    let key="", msg="";
+    if(edge<0){ key="out"; msg="エリアの外に出ています\n水色の線の内側にもどろう"; }
+    else if(running){ key="run"; msg="走らないで、ゆっくり歩こうね"; }
+    else if(TABAR.backend==="webxr" && !TABAR.tracking){ key="track"; msg="まわりを映しながら\nタブレットをゆっくり動かしてね"; }
+    else if(edge<TABAR_CFG.edgeWarn){ key="near"; msg="エリアのはしっこです\n内側へもどろう"; }
+    if(key!==TABAR.warnKey){
+        TABAR.warnKey=key; tabarUI.warn.textContent=msg; tabarUI.warn.className=key?("show "+key):"";
+        if(key==="out" || key==="run"){ tabarWarnBeep(); TABAR.warnBeepT=now; }
+    } else if((key==="out" || key==="run") && now-TABAR.warnBeepT>1500){ tabarWarnBeep(); TABAR.warnBeepT=now; }
+}
+
+/* ---------- 探知の画面表示（コントローラー振動の代わり：音＋画面） ---------- */
+// 画面の水平前方：縦持ちで前を向けても、床に向けて傾けても、歩く方向を指す
+function tabarForwardH(out){
+    camera.getWorldQuaternion(_taQ);
+    const f=_taF.set(0,0,-1).applyQuaternion(_taQ), u=_taU.set(0,1,0).applyQuaternion(_taQ);
+    out.set(f.x, 0, f.z);
+    if(f.y<=0) out.add(_taD.set(u.x, 0, u.z));   // 下向きに傾けたときは端末の上辺方向も前方
+    if(out.lengthSq()<1e-6) out.set(0,0,-1);
+    return out.normalize();
+}
+function tabarProbe(){   // 探知の基準点：タブレットの真下から0.5m前（Questで手に持つコントローラーの位置に相当）
+    const cp=camera.getWorldPosition(_taCp);
+    tabarForwardH(_taFw);
+    return _taProbe.set(cp.x+_taFw.x*0.5, GROUND_Y, cp.z+_taFw.z*0.5);
+}
+function tabarPulse(sig){
+    const r=tabarUI.radar; if(!TABAR.radarOn || !r.animate) return;
+    try{ r.animate([{ transform:"translateX(-50%) scale("+(1.04+0.08*sig).toFixed(3)+")" },{ transform:"translateX(-50%) scale(1)" }], { duration:170, easing:"ease-out" }); }catch(_){}
+}
+function tabarFeedback(){
+    const ph=gamePhase();
+    const play=(ph==="play");
+    if(play!==TABAR.radarOn){ TABAR.radarOn=play; tabarUI.radar.classList.toggle("on", play); }
+    const heat=play ? (GAME.scanHeat||0) : 0;
+    const lvl = heat>HEAT_HOT?5 : heat>0.6?4 : heat>HEAT_WARM?3 : heat>0.2?2 : heat>PROX_SIG?1 : 0;   // 色の区切りは中央リング(#heat)と同じ
+    if(lvl!==TABAR.lvl){
+        TABAR.lvl=lvl; tabarUI.radar.dataset.lvl=String(lvl);
+        tabarUI.glow.style.setProperty("--tg", lvl>=5?"255,90,50" : lvl>=3?"255,180,60" : "120,180,255");
+        tabarUI.glow.style.opacity=String([0,0,0.18,0.32,0.46,0.62][lvl]);
+    }
+    const dig = play && anyDigReady;
+    if(dig!==TABAR.digShown){ TABAR.digShown=dig; tabarUI.dig.classList.toggle("show", dig); if(dig){ try{ chord([660,880],0.05,"triangle",0.3); }catch(_){} } }
+}
+
+/* ---------- 毎フレーム ---------- */
+function tabarTick(dt, now){
+    const fr=(TABAR.backend==="webxr") ? tabarXRFrame() : null;
+    if(fr){ for(const c of controllers){ if(c.userData.line) c.userData.line.visible=false; } }   // 画面タッチの入力元（レーザー）は描かない
+    if(TABAR.backend==="camera") tabarCamPose(dt);
+    if(TABAR.phase==="scan") tabarScanTick(fr);
+    else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); }
+}
+
+/* ---------- タッチ：画面を直接タップ（土ブロック＝発掘／相棒＝なでる） ---------- */
+tabarUI.touch.addEventListener("pointerdown", e=>{ unlockAudio(); TABAR.pointers.set(e.pointerId, { x:e.clientX, y:e.clientY, t:performance.now() }); e.preventDefault(); });
+tabarUI.touch.addEventListener("pointerup", e=>{
+    const p=TABAR.pointers.get(e.pointerId); TABAR.pointers.delete(e.pointerId);
+    if(!p || !GAME.active || TABAR.phase!=="play") return;
+    if(Math.hypot(e.clientX-p.x, e.clientY-p.y)>28 || performance.now()-p.t>600) return;   // 子どもの指に合わせて、ずれ・長押しを広めに許容
+    const hit=tapAt((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1);
+    if(!hit && gamePhase()==="play" && GAME.targets.some(t=>t.discovered) && performance.now()-TABAR.tapHintT>3000){
+        TABAR.tapHintT=performance.now(); showToast("土のブロックのそばまで歩いて、光ったらタップしよう", 2600);
+    }
+});
+tabarUI.touch.addEventListener("pointercancel", e=>{ TABAR.pointers.delete(e.pointerId); });
+document.body.addEventListener("beforexrselect", e=>{ if(TABAR.on) e.preventDefault(); });   // 画面のタッチはDOM側で処理（XRのselectは使わない）
+
+/* ---------- ボタン ---------- */
+document.getElementById("startTabletAR").onclick=()=> tabarOpenPrep();
+tabarUI.startBtn.onclick=()=>{ tabarStart(); };
+tabarUI.prepBack.onclick=()=>{ tabarClosePrep(); };
+tabarUI.placeBtn.onclick=()=>{ tabarPlace(); };
+tabarUI.scanBack.onclick=()=>{ tabarExit(); };
+tabarUI.yes.onclick=()=>{ tabarExit(); };
+tabarUI.no.onclick=()=>{ tabarUI.confirm.classList.remove("open"); };
 
 /* ===================================================== * リサイズ * ===================================================== */
 addEventListener("resize",()=>{
