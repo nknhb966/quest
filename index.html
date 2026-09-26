@@ -3404,7 +3404,7 @@ function excavate(t, byPlayer){
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
             model.scale.setScalar( artScale() );   // 全環境：サイト/ワールド寸法に比例
-            popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6-_artDrop, endY:popY()-_artDrop, t:0, dur:1.0 });
+            popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.35-_artDrop, endY:popY()-_artDrop, t:0, dur:1.0 });
             // 名称ラベル（恐竜と同様にモデルの下側・全モード）
             if(model.userData.nameLabel) stage.remove(model.userData.nameLabel);
             const _an=(function(){ const r=(typeof mvArtifactRows==="function")?mvArtifactRows():[]; return (r[t.idx] && r[t.idx].name) ? r[t.idx].name : ("出土品 No."+String(t.idx+1).padStart(2,"0")); })();
