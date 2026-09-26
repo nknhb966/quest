@@ -3202,7 +3202,8 @@ function preloadEverything(done){
 function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg, eggSize()); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);   // 卵は発掘ポイントに出現
-    popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15, endY:popY()-0.25, t:0, dur:0.7, spin:true });
+    const _eggDrop=(typeof renderer!=="undefined" && renderer.xr && renderer.xr.isPresenting)?0.25:0;   // VR/ARのみ卵の最高点・最終位置を25cm下げる（恐竜の高さは変えない）
+    popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15-_eggDrop, endY:popY()-0.25-_eggDrop, t:0, dur:0.7, spin:true });
     // 卵出現直前のプレイヤー位置から「奥方向」を一度だけ確定（Player→発掘ポイントの水平単位ベクトル）
     let backDir=null;
     try{ const cp=camera.getWorldPosition(new THREE.Vector3());
