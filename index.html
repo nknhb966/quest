@@ -3402,12 +3402,13 @@ function excavate(t, byPlayer){
             model.position.set(t.pos.x, GROUND_Y, t.pos.z);
             { const cp=camera.getWorldPosition(new THREE.Vector3()); model.rotation.set(0, Math.atan2(cp.x-t.pos.x, cp.z-t.pos.z), 0); }   // 正面をプレイヤーへ向けてから回転開始
             model.scale.setScalar( artScale() );   // 全環境：サイト/ワールド寸法に比例
-            popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6, endY:popY(), t:0, dur:1.0 });
+            const _artDrop=(typeof renderer!=="undefined" && renderer.xr && renderer.xr.isPresenting)?0.25:0;   // VR/ARのみ出土品の最高点・最終位置・名称パネルを25cm下げる
+            popAnims.push({ obj:model, x:t.pos.x, z:t.pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y+0.6-_artDrop, endY:popY()-_artDrop, t:0, dur:1.0 });
             // 名称ラベル（恐竜と同様にモデルの下側・全モード）
             if(model.userData.nameLabel) stage.remove(model.userData.nameLabel);
             const _an=(function(){ const r=(typeof mvArtifactRows==="function")?mvArtifactRows():[]; return (r[t.idx] && r[t.idx].name) ? r[t.idx].name : ("出土品 No."+String(t.idx+1).padStart(2,"0")); })();
             const _als=fieldScale(); const _alw=0.54*_als; const _alab=makeLabelSprite(_an, auraColor, _alw, 0); const _alh=_alw*96/256;
-            _alab.position.set(t.pos.x, popY()-0.1-_alh/2, t.pos.z); stage.add(_alab); model.userData.nameLabel=_alab;
+            _alab.position.set(t.pos.x, popY()-0.1-_alh/2-_artDrop, t.pos.z); stage.add(_alab); model.userData.nameLabel=_alab;
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
     }
