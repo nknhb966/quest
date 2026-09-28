@@ -306,6 +306,7 @@
           <button data-v="off" class="on">∞ 上限なし</button>
           <button data-v="on">📏 実寸まで</button>
         </div>
+        <div id="capPendNote" class="pendNote"></div>
       </div>
       <div class="opt wide" id="optRealShort" style="display:none">
         <div class="lbl">恐竜が実寸になるフィールド短辺（m）</div>
@@ -314,6 +315,7 @@
           <input id="rsNum" type="number" min="10" max="50" step="1" value="20" style="width:64px;">
         </div>
         <div id="rsInfo" style="margin-top:8px; font-size:13px; font-weight:800; color:#7fe0cd; text-align:center;">原寸比：約 1.0倍（実寸）</div>
+        <div id="rsPendNote" class="pendNote"></div>
       </div>
       <div class="opt wide" id="optMode">
         <div class="lbl">モード</div>
@@ -805,8 +807,6 @@
 
     #tabarTouch{ position:fixed; inset:0; z-index:12; display:none; touch-action:none; -webkit-user-select:none; user-select:none; }
     body.tabar.playing #tabarTouch{ display:block; }
-    #tabarGlow{ --tg:120,180,255; position:fixed; inset:0; z-index:13; pointer-events:none; opacity:0;
-        box-shadow:inset 0 0 90px 34px rgb(var(--tg)); transition:opacity .25s; }
 
     /* 文字サイズ・余白は既存UIの段階にそろえる（トースト＝本文、見出し＝.dexbox h2、主ボタン＝入室ボタン、副ボタン＝.ghost、説明＝.helpbox p） */
     /* 探知メーター：近いほど多く・暖色に点灯（中央リングと同じ色の区切り） */
@@ -872,11 +872,10 @@
     body.tabar #dhud button{ min-height:44px; }
     body.tabar #dexBtn{ min-height:44px; }
     body.tabar #buddyStandby button{ min-height:44px; }
-    @media (prefers-reduced-motion: reduce){ #tabarDig.show{ animation:none; } #tabarGlow{ transition:none; } }
+    @media (prefers-reduced-motion: reduce){ #tabarDig.show{ animation:none; } }
 </style>
 <video id="tabarVideo" playsinline muted autoplay></video>
 <div id="tabarTouch"></div>
-<div id="tabarGlow"></div>
 <div id="tabarRadar" data-lvl="0" aria-hidden="true"><span class="ic">🔍</span><i></i><i></i><i></i><i></i><i></i></div>
 <div id="tabarDig">光っている土のブロックをタップして掘ろう！</div>
 <div id="tabarWarn" role="alert"></div>
@@ -951,7 +950,7 @@ import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFact
 const TABAR = { on:false, backend:null, phase:"idle", heldKey:"adult" };
 /* まとめて更新：メニューで読み込みを伴う変更（サイトモデルの大きさ・ワールドの広さ。発掘する対象・モード等のおすすめ設定で変わる場合を含む）は
  * その場では読み込まず、入室ボタン近くの「まとめて更新」で一度に読み込む */
-let _loaded=null;        // 最後に読み込み（モデル生成）に使ったサイズと恐竜の原寸比 {sm,wx,wz,ds}
+let _loaded=null;        // 最後に読み込み（モデル生成）に使った設定 {sm:サイト倍率, wx/wz:広さ, rs:実寸になる短辺, cap:実寸まで, ds:恐竜の原寸比}
 let _userEditT=-1e9;     // メニューの設定をユーザーが操作した時刻（起動時の自動設定は従来どおりすぐ読み込む）   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
 const TABAR_CFG = {
     digNear:       1.2, // 掘れる距離：タブレット位置→ブロック外周の水平距離(m)。発掘ポイントに着いてから掘る
@@ -3334,7 +3333,7 @@ let _warmupModels=[];         // ウォームアップ対象（恐竜キャッ�
 function preloadEverything(done){
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
     PRELOAD_DONE=false; document.body.classList.add("preloading");   // 完了まで入室不可
-    _loaded={ sm:siteMode, wx:WORLD_X, wz:WORLD_Z, ds:+dinoRealScale().toFixed(3) }; if(typeof loadBarRefresh==="function") loadBarRefresh();   // このサイズ・原寸比でモデルを生成する
+    _loaded={ sm:siteMode, wx:WORLD_X, wz:WORLD_Z, rs:realRefShort, cap:realCapToActual, ds:+dinoRealScale().toFixed(3) }; if(typeof loadBarRefresh==="function") loadBarRefresh();   // このサイズ・原寸比でモデルを生成する
     _finishingPreload=false; WARMUP_DONE=false;   // 再プリロード（対象/モード切替など）でも完全ゲートを再入可能に（一度きりガードで固まるのを防止）
     if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
     const jobs=[];
@@ -4165,11 +4164,14 @@ function setWorldZ(v, noReload){ v=Math.max(3,Math.min(50,Math.round(v||20))); W
 function menuDefer(){   // メニューでユーザーが操作した直後の読み込みだけ保留（起動時の初期設定・入室後は従来どおり）
     return !GAME.active && !TABAR.on && _loaded!=null && (performance.now()-_userEditT)<1000;
 }
-function loadDiffs(){   // 読み込み済みと現在の違い（表示用）
+function loadDiffs(){   // 読み込み済みと現在の違い（表示用）。変更した項目はすべて並べる
     const L=_loaded, a=[]; if(!L) return a;
     if(L.sm!==siteMode) a.push({ key:"site", text:"サイトモデルの大きさ："+L.sm+"倍 → "+siteMode+"倍" });
     if(L.wx!==WORLD_X || L.wz!==WORLD_Z) a.push({ key:"world", text:"ワールドの広さ："+L.wx+"×"+L.wz+"m → "+WORLD_X+"×"+WORLD_Z+"m" });
-    const ds=+dinoRealScale().toFixed(3);   // サイト表示の切替・原寸比の設定などで恐竜の生成サイズが変わる場合
+    if(L.rs!==realRefShort) a.push({ key:"rs", text:"恐竜が実寸になるフィールド短辺："+L.rs+"m → "+realRefShort+"m" });
+    if(L.cap!==realCapToActual) a.push({ key:"cap", text:"恐竜の原寸比："+(L.cap?"実寸まで":"上限なし")+" → "+(realCapToActual?"実寸まで":"上限なし") });
+    // 上のどれにも当てはまらないが恐竜の生成サイズが変わる場合（サイトモデルの表示／非表示の切替など）
+    const ds=+dinoRealScale().toFixed(3);
     if(!a.length && Math.abs(ds-L.ds)>0.0005) a.push({ key:"scale", text:"恐竜の大きさ（原寸比）：約"+L.ds.toFixed(1)+"倍 → 約"+ds.toFixed(1)+"倍" });
     return a;
 }
@@ -4179,8 +4181,9 @@ function loadBarRefresh(){
     bar.style.display = d.length ? "" : "none";
     const it=document.getElementById("loadBarItems"); if(it) it.textContent=d.map(x=>x.text).join("\n");
     const sn=document.getElementById("ssPendNote"), wn=document.getElementById("wsPendNote");   // 各項目の横には「未更新」だけ表示
-    if(sn) sn.textContent = d.some(x=>x.key==="site")  ? "未更新（上の「まとめて更新」で反映）" : "";
-    if(wn) wn.textContent = d.some(x=>x.key==="world") ? "未更新（上の「まとめて更新」で反映）" : "";
+    const note=(el,keys)=>{ if(el) el.textContent = d.some(x=>keys.includes(x.key)) ? "未更新（上の「まとめて更新」で反映）" : ""; };
+    note(sn,["site"]); note(wn,["world"]);
+    note(document.getElementById("rsPendNote"),["rs"]); note(document.getElementById("capPendNote"),["cap"]);
 }
 function loadApplyAll(){   // 保留中の読み込みを一度に実行
     if(!loadDiffs().length) return false;
@@ -4194,9 +4197,11 @@ function loadApplyAll(){   // 保留中の読み込みを一度に実行
     });
     return true;
 }
-function loadRevertAll(){   // 読み込まずに、読み込み済みのサイズへ値を戻す（モデルはそのサイズで生成済み）
+function loadRevertAll(){   // 読み込まずに、読み込み済みの設定へ値を戻す（モデルはその設定で生成済み）
     const L=_loaded; if(!L) return;
     setSiteMode(L.sm, false); setWorldX(L.wx, true); setWorldZ(L.wz, true);
+    realCapToActual=L.cap; segSelect("segRealCap", L.cap?"on":"off");
+    setRealRefShort(L.rs);
     if(_worldReloadT){ clearTimeout(_worldReloadT); _worldReloadT=null; }
     loadBarRefresh();
 }
@@ -6998,7 +7003,7 @@ if(LOOK_AT_PLAYER && typeof neckSwayEnabled==="function" && neckSwayEnabled(comp
  *   "camera" … WebXR AR が無い端末（iPadOS Safari 等）。getUserMedia の映像＋DeviceOrientation の向き＋歩数検出の移動
  * ===================================================== */
 const tabarUI = {
-    video:document.getElementById("tabarVideo"), touch:document.getElementById("tabarTouch"), glow:document.getElementById("tabarGlow"),
+    video:document.getElementById("tabarVideo"), touch:document.getElementById("tabarTouch"),
     radar:document.getElementById("tabarRadar"), dig:document.getElementById("tabarDig"), warn:document.getElementById("tabarWarn"),
     scan:document.getElementById("tabarScan"), scanMsg:document.getElementById("tabarScanMsg"), scanSub:document.getElementById("tabarScanSub"),
     placeBtn:document.getElementById("tabarPlaceBtn"), scanBack:document.getElementById("tabarScanBack"),
@@ -7223,7 +7228,7 @@ function tabarEnterCommon(backend){
     hands.forEach(h=>{ h.visible=false; });
     TABAR.walk.set(0,0,0); TABAR.step.times.length=0; TABAR.step.up=false; TABAR.spd=0; TABAR.prevOk=false; TABAR.runT=0;
     TABAR.warnKey=""; TABAR.lvl=-1; TABAR.radarOn=false; TABAR.digShown=false; TABAR.tracking=true; TABAR.pointers.clear();
-    tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on"); tabarUI.glow.style.opacity="0";
+    tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
 }
 function tabarReticle(){
     if(TABAR.reticle) return TABAR.reticle;
@@ -7356,7 +7361,7 @@ function tabarCleanup(){
     controllers.forEach(c=>{ c.visible=true; if(c.userData.grip) c.userData.grip.visible=true; if(c.userData.line) c.userData.line.visible=true; });
     hands.forEach(h=>{ h.visible=true; });
     tabarUI.scan.classList.remove("open"); tabarAskDone(false); tabarUI.prep.classList.remove("open");
-    tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on"); tabarUI.glow.style.opacity="0";
+    tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
     TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
     document.body.classList.remove("tabar","tabar-xr","tabar-cam");
     TABAR.on=false; TABAR.backend=null;
@@ -7452,8 +7457,6 @@ function tabarFeedback(){
     const lvl = heat>HEAT_HOT?5 : heat>0.6?4 : heat>HEAT_WARM?3 : heat>0.2?2 : heat>PROX_SIG?1 : 0;   // 色の区切りは中央リング(#heat)と同じ
     if(lvl!==TABAR.lvl){
         TABAR.lvl=lvl; tabarUI.radar.dataset.lvl=String(lvl);
-        tabarUI.glow.style.setProperty("--tg", lvl>=5?"255,90,50" : lvl>=3?"255,180,60" : "120,180,255");
-        tabarUI.glow.style.opacity=String([0,0,0.18,0.32,0.46,0.62][lvl]);
     }
     const dig = play && anyDigReady;
     if(dig!==TABAR.digShown){ TABAR.digShown=dig; tabarUI.dig.classList.toggle("show", dig); if(dig){ try{ chord([660,880],0.05,"triangle",0.3); }catch(_){} } }
