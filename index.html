@@ -574,7 +574,7 @@
         <h3>📷 タブレットAR</h3>
         <p>タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。タイトルの<b>「タブレットARであそぶ」</b>から始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します。終わるときは「やめる」→「おわる」。</p>
+        <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「子ども 1.2m／大人 1.5m」を選びます）。終わるときは「やめる」→「おわる」。</p>
       </section>
       <section>
         <h3>🛠 会場セットアップ（サイト非表示時）</h3>
@@ -828,6 +828,8 @@
     .tabar-rules{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
     .tabar-rules li{ font-size:13.5px; line-height:1.7; color:rgba(226,216,255,.9); padding:7px 12px; border-radius:10px;
         background:rgba(143,240,255,.07); border-left:3px solid #8ff0ff; }
+    #tabarHeightOpt .lbl{ margin-bottom:6px; text-align:center; }
+    #segTabarH button{ min-height:44px; }
     .tabar-status{ margin:0; min-height:1.6em; font-size:13px; line-height:1.6; letter-spacing:.5px; color:#c9bcff; text-align:center; white-space:pre-line; }
     .tabar-status.err{ color:#ffb3a1; }
     .tabar-go{ padding:15px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; letter-spacing:1px;
@@ -877,6 +879,13 @@
             <li>🟦 水色の線の外には出ないでね</li>
             <li>🤲 タブレットは両手で持とう。掘るときは片手で持って、もう片方の手で土をタップ</li>
         </ul>
+        <div class="opt wide" id="tabarHeightOpt" style="display:none">
+            <div class="lbl">タブレットを持つ高さ（床から）</div>
+            <div class="seg" id="segTabarH">
+                <button data-v="child" class="on">🧒 子ども 1.2m</button>
+                <button data-v="adult">🧑 大人 1.5m</button>
+            </div>
+        </div>
         <p id="tabarPrepStatus" class="tabar-status"></p>
         <button id="tabarStartBtn" class="tabar-go" disabled>カメラをはじめる</button>
         <button id="tabarPrepBack" class="tabar-back">もどる</button>
@@ -906,7 +915,7 @@ import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
 
 /* ===================================================== * プラットフォーム判定（Quest / タブレットAR） * questXR()      … ヘッドセット（Quest）でXR表示中。コントローラー・手元パネル等のQuest固有UIはこれで分岐 * worldScaleXR() … 実寸スケールで表示中（Quest と タブレットAR）。恐竜/出土品の大きさ・高さ・パネル倍率はこれで分岐 * タブレットAR中は GAME.desktop=true（タッチ経路）でゲームを動かし、見た目のスケールだけ Quest と共通にする。 * ===================================================== */
-const TABAR = { on:false, backend:null, phase:"idle" };   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
+const TABAR = { on:false, backend:null, phase:"idle", heldKey:"child" };   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
 const TABAR_CFG = {
     questSiteMode: 1,   // Quest入室時の既定サイト倍率（siteMode の初期値）。おすすめオン時はタブレットARもこれに合わせる
     questWorld:    10,  // Quest入室時の既定ワールド広さ（WORLD_X/Z の初期値）
@@ -918,10 +927,11 @@ const TABAR_CFG = {
     runSteps:      4,   // 1.2秒あたりの歩数がこれ以上で「ゆっくり歩こう」（camera）
     stride:        0.45,// 1歩の歩幅(m)：年長児の目安（camera）
     stepThresh:    1.2, // 歩数検出：加速度の山のしきい値(m/s²)（camera）
-    deviceH:       0.9, // 床からタブレットまでの高さ(m)：年長児が胸の前で持つ目安（camera／ヒットテスト非対応時）
+    heldH: { child:1.2, adult:1.5 }, // 床からタブレットまでの高さ(m)。準備画面のトグルで選ぶ（camera／ヒットテスト非対応時に使用）
     camLongFov:    64,  // 背面カメラ映像の長辺方向の画角(度)。端末ごとに微調整（camera）
     camDpr:        1.5  // cameraバックエンド時の描画解像度の上限（カメラ映像と合成するため負荷を抑える）
 };
+function tabarDeviceH(){ return TABAR_CFG.heldH[TABAR.heldKey] || TABAR_CFG.heldH.child; }   // 選択中の「持つ高さ」
 function questXR(){ return renderer.xr.isPresenting && !TABAR.on; }
 function worldScaleXR(){ return (typeof renderer!=="undefined" && renderer.xr.isPresenting) || TABAR.on; }
 
@@ -6949,6 +6959,7 @@ function tabarRefreshPrep(){
     if(!sup.secure){ tabarPrepStatus._final=true; tabarPrepStatus("カメラARは https:// で開いたページでだけ使えます。\nURLを確認してください。", true); return; }
     if(!sup.webxr && !(sup.camera && sup.orient)){ tabarPrepStatus._final=true; tabarPrepStatus("この端末・ブラウザではカメラARを使えません。\nメニューの「ヘッドセットなしで試す」で遊べます。", true); return; }
     tabarUI.startBtn.disabled=false;
+    document.getElementById("tabarHeightOpt").style.display = sup.webxr ? "none" : "";   // 高さを実測できない方式のときだけ選ぶ
     tabarPrepStatus(sup.webxr ? "じゅんびができました（AR：床と位置をカメラで認識）"
         : "じゅんびができました（AR：カメラ映像＋向きセンサー＋歩数）\n※"+tabarNoXRReason(sup).replace(/\n/g,""));
 }
@@ -7059,7 +7070,7 @@ async function tabarStartCamera(){
     TABAR.stream=stream;
     stream.getVideoTracks().forEach(t=>t.addEventListener("ended", ()=>{ if(TABAR.on && TABAR.backend==="camera"){ tabarCleanup(); showToast("カメラが止まったので、メニューにもどりました", 3200); } }));
     tabarEnterCommon("camera");
-    camera.position.set(0, TABAR_CFG.deviceH, 0);   // 床(y=0)からの端末の高さ
+    camera.position.set(0, tabarDeviceH(), 0);   // 床(y=0)からの端末の高さ（準備画面で選んだ値）
     renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, TABAR_CFG.camDpr)); renderer.setSize(innerWidth, innerHeight);
     tabarFitCameraFov();
     tabarBeginScan();
@@ -7183,8 +7194,8 @@ function tabarScanTick(fr){
         tabarFloorSample(hit?hit.y:null, hit?hit.x:0, hit?hit.z:0);
         return;
     }
-    // 床の推定（camera／ヒットテスト非対応）：端末の高さ deviceH の下に床があるとみなす
-    const fy = (TABAR.backend==="camera") ? 0 : cp.y-TABAR_CFG.deviceH;
+    // 床の推定（camera／ヒットテスト非対応）：選んだ「持つ高さ」の下に床があるとみなす
+    const fy = (TABAR.backend==="camera") ? 0 : cp.y-tabarDeviceH();
     if(d.y < -0.2){ const t=(fy-cp.y)/d.y; if(t>0 && t<5){ tabarFloorSample(fy, cp.x+d.x*t, cp.z+d.z*t); return; } }
     tabarFloorSample(null);
 }
@@ -7356,6 +7367,10 @@ document.body.addEventListener("beforexrselect", e=>{ if(TABAR.on) e.preventDefa
 
 /* ---------- ボタン ---------- */
 document.getElementById("startTabletAR").onclick=()=> tabarOpenPrep();
+document.querySelectorAll("#segTabarH button").forEach(btn=>{ btn.onclick=()=>{
+    TABAR.heldKey=btn.dataset.v;
+    document.querySelectorAll("#segTabarH button").forEach(x=>x.classList.toggle("on", x===btn));
+}; });
 tabarUI.startBtn.onclick=()=>{ tabarStart(); };
 tabarUI.prepBack.onclick=()=>{ tabarClosePrep(); };
 tabarUI.placeBtn.onclick=()=>{ tabarPlace(); };
