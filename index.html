@@ -48,7 +48,7 @@
     }
     .subtitle{ margin:8px 0 22px; color:rgba(214,200,255,.78); font-size:clamp(13px,2.2vw,17px); letter-spacing:1px; text-align:center; }
 
-    #vrbtnwrap{ width:100%; margin-bottom:14px; }
+    #vrbtnwrap{ width:100%; margin-bottom:14px; display:flex; flex-direction:column; gap:12px; }   /* VR・AR入室ボタンの間に余白（非表示のボタンは詰める） */
     #vrbtnwrap button, #vrbtnwrap a{
         display:block!important; position:static!important; width:100%!important;
         padding:17px 0!important; font-size:clamp(16px,2.6vw,21px)!important; font-weight:800!important;
@@ -2298,6 +2298,7 @@ dog.position.set(2,GROUND_Y,2);
 
 /* ===================================================== * 相棒の登録・切り替え（拡張ポイント） * 将来マスコット等を追加する場合は registerCompanion() を呼ぶだけ。 * registerCompanion("xxx", { label:"🌼 なまえ", body:<THREE.Group>, lines:{...} }); * body には userData.legs（脚ピボット配列）、任意で userData.tail / userData.wings を持たせると * 歩行アニメ・尻尾ふり・羽ばたきが自動で適用されます。 * 相棒が1種類だけのときは切り替えUIは自動的に隠れます。 * ===================================================== */
 const COMPANIONS={};
+const SHIBA_LABEL = (YEAR_CONFIG.companions && YEAR_CONFIG.companions.dog && YEAR_CONFIG.companions.dog.label) || "🐕 しば犬";   // 犬種一覧の末尾に並ぶしば犬の表示名（他の犬種と同じくアイコン付き）
 let companionKind=DEFAULT_KIND;
 function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 // 喜び動作中（撫で／掘り当て）に頭のヨー（左右）を固定するか。恐竜=既定ON、犬=既定OFF。
@@ -6184,7 +6185,7 @@ function litePickAny(){   // 右手レイで①ボタン・②セルを判定（
 // ② モデルえらび（3列×N・列幅2倍。camera前方右側HUD）。右手レイ＋パネル操作モードで選択
 function liteSelList(){   // 現在の対象のモデル一覧 [{idx,name}]
     if(LITE.target==="dino"){ const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
-    if(LITE.target==="dog"){ const a=[]; const N=(typeof DOGS!=="undefined"?DOGS.length:8); for(let i=0;i<N;i++) a.push({idx:i, name:((typeof DOGS!=="undefined"&&DOGS[i])?DOGS[i].label:("犬"+(i+1)))}); a.push({idx:N, name:"しば犬"}); return a; }   // 犬種＋末尾しば犬
+    if(LITE.target==="dog"){ const a=[]; const N=(typeof DOGS!=="undefined"?DOGS.length:8); for(let i=0;i<N;i++) a.push({idx:i, name:((typeof DOGS!=="undefined"&&DOGS[i])?DOGS[i].label:("犬"+(i+1)))}); a.push({idx:N, name:SHIBA_LABEL}); return a; }   // 犬種＋末尾しば犬
     const arts=mvArtifactRows(), sites=mvSiteRows(), a=[]; arts.forEach((r,i)=>a.push({idx:i, name:r.name||("出土品"+(i+1))}));
     if(window.MV_SHOW_SITE) sites.forEach((r,j)=>a.push({idx:arts.length+j, name:r.name||"遺構"})); return a;
 }
@@ -6217,7 +6218,7 @@ async function liteSwitchModel(idx){
     LITE.curIdx=idx;
     // 名称・説明を更新
     if(LITE.target==="dino"){ LITE.curName=(DINOS[idx]&&DINOS[idx].label)||""; LITE.curDesc=""; }
-    else if(LITE.target==="dog"){ LITE.curName=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||"しば犬"; LITE.curDesc=""; }   // 犬：犬種名（出土品名にフォールバックさせない）
+    else if(LITE.target==="dog"){ LITE.curName=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||SHIBA_LABEL; LITE.curDesc=""; }   // 犬：犬種名（出土品名にフォールバックさせない）
     const m=liteBuildModel(LITE.target, idx, LITE.quality);   // キャッシュから同期取得（固まらない）
     while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; }   // 旧モデルはキャッシュのため破棄せず外すだけ
     LITE.model=null;
@@ -6259,7 +6260,7 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
     // 名称・説明（CSV由来）を設定：出土品/遺構＝CSV、恐竜＝DINOSラベル
     let nm="", ds="";
     if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; ds=""; }
-    else if(target==="dog"){ nm=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||"しば犬"; ds=""; }
+    else if(target==="dog"){ nm=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||SHIBA_LABEL; ds=""; }
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
     LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino"||target==="dog");   // 恐竜・犬フラグ（説明パネル非表示に使用）
     LITE.target=target; LITE.quality=quality; LITE.intrinsic=intrinsicScale||1; LITE.curIdx=idx; LITE.mode="model"; LITE._lastRightPress=0;   // 段階4：セッション情報
@@ -7639,7 +7640,7 @@ addEventListener("resize",()=>{
             opt.textContent = isDino
                 ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
                 : isDog
-                ? ((typeof DOGS!=="undefined" && DOGS[i]) ? DOGS[i].label : "しば犬")
+                ? ((typeof DOGS!=="undefined" && DOGS[i]) ? DOGS[i].label : SHIBA_LABEL)
                 : ((artInfo(i) && artInfo(i).name)
                     ? artInfo(i).name                                                            // CSVの名称（出土品名・遺構XXXX）
                     : (i < artModelCount() ? ("出土品 No."+String(i+1).padStart(2,"0")) : "遺構"));  // フォールバック
