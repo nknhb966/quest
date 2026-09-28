@@ -583,7 +583,7 @@
         <h3>📷 タブレットAR</h3>
         <p>タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。タイトルの<b>「タブレットARであそぶ」</b>から始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「幼児 0.9m／子ども 1.2m／大人 1.5m」を選びます）。スタンバイ中は「ここではじめる」で、今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
+        <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「幼児 0.9m／子ども 1.2m／大人 1.5m」を選びます）。スタンバイ中は「やめる」→「ここではじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
       </section>
       <section>
         <h3>🛠 会場セットアップ（サイト非表示時）</h3>
@@ -663,7 +663,6 @@
     <span style="flex-basis:100%;width:100%;height:0"></span>
     <button id="taCardBtn" style="display:none;">カードを見る</button>
     <button id="dTA" style="display:none">スタート</button>
-    <button id="tabarHere" style="display:none">📍 ここではじめる</button>
     <button id="dBuddy" style="display:none">相棒：</button>
     <button id="dAsk">聞く</button>
     <button id="dTool">道具：幅広</button>
@@ -860,6 +859,8 @@
     .tabar-sub{ margin:4px 0 0; font-size:13px; color:#8ff0ff; }
     #tabarScan .tabar-actions{ width:min(420px,92vw); display:flex; flex-direction:column; gap:10px; pointer-events:auto; }
 
+    body.tabar-rescan #dhud, body.tabar-rescan #dexBtn, body.tabar-rescan #buddyStandby, body.tabar-rescan #chRoundDom,
+    body.tabar-rescan #tabarTouch, body.tabar-rescan #heat, body.tabar-rescan #buddyCard{ display:none !important; }   /* 置き直しの床さがし中 */
     /* プレイ中のHUD：文字サイズは既存のまま、指で押しやすい高さ（44px）だけ確保 */
     body.tabar #dhud button{ min-height:44px; }
     body.tabar #dexBtn{ min-height:44px; }
@@ -920,6 +921,7 @@
         <p id="tabarConfirmMsg" class="tabar-confirm-msg"></p>
         <button id="tabarConfirmYes" class="tabar-go">おわる</button>
         <button id="tabarConfirmNo" class="tabar-back">つづける</button>
+        <button id="tabarConfirmAlt" class="tabar-back" style="display:none">ここではじめる</button>
     </div>
 </div>
 <div id="toast"></div>
@@ -6966,14 +6968,14 @@ const tabarUI = {
     prep:document.getElementById("tabarPrep"), prepStatus:document.getElementById("tabarPrepStatus"),
     startBtn:document.getElementById("tabarStartBtn"), prepBack:document.getElementById("tabarPrepBack"),
     confirm:document.getElementById("tabarConfirm"), yes:document.getElementById("tabarConfirmYes"), no:document.getElementById("tabarConfirmNo"),
-    confirmTitle:document.getElementById("tabarConfirmTitle"), confirmMsg:document.getElementById("tabarConfirmMsg")
+    alt:document.getElementById("tabarConfirmAlt"), confirmTitle:document.getElementById("tabarConfirmTitle"), confirmMsg:document.getElementById("tabarConfirmMsg")
 };
 Object.assign(TABAR, {
     support:null, session:null, hitSource:null, stream:null, saved:null,
     floorY:0, floorN:0, floorOk:false, reticle:null, area:null, siteBorder:null,
     orient:{ has:false, a:0, b:0, g:0 }, step:{ lp:null, base:null, up:false, lastT:0, times:[] },
     walk:new THREE.Vector3(), tracking:true, spd:0, prevPos:new THREE.Vector3(), prevOk:false, runT:0,
-    keepPrep:false, hereShown:false, warnKey:"", warnBeepT:0, lvl:-1, radarOn:false, digShown:false, pointers:new Map(), tapHintT:0, starting:false
+    keepPrep:false, rescan:false, warnKey:"", warnBeepT:0, lvl:-1, radarOn:false, digShown:false, pointers:new Map(), tapHintT:0, starting:false
 });
 const _taCp=new THREE.Vector3(), _taF=new THREE.Vector3(), _taU=new THREE.Vector3(), _taD=new THREE.Vector3(), _taN=new THREE.Vector3(), _taFw=new THREE.Vector3(), _taProbe=new THREE.Vector3();
 const _taQ=new THREE.Quaternion(), _taQ0=new THREE.Quaternion(), _taQ1=new THREE.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), _taZee=new THREE.Vector3(0,0,1), _taEul=new THREE.Euler();
@@ -7245,33 +7247,50 @@ function tabarPlace(){
     tabarUI.scan.classList.remove("open");
     TABAR.area=tabarComputeArea(); tabarBuildSiteBorder();
     TABAR.phase="play";
+    if(TABAR.rescan){   // 置き直し：ゲームはスタンバイのまま、発掘ポイントだけ新しい範囲に
+        TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
+        regenerateCustomSpots();   // サイト表示の出土品位置は recenterFieldHere で追従
+        showCenterHint("ここを中心にフィールドを置き直しました", 2000);
+        return;
+    }
     TABAR.walk.copy(player.position);
     startGame(true);   // 既存のタッチ経路で開始（スタンバイ→カウントダウン→プレイ）
     DOG_FWD=TABAR_CFG.dogFwd;
     GAME._heightReady=true;
 }
 let _tabarAskResolve=null;
-function tabarAsk(title, msg, yes, no){   // 画面内の確認ダイアログ（OK=true／キャンセル=false）
+function tabarAsk(title, msg, yes, no, alt){   // 画面内の確認ダイアログ（yes=true／no=false／alt="alt"。alt は指定時のみ表示）
     return new Promise(res=>{
         if(_tabarAskResolve) _tabarAskResolve(false);
         _tabarAskResolve=res;
         tabarUI.confirmTitle.textContent=title; tabarUI.confirmMsg.textContent=msg||"";
         tabarUI.yes.textContent=yes; tabarUI.no.textContent=no;
+        tabarUI.alt.textContent=alt||""; tabarUI.alt.style.display = alt ? "" : "none";
         tabarUI.confirm.classList.add("open");
     });
 }
 function tabarAskDone(v){ tabarUI.confirm.classList.remove("open"); const r=_tabarAskResolve; _tabarAskResolve=null; if(r) r(v); }
-// スタンバイ中に「ここではじめる」：今いる場所を中央、今向いている方向を奥として、フィールド（サイト）と活動範囲を置き直す。床の高さは最初に決めた値のまま
-function tabarReplaceHere(){
-    if(!(TABAR.on && TABAR.phase==="play" && GAME.active && gamePhase()==="standby")) return;
-    const fy=TABAR.floorY;
-    recenterFieldHere();
-    stage.position.y=fy; worldYAdjust=fy;
-    TABAR.area=tabarComputeArea(); tabarBuildSiteBorder();
-    regenerateCustomSpots();   // 発掘ポイントを新しい範囲内に再配置（サイト表示の出土品は recenterFieldHere で追従）
-    showCenterHint("ここを中心にフィールドを置き直しました", 2000);   // 上部の相棒えらびパネルに隠れないよう中央に表示
+function tabarConfirmExit(){
+    // スタンバイ中だけ「ここではじめる」（置き直し）も選べる。誤操作を防ぐため、常設ボタンにせず「やめる」の中に置く
+    const standby=(TABAR.phase==="play" && GAME.active && gamePhase()==="standby");
+    tabarAsk(standby ? "どうする？" : "おわりにする？", "", "おわる", "つづける", standby ? "📍 ここではじめる" : null).then(r=>{
+        if(r===true) tabarExit();
+        else if(r==="alt") tabarBeginRescan();
+    });
 }
-function tabarConfirmExit(){ tabarAsk("おわりにする？", "", "おわる", "つづける").then(ok=>{ if(ok) tabarExit(); }); }
+// 置き直し：「カメラをはじめる」直後と同じ床さがし画面へ。ゲーム（スタンバイ・チャレンジの進行）はそのまま
+function tabarBeginRescan(){
+    if(!(TABAR.on && TABAR.phase==="play" && GAME.active && gamePhase()==="standby")) return;
+    TABAR.rescan=true;
+    document.body.classList.add("tabar-rescan");   // 床さがし中はプレイ用の表示・操作を隠す
+    tabarUI.warn.className=""; TABAR.warnKey="";
+    tabarBeginScan();
+}
+function tabarCancelRescan(){   // 床さがしで「もどる」：置き直さずにスタンバイへ戻る（前の配置のまま）
+    TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
+    tabarReticle().visible=false; tabarUI.scan.classList.remove("open");
+    stage.visible=true; TABAR.phase="play";
+}
 function tabarExit(){
     tabarAskDone(false);
     if(TABAR.backend==="webxr" && TABAR.session && renderer.xr.isPresenting){
@@ -7301,7 +7320,7 @@ function tabarCleanup(){
     hands.forEach(h=>{ h.visible=true; });
     tabarUI.scan.classList.remove("open"); tabarAskDone(false); tabarUI.prep.classList.remove("open");
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on"); tabarUI.glow.style.opacity="0";
-    TABAR.hereShown=false; document.getElementById("tabarHere").style.display="none";
+    TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
     document.body.classList.remove("tabar","tabar-xr","tabar-cam");
     TABAR.on=false; TABAR.backend=null;
     updateSiteVis(); updatePanelScale(); applyWorldParams();   // 相棒距離などを通常値へ
@@ -7423,8 +7442,6 @@ function tabarTick(dt, now){
         const v=tabarUI.video;
         if(v.paused && !document.hidden && now-(TABAR.vidRetryT||0)>1000){ TABAR.vidRetryT=now; const pr=v.play(); if(pr && pr.catch) pr.catch(()=>{}); }   // 映像が止まったら再生し直す
     }
-    { const here=(TABAR.phase==="play" && GAME.active && gamePhase()==="standby");   // スタンバイ中だけ置き直せる
-      if(here!==TABAR.hereShown){ TABAR.hereShown=here; document.getElementById("tabarHere").style.display = here ? "inline-block" : "none"; } }
     if(TABAR.phase==="scan") tabarScanTick(fr);
     else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); }
 }
@@ -7452,10 +7469,10 @@ document.querySelectorAll("#segTabarH button").forEach(btn=>{ btn.onclick=()=>{
 tabarUI.startBtn.onclick=()=>{ tabarStart(); };
 tabarUI.prepBack.onclick=()=>{ tabarClosePrep(); };
 tabarUI.placeBtn.onclick=()=>{ tabarPlace(); };
-document.getElementById("tabarHere").onclick=()=>{ tabarReplaceHere(); };
-tabarUI.scanBack.onclick=()=>{ tabarExit(); };
+tabarUI.scanBack.onclick=()=>{ if(TABAR.rescan) tabarCancelRescan(); else tabarExit(); };   // 置き直し中はスタンバイへ戻る
 tabarUI.yes.onclick=()=>{ tabarAskDone(true); };
 tabarUI.no.onclick=()=>{ tabarAskDone(false); };
+tabarUI.alt.onclick=()=>{ tabarAskDone("alt"); };
 
 /* ---------- 横幅・奥行きが未更新のまま入室しようとしたときの確認（VR・AR・スマホ/PC・タブレットAR 共通） ---------- */
 let _wsBypass=false, _wsEntryEl=null;
