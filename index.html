@@ -233,11 +233,12 @@
     #dexBtn:hover{ background:rgba(40,26,60,.9); color:#fff; }
     .szq{ padding:8px 12px; border-radius:9px; border:1px solid rgba(180,140,255,.45); background:#160f2e; color:#eae4ff; font-weight:800; font-size:13px; cursor:pointer; }
     .szq:hover{ background:#2a1d52; }
-    #wsApplyRow{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:12px; }
-    #wsPendNote{ font-size:12px; color:#b9aee0; letter-spacing:.5px; }
-    #wsPendNote.pend{ color:#ffd86a; font-weight:700; }
-    #wsApply{ padding:9px 22px; border-radius:9px; border:1px solid #ffd86a; background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; font-weight:800; font-size:13px; cursor:pointer; }
-    #wsApply:disabled{ background:#160f2e; border-color:rgba(180,140,255,.3); color:rgba(234,228,255,.4); cursor:default; }
+    /* 読み込みを伴う設定の「更新」行（サイトモデルの大きさ／ワールドの広さ） */
+    .applyRow{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+    .pendNote{ font-size:12px; color:#b9aee0; letter-spacing:.5px; }
+    .pendNote.pend{ color:#ffd86a; font-weight:700; }
+    .applyBtn{ padding:9px 22px; border-radius:9px; border:1px solid #ffd86a; background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; font-weight:800; font-size:13px; cursor:pointer; }
+    .applyBtn:disabled{ background:#160f2e; border-color:rgba(180,140,255,.3); color:rgba(234,228,255,.4); cursor:default; }
     .szq.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; border-color:#ffd86a; }
 </style>
 </head>
@@ -390,6 +391,10 @@
           <button type="button" class="szq" data-sz="4">4倍</button>
           <button type="button" class="szq" data-sz="5">5倍</button>
         </div>
+        <div class="applyRow">
+          <span id="ssPendNote" class="pendNote"></span>
+          <button type="button" id="ssApply" class="applyBtn" disabled>🔄 更新</button>
+        </div>
       </div>
       <div class="opt wide" id="optDigPos" style="display:none">
         <div class="lbl">発掘場所</div>
@@ -424,9 +429,9 @@
           <button type="button" class="szq" data-sz="40">40</button>
           <button type="button" class="szq" data-sz="50">50</button>
         </div>
-        <div id="wsApplyRow">
-          <span id="wsPendNote"></span>
-          <button type="button" id="wsApply" disabled>🔄 更新</button>
+        <div class="applyRow">
+          <span id="wsPendNote" class="pendNote"></span>
+          <button type="button" id="wsApply" class="applyBtn" disabled>🔄 更新</button>
         </div>
       </div>
     </div>
@@ -906,8 +911,8 @@
     </div>
 </div>
 <div id="wsAsk">
-    <div class="tabar-sheet" role="dialog" aria-modal="true" aria-label="ワールドの広さの更新確認">
-        <h2>ワールドの広さが未更新です</h2>
+    <div class="tabar-sheet" role="dialog" aria-modal="true" aria-label="設定の更新確認">
+        <h2>設定が未更新です</h2>
         <p id="wsAskMsg" class="tabar-confirm-msg"></p>
         <button id="wsAskUpdate" class="tabar-go">更新して入室</button>
         <button id="wsAskEnter" class="tabar-go" style="display:none">入室する</button>
@@ -942,6 +947,7 @@ import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFact
 
 /* ===================================================== * プラットフォーム判定（Quest / タブレットAR） * questXR()      … ヘッドセット（Quest）でXR表示中。コントローラー・手元パネル等のQuest固有UIはこれで分岐 * worldScaleXR() … 実寸スケールで表示中（Quest と タブレットAR）。恐竜/出土品の大きさ・高さ・パネル倍率はこれで分岐 * タブレットAR中は GAME.desktop=true（タッチ経路）でゲームを動かし、見た目のスケールだけ Quest と共通にする。 * ===================================================== */
 const TABAR = { on:false, backend:null, phase:"idle", heldKey:"adult" };
+let _ssPend=null;   // サイト表示時のサイトモデルの大きさ（倍率）：スライダー等で変更したがまだ「更新」していない値
 let _wsPend=null;   // サイト非表示時の横幅・奥行き：スライダー等で変更したがまだ「更新」していない値 {x,z}   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
 const TABAR_CFG = {
     digNear:       1.2, // 掘れる距離：タブレット位置→ブロック外周の水平距離(m)。発掘ポイントに着いてから掘る
@@ -4124,11 +4130,29 @@ function setSiteMode(v, apply){
     document.querySelectorAll("#ssQuick .szq").forEach(b=>b.classList.toggle("on", Math.abs(+b.dataset.sz - v)<0.05));
     if(typeof updateRsInfo==="function") updateRsInfo();   // 倍率変更で原寸比も線形に更新
     if(apply) applySiteMode();
+    _ssPend=null; ssRefreshApply();   // 反映したので保留は解除
 }
+/* サイトモデルの大きさ（サイト表示時）：スライダー・数値・かんたん設定は表示だけ変え（保留）、「更新」を押したときに setSiteMode で反映（読み込み） */
+function ssClamp(v){ return Math.max(1, Math.min(5, Math.round((v||1)*10)/10)); }
+function ssShow(v){
+    const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum"); if(s)s.value=v; if(n)n.value=v;
+    document.querySelectorAll("#ssQuick .szq").forEach(b=>b.classList.toggle("on", Math.abs(+b.dataset.sz - v)<0.05));
+}
+function ssRefreshApply(){
+    const b=document.getElementById("ssApply"), n=document.getElementById("ssPendNote"); if(!b||!n) return;
+    b.disabled=(_ssPend==null);
+    n.classList.toggle("pend", _ssPend!=null);
+    n.textContent = (_ssPend!=null) ? ("未更新："+_ssPend+"倍（「更新」で反映）") : ("現在："+siteMode+"倍");
+}
+function ssPendingSet(v){ v=ssClamp(v); _ssPend=(Math.abs(v-siteMode)<0.05) ? null : v; ssShow(v); ssRefreshApply(); }
+function ssApplyPending(){ if(_ssPend==null) return false; const v=_ssPend; _ssPend=null; setSiteMode(v, true); return true; }
+function ssDiscardPending(){ _ssPend=null; ssShow(siteMode); ssRefreshApply(); }
 { const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum");
-  if(s){ s.oninput=()=>setSiteMode(+s.value,false); s.onchange=()=>setSiteMode(+s.value,true); }   // ドラッグ中は即時反映、離したら再構築
-  if(n) n.onchange=()=>setSiteMode(+n.value,true);
-  document.querySelectorAll("#ssQuick .szq").forEach(b=>b.onclick=()=>setSiteMode(+b.dataset.sz,true));   // かんたん1〜5倍
+  if(s){ s.oninput=()=>ssPendingSet(+s.value); s.onchange=()=>ssPendingSet(+s.value); }   // 表示だけ変える（「更新」で反映）
+  if(n) n.onchange=()=>ssPendingSet(+n.value);
+  document.querySelectorAll("#ssQuick .szq").forEach(b=>b.onclick=()=>ssPendingSet(+b.dataset.sz));   // かんたん1〜5倍
+  const ap=document.getElementById("ssApply"); if(ap) ap.onclick=()=>{ ssApplyPending(); };
+  ssRefreshApply();
 }
 function updateHudReset(){
     const r=document.getElementById("dReset"); if(r) r.style.display = GAME.desktop ? "inline-block":"none";   // サイト表示/非表示ともに表示
@@ -7475,12 +7499,21 @@ tabarUI.yes.onclick=()=>{ tabarAskDone(true); };
 tabarUI.no.onclick=()=>{ tabarAskDone(false); };
 tabarUI.alt.onclick=()=>{ tabarAskDone("alt"); };
 
-/* ---------- 横幅・奥行きが未更新のまま入室しようとしたときの確認（VR・AR・スマホ/PC・タブレットAR 共通） ---------- */
+/* ---------- 読み込みを伴う設定が未更新のまま入室しようとしたときの確認（VR・AR・スマホ/PC・タブレットAR 共通） ----------
+ * 対象はメニューに表示中の項目だけ：サイト表示＝サイトモデルの大きさ／サイト非表示＝ワールドの広さ */
+function pendingItems(){
+    const a=[];
+    if(siteVisible && _ssPend!=null) a.push("サイトモデルの大きさ："+siteMode+"倍 → "+_ssPend+"倍");
+    if(!siteVisible && _wsPend) a.push("ワールドの広さ："+WORLD_X+"×"+WORLD_Z+"m → "+_wsPend.x+"×"+_wsPend.z+"m");
+    return a;
+}
+function applyPendingAll(){ if(siteVisible) ssApplyPending(); else wsApplyPending(); }
+function discardPendingAll(){ if(siteVisible) ssDiscardPending(); else wsDiscardPending(); }
 let _wsBypass=false, _wsEntryEl=null;
 const wsAskUI={ box:document.getElementById("wsAsk"), msg:document.getElementById("wsAskMsg"), update:document.getElementById("wsAskUpdate"),
     enter:document.getElementById("wsAskEnter"), skip:document.getElementById("wsAskSkip"), cancel:document.getElementById("wsAskCancel") };
 document.addEventListener("click", e=>{   // 入室ボタンより先に受け取る（キャプチャ）
-    if(_wsBypass || !_wsPend || siteVisible) return;
+    if(_wsBypass || !pendingItems().length) return;
     const t=e.target && e.target.closest && e.target.closest("#vrbtnwrap button, #vrbtnwrap a, #startDesktop, #startTabletAR");
     if(!t || t.disabled) return;
     e.preventDefault(); e.stopImmediatePropagation();
@@ -7493,15 +7526,15 @@ function wsAskButtons(mode){   // "ask"：選択肢／"wait"：読み込み中�
     wsAskUI.enter.style.display  = (mode==="tap") ? "" : "none";
 }
 function wsOpenAsk(el){
-    const p=_wsPend; _wsEntryEl=el;
-    wsAskUI.msg.textContent="横幅 "+WORLD_X+"m × 奥行き "+WORLD_Z+"m から、横幅 "+p.x+"m × 奥行き "+p.z+"m への変更が、まだ更新されていません。\n更新してから入室しますか？";
+    _wsEntryEl=el;
+    wsAskUI.msg.textContent=pendingItems().join("\n")+"\nこの変更が、まだ更新されていません。更新してから入室しますか？";
     wsAskButtons("ask"); wsAskUI.box.classList.add("open");
 }
 function wsAskClose(){ wsAskUI.box.classList.remove("open"); _wsEntryEl=null; }
 wsAskUI.update.onclick=()=>{
     const el=_wsEntryEl;
     const needTap=!!(el && el.closest("#vrbtnwrap"));   // VR/AR の入室はブラウザの仕様で改めてタップが必要
-    wsApplyPending();
+    applyPendingAll();
     wsAskButtons("wait"); wsAskUI.msg.textContent="更新しています（データを読み込み中）…";
     const poll=()=>{
         if(!wsAskUI.box.classList.contains("open")) return;
@@ -7512,7 +7545,7 @@ wsAskUI.update.onclick=()=>{
     setTimeout(poll, 300);
 };
 wsAskUI.enter.onclick=()=>{ const el=_wsEntryEl; wsAskClose(); wsEnter(el); };
-wsAskUI.skip.onclick=()=>{ const el=_wsEntryEl; wsDiscardPending(); wsAskClose(); wsEnter(el); };   // 変更は取り消して、今の広さで入室
+wsAskUI.skip.onclick=()=>{ const el=_wsEntryEl; discardPendingAll(); wsAskClose(); wsEnter(el); };   // 変更は取り消して、今の設定で入室
 wsAskUI.cancel.onclick=()=>{ wsAskClose(); };
 
 /* ===================================================== * リサイズ * ===================================================== */
