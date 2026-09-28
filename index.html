@@ -3919,6 +3919,7 @@ function applyDeviceAutoSize(){   // 起動時の初期値：スマホ/PC＋お�
     if(typeof setWorldX==="function" && typeof setWorldZ==="function"){ setWorldX(30); setWorldZ(30); }   // サイトモデル非表示：30×30m
 }
 async function detectHeadset(){
+    await null;   // 判定後の処理（端末別の初期サイズ設定など）は必ずページの初期化完了後に行う（WebXRの無いブラウザでは待ちが発生せず、初期化途中の変数に触れてしまうため）
     IS_HEADSET=false;
     let vrOk=false;
     try{ if(navigator.xr && navigator.xr.isSessionSupported){ vrOk = await navigator.xr.isSessionSupported("immersive-vr").catch(()=>false); } }catch(_){ vrOk=false; }
