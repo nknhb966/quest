@@ -3913,7 +3913,7 @@ function updateEntryButtons(){   // 入室ボタン＋発掘モデル表示ボ�
     const tab=document.getElementById("startTabletAR");
     if(tab) tab.style.display = (_coarsePtr && !IS_HEADSET) ? "" : "none";   // タブレットAR：タッチ端末（ヘッドセット以外）のみ
 }
-function applyDeviceAutoSize(){   // スマホ/PC＋おすすめオンのとき、サイト表示=3倍／サイト非表示=30×30m を自動設定（全モード共通）。ヘッドセットはこれまで通り
+function applyDeviceAutoSize(){   // 起動時の初期値：スマホ/PC＋おすすめオンのとき、サイト表示=3倍／サイト非表示=30×30m。ヘッドセットは既定のまま（モード・発掘対象の変更では呼ばない）
     if(!headsetDetected || IS_HEADSET || !recoOn) return;   // 判定完了まで／ヘッドセット／おすすめオフ：既定のまま
     if(typeof setSiteMode==="function") setSiteMode(3, false);        // サイトモデル表示：3倍
     if(typeof setWorldX==="function" && typeof setWorldZ==="function"){ setWorldX(30); setWorldZ(30); }   // サイトモデル非表示：30×30m
@@ -3981,11 +3981,7 @@ function applyAutoForTarget(target){   // 発掘対象/モード切替時の推�
         if(typeof setRealRefShort==="function") setRealRefShort(20);    // 実寸になるフィールド短辺：20
     }
     if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
-    // サイト3倍／ワールド30m。おすすめon/offとも同じ値
-    if(typeof headsetDetected!=="undefined" && headsetDetected && !IS_HEADSET){
-        if(typeof setSiteMode==="function") setSiteMode(3,false);
-        if(typeof setWorldX==="function"){ setWorldX(30); setWorldZ(30); }
-    }
+    // サイトモデルの大きさ・ワールドの広さは変えない（起動時の端末別の初期値＝applyDeviceAutoSize と、メニューでの手動設定だけで決まる）
 }
 function applyChallengePreset(){   // 発掘チャレンジの自動設定。必須項目は常時、5項目（時間/道具/サイト/原寸比/短辺）はおすすめオン時のみ自動固定
     segSelect("segCardShow","on");    cardShown=true;                 // 獲得カード：表示
@@ -4001,7 +3997,7 @@ function applyChallengePreset(){   // 発掘チャレンジの自動設定。必
         realCapToActual=false; segSelect("segRealCap","off");         // 恐竜の原寸比：上限なし
         if(typeof setRealRefShort==="function") setRealRefShort(20);  // 実寸になるフィールド短辺：20
         segSelect("segSite", (chosenDigTarget==="artifact")?"show":"hide"); setSiteVisible(chosenDigTarget==="artifact"); if(typeof syncSiteSeg==="function") syncSiteSeg();   // サイトモデル：出土品=表示／恐竜=非表示
-        if(typeof applyDeviceAutoSize==="function") applyDeviceAutoSize();   // スマホ/PC＋おすすめオン：サイト3倍／ワールド30m（チャレンジ1ターン目の3か所配置は別途これまで通り）
+        // サイトモデルの大きさ・ワールドの広さは変えない（起動時の初期値とメニューでの手動設定のまま）
     }
     if(typeof updateWorldSizeUI==="function") updateWorldSizeUI();
 }
