@@ -233,6 +233,11 @@
     #dexBtn:hover{ background:rgba(40,26,60,.9); color:#fff; }
     .szq{ padding:8px 12px; border-radius:9px; border:1px solid rgba(180,140,255,.45); background:#160f2e; color:#eae4ff; font-weight:800; font-size:13px; cursor:pointer; }
     .szq:hover{ background:#2a1d52; }
+    #wsApplyRow{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+    #wsPendNote{ font-size:12px; color:#b9aee0; letter-spacing:.5px; }
+    #wsPendNote.pend{ color:#ffd86a; font-weight:700; }
+    #wsApply{ padding:9px 22px; border-radius:9px; border:1px solid #ffd86a; background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; font-weight:800; font-size:13px; cursor:pointer; }
+    #wsApply:disabled{ background:#160f2e; border-color:rgba(180,140,255,.3); color:rgba(234,228,255,.4); cursor:default; }
     .szq.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; border-color:#ffd86a; }
 </style>
 </head>
@@ -418,6 +423,10 @@
           <button type="button" class="szq" data-sz="30">30</button>
           <button type="button" class="szq" data-sz="40">40</button>
           <button type="button" class="szq" data-sz="50">50</button>
+        </div>
+        <div id="wsApplyRow">
+          <span id="wsPendNote"></span>
+          <button type="button" id="wsApply" disabled>🔄 更新</button>
         </div>
       </div>
     </div>
@@ -818,10 +827,10 @@
     #tabarWarn.track{ border-color:#8ff0ff; background:rgba(8,20,30,.92); }
 
     /* 準備・終了確認 */
-    #tabarPrep, #tabarConfirm{ position:fixed; inset:0; z-index:100000; display:none; align-items:center; justify-content:center;
+    #tabarPrep, #tabarConfirm, #wsAsk{ position:fixed; inset:0; z-index:100000; display:none; align-items:center; justify-content:center;
         padding:20px; background:rgba(8,5,18,.88); }
     #tabarConfirm{ z-index:100001; }   /* 開始ヒント(#centerHint)より手前に出す */
-    #tabarPrep.open, #tabarConfirm.open{ display:flex; }
+    #tabarPrep.open, #tabarConfirm.open, #wsAsk.open{ display:flex; }
     .tabar-sheet{ width:min(480px,92vw); max-height:92vh; overflow-y:auto; display:flex; flex-direction:column; gap:12px;
         background:#140e24; border:1px solid rgba(210,180,120,.5); border-radius:16px; padding:22px 20px; color:#efe6ff; }
     .tabar-sheet h2{ margin:0 0 2px; font-size:clamp(17px,2.4vw,23px); color:var(--gold); text-align:center; letter-spacing:3px; }
@@ -885,13 +894,23 @@
             <div class="lbl">タブレットを持つ高さ（床から）</div>
             <div class="seg" id="segTabarH">
                 <button data-v="infant">🧸 幼児 0.9m</button>
-                <button data-v="child" class="on">🧒 子ども 1.2m</button>
-                <button data-v="adult">🧑 大人 1.5m</button>
+                <button data-v="child">🧒 子ども 1.2m</button>
+                <button data-v="adult" class="on">🧑 大人 1.5m</button>
             </div>
         </div>
         <p id="tabarPrepStatus" class="tabar-status"></p>
         <button id="tabarStartBtn" class="tabar-go" disabled>カメラをはじめる</button>
         <button id="tabarPrepBack" class="tabar-back">もどる</button>
+    </div>
+</div>
+<div id="wsAsk">
+    <div class="tabar-sheet" role="dialog" aria-modal="true" aria-label="ワールドの広さの更新確認">
+        <h2>ワールドの広さが未更新です</h2>
+        <p id="wsAskMsg" class="tabar-confirm-msg"></p>
+        <button id="wsAskUpdate" class="tabar-go">更新して入室</button>
+        <button id="wsAskEnter" class="tabar-go" style="display:none">入室する</button>
+        <button id="wsAskSkip" class="tabar-back">更新せずに入室</button>
+        <button id="wsAskCancel" class="tabar-back">もどる</button>
     </div>
 </div>
 <div id="tabarConfirm">
@@ -919,10 +938,9 @@ import {ARButton} from "three/addons/webxr/ARButton.js";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory.js";
 
 /* ===================================================== * プラットフォーム判定（Quest / タブレットAR） * questXR()      … ヘッドセット（Quest）でXR表示中。コントローラー・手元パネル等のQuest固有UIはこれで分岐 * worldScaleXR() … 実寸スケールで表示中（Quest と タブレットAR）。恐竜/出土品の大きさ・高さ・パネル倍率はこれで分岐 * タブレットAR中は GAME.desktop=true（タッチ経路）でゲームを動かし、見た目のスケールだけ Quest と共通にする。 * ===================================================== */
-const TABAR = { on:false, backend:null, phase:"idle", heldKey:"child" };   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
+const TABAR = { on:false, backend:null, phase:"idle", heldKey:"adult" };
+let _wsPend=null;   // サイト非表示時の横幅・奥行き：スライダー等で変更したがまだ「更新」していない値 {x,z}   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
 const TABAR_CFG = {
-    questSiteMode: 1,   // Quest入室時の既定サイト倍率（siteMode の初期値）。おすすめオン時はタブレットARもこれに合わせる
-    questWorld:    10,  // Quest入室時の既定ワールド広さ（WORLD_X/Z の初期値）
     digNear:       1.2, // 掘れる距離：タブレット位置→ブロック外周の水平距離(m)。発掘ポイントに着いてから掘る
     dogFwd:        1.5, // 相棒の前方距離(m)。縦持ちタブレットの画面下端に見える距離
     edgeWarn:      1.0, // 活動範囲の境界の手前この距離(m)で注意表示
@@ -4118,10 +4136,32 @@ function updateHudReset(){
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ if(GAME.mode!=="time" && GAME.complete) worldHud.toggleCollectPage(); else worldHud.toggleResultsPage(); updateResultBtn(); }; }
 function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo();
+    _wsPend=null; wsRefreshApply(); }   // 反映したので保留は解除
 function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo(); }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo();
+    _wsPend=null; wsRefreshApply(); }
+/* 横幅・奥行き（サイト非表示時）：スライダー・数値・かんたん設定は表示だけ変え（保留）、「更新」を押したときに setWorldX/Z で反映（読み込み） */
+function wsClamp(v){ return Math.max(3,Math.min(50,Math.round(v||20))); }
+function wsCur(){ return _wsPend || { x:WORLD_X, z:WORLD_Z }; }
+function wsShow(x,z){
+    const ids=[["wxSlider","wxNum","wxVal",x],["wzSlider","wzNum","wzVal",z]];
+    for(const [a,b,c,v] of ids){ const s=document.getElementById(a), n=document.getElementById(b), t=document.getElementById(c); if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; }
+}
+function wsRefreshApply(){
+    const b=document.getElementById("wsApply"), n=document.getElementById("wsPendNote"); if(!b||!n) return;
+    b.disabled=!_wsPend;
+    n.classList.toggle("pend", !!_wsPend);
+    n.textContent = _wsPend ? ("未更新：横幅 "+_wsPend.x+"m × 奥行き "+_wsPend.z+"m（「更新」で反映）") : ("現在：横幅 "+WORLD_X+"m × 奥行き "+WORLD_Z+"m");
+}
+function wsPendingSet(x,z){
+    x=wsClamp(x); z=wsClamp(z);
+    _wsPend = (x===WORLD_X && z===WORLD_Z) ? null : { x, z };
+    wsShow(x,z); wsRefreshApply();
+}
+function wsApplyPending(){ if(!_wsPend) return false; const p=_wsPend; _wsPend=null; setWorldX(p.x); setWorldZ(p.z); return true; }
+function wsDiscardPending(){ _wsPend=null; wsShow(WORLD_X, WORLD_Z); wsRefreshApply(); }
 let _worldReloadT=null;
 function scheduleWorldReload(){ if(GAME.active){ reloadDinoCache(); return; }
     document.body.classList.add("loading");   // 変更中はロック
@@ -4133,10 +4173,12 @@ function reloadDinoCache(){ if(typeof _dinoCacheS==="undefined") return;   // �
     [_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
     if(typeof preloadEverything==="function") preloadEverything(); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
-  if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
+  if(a)a.oninput=()=>wsPendingSet(+a.value, wsCur().z); if(b)b.onchange=()=>wsPendingSet(+b.value, wsCur().z);
   const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
-  if(c)c.oninput=()=>setWorldZ(+c.value); if(d)d.onchange=()=>setWorldZ(+d.value);
-  document.querySelectorAll("#wsQuick .szq").forEach(b=>b.onclick=()=>{ const n=+b.dataset.sz; if(typeof setWorldX==="function"){ setWorldX(n); setWorldZ(n); } });   // 10×10〜50×50 かんたん設定（X=Z=正方形）
+  if(c)c.oninput=()=>wsPendingSet(wsCur().x, +c.value); if(d)d.onchange=()=>wsPendingSet(wsCur().x, +d.value);
+  document.querySelectorAll("#wsQuick .szq").forEach(b=>b.onclick=()=>{ const n=+b.dataset.sz; wsPendingSet(n, n); });   // 10×10〜50×50 かんたん設定（X=Z=正方形）
+  const ap=document.getElementById("wsApply"); if(ap) ap.onclick=()=>{ wsApplyPending(); };
+  wsRefreshApply();
   updateWorldSizeUI(); }
 updateSiteBtn();
 // おすすめ設定の初期適用（既定オン・発掘対象=既定の出土品）
@@ -6925,7 +6967,7 @@ const tabarUI = {
     confirmTitle:document.getElementById("tabarConfirmTitle"), confirmMsg:document.getElementById("tabarConfirmMsg")
 };
 Object.assign(TABAR, {
-    support:null, session:null, hitSource:null, stream:null, saved:null, savedSize:null,
+    support:null, session:null, hitSource:null, stream:null, saved:null,
     floorY:0, floorN:0, floorOk:false, reticle:null, area:null, siteBorder:null,
     orient:{ has:false, a:0, b:0, g:0 }, step:{ lp:null, base:null, up:false, lastT:0, times:[] },
     walk:new THREE.Vector3(), tracking:true, spd:0, prevPos:new THREE.Vector3(), prevOk:false, runT:0,
@@ -6954,7 +6996,6 @@ function tabarOpenPrep(){
     TABAR.phase="prep"; TABAR.support=null; TABAR.starting=false;
     tabarUI.prep.classList.add("open");
     tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしています…");
-    tabarApplyQuestSize();
     tabarDetect().then(r=>{ TABAR.support=r; });
     const poll=()=>{ if(TABAR.phase!=="prep") return; tabarRefreshPrep(); if(tabarUI.startBtn.disabled && !tabarPrepStatus._final) setTimeout(poll, 200); };
     tabarPrepStatus._final=false; poll();
@@ -6972,22 +7013,7 @@ function tabarRefreshPrep(){
 }
 function tabarClosePrep(){
     tabarUI.prep.classList.remove("open");
-    if(TABAR.phase==="prep"){ TABAR.phase="idle"; tabarRestoreSize(); }
-}
-// おすすめオン時は、フィールドの広さ・サイト倍率をQuest入室時の既定値にそろえる（恐竜・出土品のスケールもQuestと同じになる）
-function tabarApplyQuestSize(){
-    TABAR.savedSize=null;
-    if(!recoOn || IS_HEADSET) return;   // おすすめオフはメニューで選んだ値をそのまま使う
-    const q=TABAR_CFG.questSiteMode, w=TABAR_CFG.questWorld;
-    if(siteMode===q && WORLD_X===w && WORLD_Z===w) return;
-    TABAR.savedSize={ site:siteMode, wx:WORLD_X, wz:WORLD_Z };
-    if(siteMode!==q) setSiteMode(q, true);
-    if(WORLD_X!==w || WORLD_Z!==w){ setWorldX(w); setWorldZ(w); }
-}
-function tabarRestoreSize(){
-    const s=TABAR.savedSize; TABAR.savedSize=null; if(!s) return;
-    if(siteMode!==s.site) setSiteMode(s.site, true);
-    if(WORLD_X!==s.wx || WORLD_Z!==s.wz){ setWorldX(s.wx); setWorldZ(s.wz); }
+    if(TABAR.phase==="prep"){ TABAR.phase="idle"; }
 }
 async function tabarStart(){
     if(TABAR.starting || TABAR.phase!=="prep" || !tabarReady()) return;
@@ -7250,6 +7276,7 @@ function tabarCleanup(){
     if(TABAR.stream){ try{ TABAR.stream.getTracks().forEach(t=>t.stop()); }catch(_){} TABAR.stream=null; }
     tabarUI.video.srcObject=null;
     tabarRemoveSiteBorder(); TABAR.area=null;
+    { const r=document.getElementById("chRoundDom"); if(r) r.style.top="16%"; }   // ROUNDパネルを既定位置へ
     if(TABAR.reticle) TABAR.reticle.visible=false;
     const sv=TABAR.saved||{};
     scene.background=(sv.bg!==undefined)?sv.bg:scene.background; scene.fog=(sv.fog!==undefined)?sv.fog:scene.fog; renderer.setClearColor(0x000000, 1);
@@ -7269,7 +7296,6 @@ function tabarCleanup(){
     menu.style.display="flex"; refreshDexHTML();
     if(TABAR.keepPrep){ TABAR.keepPrep=false; TABAR.phase="prep"; tabarUI.prep.classList.add("open"); return; }   // 開始に失敗：準備画面に戻って別方式を試す
     TABAR.phase="idle"; TABAR.starting=false;
-    tabarRestoreSize();
 }
 
 /* ---------- 活動範囲（安全）：境界の表示・接近/はみ出し/走りすぎの警告 ---------- */
@@ -7360,6 +7386,15 @@ function tabarFeedback(){
     if(dig!==TABAR.digShown){ TABAR.digShown=dig; tabarUI.dig.classList.toggle("show", dig); if(dig){ try{ chord([660,880],0.05,"triangle",0.3); }catch(_){} } }
 }
 
+// タッチしやすい大きさにした相棒えらびパネル（▼▲で一覧を開閉）とROUNDパネルが重ならないよう、ROUNDパネルをその下へ少し下げる
+function tabarLayoutRound(){
+    const r=document.getElementById("chRoundDom"); if(!r || r.style.display==="none") return;
+    const base=Math.round(innerHeight*0.16);   // 既定の位置（top:16%）
+    let top=base;
+    const bs=document.getElementById("buddyStandby");
+    if(bs && bs.style.display!=="none"){ const b=bs.getBoundingClientRect(); if(b.height>0) top=Math.max(base, Math.round(b.bottom+10)); }
+    const v=top+"px"; if(r.style.top!==v) r.style.top=v;
+}
 /* ---------- 毎フレーム ---------- */
 function tabarTick(dt, now){
     const fr=(TABAR.backend==="webxr") ? tabarXRFrame() : null;
@@ -7369,6 +7404,7 @@ function tabarTick(dt, now){
         const v=tabarUI.video;
         if(v.paused && !document.hidden && now-(TABAR.vidRetryT||0)>1000){ TABAR.vidRetryT=now; const pr=v.play(); if(pr && pr.catch) pr.catch(()=>{}); }   // 映像が止まったら再生し直す
     }
+    if(now-(TABAR.layoutT||0)>200){ TABAR.layoutT=now; tabarLayoutRound(); }
     if(TABAR.phase==="scan") tabarScanTick(fr);
     else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); }
 }
@@ -7399,6 +7435,46 @@ tabarUI.placeBtn.onclick=()=>{ tabarPlace(); };
 tabarUI.scanBack.onclick=()=>{ tabarExit(); };
 tabarUI.yes.onclick=()=>{ tabarAskDone(true); };
 tabarUI.no.onclick=()=>{ tabarAskDone(false); };
+
+/* ---------- 横幅・奥行きが未更新のまま入室しようとしたときの確認（VR・AR・スマホ/PC・タブレットAR 共通） ---------- */
+let _wsBypass=false, _wsEntryEl=null;
+const wsAskUI={ box:document.getElementById("wsAsk"), msg:document.getElementById("wsAskMsg"), update:document.getElementById("wsAskUpdate"),
+    enter:document.getElementById("wsAskEnter"), skip:document.getElementById("wsAskSkip"), cancel:document.getElementById("wsAskCancel") };
+document.addEventListener("click", e=>{   // 入室ボタンより先に受け取る（キャプチャ）
+    if(_wsBypass || !_wsPend || siteVisible) return;
+    const t=e.target && e.target.closest && e.target.closest("#vrbtnwrap button, #vrbtnwrap a, #startDesktop, #startTabletAR");
+    if(!t || t.disabled) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    wsOpenAsk(t);
+}, true);
+function wsEnter(el){ if(!el) return; _wsBypass=true; try{ el.click(); } finally{ _wsBypass=false; } }   // 元の入室処理をそのまま実行
+function wsAskButtons(mode){   // "ask"：選択肢／"wait"：読み込み中／"tap"：入室ボタン
+    wsAskUI.update.style.display = wsAskUI.skip.style.display = (mode==="ask") ? "" : "none";
+    wsAskUI.cancel.style.display = (mode==="wait") ? "none" : "";
+    wsAskUI.enter.style.display  = (mode==="tap") ? "" : "none";
+}
+function wsOpenAsk(el){
+    const p=_wsPend; _wsEntryEl=el;
+    wsAskUI.msg.textContent="横幅 "+WORLD_X+"m × 奥行き "+WORLD_Z+"m から、横幅 "+p.x+"m × 奥行き "+p.z+"m への変更が、まだ更新されていません。\n更新してから入室しますか？";
+    wsAskButtons("ask"); wsAskUI.box.classList.add("open");
+}
+function wsAskClose(){ wsAskUI.box.classList.remove("open"); _wsEntryEl=null; }
+wsAskUI.update.onclick=()=>{
+    const el=_wsEntryEl;
+    const needTap=!!(el && el.closest("#vrbtnwrap"));   // VR/AR の入室はブラウザの仕様で改めてタップが必要
+    wsApplyPending();
+    wsAskButtons("wait"); wsAskUI.msg.textContent="更新しています（データを読み込み中）…";
+    const poll=()=>{
+        if(!wsAskUI.box.classList.contains("open")) return;
+        if(!tabarReady()){ setTimeout(poll, 200); return; }
+        if(needTap){ wsAskUI.msg.textContent="更新が完了しました。\n「入室する」を押してください。"; wsAskButtons("tap"); }
+        else { wsAskClose(); wsEnter(el); }   // 更新完了後にそのまま入室
+    };
+    setTimeout(poll, 300);
+};
+wsAskUI.enter.onclick=()=>{ const el=_wsEntryEl; wsAskClose(); wsEnter(el); };
+wsAskUI.skip.onclick=()=>{ const el=_wsEntryEl; wsDiscardPending(); wsAskClose(); wsEnter(el); };   // 変更は取り消して、今の広さで入室
+wsAskUI.cancel.onclick=()=>{ wsAskClose(); };
 
 /* ===================================================== * リサイズ * ===================================================== */
 addEventListener("resize",()=>{
