@@ -6276,6 +6276,7 @@ renderer.setAnimationLoop(()=>{
     const dt=Math.min(0.05,(now-lastTime)/1000); lastTime=now;
     const isVR=questXR();
     if(TABAR.on) tabarTick(dt, now);   // タブレットAR：カメラ姿勢・床検出・反応表示・安全チェック
+    if(GAME.desktop && !isVR && now-_roundLayoutT>200){ _roundLayoutT=now; layoutRoundPanel(); }   // ROUNDパネルと相棒えらびパネルの重なり回避（0.2秒ごと）
 
     // ── 出土品ポップアニメ ──
     for(let i=popAnims.length-1;i>=0;i--){
@@ -7276,7 +7277,6 @@ function tabarCleanup(){
     if(TABAR.stream){ try{ TABAR.stream.getTracks().forEach(t=>t.stop()); }catch(_){} TABAR.stream=null; }
     tabarUI.video.srcObject=null;
     tabarRemoveSiteBorder(); TABAR.area=null;
-    { const r=document.getElementById("chRoundDom"); if(r) r.style.top="16%"; }   // ROUNDパネルを既定位置へ
     if(TABAR.reticle) TABAR.reticle.visible=false;
     const sv=TABAR.saved||{};
     scene.background=(sv.bg!==undefined)?sv.bg:scene.background; scene.fog=(sv.fog!==undefined)?sv.fog:scene.fog; renderer.setClearColor(0x000000, 1);
@@ -7386,8 +7386,10 @@ function tabarFeedback(){
     if(dig!==TABAR.digShown){ TABAR.digShown=dig; tabarUI.dig.classList.toggle("show", dig); if(dig){ try{ chord([660,880],0.05,"triangle",0.3); }catch(_){} } }
 }
 
-// タッチしやすい大きさにした相棒えらびパネル（▼▲で一覧を開閉）とROUNDパネルが重ならないよう、ROUNDパネルをその下へ少し下げる
-function tabarLayoutRound(){
+// 相棒えらびパネル（▼▲で一覧を開閉）とROUNDパネルが重ならないよう、重なるときだけROUNDパネルをその下へ下げる
+// （ヘッドセットなし・タブレットAR共通。重ならないときは既定位置 top:16%）
+let _roundLayoutT=0;
+function layoutRoundPanel(){
     const r=document.getElementById("chRoundDom"); if(!r || r.style.display==="none") return;
     const base=Math.round(innerHeight*0.16);   // 既定の位置（top:16%）
     let top=base;
@@ -7404,7 +7406,6 @@ function tabarTick(dt, now){
         const v=tabarUI.video;
         if(v.paused && !document.hidden && now-(TABAR.vidRetryT||0)>1000){ TABAR.vidRetryT=now; const pr=v.play(); if(pr && pr.catch) pr.catch(()=>{}); }   // 映像が止まったら再生し直す
     }
-    if(now-(TABAR.layoutT||0)>200){ TABAR.layoutT=now; tabarLayoutRound(); }
     if(TABAR.phase==="scan") tabarScanTick(fr);
     else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); }
 }
