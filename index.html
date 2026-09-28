@@ -233,10 +233,14 @@
     #dexBtn:hover{ background:rgba(40,26,60,.9); color:#fff; }
     .szq{ padding:8px 12px; border-radius:9px; border:1px solid rgba(180,140,255,.45); background:#160f2e; color:#eae4ff; font-weight:800; font-size:13px; cursor:pointer; }
     .szq:hover{ background:#2a1d52; }
-    /* 読み込みを伴う設定の「更新」行（サイトモデルの大きさ／ワールドの広さ） */
-    .applyRow{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:12px; }
-    .pendNote{ font-size:12px; color:#b9aee0; letter-spacing:.5px; }
-    .pendNote.pend{ color:#ffd86a; font-weight:700; }
+    /* まとめて更新バー（入室ボタンの下）と、各項目の「未更新」表示 */
+    #loadBar{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 14px; width:100%; box-sizing:border-box;
+        padding:12px 14px; border-radius:12px; background:rgba(60,44,8,.55); border:1px solid rgba(255,216,106,.7); }
+    #loadBar .lbText{ display:flex; flex-direction:column; gap:3px; font-size:12px; color:#f2e6c4; letter-spacing:.5px; line-height:1.55; white-space:pre-line; }
+    #loadBar .lbText b{ font-size:13px; color:#ffd86a; }
+    body.loading #loadBarBtn, body.preloading #loadBarBtn{ opacity:.45; pointer-events:none; }
+    .pendNote{ margin-top:8px; font-size:12px; color:#ffd86a; font-weight:700; letter-spacing:.5px; text-align:center; }
+    .pendNote:empty{ display:none; }
     .applyBtn{ padding:9px 22px; border-radius:9px; border:1px solid #ffd86a; background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; font-weight:800; font-size:13px; cursor:pointer; }
     .applyBtn:disabled{ background:#160f2e; border-color:rgba(180,140,255,.3); color:rgba(234,228,255,.4); cursor:default; }
     .szq.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; border-color:#ffd86a; }
@@ -255,6 +259,10 @@
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
     <button class="desktop-btn" id="startTabletAR" style="display:none">📷 タブレットARであそぶ（カメラ）</button>
+    <div id="loadBar" style="display:none">
+      <div class="lbText"><b>未反映の変更があります</b><span id="loadBarItems"></span></div>
+      <button type="button" id="loadBarBtn" class="applyBtn">🔄 まとめて更新</button>
+    </div>
 
     <div class="cardgrid">
       <div class="opt wide" id="optReco">
@@ -391,10 +399,7 @@
           <button type="button" class="szq" data-sz="4">4倍</button>
           <button type="button" class="szq" data-sz="5">5倍</button>
         </div>
-        <div class="applyRow">
-          <span id="ssPendNote" class="pendNote"></span>
-          <button type="button" id="ssApply" class="applyBtn" disabled>🔄 更新</button>
-        </div>
+        <div id="ssPendNote" class="pendNote"></div>
       </div>
       <div class="opt wide" id="optDigPos" style="display:none">
         <div class="lbl">発掘場所</div>
@@ -429,10 +434,7 @@
           <button type="button" class="szq" data-sz="40">40</button>
           <button type="button" class="szq" data-sz="50">50</button>
         </div>
-        <div class="applyRow">
-          <span id="wsPendNote" class="pendNote"></span>
-          <button type="button" id="wsApply" class="applyBtn" disabled>🔄 更新</button>
-        </div>
+        <div id="wsPendNote" class="pendNote"></div>
       </div>
     </div>
 
@@ -947,8 +949,10 @@ import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFact
 
 /* ===================================================== * プラットフォーム判定（Quest / タブレットAR） * questXR()      … ヘッドセット（Quest）でXR表示中。コントローラー・手元パネル等のQuest固有UIはこれで分岐 * worldScaleXR() … 実寸スケールで表示中（Quest と タブレットAR）。恐竜/出土品の大きさ・高さ・パネル倍率はこれで分岐 * タブレットAR中は GAME.desktop=true（タッチ経路）でゲームを動かし、見た目のスケールだけ Quest と共通にする。 * ===================================================== */
 const TABAR = { on:false, backend:null, phase:"idle", heldKey:"adult" };
-let _ssPend=null;   // サイト表示時のサイトモデルの大きさ（倍率）：スライダー等で変更したがまだ「更新」していない値
-let _wsPend=null;   // サイト非表示時の横幅・奥行き：スライダー等で変更したがまだ「更新」していない値 {x,z}   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
+/* まとめて更新：メニューで読み込みを伴う変更（サイトモデルの大きさ・ワールドの広さ。発掘する対象・モード等のおすすめ設定で変わる場合を含む）は
+ * その場では読み込まず、入室ボタン近くの「まとめて更新」で一度に読み込む */
+let _loaded=null;        // 最後に読み込み（モデル生成）に使ったサイズと恐竜の原寸比 {sm,wx,wz,ds}
+let _userEditT=-1e9;     // メニューの設定をユーザーが操作した時刻（起動時の自動設定は従来どおりすぐ読み込む）   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
 const TABAR_CFG = {
     digNear:       1.2, // 掘れる距離：タブレット位置→ブロック外周の水平距離(m)。発掘ポイントに着いてから掘る
     dogFwd:        1.5, // 相棒の前方距離(m)。縦持ちタブレットの画面下端に見える距離
@@ -3330,6 +3334,7 @@ let _warmupModels=[];         // ウォームアップ対象（恐竜キャッ�
 function preloadEverything(done){
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
     PRELOAD_DONE=false; document.body.classList.add("preloading");   // 完了まで入室不可
+    _loaded={ sm:siteMode, wx:WORLD_X, wz:WORLD_Z, ds:+dinoRealScale().toFixed(3) }; if(typeof loadBarRefresh==="function") loadBarRefresh();   // このサイズ・原寸比でモデルを生成する
     _finishingPreload=false; WARMUP_DONE=false;   // 再プリロード（対象/モード切替など）でも完全ゲートを再入可能に（一度きりガードで固まるのを防止）
     if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
     const jobs=[];
@@ -4074,6 +4079,7 @@ function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短�
     const el=document.getElementById("rsInfo"); if(!el) return;
     const s=(typeof dinoRealScale==="function")?dinoRealScale():1;
     el.textContent = "原寸比：約 "+s.toFixed(1)+"倍" + (Math.abs(s-1)<0.06?"（実寸）":"");
+    if(typeof loadBarRefresh==="function") loadBarRefresh();
 }
 { const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
 // メニュー項目の並び替え（未掲載の optBuddy/optDigPos は現状の相対位置を維持）
@@ -4095,7 +4101,8 @@ document.querySelectorAll("#segBuddyPool button").forEach(b=>b.onclick=()=>{ doc
 document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ withParamLoading(()=>{ setSiteVisible(b.dataset.v==="show"); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); if(typeof updateRecoVisibility==="function") updateRecoVisibility(); }); });
 { const b=document.getElementById("dSite"); if(b) b.onclick=()=>{ setSiteVisible(!siteVisible); syncSiteSeg(); updateSiteBtn(); updateWorldSizeUI(); }; }
 // ワールドサイズUI（サイト非表示時のみ表示）
-function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); if(o) o.style.display = siteVisible? "none":"block";
+function updateWorldSizeUI(){ if(typeof loadBarRefresh==="function") loadBarRefresh();
+    const o=document.getElementById("worldSizeOpt"); if(o) o.style.display = siteVisible? "none":"block";
     const so=document.getElementById("siteSizeOpt"); if(so) so.style.display = siteVisible? "block":"none";   // サイズ選択はサイト表示時のみ
     updateHudReset(); }
 { document.querySelectorAll("#segBuddyMode button").forEach(b=>b.onclick=()=>{
@@ -4116,7 +4123,8 @@ function updateWorldSizeUI(){ const o=document.getElementById("worldSizeOpt"); i
     if(typeof resetDogStats==="function") resetDogStats();
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
   }); }
-function applySiteMode(){ withParamLoading(()=>{
+function applySiteMode(){ if(menuDefer()){ loadBarRefresh(); return; }   // メニュー操作中は「まとめて更新」まで保留
+    withParamLoading(()=>{
         rescaleSite();                       // サイトを倍率でフィットし直す
         regenerateCustomSpots();             // 発掘点の再配置（カスタム時）
         reloadDinoCache();                   // 恐竜サイズが変わるので作り直す
@@ -4130,29 +4138,12 @@ function setSiteMode(v, apply){
     document.querySelectorAll("#ssQuick .szq").forEach(b=>b.classList.toggle("on", Math.abs(+b.dataset.sz - v)<0.05));
     if(typeof updateRsInfo==="function") updateRsInfo();   // 倍率変更で原寸比も線形に更新
     if(apply) applySiteMode();
-    _ssPend=null; ssRefreshApply();   // 反映したので保留は解除
+    loadBarRefresh();
 }
-/* サイトモデルの大きさ（サイト表示時）：スライダー・数値・かんたん設定は表示だけ変え（保留）、「更新」を押したときに setSiteMode で反映（読み込み） */
-function ssClamp(v){ return Math.max(1, Math.min(5, Math.round((v||1)*10)/10)); }
-function ssShow(v){
-    const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum"); if(s)s.value=v; if(n)n.value=v;
-    document.querySelectorAll("#ssQuick .szq").forEach(b=>b.classList.toggle("on", Math.abs(+b.dataset.sz - v)<0.05));
-}
-function ssRefreshApply(){
-    const b=document.getElementById("ssApply"), n=document.getElementById("ssPendNote"); if(!b||!n) return;
-    b.disabled=(_ssPend==null);
-    n.classList.toggle("pend", _ssPend!=null);
-    n.textContent = (_ssPend!=null) ? ("未更新："+_ssPend+"倍（「更新」で反映）") : ("現在："+siteMode+"倍");
-}
-function ssPendingSet(v){ v=ssClamp(v); _ssPend=(Math.abs(v-siteMode)<0.05) ? null : v; ssShow(v); ssRefreshApply(); }
-function ssApplyPending(){ if(_ssPend==null) return false; const v=_ssPend; _ssPend=null; setSiteMode(v, true); return true; }
-function ssDiscardPending(){ _ssPend=null; ssShow(siteMode); ssRefreshApply(); }
 { const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum");
-  if(s){ s.oninput=()=>ssPendingSet(+s.value); s.onchange=()=>ssPendingSet(+s.value); }   // 表示だけ変える（「更新」で反映）
-  if(n) n.onchange=()=>ssPendingSet(+n.value);
-  document.querySelectorAll("#ssQuick .szq").forEach(b=>b.onclick=()=>ssPendingSet(+b.dataset.sz));   // かんたん1〜5倍
-  const ap=document.getElementById("ssApply"); if(ap) ap.onclick=()=>{ ssApplyPending(); };
-  ssRefreshApply();
+  if(s){ s.oninput=()=>setSiteMode(+s.value,false); s.onchange=()=>setSiteMode(+s.value,true); }   // ドラッグ中は表示のみ、離したら反映（メニューでは「まとめて更新」まで読み込みを保留）
+  if(n) n.onchange=()=>setSiteMode(+n.value,true);
+  document.querySelectorAll("#ssQuick .szq").forEach(b=>b.onclick=()=>setSiteMode(+b.dataset.sz,true));   // かんたん1〜5倍
 }
 function updateHudReset(){
     const r=document.getElementById("dReset"); if(r) r.style.display = GAME.desktop ? "inline-block":"none";   // サイト表示/非表示ともに表示
@@ -4162,36 +4153,56 @@ function updateHudReset(){
 { const r=document.getElementById("dReset"); if(r) r.onclick=()=>{ resetDexAndStandby(!TABAR.on); }; }   // タブレットARはフィールドを現実空間に固定したまま（再センターしない）   // grip+Y相当：中央＋向き(-z)に再センター
 { const a=document.getElementById("dShowAll"); if(a) a.onclick=()=>{ completeAllDigs(); }; }         // grip+X相当：全発掘一斉完了（全表示）
 { const b=document.getElementById("taCardBtn"); if(b) b.onclick=()=>{ if(GAME.mode!=="time" && GAME.complete) worldHud.toggleCollectPage(); else worldHud.toggleResultsPage(); updateResultBtn(); }; }
-function setWorldX(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
+function setWorldX(v, noReload){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_X=v;
     const s=document.getElementById("wxSlider"), n=document.getElementById("wxNum"), t=document.getElementById("wxVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo();
-    _wsPend=null; wsRefreshApply(); }   // 反映したので保留は解除
-function setWorldZ(v){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); if(!noReload) scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo();
+    loadBarRefresh(); }
+function setWorldZ(v, noReload){ v=Math.max(3,Math.min(50,Math.round(v||20))); WORLD_Z=v;
     const s=document.getElementById("wzSlider"), n=document.getElementById("wzNum"), t=document.getElementById("wzVal");
-    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo();
-    _wsPend=null; wsRefreshApply(); }
-/* 横幅・奥行き（サイト非表示時）：スライダー・数値・かんたん設定は表示だけ変え（保留）、「更新」を押したときに setWorldX/Z で反映（読み込み） */
-function wsClamp(v){ return Math.max(3,Math.min(50,Math.round(v||20))); }
-function wsCur(){ return _wsPend || { x:WORLD_X, z:WORLD_Z }; }
-function wsShow(x,z){
-    const ids=[["wxSlider","wxNum","wxVal",x],["wzSlider","wzNum","wzVal",z]];
-    for(const [a,b,c,v] of ids){ const s=document.getElementById(a), n=document.getElementById(b), t=document.getElementById(c); if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; }
+    if(s)s.value=v; if(n)n.value=v; if(t)t.textContent=v; buildFallbackGround(WORLD_X,WORLD_Z); applyWorldParams(); if(!noReload) scheduleWorldReload(); if(typeof updateRsInfo==="function") updateRsInfo();
+    loadBarRefresh(); }
+/* ---------- まとめて更新（読み込みの保留と一括実行） ---------- */
+function menuDefer(){   // メニューでユーザーが操作した直後の読み込みだけ保留（起動時の初期設定・入室後は従来どおり）
+    return !GAME.active && !TABAR.on && _loaded!=null && (performance.now()-_userEditT)<1000;
 }
-function wsRefreshApply(){
-    const b=document.getElementById("wsApply"), n=document.getElementById("wsPendNote"); if(!b||!n) return;
-    b.disabled=!_wsPend;
-    n.classList.toggle("pend", !!_wsPend);
-    n.textContent = _wsPend ? ("未更新：横幅 "+_wsPend.x+"m × 奥行き "+_wsPend.z+"m（「更新」で反映）") : ("現在：横幅 "+WORLD_X+"m × 奥行き "+WORLD_Z+"m");
+function loadDiffs(){   // 読み込み済みと現在の違い（表示用）
+    const L=_loaded, a=[]; if(!L) return a;
+    if(L.sm!==siteMode) a.push({ key:"site", text:"サイトモデルの大きさ："+L.sm+"倍 → "+siteMode+"倍" });
+    if(L.wx!==WORLD_X || L.wz!==WORLD_Z) a.push({ key:"world", text:"ワールドの広さ："+L.wx+"×"+L.wz+"m → "+WORLD_X+"×"+WORLD_Z+"m" });
+    const ds=+dinoRealScale().toFixed(3);   // サイト表示の切替・原寸比の設定などで恐竜の生成サイズが変わる場合
+    if(!a.length && Math.abs(ds-L.ds)>0.0005) a.push({ key:"scale", text:"恐竜の大きさ（原寸比）：約"+L.ds.toFixed(1)+"倍 → 約"+ds.toFixed(1)+"倍" });
+    return a;
 }
-function wsPendingSet(x,z){
-    x=wsClamp(x); z=wsClamp(z);
-    _wsPend = (x===WORLD_X && z===WORLD_Z) ? null : { x, z };
-    wsShow(x,z); wsRefreshApply();
+function loadBarRefresh(){
+    const bar=document.getElementById("loadBar"); if(!bar) return;
+    const d=loadDiffs();
+    bar.style.display = d.length ? "" : "none";
+    const it=document.getElementById("loadBarItems"); if(it) it.textContent=d.map(x=>x.text).join("\n");
+    const sn=document.getElementById("ssPendNote"), wn=document.getElementById("wsPendNote");   // 各項目の横には「未更新」だけ表示
+    if(sn) sn.textContent = d.some(x=>x.key==="site")  ? "未更新（上の「まとめて更新」で反映）" : "";
+    if(wn) wn.textContent = d.some(x=>x.key==="world") ? "未更新（上の「まとめて更新」で反映）" : "";
 }
-function wsApplyPending(){ if(!_wsPend) return false; const p=_wsPend; _wsPend=null; setWorldX(p.x); setWorldZ(p.z); return true; }
-function wsDiscardPending(){ _wsPend=null; wsShow(WORLD_X, WORLD_Z); wsRefreshApply(); }
+function loadApplyAll(){   // 保留中の読み込みを一度に実行
+    if(!loadDiffs().length) return false;
+    const siteChanged = _loaded.sm!==siteMode;   // サイトの再フィットは倍率が変わったときだけ
+    if(_worldReloadT){ clearTimeout(_worldReloadT); _worldReloadT=null; }
+    withParamLoading(()=>{
+        if(siteChanged) rescaleSite();   // サイトを倍率でフィットし直す
+        regenerateCustomSpots();         // 発掘点の再配置
+        reloadDinoCache();               // 恐竜等を作り直す（preloadEverything で読み込み済みサイズを記録）
+        updateGoal();
+    });
+    return true;
+}
+function loadRevertAll(){   // 読み込まずに、読み込み済みのサイズへ値を戻す（モデルはそのサイズで生成済み）
+    const L=_loaded; if(!L) return;
+    setSiteMode(L.sm, false); setWorldX(L.wx, true); setWorldZ(L.wz, true);
+    if(_worldReloadT){ clearTimeout(_worldReloadT); _worldReloadT=null; }
+    loadBarRefresh();
+}
 let _worldReloadT=null;
 function scheduleWorldReload(){ if(GAME.active){ reloadDinoCache(); return; }
+    if(menuDefer()){ if(_worldReloadT){ clearTimeout(_worldReloadT); _worldReloadT=null; } loadBarRefresh(); return; }   // メニュー操作中は「まとめて更新」まで保留
     document.body.classList.add("loading");   // 変更中はロック
     if(_worldReloadT) clearTimeout(_worldReloadT);
     _worldReloadT=setTimeout(()=>{ withParamLoading(()=>{ reloadDinoCache(); }); }, 250);   // 連続変更が落ち着いてから再生成
@@ -4201,12 +4212,10 @@ function reloadDinoCache(){ if(typeof _dinoCacheS==="undefined") return;   // �
     [_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
     if(typeof preloadEverything==="function") preloadEverything(); }
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
-  if(a)a.oninput=()=>wsPendingSet(+a.value, wsCur().z); if(b)b.onchange=()=>wsPendingSet(+b.value, wsCur().z);
+  if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
   const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
-  if(c)c.oninput=()=>wsPendingSet(wsCur().x, +c.value); if(d)d.onchange=()=>wsPendingSet(wsCur().x, +d.value);
-  document.querySelectorAll("#wsQuick .szq").forEach(b=>b.onclick=()=>{ const n=+b.dataset.sz; wsPendingSet(n, n); });   // 10×10〜50×50 かんたん設定（X=Z=正方形）
-  const ap=document.getElementById("wsApply"); if(ap) ap.onclick=()=>{ wsApplyPending(); };
-  wsRefreshApply();
+  if(c)c.oninput=()=>setWorldZ(+c.value); if(d)d.onchange=()=>setWorldZ(+d.value);
+  document.querySelectorAll("#wsQuick .szq").forEach(b=>b.onclick=()=>{ const n=+b.dataset.sz; if(typeof setWorldX==="function"){ setWorldX(n); setWorldZ(n); } });   // 10×10〜50×50 かんたん設定（X=Z=正方形）
   updateWorldSizeUI(); }
 updateSiteBtn();
 // おすすめ設定の初期適用（既定オン・発掘対象=既定の出土品）
@@ -4294,6 +4303,9 @@ function startGame(desktop){
     unlockAudio();
 }
 document.getElementById("startDesktop").onclick=()=> startGame(true);
+{ const m=document.getElementById("menu");   // メニューの設定操作（クリック・スライダー・数値入力）の時刻
+  ["pointerdown","click","input","change","keydown"].forEach(ev=>m.addEventListener(ev, e=>{ if(!(e.target && e.target.closest && e.target.closest("#loadBar"))) _userEditT=performance.now(); }, true)); }
+document.getElementById("loadBarBtn").onclick=()=>{ loadApplyAll(); };
 
 // VR開始/終了
 let _savedBg=null, _savedFog=null;
@@ -7501,14 +7513,9 @@ tabarUI.alt.onclick=()=>{ tabarAskDone("alt"); };
 
 /* ---------- 読み込みを伴う設定が未更新のまま入室しようとしたときの確認（VR・AR・スマホ/PC・タブレットAR 共通） ----------
  * 対象はメニューに表示中の項目だけ：サイト表示＝サイトモデルの大きさ／サイト非表示＝ワールドの広さ */
-function pendingItems(){
-    const a=[];
-    if(siteVisible && _ssPend!=null) a.push("サイトモデルの大きさ："+siteMode+"倍 → "+_ssPend+"倍");
-    if(!siteVisible && _wsPend) a.push("ワールドの広さ："+WORLD_X+"×"+WORLD_Z+"m → "+_wsPend.x+"×"+_wsPend.z+"m");
-    return a;
-}
-function applyPendingAll(){ if(siteVisible) ssApplyPending(); else wsApplyPending(); }
-function discardPendingAll(){ if(siteVisible) ssDiscardPending(); else wsDiscardPending(); }
+function pendingItems(){ return loadDiffs().map(x=>x.text); }
+function applyPendingAll(){ loadApplyAll(); }
+function discardPendingAll(){ loadRevertAll(); }
 let _wsBypass=false, _wsEntryEl=null;
 const wsAskUI={ box:document.getElementById("wsAsk"), msg:document.getElementById("wsAskMsg"), update:document.getElementById("wsAskUpdate"),
     enter:document.getElementById("wsAskEnter"), skip:document.getElementById("wsAskSkip"), cancel:document.getElementById("wsAskCancel") };
@@ -7528,7 +7535,9 @@ function wsAskButtons(mode){   // "ask"：選択肢／"wait"：読み込み中�
 function wsOpenAsk(el){
     _wsEntryEl=el;
     wsAskUI.msg.textContent=pendingItems().join("\n")+"\nこの変更が、まだ更新されていません。更新してから入室しますか？";
-    wsAskButtons("ask"); wsAskUI.box.classList.add("open");
+    wsAskButtons("ask");
+    if(loadDiffs().some(x=>x.key==="scale")) wsAskUI.skip.style.display="none";   // 大きさ・広さ以外の変更は元に戻せないため、更新してから入室
+    wsAskUI.box.classList.add("open");
 }
 function wsAskClose(){ wsAskUI.box.classList.remove("open"); _wsEntryEl=null; }
 wsAskUI.update.onclick=()=>{
