@@ -574,7 +574,7 @@
         <h3>📷 タブレットAR</h3>
         <p>タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。タイトルの<b>「タブレットARであそぶ」</b>から始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「子ども 1.2m／大人 1.5m」を選びます）。終わるときは「やめる」→「おわる」。</p>
+        <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「幼児 0.9m／子ども 1.2m／大人 1.5m」を選びます）。終わるときは「やめる」→「おわる」。</p>
       </section>
       <section>
         <h3>🛠 会場セットアップ（サイト非表示時）</h3>
@@ -818,9 +818,9 @@
     #tabarWarn.track{ border-color:#8ff0ff; background:rgba(8,20,30,.92); }
 
     /* 準備・終了確認 */
-    #tabarPrep, #tabarConfirm{ position:fixed; inset:0; z-index:13000; display:none; align-items:center; justify-content:center;
+    #tabarPrep, #tabarConfirm{ position:fixed; inset:0; z-index:100000; display:none; align-items:center; justify-content:center;
         padding:20px; background:rgba(8,5,18,.88); }
-    #tabarConfirm{ z-index:13001; }
+    #tabarConfirm{ z-index:100001; }   /* 開始ヒント(#centerHint)より手前に出す */
     #tabarPrep.open, #tabarConfirm.open{ display:flex; }
     .tabar-sheet{ width:min(480px,92vw); max-height:92vh; overflow-y:auto; display:flex; flex-direction:column; gap:12px;
         background:#140e24; border:1px solid rgba(210,180,120,.5); border-radius:16px; padding:22px 20px; color:#efe6ff; }
@@ -832,6 +832,8 @@
     #segTabarH button{ min-height:44px; }
     .tabar-status{ margin:0; min-height:1.6em; font-size:13px; line-height:1.6; letter-spacing:.5px; color:#c9bcff; text-align:center; white-space:pre-line; }
     .tabar-status.err{ color:#ffb3a1; }
+    .tabar-confirm-msg{ margin:0; font-size:13.5px; line-height:1.75; color:rgba(226,216,255,.9); text-align:center; white-space:pre-line; }
+    .tabar-confirm-msg:empty{ display:none; }
     .tabar-go{ padding:15px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; letter-spacing:1px;
         font-size:clamp(16px,2.6vw,21px); color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; cursor:pointer; touch-action:manipulation; }
     .tabar-go:active{ transform:translateY(2px); box-shadow:0 2px 0 #b8871c; }
@@ -882,6 +884,7 @@
         <div class="opt wide" id="tabarHeightOpt" style="display:none">
             <div class="lbl">タブレットを持つ高さ（床から）</div>
             <div class="seg" id="segTabarH">
+                <button data-v="infant">🧸 幼児 0.9m</button>
                 <button data-v="child" class="on">🧒 子ども 1.2m</button>
                 <button data-v="adult">🧑 大人 1.5m</button>
             </div>
@@ -893,7 +896,8 @@
 </div>
 <div id="tabarConfirm">
     <div class="tabar-sheet" role="dialog" aria-modal="true" aria-label="終了の確認">
-        <h2>おわりにする？</h2>
+        <h2 id="tabarConfirmTitle">おわりにする？</h2>
+        <p id="tabarConfirmMsg" class="tabar-confirm-msg"></p>
         <button id="tabarConfirmYes" class="tabar-go">おわる</button>
         <button id="tabarConfirmNo" class="tabar-back">つづける</button>
     </div>
@@ -927,11 +931,13 @@ const TABAR_CFG = {
     runSteps:      4,   // 1.2秒あたりの歩数がこれ以上で「ゆっくり歩こう」（camera）
     stride:        0.45,// 1歩の歩幅(m)：年長児の目安（camera）
     stepThresh:    1.2, // 歩数検出：加速度の山のしきい値(m/s²)（camera）
-    heldH: { child:1.2, adult:1.5 }, // 床からタブレットまでの高さ(m)。準備画面のトグルで選ぶ（camera／ヒットテスト非対応時に使用）
+    heldH: { infant:0.9, child:1.2, adult:1.5 }, // 床からタブレットまでの高さ(m)。準備画面のトグルで選ぶ（camera／ヒットテスト非対応時に使用）
     camLongFov:    64,  // 背面カメラ映像の長辺方向の画角(度)。端末ごとに微調整（camera）
     camDpr:        1.5  // cameraバックエンド時の描画解像度の上限（カメラ映像と合成するため負荷を抑える）
 };
 function tabarDeviceH(){ return TABAR_CFG.heldH[TABAR.heldKey] || TABAR_CFG.heldH.child; }   // 選択中の「持つ高さ」
+// 確認ダイアログ：タブレットAR中は画面内の確認を使う（ネイティブの confirm() はカメラ映像／ARセッションを止めてしまうため）
+function askConfirm(msg){ return TABAR.on ? tabarAsk("確認", msg, "OK", "キャンセル") : Promise.resolve(confirm(msg)); }
 function questXR(){ return renderer.xr.isPresenting && !TABAR.on; }
 function worldScaleXR(){ return (typeof renderer!=="undefined" && renderer.xr.isPresenting) || TABAR.on; }
 
@@ -4139,8 +4145,8 @@ if(typeof applyAutoForTarget==="function"){ applyAutoForTarget(chosenDigTarget);
 document.getElementById("dexClose").onclick=()=>{ document.getElementById("dex").classList.remove("open"); clearNewStamps(); refreshDexHTML(); };
 { const dEl=document.getElementById("dex"); if(dEl) dEl.addEventListener("click", ev=>{ if(ev.target===dEl){ dEl.classList.remove("open"); clearNewStamps(); refreshDexHTML(); } }); }   // モーダル外側タップでも閉じる
 document.getElementById("dexBtn").onclick=()=>{ refreshDexHTML(); document.getElementById("dex").classList.add("open"); };
-document.getElementById("dexReset").onclick=()=>{
-    if(!confirm("発掘図鑑をリセットします。すべての発掘記録が消えます。よろしいですか？")) return;
+document.getElementById("dexReset").onclick=async ()=>{
+    if(!(await askConfirm("発掘図鑑をリセットします。すべての発掘記録が消えます。よろしいですか？"))) return;
     // 図鑑データ
     dexData={}; saveDex(dexData); refreshDexHTML();
     if(typeof dexPanel!=="undefined") dexPanel.draw();
@@ -5170,10 +5176,10 @@ function openTAModal(){
 { const rb=document.getElementById("dRecords"); if(rb) rb.onclick=openTAModal; }
 { const rb2=document.getElementById("openRecords"); if(rb2) rb2.onclick=openTAModal; }
 document.getElementById("taModalClose").onclick=()=>{ document.getElementById("taModal").style.display="none"; };
-document.getElementById("taResetAll").onclick=()=>{ if(confirm("タイムアタックの記録を削除します。よろしいですか？")){ saveTA([]); openTAModal(); } };
-{ const cb=document.getElementById("colResetBtn"); if(cb) cb.onclick=()=>{ if(confirm("じっくりコレクションの記録を削除します。よろしいですか？")){ saveCol([]); openTAModal(); } }; }
-{ const cb=document.getElementById("chResetBtn"); if(cb) cb.onclick=()=>{ if(confirm("発掘チャレンジの記録を削除しますか？")){ saveCh([]); openTAModal(); } }; }
-{ const ab=document.getElementById("allResetBtn"); if(ab) ab.onclick=()=>{ if(confirm("じっくりコレクション・タイムアタック・発掘チャレンジ、すべての記録を削除しますか？")){ saveCol([]); saveTA([]); saveCh([]); openTAModal(); } }; }
+document.getElementById("taResetAll").onclick=async ()=>{ if(await askConfirm("タイムアタックの記録を削除します。よろしいですか？")){ saveTA([]); openTAModal(); } };
+{ const cb=document.getElementById("colResetBtn"); if(cb) cb.onclick=async ()=>{ if(await askConfirm("じっくりコレクションの記録を削除します。よろしいですか？")){ saveCol([]); openTAModal(); } }; }
+{ const cb=document.getElementById("chResetBtn"); if(cb) cb.onclick=async ()=>{ if(await askConfirm("発掘チャレンジの記録を削除しますか？")){ saveCh([]); openTAModal(); } }; }
+{ const ab=document.getElementById("allResetBtn"); if(ab) ab.onclick=async ()=>{ if(await askConfirm("じっくりコレクション・タイムアタック・発掘チャレンジ、すべての記録を削除しますか？")){ saveCol([]); saveTA([]); saveCh([]); openTAModal(); } }; }
 document.getElementById("taModal").addEventListener("click",e=>{ if(e.target.id==="taModal") e.currentTarget.style.display="none"; });
 document.getElementById("dQuit").onclick=()=>{ if(TABAR.on){ tabarConfirmExit(); return; } endGame(true); };   // タブレットARは確認してからAR終了
 
@@ -6915,7 +6921,8 @@ const tabarUI = {
     placeBtn:document.getElementById("tabarPlaceBtn"), scanBack:document.getElementById("tabarScanBack"),
     prep:document.getElementById("tabarPrep"), prepStatus:document.getElementById("tabarPrepStatus"),
     startBtn:document.getElementById("tabarStartBtn"), prepBack:document.getElementById("tabarPrepBack"),
-    confirm:document.getElementById("tabarConfirm"), yes:document.getElementById("tabarConfirmYes"), no:document.getElementById("tabarConfirmNo")
+    confirm:document.getElementById("tabarConfirm"), yes:document.getElementById("tabarConfirmYes"), no:document.getElementById("tabarConfirmNo"),
+    confirmTitle:document.getElementById("tabarConfirmTitle"), confirmMsg:document.getElementById("tabarConfirmMsg")
 };
 Object.assign(TABAR, {
     support:null, session:null, hitSource:null, stream:null, saved:null, savedSize:null,
@@ -7215,9 +7222,20 @@ function tabarPlace(){
     DOG_FWD=TABAR_CFG.dogFwd;
     GAME._heightReady=true;
 }
-function tabarConfirmExit(){ tabarUI.confirm.classList.add("open"); }
+let _tabarAskResolve=null;
+function tabarAsk(title, msg, yes, no){   // 画面内の確認ダイアログ（OK=true／キャンセル=false）
+    return new Promise(res=>{
+        if(_tabarAskResolve) _tabarAskResolve(false);
+        _tabarAskResolve=res;
+        tabarUI.confirmTitle.textContent=title; tabarUI.confirmMsg.textContent=msg||"";
+        tabarUI.yes.textContent=yes; tabarUI.no.textContent=no;
+        tabarUI.confirm.classList.add("open");
+    });
+}
+function tabarAskDone(v){ tabarUI.confirm.classList.remove("open"); const r=_tabarAskResolve; _tabarAskResolve=null; if(r) r(v); }
+function tabarConfirmExit(){ tabarAsk("おわりにする？", "", "おわる", "つづける").then(ok=>{ if(ok) tabarExit(); }); }
 function tabarExit(){
-    tabarUI.confirm.classList.remove("open");
+    tabarAskDone(false);
     if(TABAR.backend==="webxr" && TABAR.session && renderer.xr.isPresenting){
         try{ TABAR.session.end(); return; }catch(_){}   // sessionend → tabarCleanup
     }
@@ -7243,7 +7261,7 @@ function tabarCleanup(){
     try{ renderer.xr.setReferenceSpaceType("local-floor"); }catch(_){}
     controllers.forEach(c=>{ c.visible=true; if(c.userData.grip) c.userData.grip.visible=true; if(c.userData.line) c.userData.line.visible=true; });
     hands.forEach(h=>{ h.visible=true; });
-    tabarUI.scan.classList.remove("open"); tabarUI.confirm.classList.remove("open"); tabarUI.prep.classList.remove("open");
+    tabarUI.scan.classList.remove("open"); tabarAskDone(false); tabarUI.prep.classList.remove("open");
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on"); tabarUI.glow.style.opacity="0";
     document.body.classList.remove("tabar","tabar-xr","tabar-cam");
     TABAR.on=false; TABAR.backend=null;
@@ -7346,7 +7364,11 @@ function tabarFeedback(){
 function tabarTick(dt, now){
     const fr=(TABAR.backend==="webxr") ? tabarXRFrame() : null;
     if(fr){ for(const c of controllers){ if(c.userData.line) c.userData.line.visible=false; } }   // 画面タッチの入力元（レーザー）は描かない
-    if(TABAR.backend==="camera") tabarCamPose(dt);
+    if(TABAR.backend==="camera"){
+        tabarCamPose(dt);
+        const v=tabarUI.video;
+        if(v.paused && !document.hidden && now-(TABAR.vidRetryT||0)>1000){ TABAR.vidRetryT=now; const pr=v.play(); if(pr && pr.catch) pr.catch(()=>{}); }   // 映像が止まったら再生し直す
+    }
     if(TABAR.phase==="scan") tabarScanTick(fr);
     else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); }
 }
@@ -7375,8 +7397,8 @@ tabarUI.startBtn.onclick=()=>{ tabarStart(); };
 tabarUI.prepBack.onclick=()=>{ tabarClosePrep(); };
 tabarUI.placeBtn.onclick=()=>{ tabarPlace(); };
 tabarUI.scanBack.onclick=()=>{ tabarExit(); };
-tabarUI.yes.onclick=()=>{ tabarExit(); };
-tabarUI.no.onclick=()=>{ tabarUI.confirm.classList.remove("open"); };
+tabarUI.yes.onclick=()=>{ tabarAskDone(true); };
+tabarUI.no.onclick=()=>{ tabarAskDone(false); };
 
 /* ===================================================== * リサイズ * ===================================================== */
 addEventListener("resize",()=>{
