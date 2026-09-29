@@ -1,0 +1,163 @@
+{
+ "format": "dino-paint-map",
+ "version": 2,
+ "dino": "tri",
+ "name": "トリケラトプス",
+ "sheetMarkerId": 43,
+ "svg": "tri_v4_sheet.svg",
+ "source": "①検証コード（transfer_v3.face_sources / fold_fill.fold_colors_safe / boundary_safe）から生成",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.78087,
+  0.0,
+  0.6247
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 58456,
+ "directFaces": 13558,
+ "keysSha1": "18f336dd9a9cfee01529a1e4740e080098848c5b",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "tri_v4_faces.bin",
+   "bytes": 539662,
+   "sha1": "77241cc718ee9b3c0d3cf23739b8cb6be2018889",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 58456
+    },
+    "face_iy": {
+     "offset": 58456,
+     "dtype": "int16",
+     "length": 58456
+    },
+    "face_iz": {
+     "offset": 175368,
+     "dtype": "int16",
+     "length": 58456
+    },
+    "face_n": {
+     "offset": 292280,
+     "dtype": "uint8",
+     "length": 58456
+    },
+    "face_part": {
+     "offset": 350736,
+     "dtype": "uint8",
+     "length": 58456
+    },
+    "face_root": {
+     "offset": 409192,
+     "dtype": "uint16",
+     "length": 58456
+    },
+    "direct_part": {
+     "offset": 526104,
+     "dtype": "uint8",
+     "length": 13558
+    }
+   }
+  },
+  "pix": {
+   "name": "tri_v4_pix.bin",
+   "bytes": 2745224,
+   "sha1": "1f4ac9426e01ac35d399bc3bb74c4fc5b60a1669",
+   "sections": {
+    "direct_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 13559
+    },
+    "direct_core": {
+     "offset": 54236,
+     "dtype": "uint16",
+     "length": 13558
+    },
+    "pix": {
+     "offset": 81352,
+     "dtype": "uint32",
+     "length": 657968
+    },
+    "blank": {
+     "offset": 2713224,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   }
+  }
+ }
+}

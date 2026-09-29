@@ -1,0 +1,163 @@
+{
+ "format": "dino-paint-map",
+ "version": 2,
+ "dino": "ptera",
+ "name": "プテラノドン",
+ "sheetMarkerId": 44,
+ "svg": "ptera_v4_sheet.svg",
+ "source": "①検証コード（transfer_v3.face_sources / fold_fill.fold_colors_safe / boundary_safe）から生成",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.70711,
+  0.42426,
+  0.56569
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 22692,
+ "directFaces": 7901,
+ "keysSha1": "a39d213abf37662cd1800469adf15639aebd2392",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "ptera_v4_faces.bin",
+   "bytes": 212129,
+   "sha1": "758f822fc234bccff564791e97ed55c8f0568080",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 22692
+    },
+    "face_iy": {
+     "offset": 22692,
+     "dtype": "int16",
+     "length": 22692
+    },
+    "face_iz": {
+     "offset": 68076,
+     "dtype": "int16",
+     "length": 22692
+    },
+    "face_n": {
+     "offset": 113460,
+     "dtype": "uint8",
+     "length": 22692
+    },
+    "face_part": {
+     "offset": 136152,
+     "dtype": "uint8",
+     "length": 22692
+    },
+    "face_root": {
+     "offset": 158844,
+     "dtype": "uint16",
+     "length": 22692
+    },
+    "direct_part": {
+     "offset": 204228,
+     "dtype": "uint8",
+     "length": 7901
+    }
+   }
+  },
+  "pix": {
+   "name": "ptera_v4_pix.bin",
+   "bytes": 1922500,
+   "sha1": "aab5a05a38927adb82878b00037afead38fe871f",
+   "sections": {
+    "direct_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 7902
+    },
+    "direct_core": {
+     "offset": 31608,
+     "dtype": "uint16",
+     "length": 7901
+    },
+    "pix": {
+     "offset": 47412,
+     "dtype": "uint32",
+     "length": 460772
+    },
+    "blank": {
+     "offset": 1890500,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,163 @@
+{
+ "format": "dino-paint-map",
+ "version": 2,
+ "dino": "fukuititan",
+ "name": "フクイティタン",
+ "sheetMarkerId": 42,
+ "svg": "fukuititan_v4_sheet.svg",
+ "source": "①検証コード（transfer_v3.face_sources / fold_fill.fold_colors_safe / boundary_safe）から生成",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.78087,
+  0.0,
+  0.6247
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 85534,
+ "directFaces": 24297,
+ "keysSha1": "6518b14ee57db6c4a7d8bbf7a76d7b5d0242ae5f",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "fukuititan_v4_faces.bin",
+   "bytes": 794109,
+   "sha1": "8a16eeaf66e932be18acc616076a60bb8cfb3c87",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 85534
+    },
+    "face_iy": {
+     "offset": 85536,
+     "dtype": "int16",
+     "length": 85534
+    },
+    "face_iz": {
+     "offset": 256604,
+     "dtype": "int16",
+     "length": 85534
+    },
+    "face_n": {
+     "offset": 427672,
+     "dtype": "uint8",
+     "length": 85534
+    },
+    "face_part": {
+     "offset": 513208,
+     "dtype": "uint8",
+     "length": 85534
+    },
+    "face_root": {
+     "offset": 598744,
+     "dtype": "uint16",
+     "length": 85534
+    },
+    "direct_part": {
+     "offset": 769812,
+     "dtype": "uint8",
+     "length": 24297
+    }
+   }
+  },
+  "pix": {
+   "name": "fukuititan_v4_pix.bin",
+   "bytes": 1425508,
+   "sha1": "b1173e2b0108ca2d887954c68cd2ca98d5ff79c5",
+   "sections": {
+    "direct_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 24298
+    },
+    "direct_core": {
+     "offset": 97192,
+     "dtype": "uint16",
+     "length": 24297
+    },
+    "pix": {
+     "offset": 145788,
+     "dtype": "uint32",
+     "length": 311930
+    },
+    "blank": {
+     "offset": 1393508,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   }
+  }
+ }
+}
