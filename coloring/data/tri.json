@@ -1,0 +1,170 @@
+{
+ "format": "dino-paint-map",
+ "version": 3,
+ "dino": "tri",
+ "name": "トリケラトプス",
+ "sheetMarkerId": 6,
+ "svg": "print/tri.svg",
+ "cellsPerSide": 1,
+ "source": "①の規則（face_sources / fold_colors_safe / boundary_safe）を面の中心→マスの中心で適用（T=1で①と完全一致）",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.78087,
+  0.0,
+  0.6247
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 58456,
+ "directFaces": 13558,
+ "cells": 13558,
+ "emptyCells": 0,
+ "keysSha1": "18f336dd9a9cfee01529a1e4740e080098848c5b",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "data/tri_faces.bin.gz",
+   "bytes": 656576,
+   "sha1": "12369418b05bda730440a7682042e344bc329a93",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 58456
+    },
+    "face_iy": {
+     "offset": 58456,
+     "dtype": "int16",
+     "length": 58456
+    },
+    "face_iz": {
+     "offset": 175368,
+     "dtype": "int16",
+     "length": 58456
+    },
+    "face_n": {
+     "offset": 292280,
+     "dtype": "uint8",
+     "length": 58456
+    },
+    "face_part": {
+     "offset": 350736,
+     "dtype": "uint8",
+     "length": 58456
+    },
+    "direct_part": {
+     "offset": 409192,
+     "dtype": "uint8",
+     "length": 13558
+    },
+    "face_src": {
+     "offset": 422752,
+     "dtype": "uint32",
+     "length": 58456
+    }
+   },
+   "gzBytes": 61131
+  },
+  "pix": {
+   "name": "data/tri_pix.bin.gz",
+   "bytes": 1427000,
+   "sha1": "6c4dbdec56f013d06e2fe5ed6904e9134d7b0841",
+   "sections": {
+    "cell_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 13559
+    },
+    "cell_core": {
+     "offset": 54236,
+     "dtype": "uint16",
+     "length": 13558
+    },
+    "pix": {
+     "offset": 81352,
+     "dtype": "uint32",
+     "length": 328412
+    },
+    "blank": {
+     "offset": 1395000,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   },
+   "gzBytes": 603220
+  }
+ },
+ "legacyDirectSame": true,
+ "sheetScale": 0.7
+}
