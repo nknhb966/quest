@@ -1,0 +1,168 @@
+{
+ "format": "dino-paint-map",
+ "version": 3,
+ "dino": "fukuititan",
+ "name": "フクイティタン",
+ "sheetMarkerId": 42,
+ "svg": "print/fukuititan.svg",
+ "cellsPerSide": 2,
+ "source": "①の規則（face_sources / fold_colors_safe / boundary_safe）を面の中心→マスの中心で適用（T=1で①と完全一致）",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.78087,
+  0.0,
+  0.6247
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 85534,
+ "directFaces": 24297,
+ "cells": 97188,
+ "emptyCells": 334,
+ "keysSha1": "6518b14ee57db6c4a7d8bbf7a76d7b5d0242ae5f",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "data/fukuititan_faces.bin.gz",
+   "bytes": 1991588,
+   "sha1": "c73e8ccdf28e75092b86d5bb12d21a3f6b907fbb",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 85534
+    },
+    "face_iy": {
+     "offset": 85536,
+     "dtype": "int16",
+     "length": 85534
+    },
+    "face_iz": {
+     "offset": 256604,
+     "dtype": "int16",
+     "length": 85534
+    },
+    "face_n": {
+     "offset": 427672,
+     "dtype": "uint8",
+     "length": 85534
+    },
+    "face_part": {
+     "offset": 513208,
+     "dtype": "uint8",
+     "length": 85534
+    },
+    "direct_part": {
+     "offset": 598744,
+     "dtype": "uint8",
+     "length": 24297
+    },
+    "face_src": {
+     "offset": 623044,
+     "dtype": "uint32",
+     "length": 342136
+    }
+   },
+   "gzBytes": 493652
+  },
+  "pix": {
+   "name": "data/fukuititan_pix.bin.gz",
+   "bytes": 2294876,
+   "sha1": "eac76f000ede6ebaf64a638be7e1d24dfbebc43f",
+   "sections": {
+    "cell_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 97189
+    },
+    "cell_core": {
+     "offset": 388756,
+     "dtype": "uint16",
+     "length": 97188
+    },
+    "pix": {
+     "offset": 583132,
+     "dtype": "uint32",
+     "length": 419936
+    },
+    "blank": {
+     "offset": 2262876,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   },
+   "gzBytes": 847622
+  }
+ }
+}

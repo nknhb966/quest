@@ -1,0 +1,168 @@
+{
+ "format": "dino-paint-map",
+ "version": 3,
+ "dino": "trex",
+ "name": "ティラノサウルス",
+ "sheetMarkerId": 40,
+ "svg": "print/trex.svg",
+ "cellsPerSide": 2,
+ "source": "①の規則（face_sources / fold_colors_safe / boundary_safe）を面の中心→マスの中心で適用（T=1で①と完全一致）",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.78087,
+  0.0,
+  0.6247
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 52123,
+ "directFaces": 13600,
+ "cells": 54400,
+ "emptyCells": 334,
+ "keysSha1": "9772180213b41e1cdd9c6276db84c78e14c4a00a",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "data/trex_faces.bin.gz",
+   "bytes": 1212436,
+   "sha1": "27fada03632e0a3018bc4a08344d9178f1119a6d",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 52123
+    },
+    "face_iy": {
+     "offset": 52124,
+     "dtype": "int16",
+     "length": 52123
+    },
+    "face_iz": {
+     "offset": 156372,
+     "dtype": "int16",
+     "length": 52123
+    },
+    "face_n": {
+     "offset": 260620,
+     "dtype": "uint8",
+     "length": 52123
+    },
+    "face_part": {
+     "offset": 312744,
+     "dtype": "uint8",
+     "length": 52123
+    },
+    "direct_part": {
+     "offset": 364868,
+     "dtype": "uint8",
+     "length": 13600
+    },
+    "face_src": {
+     "offset": 378468,
+     "dtype": "uint32",
+     "length": 208492
+    }
+   },
+   "gzBytes": 308740
+  },
+  "pix": {
+   "name": "data/trex_pix.bin.gz",
+   "bytes": 2115152,
+   "sha1": "09592131bc55242587336ee42a1c368588a25b43",
+   "sections": {
+    "cell_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 54401
+    },
+    "cell_core": {
+     "offset": 217604,
+     "dtype": "uint16",
+     "length": 54400
+    },
+    "pix": {
+     "offset": 326404,
+     "dtype": "uint32",
+     "length": 439187
+    },
+    "blank": {
+     "offset": 2083152,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   },
+   "gzBytes": 859212
+  }
+ }
+}

@@ -1,0 +1,64 @@
+{
+ "format": "dino-paint-sheets",
+ "version": 3,
+ "note": "シートID → 恐竜。表は ①の規則をマス（1面=2×2）単位で適用して生成（1×1で①と完全一致）",
+ "sheets": [
+  {
+   "id": 40,
+   "key": "trex",
+   "name": "ティラノサウルス",
+   "map": "data/trex.json",
+   "svg": "print/trex.svg"
+  },
+  {
+   "id": 41,
+   "key": "fukuiraptor",
+   "name": "フクイラプトル",
+   "map": "data/fukuiraptor.json",
+   "svg": "print/fukuiraptor.svg"
+  },
+  {
+   "id": 42,
+   "key": "fukuititan",
+   "name": "フクイティタン",
+   "map": "data/fukuititan.json",
+   "svg": "print/fukuititan.svg"
+  },
+  {
+   "id": 43,
+   "key": "tri",
+   "name": "トリケラトプス",
+   "map": "data/tri.json",
+   "svg": "print/tri.svg"
+  },
+  {
+   "id": 44,
+   "key": "ptera",
+   "name": "プテラノドン",
+   "map": "data/ptera.json",
+   "svg": "print/ptera.svg"
+  },
+  {
+   "id": 45,
+   "key": "fukuisaurus",
+   "name": "フクイサウルス",
+   "map": "data/fukuisaurus.json",
+   "svg": "print/fukuisaurus.svg"
+  },
+  {
+   "id": 46,
+   "key": "stego",
+   "name": "ステゴザウルス",
+   "map": "data/stego.json",
+   "svg": "print/stego.svg"
+  },
+  {
+   "id": 47,
+   "key": "brachi",
+   "name": "ブラキオサウルス",
+   "map": "data/brachi.json",
+   "svg": "print/brachi.svg"
+  }
+ ],
+ "layout": "print/＝印刷用の塗り絵、data/＝プログラムが読む対応表（gzip）、lib/＝マーカー検出"
+}

@@ -1,0 +1,168 @@
+{
+ "format": "dino-paint-map",
+ "version": 3,
+ "dino": "ptera",
+ "name": "プテラノドン",
+ "sheetMarkerId": 44,
+ "svg": "print/ptera.svg",
+ "cellsPerSide": 2,
+ "source": "①の規則（face_sources / fold_colors_safe / boundary_safe）を面の中心→マスの中心で適用（T=1で①と完全一致）",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.70711,
+  0.42426,
+  0.56569
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 22692,
+ "directFaces": 7901,
+ "cells": 31604,
+ "emptyCells": 227,
+ "keysSha1": "a39d213abf37662cd1800469adf15639aebd2392",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "data/ptera_faces.bin.gz",
+   "bytes": 529820,
+   "sha1": "2990a22e12ebe604890471177e7499a657ccfe87",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 22692
+    },
+    "face_iy": {
+     "offset": 22692,
+     "dtype": "int16",
+     "length": 22692
+    },
+    "face_iz": {
+     "offset": 68076,
+     "dtype": "int16",
+     "length": 22692
+    },
+    "face_n": {
+     "offset": 113460,
+     "dtype": "uint8",
+     "length": 22692
+    },
+    "face_part": {
+     "offset": 136152,
+     "dtype": "uint8",
+     "length": 22692
+    },
+    "direct_part": {
+     "offset": 158844,
+     "dtype": "uint8",
+     "length": 7901
+    },
+    "face_src": {
+     "offset": 166748,
+     "dtype": "uint32",
+     "length": 90768
+    }
+   },
+   "gzBytes": 121359
+  },
+  "pix": {
+   "name": "data/ptera_pix.bin.gz",
+   "bytes": 2390784,
+   "sha1": "efa6caf38ff0caa44197ff9c5df6e528ac2fb6f0",
+   "sections": {
+    "cell_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 31605
+    },
+    "cell_core": {
+     "offset": 126420,
+     "dtype": "uint16",
+     "length": 31604
+    },
+    "pix": {
+     "offset": 189628,
+     "dtype": "uint32",
+     "length": 542289
+    },
+    "blank": {
+     "offset": 2358784,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   },
+   "gzBytes": 979105
+  }
+ }
+}

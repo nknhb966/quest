@@ -1,0 +1,168 @@
+{
+ "format": "dino-paint-map",
+ "version": 3,
+ "dino": "fukuisaurus",
+ "name": "フクイサウルス",
+ "sheetMarkerId": 45,
+ "svg": "print/fukuisaurus.svg",
+ "cellsPerSide": 2,
+ "source": "①の規則（face_sources / fold_colors_safe / boundary_safe）を面の中心→マスの中心で適用（T=1で①と完全一致）",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.78087,
+  0.0,
+  0.6247
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 44570,
+ "directFaces": 11740,
+ "cells": 46960,
+ "emptyCells": 242,
+ "keysSha1": "a74e91129e275c22d5ce568af086a7bab1a97f90",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "data/fukuisaurus_faces.bin.gz",
+   "bytes": 1036856,
+   "sha1": "a632e69d952daa01db2c01fbe50d13c9d15db807",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 44570
+    },
+    "face_iy": {
+     "offset": 44572,
+     "dtype": "int16",
+     "length": 44570
+    },
+    "face_iz": {
+     "offset": 133712,
+     "dtype": "int16",
+     "length": 44570
+    },
+    "face_n": {
+     "offset": 222852,
+     "dtype": "uint8",
+     "length": 44570
+    },
+    "face_part": {
+     "offset": 267424,
+     "dtype": "uint8",
+     "length": 44570
+    },
+    "direct_part": {
+     "offset": 311996,
+     "dtype": "uint8",
+     "length": 11740
+    },
+    "face_src": {
+     "offset": 323736,
+     "dtype": "uint32",
+     "length": 178280
+    }
+   },
+   "gzBytes": 258657
+  },
+  "pix": {
+   "name": "data/fukuisaurus_pix.bin.gz",
+   "bytes": 1921856,
+   "sha1": "3df71d6d639068db04eb137af24ae99460c76c65",
+   "sections": {
+    "cell_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 46961
+    },
+    "cell_core": {
+     "offset": 187844,
+     "dtype": "uint16",
+     "length": 46960
+    },
+    "pix": {
+     "offset": 281764,
+     "dtype": "uint32",
+     "length": 402023
+    },
+    "blank": {
+     "offset": 1889856,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   },
+   "gzBytes": 784071
+  }
+ }
+}

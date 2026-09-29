@@ -1,0 +1,168 @@
+{
+ "format": "dino-paint-map",
+ "version": 3,
+ "dino": "fukuiraptor",
+ "name": "フクイラプトル",
+ "sheetMarkerId": 41,
+ "svg": "print/fukuiraptor.svg",
+ "cellsPerSide": 2,
+ "source": "①の規則（face_sources / fold_colors_safe / boundary_safe）を面の中心→マスの中心で適用（T=1で①と完全一致）",
+ "voxel": 0.016666666666666666,
+ "normals": [
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   -1,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   0
+  ],
+  [
+   0,
+   -1,
+   0
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   0,
+   0,
+   -1
+  ]
+ ],
+ "parts": [
+  "head",
+  "body",
+  "tail",
+  "leg",
+  "arm",
+  "wing"
+ ],
+ "pxPerMm": 5,
+ "width": 1485,
+ "height": 1050,
+ "viewDir": [
+  -0.78087,
+  0.0,
+  0.6247
+ ],
+ "markers": {
+  "dict": "ARUCO_4X4_50",
+  "size_mm": 12,
+  "corners": {
+   "0": [
+    8,
+    8
+   ],
+   "1": [
+    277,
+    8
+   ],
+   "2": [
+    277,
+    190
+   ],
+   "3": [
+    8,
+    190
+   ]
+  }
+ },
+ "lineDilate_px10": 7,
+ "boundary_mm": 3,
+ "faces": 36550,
+ "directFaces": 9601,
+ "cells": 38404,
+ "emptyCells": 266,
+ "keysSha1": "fb5bf53fca0ae399d1ccc9fc00664c6617db6c9a",
+ "colorRule": {
+  "vividK": 1.6,
+  "vividDL": 6,
+  "satThr": 0.15,
+  "valThr": 0.72,
+  "paintThr": 0.1
+ },
+ "files": {
+  "faces": {
+   "name": "data/fukuiraptor_faces.bin.gz",
+   "bytes": 850260,
+   "sha1": "302a3612045a0b7949b737be9e9ef198cdcbe853",
+   "sections": {
+    "face_ix": {
+     "offset": 0,
+     "dtype": "int8",
+     "length": 36550
+    },
+    "face_iy": {
+     "offset": 36552,
+     "dtype": "int16",
+     "length": 36550
+    },
+    "face_iz": {
+     "offset": 109652,
+     "dtype": "int16",
+     "length": 36550
+    },
+    "face_n": {
+     "offset": 182752,
+     "dtype": "uint8",
+     "length": 36550
+    },
+    "face_part": {
+     "offset": 219304,
+     "dtype": "uint8",
+     "length": 36550
+    },
+    "direct_part": {
+     "offset": 255856,
+     "dtype": "uint8",
+     "length": 9601
+    },
+    "face_src": {
+     "offset": 265460,
+     "dtype": "uint32",
+     "length": 146200
+    }
+   },
+   "gzBytes": 217416
+  },
+  "pix": {
+   "name": "data/fukuiraptor_pix.bin.gz",
+   "bytes": 1984064,
+   "sha1": "001c40a4cdf32fdb3c9e025c7d6cb01c461c00b6",
+   "sections": {
+    "cell_offs": {
+     "offset": 0,
+     "dtype": "uint32",
+     "length": 38405
+    },
+    "cell_core": {
+     "offset": 153620,
+     "dtype": "uint16",
+     "length": 38404
+    },
+    "pix": {
+     "offset": 230428,
+     "dtype": "uint32",
+     "length": 430409
+    },
+    "blank": {
+     "offset": 1952064,
+     "dtype": "uint32",
+     "length": 8000
+    }
+   },
+   "gzBytes": 817744
+  }
+ }
+}
