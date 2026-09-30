@@ -991,6 +991,155 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 </div>
 <div id="toast"></div>
 
+<!-- ═══ 【追加】craftARt Lite（AR）スマホ用：画面下の操作パネル＋撮影（Androidスマホのみ。ヘッドセットでは使わない） ═══ -->
+<style>
+    #litePh{ position:fixed; inset:0; z-index:100010; display:none; background:transparent; color:#efe6ff;
+        touch-action:none; -webkit-user-select:none; user-select:none; font-family:inherit; overflow:hidden; }
+    #litePh.lph-prep{ background:rgba(8,5,18,.92); }
+    #litePh button{ font-family:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; cursor:pointer; }
+    #lphTouch{ position:absolute; inset:0; }
+    #lphLoad{ position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); display:none; padding:14px 22px; border-radius:12px;
+        background:#140e24; border:1px solid rgba(210,180,120,.5); font-weight:800; letter-spacing:1px; white-space:nowrap; }
+    #litePh.lph-prep #lphLoad{ display:block; }
+    #litePh.lph-prep #lphTop, #litePh.lph-prep #lphBottom, #litePh.lph-prep #lphMini{ display:none !important; }
+    /* 上：名称・倍率・録画中・操作方法・終了 */
+    #lphTop{ position:absolute; top:calc(env(safe-area-inset-top) + 8px); left:8px; right:8px; display:flex; gap:6px; align-items:center; pointer-events:none; }
+    #lphInfo{ flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px;
+        background:rgba(12,10,26,.82); border:1px solid rgba(210,180,120,.4); font-weight:800; font-size:14px; }
+    #lphName{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#ffe6a6; }
+    #lphPct{ flex:0 0 auto; color:#8ff0ff; }
+    .lph-round{ pointer-events:auto; flex:0 0 auto; width:42px; height:42px; border-radius:50%; border:1px solid rgba(180,140,255,.5);
+        background:rgba(12,10,26,.82); color:#fff; font-size:17px; font-weight:800; }
+    #lphRec{ position:absolute; top:calc(env(safe-area-inset-top) + 60px); left:50%; transform:translateX(-50%); display:none; align-items:center; gap:6px;
+        padding:5px 12px; border-radius:99px; background:rgba(120,10,10,.85); font-weight:800; font-size:13px; letter-spacing:1px; pointer-events:none; }
+    #lphRec.on{ display:flex; }
+    #lphRec i{ width:10px; height:10px; border-radius:50%; background:#ff4a3a; animation:lphBlink 1s steps(2) infinite; }
+    @keyframes lphBlink{ 50%{ opacity:.2; } }
+    /* 下：操作パネル */
+    #lphBottom{ position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; gap:8px;
+        padding:10px 10px calc(env(safe-area-inset-bottom) + 10px); border-radius:16px 16px 0 0;
+        background:linear-gradient(to top, rgba(10,7,22,.94), rgba(10,7,22,.80)); border-top:1px solid rgba(210,180,120,.35); }
+    #lphDesc{ display:none; max-height:26vh; overflow-y:auto; touch-action:pan-y; padding:8px 12px; border-radius:10px;
+        background:rgba(18,12,32,.9); border:1px solid rgba(210,180,120,.4); font-size:13px; line-height:1.65; color:#eafff9; }
+    #lphDesc.on{ display:block; }
+    #lphSel{ display:flex; gap:6px; overflow-x:auto; touch-action:pan-x; padding-bottom:2px; scrollbar-width:none; }
+    #lphSel::-webkit-scrollbar{ display:none; }
+    #lphSel button{ flex:0 0 auto; min-height:40px; padding:0 14px; border-radius:10px; border:1px solid rgba(150,170,210,.5);
+        background:rgba(20,26,44,.92); color:#eaf2ff; font-size:13px; font-weight:800; white-space:nowrap; }
+    #lphSel button.on{ background:#1d4ed8; border-color:#8ff0ff; }
+    #lphBtns{ display:grid; grid-template-columns:repeat(auto-fit, minmax(56px,1fr)); gap:6px; }
+    #lphBtns button, #lphMini button{ min-height:52px; padding:4px 2px; border-radius:11px; border:1px solid rgba(180,140,255,.35);
+        background:rgba(28,20,52,.92); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:19px; line-height:1; }
+    #lphBtns button span, #lphMini button span{ font-size:11px; font-weight:800; letter-spacing:.5px; white-space:nowrap; }
+    #lphBtns button.cap, #lphMini button.cap{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); border-color:rgba(143,240,255,.6); }
+    #lphBtns button.recording, #lphMini button.recording{ background:#c62d1f; border-color:#ffb3a1; }
+    #lphBtns button.off{ background:#f3d3cc; color:#8a2a17; }
+    #lphMini{ position:absolute; right:10px; bottom:calc(env(safe-area-inset-bottom) + 10px); display:none; gap:6px; }
+    #lphMini button{ min-width:60px; }
+    #litePh.lph-fold #lphBottom{ display:none; }
+    #litePh.lph-fold #lphMini{ display:flex; }
+    /* 撮影 */
+    #lphFlash{ position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; transition:opacity .25s; }
+    #lphFlash.on{ opacity:.75; transition:none; }
+    #lphCap{ position:absolute; top:calc(env(safe-area-inset-top) + 58px); right:10px; width:128px; display:none; flex-direction:column; gap:6px;
+        padding:6px; border-radius:12px; background:rgba(12,10,26,.9); border:1px solid rgba(210,180,120,.5); }
+    #lphCap.on{ display:flex; }
+    #lphCapThumb img, #lphCapThumb video{ display:block; width:100%; border-radius:8px; background:#000; }
+    #lphCap .row{ display:flex; gap:4px; }
+    #lphCap .row button{ flex:1; min-height:40px; border-radius:9px; border:none; font-weight:800; font-size:13px; }
+    #lphCapSave{ background:#f7c948; color:#3a2600; }
+    #lphCapClose{ flex:0 0 40px !important; background:rgba(40,30,70,.95); color:#fff; }
+    #lphMsg{ position:absolute; left:50%; top:36%; transform:translateX(-50%); max-width:86vw; display:none;
+        padding:8px 14px; border-radius:10px; background:rgba(12,10,26,.92); border:1px solid rgba(143,240,255,.5); font-size:13px; font-weight:700; text-align:center; pointer-events:none; }
+    #lphMsg.on{ display:block; }
+    /* 操作方法 */
+    #lphHelp{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(8,5,18,.6); }
+    #lphHelp.on{ display:flex; }
+    #lphHelp .card{ width:min(440px,94vw); max-height:84vh; overflow-y:auto; touch-action:pan-y; padding:16px 16px 14px; border-radius:14px;
+        background:#140e24; border:1px solid rgba(210,180,120,.5); }
+    #lphHelp h3{ margin:0 0 8px; text-align:center; color:#f7c948; letter-spacing:2px; font-size:17px; }
+    #lphHelp ul{ list-style:none; margin:0 0 12px; padding:0; display:flex; flex-direction:column; gap:5px; }
+    #lphHelp li{ font-size:13px; line-height:1.6; padding:6px 10px; border-radius:9px; background:rgba(143,240,255,.07); border-left:3px solid #8ff0ff; }
+    #lphHelp li b{ color:#ffe6a6; }
+    #lphHelpOk{ width:100%; padding:13px 0; border:none; border-radius:11px; font-weight:800; font-size:16px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; }
+    /* AR終了後：撮影した写真・動画の保存 */
+    #liteCapSheet{ position:fixed; inset:0; z-index:100020; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(8,5,18,.9); }
+    #liteCapSheet.open{ display:flex; }
+    #liteCapSheet .sheet{ width:min(480px,94vw); max-height:90vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:18px 16px;
+        border-radius:16px; background:#140e24; border:1px solid rgba(210,180,120,.5); color:#efe6ff; }
+    #liteCapSheet h2{ margin:0; text-align:center; font-size:18px; color:#f7c948; letter-spacing:2px; }
+    #liteCapSheet p{ margin:0; font-size:12.5px; line-height:1.6; color:#c9bcff; text-align:center; }
+    #lcsList{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    .lcs-item{ display:flex; flex-direction:column; gap:6px; padding:6px; border-radius:10px; background:rgba(28,20,52,.9); border:1px solid rgba(180,140,255,.3); }
+    .lcs-item img, .lcs-item video{ width:100%; max-height:200px; object-fit:contain; border-radius:8px; background:#000; }
+    .lcs-item .row{ display:flex; gap:5px; }
+    .lcs-item button{ flex:1; min-height:40px; border-radius:9px; border:none; font-weight:800; font-size:13px; font-family:inherit; }
+    .lcs-item .sv{ background:#f7c948; color:#3a2600; } .lcs-item .sh{ background:#3b82f6; color:#fff; }
+    .lcs-item.saved .sv{ background:#2f7d4f; color:#fff; }
+    #lcsClose{ padding:13px 0; border:1px solid rgba(180,140,255,.35); border-radius:11px; background:rgba(18,12,40,.6); color:#c9bcff; font-family:inherit; font-weight:700; font-size:15px; }
+    @media (prefers-reduced-motion: reduce){ #lphRec i{ animation:none; } }
+</style>
+<div id="litePh" aria-label="craftARt Lite 操作パネル">
+    <div id="lphTouch"></div>
+    <div id="lphLoad">📱 ARを準備しています…</div>
+    <div id="lphTop">
+        <div id="lphInfo"><span id="lphName"></span><span id="lphPct">100%</span></div>
+        <button id="lphHelpBtn" class="lph-round" aria-label="操作方法">？</button>
+        <button id="lphExit" class="lph-round" aria-label="ARを終了">✕</button>
+    </div>
+    <div id="lphRec"><i></i><span id="lphRecT">0:00</span></div>
+    <div id="lphFlash"></div>
+    <div id="lphCap">
+        <div id="lphCapThumb"></div>
+        <div class="row"><button id="lphCapSave">💾 保存</button><button id="lphCapClose" aria-label="閉じる">✕</button></div>
+    </div>
+    <div id="lphMsg"></div>
+    <div id="lphBottom">
+        <div id="lphDesc"></div>
+        <div id="lphSel"></div>
+        <div id="lphBtns">
+            <button data-a="reset">🔄<span>リセット</span></button>
+            <button data-a="lock" id="lphLockBtn">✋<span>操作できる</span></button>
+            <button data-a="anim" id="lphAnimBtn">🎞<span>アニメ</span></button>
+            <button data-a="desc" id="lphDescBtn">📖<span>説明</span></button>
+            <button data-a="shot" class="cap">📷<span>写真</span></button>
+            <button data-a="rec" class="cap lph-recbtn">🎥<span>動画</span></button>
+            <button data-a="fold">▼<span>しまう</span></button>
+        </div>
+    </div>
+    <div id="lphMini">
+        <button data-a="shot" class="cap">📷<span>写真</span></button>
+        <button data-a="rec" class="cap lph-recbtn">🎥<span>動画</span></button>
+        <button data-a="fold">▲<span>パネル</span></button>
+    </div>
+    <div id="lphHelp">
+        <div class="card" role="dialog" aria-label="操作方法">
+            <h3>📱 操作方法</h3>
+            <ul>
+                <li><b>1本指</b>で左右になぞる → 左右にくるっと回す<br><b>1本指</b>で上下になぞる → 前後にかたむける</li>
+                <li><b>2本指</b>でつまむ／ひろげる → 小さく／大きく</li>
+                <li><b>2本指</b>をそろえて動かす → 上下左右に移動（指についてくる）</li>
+                <li><b>2本指</b>でひねる → 画面の奥に向かう軸で回す</li>
+                <li>近づく・はなれる → スマホを持って歩く</li>
+                <li>🔄 リセット → 大きさ・向きを戻して目の前に置き直す</li>
+                <li>✋ 操作できる／🔒 ロック中 → さわっても動かないように固定</li>
+                <li>📷 写真／🎥 動画（最大60秒）→ カメラ映像＋モデルを撮影。💾で保存</li>
+                <li>下のモデル名をタップ → モデルを切り替え。▼ しまう → パネルを小さく</li>
+                <li>✕ または 戻るボタン → ARを終了</li>
+            </ul>
+            <button id="lphHelpOk">OK</button>
+        </div>
+    </div>
+</div>
+<div id="liteCapSheet">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="撮影した写真・動画">
+        <h2>📷 撮影した写真・動画</h2>
+        <p>「保存」で端末のダウンロードフォルダに保存します。「共有」でフォトやアプリへ送れます。<br>とじると、保存していないものは消えます。</p>
+        <div id="lcsList"></div>
+        <button id="lcsClose">とじる</button>
+    </div>
+</div>
+
 <!-- 【追加】ぬりえスキャン画面（開いている間だけカメラを使う） -->
 <div id="nuriScan" data-mode="camera">
   <video id="nuriVideo" playsinline muted autoplay></video>
@@ -4148,6 +4297,7 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
         if(recoOn){ applyAutoForTarget(chosenDigTarget); }   // オンにしたら現在の対象で①の値を強制セット
         updateRecoVisibility();
         updateEntryButtons();   // おすすめ切替で入室ボタンの表示も更新（オフ＝両方表示）
+        try{ if(window.__tabarFloorSync) window.__tabarFloorSync(); }catch(_){ }   // 【追加】床マーカーのトグル表示・既定値を連動
     });
 });
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
@@ -5997,7 +6147,8 @@ const LITE = { active:false, group:null, model:null, needPlace:false, placeFrame
     showInfo:true, opEnabled:true, curName:"", curDesc:"", ui:null, buttons:[], _uiScale:-1, isDino:false,
     mode:"model", selGroup:null, selPanels:[], target:"artifact", quality:"small", intrinsic:1, curIdx:0, _lastRightPress:0,
     targetPos:new THREE.Vector3(), targetScale:new THREE.Vector3(1,1,1), targetQuat:new THREE.Quaternion(),
-    scaling:false, rotating:false, initDist:0, initScale:1, lastCenter:null, lastCtrl:null, lastDir:null, _worldVis:null, _dogVis:null };
+    scaling:false, rotating:false, initDist:0, initScale:1, lastCenter:null, lastCtrl:null, lastDir:null, _worldVis:null, _dogVis:null,
+    phone:false };   // 【追加】phone=Androidスマホで入室（画面下の操作パネル＋タッチ操作）。ヘッドセットでは常に false
 const _liteRay=new THREE.Raycaster(), _liteRO=new THREE.Vector3(), _liteRD=new THREE.Vector3(), _liteRQ=new THREE.Quaternion();
 const _liteA=new THREE.Vector3(), _liteB=new THREE.Vector3(), _liteC=new THREE.Vector3(), _liteQ=new THREE.Quaternion(), _liteAx=new THREE.Vector3(0,0,1), _liteEx=new THREE.Euler(), _liteEy=new THREE.Euler();
 const _liteHP=new THREE.Vector3(), _liteCP=new THREE.Vector3(), _liteFaceQ=new THREE.Quaternion(), _liteFaceE=new THREE.Euler(), _liteOff=new THREE.Vector3();
@@ -6098,6 +6249,7 @@ function liteExitScene(){
     LITE.model=null; controllers.forEach(c=>{ if(c.userData) c.userData.liteHeld=false; });
     if(LITE.ui){ try{ (LITE.ui.parent||camera).remove(LITE.ui); }catch(_){ } _liteDispose(LITE.ui); LITE.ui=null; LITE.buttons=[]; LITE.infoPanel=LITE.descPanel=null; }   // HUDパネルを完全破棄
     LITE.selPanels=[];   // ②はLITE.uiの子（uiのdisposeで破棄済み）
+    if(LITE.phone && typeof litePhoneExit==="function") litePhoneExit();   // 【追加】スマホ：画面の操作パネルを閉じる（ヘッドセットは対象外）
 }
 function liteGesture(){
     const held=controllers.filter(c=>c.userData && c.userData.liteHeld);
@@ -6206,6 +6358,7 @@ function liteArTick(){
     LITE.group.scale.lerp(LITE.targetScale, 0.2);
     LITE.group.quaternion.slerp(LITE.targetQuat, 0.2);
     if(typeof liteUpdateUI==="function") liteUpdateUI();   // ①③④パネル更新
+    if(LITE.phone && typeof litePhoneTick==="function") litePhoneTick();   // 【追加】スマホ：画面上の倍率表示
 }
 // Lite用トリガー保持追跡（LITE.active時のみ・ハンド/コントローラ両対応）
 controllers.forEach(c=>{
@@ -6360,6 +6513,7 @@ async function liteSwitchModel(idx){
     }
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4;   // 切替時：サイズ/回転/位置リセット→正面(0.8+奥行き/2)へ再配置
     liteDrawInfo(); liteRebuildDesc(); liteDrawSelect();
+    if(LITE.phone && typeof litePhoneRefresh==="function") litePhoneRefresh();   // 【追加】スマホ：名称・説明・選択を更新
 }
 function liteSelectPick(){ return (typeof litePickAny==="function") && litePickAny(); }
 function _liteSelectPickOld(){   // 旧
@@ -6374,9 +6528,15 @@ function _liteSelectPickOld(){   // 旧
 // AR開始：immersive-ar セッションを張り、選択モデルを表示（段階2）
 async function enterLiteAR(target, idx, quality, intrinsicScale){
     if(!(navigator.xr)){ return false; }
+    const _phone = (typeof litePhoneWanted==="function") && litePhoneWanted();   // 【追加】Androidスマホ（ヘッドセット以外）
+    if(_phone) litePhoneShow(true);   // セッション要求の前に画面パネル（dom-overlay の root）を用意
     let session;
-    try{ session = await navigator.xr.requestSession("immersive-ar", { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
-    catch(e){ return false; }
+    try{ session = await navigator.xr.requestSession("immersive-ar", _phone
+            ? { optionalFeatures:["local-floor","dom-overlay","camera-access"], domOverlay:{ root:document.getElementById("litePh") } }   // スマホ：画面パネル＋撮影用カメラ映像
+            : { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
+    catch(e){ if(_phone) litePhoneShow(false); return false; }
+    LITE.phone=_phone && !!session.domOverlayState;   // 画面パネルを重ねられない端末は従来の表示にする
+    if(_phone && !LITE.phone) litePhoneShow(false);
     try{ await litePrewarmAll(target, quality); }catch(_){ }   // 入室時に選択画質で全モデル先読み（完了まで開始しない＝切替時に固まらない）
     const model = liteBuildModel(target, idx, quality);   // キャッシュから同期取得
     // 名称・説明（CSV由来）を設定：出土品/遺構＝CSV、恐竜＝DINOSラベル
@@ -6387,16 +6547,331 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
     LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino"||target==="dog");   // 恐竜・犬フラグ（説明パネル非表示に使用）
     LITE.target=target; LITE.quality=quality; LITE.intrinsic=intrinsicScale||1; LITE.curIdx=idx; LITE.mode="model"; LITE._lastRightPress=0;   // 段階4：セッション情報
     liteEnterScene(model, intrinsicScale);
-    liteBuildUI();   // ①②をまとめて構築
+    if(LITE.phone) litePhoneBuild();   // 【追加】スマホ：画面下の操作パネル（手元の3Dパネルは作らない）
+    else liteBuildUI();   // ①②をまとめて構築
     window.__mvPreviewPause=false;   // レンダループを動かす（LITE分岐で処理）
-    try{ await renderer.xr.setSession(session); }catch(e){ liteExitScene(); return false; }
+    try{ await renderer.xr.setSession(session); }catch(e){ liteExitScene(); LITE.phone=false; return false; }
     LITE.active=true;
-    session.addEventListener("end", ()=>{ LITE.active=false; liteExitScene(); }, { once:true });
+    if(LITE.phone) litePhoneStarted();
+    session.addEventListener("end", ()=>{ LITE.active=false; const wasPhone=LITE.phone; liteExitScene(); LITE.phone=false;
+        if(wasPhone){ try{ window.dispatchEvent(new Event("litephoneend")); }catch(_){ } } }, { once:true });
     return true;
 }
 
-renderer.setAnimationLoop(()=>{
-    if(LITE.active){ liteArTick(); renderer.render(scene,camera); return; }   // Lite AR：ゲームを止めてモデルビューアのみ描画
+// ============================================================================
+// 【追加】craftARt Lite（AR）スマホ版：Androidスマホで入室したときだけ使う（ヘッドセットは従来の手元パネル・コントローラ操作のまま）
+// ・操作パネルは画面下（WebXR dom-overlay）。画面のタッチは XR の select にせず、ここで指の動きとして扱う
+// ・操作量はすべて「画面上の指の動き」基準にそろえる（回転＝短辺なぞりで180°／移動＝指に追従／拡大縮小＝つまんだ比率そのまま／ひねり＝指の角度そのまま）
+// ・写真／動画：camera-access のカメラ映像にモデルを重ねて撮影（パネルは写らない）
+// ============================================================================
+const LPH_CFG = {
+    rotPerShort: Math.PI,   // 1本指で画面の短辺ぶんなぞると180°回る
+    scaleMin: 0.05, scaleMax: 20,   // 拡大率の範囲（5%〜2000%）
+    shotLong: 1920,          // 写真の長辺(px)上限
+    recLong: 1280,           // 動画の長辺(px)上限（重さと画質のバランス）
+    recFps: 30, recMaxSec: 60, recBps: 8000000
+};
+const LPH = { built:false, g:null, caps:[], cur:null, rec:null, shotReq:false, glb:null, glbTried:false,
+    prog:null, vao:null, buf:null, uTex:null, pix:null, img:null, capCam:null, helpSeen:false, msgT:0, recTimer:0, lines:[] };
+const _lphQ=new THREE.Quaternion(), _lphV1=new THREE.Vector3(), _lphV2=new THREE.Vector3(), _lphV3=new THREE.Vector3(), _lphUp=new THREE.Vector3(0,1,0), _lphQ2=new THREE.Quaternion();
+const lph$ = id => document.getElementById(id);
+
+function litePhoneWanted(){   // Androidスマホ（タブレット含む）で、ヘッドセットではない
+    const ua=navigator.userAgent||"";
+    if(/OculusBrowser|Quest|Pico|VisionOS|Vive|Wolvic|magicleap|Lynx/i.test(ua)) return false;
+    if(typeof IS_HEADSET!=="undefined" && IS_HEADSET) return false;
+    return /Android/i.test(ua);
+}
+function litePhoneShow(on){
+    const r=lph$("litePh"); if(!r) return;
+    if(on){ r.classList.add("lph-prep"); r.classList.remove("lph-fold"); r.style.display="block"; }
+    else { r.style.display="none"; r.classList.remove("lph-prep"); }
+}
+function lphMsg(t, ms){ const m=lph$("lphMsg"); if(!m) return; m.textContent=t; m.classList.add("on"); clearTimeout(LPH.msgT); LPH.msgT=setTimeout(()=>m.classList.remove("on"), ms||2200); }
+function lphSnd(kind){ try{ if(kind==="shot") chord([1568,1175],0.04,"square",0.25); else if(kind==="recOn") chord([523,784],0.06,"triangle",0.4); else if(kind==="recOff") chord([784,523],0.06,"triangle",0.4); else beep(660,0.06,0.25,"square"); }catch(_){ } }
+
+// ---- パネル ----
+function litePhoneBuild(){
+    if(!LPH.built){ LPH.built=true; lphWire(); }
+    LPH.g=null; LPH.shotReq=false;
+    const r=lph$("litePh"); if(r) r.classList.remove("lph-fold");
+    const d=lph$("lphDesc"); if(d) d.classList.remove("on");
+    lph$("lphCap").classList.remove("on"); lph$("lphHelp").classList.remove("on");
+    // コントローラの照準線・手モデルは画面タッチでは不要（撮影にも写さない）
+    LPH.lines=[]; controllers.forEach(c=>{ const u=c.userData||{}; [u.line,u.handModel].forEach(o=>{ if(o){ LPH.lines.push([o,o.visible]); o.visible=false; } }); });
+    litePhoneRefresh();
+}
+function litePhoneStarted(){
+    const r=lph$("litePh"); if(r) r.classList.remove("lph-prep");
+    if(!LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); }   // 初回だけ操作方法を表示
+}
+function litePhoneRefresh(){
+    lph$("lphName").textContent=LITE.curName||"";
+    const sel=lph$("lphSel"); sel.innerHTML="";
+    (typeof liteSelList==="function"?liteSelList():[]).forEach(it=>{ const b=document.createElement("button"); b.textContent=it.name; b.dataset.idx=it.idx; if(it.idx===LITE.curIdx) b.classList.add("on"); sel.appendChild(b); });
+    const on=sel.querySelector("button.on"); if(on) try{ on.scrollIntoView({block:"nearest", inline:"center"}); }catch(_){ }
+    const hasDesc=!LITE.isDino && !!LITE.curDesc;
+    lph$("lphDescBtn").style.display=hasDesc?"":"none";
+    lph$("lphAnimBtn").style.display=LITE.isDino?"":"none";
+    const d=lph$("lphDesc"); d.textContent=LITE.curDesc||""; if(!hasDesc) d.classList.remove("on");
+    lphPaintBtns(); LITE._phPct=-1; litePhoneTick();
+}
+function lphPaintBtns(){
+    const lk=lph$("lphLockBtn"); lk.classList.toggle("off", LITE.opEnabled===false); lk.innerHTML = (LITE.opEnabled===false) ? "🔒<span>ロック中</span>" : "✋<span>操作できる</span>";
+    const an=lph$("lphAnimBtn"); const ao=(window.MV_ANIM!==false); an.classList.toggle("off", !ao); an.innerHTML = ao ? "🎞<span>アニメ オン</span>" : "🎞<span>アニメ オフ</span>";
+    const recOn=!!(LPH.rec && LPH.rec.state!=="done");
+    document.querySelectorAll("#litePh .lph-recbtn").forEach(b=>{ b.classList.toggle("recording", recOn); b.innerHTML = recOn ? "⏹<span>停止</span>" : "🎥<span>動画</span>"; });
+}
+function litePhoneTick(){
+    const pct=Math.round(((LITE.group?LITE.group.scale.x:1)||1)*100);
+    if(pct!==LITE._phPct){ LITE._phPct=pct; const e=lph$("lphPct"); if(e) e.textContent=pct+"%"; }
+}
+function lphAction(a){
+    if(!LITE.active) return;
+    if(a==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; lphSnd(); lphMsg("大きさ・向きを戻して、目の前に置き直しました"); }   // スマホ：位置も目の前へ
+    else if(a==="lock"){ LITE.opEnabled=(LITE.opEnabled===false); LPH.g=null; lphPaintBtns(); lphSnd(); lphMsg(LITE.opEnabled?"さわって動かせます":"ロック中：さわっても動きません"); }
+    else if(a==="anim"){ window.MV_ANIM=(window.MV_ANIM===false); lphPaintBtns(); lphSnd(); }
+    else if(a==="desc"){ lph$("lphDesc").classList.toggle("on"); }
+    else if(a==="shot"){ LPH.shotReq=true; }
+    else if(a==="rec"){ if(LPH.rec && (LPH.rec.state==="pending"||LPH.rec.state==="rec")) lphRecStop(); else lphRecStart(); }
+    else if(a==="fold"){ lph$("litePh").classList.toggle("lph-fold"); }
+}
+function lphWire(){
+    const root=lph$("litePh");
+    root.addEventListener("beforexrselect", e=>{ if(LITE.active && LITE.phone) e.preventDefault(); });   // 画面タッチを XR の select にしない（ジェスチャ・ボタンはDOMで処理）
+    root.querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click", e=>{ e.stopPropagation(); lphAction(b.dataset.a); }));
+    lph$("lphSel").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b || !LITE.active) return; const idx=+b.dataset.idx;
+        if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } });
+    lph$("lphExit").addEventListener("click", ()=>{ const s=renderer.xr.getSession(); if(s) s.end().catch(()=>{}); });
+    lph$("lphHelpBtn").addEventListener("click", ()=>lph$("lphHelp").classList.add("on"));
+    lph$("lphHelpOk").addEventListener("click", ()=>lph$("lphHelp").classList.remove("on"));
+    lph$("lphCapClose").addEventListener("click", ()=>lph$("lphCap").classList.remove("on"));
+    lph$("lphCapSave").addEventListener("click", ()=>{ if(LPH.cur){ lphDownload(LPH.cur); lphMsg("ダウンロードフォルダに保存しました"); lph$("lphCap").classList.remove("on"); } });
+    const t=lph$("lphTouch"), opt={passive:false};
+    t.addEventListener("touchstart", e=>{ e.preventDefault(); lphRebase(e.targetTouches); }, opt);
+    t.addEventListener("touchmove",  e=>{ e.preventDefault(); lphMove(e.targetTouches); }, opt);
+    t.addEventListener("touchend",   e=>{ e.preventDefault(); lphRebase(e.targetTouches); }, opt);
+    t.addEventListener("touchcancel",e=>{ lphRebase(e.targetTouches); }, opt);
+    lph$("lcsClose").addEventListener("click", lphSheetClose);
+}
+
+// ---- タッチ操作（画面上の指の動きで統一） ----
+function lphRebase(tt){
+    const n=tt?tt.length:0; if(!n){ LPH.g=null; return; }
+    if(n===1){ LPH.g={ n:1, x:tt[0].clientX, y:tt[0].clientY }; return; }
+    const a=tt[0], b=tt[1], dx=b.clientX-a.clientX, dy=b.clientY-a.clientY;
+    LPH.g={ n:2, cx:(a.clientX+b.clientX)/2, cy:(a.clientY+b.clientY)/2, dist:Math.max(24,Math.hypot(dx,dy)), ang:Math.atan2(dy,dx), baseScale:LITE.targetScale.x||1 };
+    LPH.g.baseDist=LPH.g.dist;
+}
+function lphMove(tt){
+    if(!LITE.active || LITE.opEnabled===false || !tt || !tt.length) return;
+    const n=Math.min(2, tt.length), g=LPH.g;
+    if(!g || g.n!==n){ lphRebase(tt); return; }
+    camera.getWorldQuaternion(_lphQ);
+    if(n===1){   // 1本指：左右＝上軸まわり／上下＝カメラの右軸まわり
+        const x=tt[0].clientX, y=tt[0].clientY, dx=x-g.x, dy=y-g.y; g.x=x; g.y=y;
+        const k=LPH_CFG.rotPerShort/Math.max(200, Math.min(innerWidth, innerHeight));
+        const right=_lphV1.set(1,0,0).applyQuaternion(_lphQ); right.y=0; if(right.lengthSq()<1e-6) right.set(1,0,0); right.normalize();
+        LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(_lphUp, dx*k));
+        LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(right, dy*k));
+        return;
+    }
+    const a=tt[0], b=tt[1], ddx=b.clientX-a.clientX, ddy=b.clientY-a.clientY;
+    const cx=(a.clientX+b.clientX)/2, cy=(a.clientY+b.clientY)/2, dist=Math.max(24,Math.hypot(ddx,ddy)), ang=Math.atan2(ddy,ddx);
+    // 拡大縮小：つまんだ比率そのまま
+    const ns=Math.min(LPH_CFG.scaleMax, Math.max(LPH_CFG.scaleMin, g.baseScale*dist/g.baseDist)); LITE.targetScale.set(ns,ns,ns);
+    // 移動：2本指の中心の動きに、モデルが指についてくる量で
+    camera.getWorldPosition(_lphV3);
+    const fwd=_lphV1.set(0,0,-1).applyQuaternion(_lphQ);
+    const depth=Math.max(0.2, _lphV2.copy(LITE.targetPos).sub(_lphV3).dot(fwd));
+    let p5=1.5; try{ const xc=renderer.xr.getCamera(); const c0=(xc.cameras&&xc.cameras[0])||xc; p5=c0.projectionMatrix.elements[5]||p5; }catch(_){ }
+    const wpp=2*depth/(p5*Math.max(1,innerHeight));   // 1px あたりの移動量(m)
+    const dcx=cx-g.cx, dcy=cy-g.cy;
+    LITE.targetPos.addScaledVector(_lphV2.set(1,0,0).applyQuaternion(_lphQ), dcx*wpp).addScaledVector(_lphV3.set(0,1,0).applyQuaternion(_lphQ), -dcy*wpp);
+    // ひねり：指の角度の変化そのまま（視線軸まわり）
+    let da=ang-g.ang; if(da>Math.PI) da-=2*Math.PI; if(da<-Math.PI) da+=2*Math.PI;
+    LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(fwd.normalize(), da));
+    g.cx=cx; g.cy=cy; g.ang=ang;
+}
+
+// ---- 撮影：カメラ映像（camera-access）＋モデルを、キャンバスの既定フレームバッファで合成して読み出す ----
+function lphEnsureProg(gl){
+    if(LPH.prog && LPH.gl===gl) return;
+    const vs=gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(vs,"attribute vec2 p; varying vec2 uv; void main(){ uv=p*0.5+0.5; gl_Position=vec4(p,0.0,1.0); }"); gl.compileShader(vs);
+    const fs=gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(fs,"precision mediump float; uniform sampler2D t; varying vec2 uv; void main(){ gl_FragColor=vec4(texture2D(t,uv).rgb,1.0); }"); gl.compileShader(fs);
+    const pr=gl.createProgram(); gl.attachShader(pr,vs); gl.attachShader(pr,fs); gl.bindAttribLocation(pr,0,"p"); gl.linkProgram(pr);
+    LPH.prog=pr; LPH.uTex=gl.getUniformLocation(pr,"t"); LPH.gl=gl;
+    LPH.vao=gl.createVertexArray(); gl.bindVertexArray(LPH.vao);
+    LPH.buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,LPH.buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+    gl.bindVertexArray(null);
+}
+function lphComposite(frame, maxLong){
+    const session=renderer.xr.getSession(); if(!session || !frame) return null;
+    const gl=renderer.getContext();
+    let vp=null; try{ vp=frame.getViewerPose(renderer.xr.getReferenceSpace()); }catch(_){ }
+    if(!vp || !vp.views || !vp.views.length) return null;
+    const view=vp.views[0], xc=renderer.xr.getCamera(), c0=(xc.cameras&&xc.cameras[0])||xc;
+    let camTex=null, cw=0, ch=0;
+    if(view.camera){
+        if(!LPH.glbTried){ LPH.glbTried=true; try{ if(window.XRWebGLBinding) LPH.glb=new XRWebGLBinding(session, gl); }catch(_){ LPH.glb=null; } }
+        if(LPH.glb && LPH.glb.getCameraImage){ try{ camTex=LPH.glb.getCameraImage(view.camera); cw=view.camera.width; ch=view.camera.height; }catch(_){ camTex=null; } }
+    }
+    if(!camTex || !cw || !ch){ camTex=null; const v=c0.viewport; cw=(v&&v.z)||gl.drawingBufferWidth; ch=(v&&v.w)||gl.drawingBufferHeight; }
+    LPH.noCam=!camTex;
+    const sc=Math.min(1, maxLong/Math.max(cw,ch), gl.drawingBufferWidth/cw, gl.drawingBufferHeight/ch);
+    const W=Math.max(2, Math.floor(cw*sc/2)*2), H=Math.max(2, Math.floor(ch*sc/2)*2);   // 偶数（動画エンコーダ向け）
+    if(!LPH.capCam){ LPH.capCam=new THREE.PerspectiveCamera(); LPH.capCam.matrixAutoUpdate=false; LPH.capCam.matrixWorldAutoUpdate=false; }
+    const cc=LPH.capCam;
+    cc.projectionMatrix.copy(c0.projectionMatrix); cc.projectionMatrixInverse.copy(c0.projectionMatrix).invert();
+    cc.matrixWorld.copy(c0.matrixWorld); cc.matrixWorldInverse.copy(c0.matrixWorld).invert(); cc.layers.mask=xc.layers.mask;
+    const xrEn=renderer.xr.enabled, ac=renderer.autoClear, bg=scene.background, vpSave=renderer.getViewport(new THREE.Vector4()), scT=renderer.getScissorTest();
+    const hid=[]; controllers.forEach(c=>{ if(c.visible){ c.visible=false; hid.push(c); } });
+    try{
+        // ① 背景：カメラ映像（無ければ暗い色）
+        gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H);
+        gl.disable(gl.SCISSOR_TEST); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.disable(gl.STENCIL_TEST); gl.colorMask(true,true,true,true);
+        if(camTex){ lphEnsureProg(gl); gl.useProgram(LPH.prog); gl.bindVertexArray(LPH.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,camTex); gl.uniform1i(LPH.uTex,0); gl.drawArrays(gl.TRIANGLES,0,3); gl.bindVertexArray(null); }
+        else { gl.clearColor(0.04,0.03,0.09,1); gl.clear(gl.COLOR_BUFFER_BIT); }
+        renderer.resetState();
+        // ② モデル（AR表示と同じ視点・色処理）
+        renderer.xr.enabled=false; renderer.autoClear=false; scene.background=null;
+        renderer.setScissorTest(false); renderer.setViewport(0,0,W,H); renderer.setRenderTarget(null);
+        renderer.clearDepth();
+        renderer.render(scene, cc);
+        // ③ 不透明にして読み出し
+        gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.disable(gl.SCISSOR_TEST);
+        gl.colorMask(false,false,false,true); gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); gl.colorMask(true,true,true,true);
+        if(!LPH.pix || LPH.pix.length!==W*H*4){ LPH.pix=new Uint8Array(W*H*4); LPH.img=new ImageData(W,H); }
+        gl.readPixels(0,0,W,H,gl.RGBA,gl.UNSIGNED_BYTE,LPH.pix);
+    } finally {
+        renderer.xr.enabled=xrEn; renderer.autoClear=ac; scene.background=bg;
+        renderer.setViewport(vpSave); renderer.setScissorTest(scT); hid.forEach(c=>c.visible=true);
+        renderer.resetState();   // three.js の状態の覚えを捨てる（次フレームで XR 側が描画先を設定し直す）
+    }
+    const row=W*4, px=LPH.pix, out=LPH.img.data;
+    for(let y=0;y<H;y++) out.set(px.subarray((H-1-y)*row,(H-y)*row), y*row);   // GL は下から上 → 上から下へ
+    return LPH.img;
+}
+function litePhoneAfterRender(frame){
+    const rec=LPH.rec;
+    if(!LPH.shotReq && !(rec && (rec.state==="pending"||rec.state==="rec"))) return;
+    try{
+        if(LPH.shotReq){ LPH.shotReq=false; const img=lphComposite(frame, LPH_CFG.shotLong); if(img) lphPhoto(img); else lphMsg("撮影できませんでした。もう一度おしてください"); }
+        if(rec && (rec.state==="pending"||rec.state==="rec")){
+            const now=performance.now();
+            if(rec.state==="rec" && now-rec.lastT < 1000/LPH_CFG.recFps-4) return;
+            const img=lphComposite(frame, LPH_CFG.recLong); if(!img) return;
+            rec.lastT=now;
+            if(rec.state==="pending") lphRecBegin(img);
+            else if(img.width===rec.cv.width && img.height===rec.cv.height) rec.ctx.putImageData(img,0,0);
+            if(rec.state==="rec" && (now-rec.t0)/1000>=LPH_CFG.recMaxSec){ lphRecStop(); lphMsg("最大"+LPH_CFG.recMaxSec+"秒になったので録画を止めました"); }
+        }
+    }catch(e){ console.warn("[Lite撮影]", e); }
+}
+function lphName(ext){
+    const d=new Date(), z=n=>String(n).padStart(2,"0");
+    const nm=(LITE.curName||"model").replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,30);
+    return `craftARt_${nm}_${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}.${ext}`;
+}
+function lphAddCap(type, blob, ext){
+    const it={ type, blob, url:URL.createObjectURL(blob), name:lphName(ext), saved:false };
+    LPH.caps.push(it); LPH.cur=it;
+    if(LITE.active && LITE.phone){
+        const th=lph$("lphCapThumb"); th.innerHTML="";
+        const el=document.createElement(type==="photo"?"img":"video"); el.src=it.url;
+        if(type!=="photo"){ el.muted=true; el.loop=true; el.autoplay=true; el.playsInline=true; }
+        th.appendChild(el); lph$("lphCap").classList.add("on");
+    } else lphSheetOpen();   // 録画の書き出しがAR終了後に終わった時
+    return it;
+}
+function lphPhoto(img){
+    const cv=document.createElement("canvas"); cv.width=img.width; cv.height=img.height; cv.getContext("2d").putImageData(img,0,0);
+    const fl=lph$("lphFlash"); fl.classList.add("on"); requestAnimationFrame(()=>setTimeout(()=>fl.classList.remove("on"),30));
+    lphSnd("shot");
+    cv.toBlob(b=>{ if(!b){ lphMsg("写真を作れませんでした"); return; } lphAddCap("photo", b, "jpg"); if(LPH.noCam) lphMsg("この端末ではカメラ映像を写せないため、背景なしで撮影しました", 3500); }, "image/jpeg", 0.92);
+}
+function lphPickMime(){
+    if(!window.MediaRecorder) return null;
+    for(const m of ["video/mp4;codecs=avc1","video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"]){ try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(_){ } }
+    return "";
+}
+function lphRecStart(){
+    const mime=lphPickMime(); if(mime===null){ lphMsg("この端末・ブラウザでは動画を撮影できません"); return; }
+    LPH.rec={ state:"pending", mime, lastT:0, t0:0, chunks:[] }; lphPaintBtns();
+}
+function lphRecBegin(img){
+    const rec=LPH.rec;
+    try{
+        rec.cv=document.createElement("canvas"); rec.cv.width=img.width; rec.cv.height=img.height;
+        rec.ctx=rec.cv.getContext("2d"); rec.ctx.putImageData(img,0,0);
+        rec.stream=rec.cv.captureStream(LPH_CFG.recFps);
+        const o={ videoBitsPerSecond:LPH_CFG.recBps }; if(rec.mime) o.mimeType=rec.mime;
+        rec.mr=new MediaRecorder(rec.stream, o);
+        rec.mr.ondataavailable=e=>{ if(e.data && e.data.size) rec.chunks.push(e.data); };
+        rec.mr.onstop=()=>{ try{ rec.stream.getTracks().forEach(t=>t.stop()); }catch(_){ }
+            const type=(rec.mr.mimeType||rec.mime||"video/webm").split(";")[0]; const blob=new Blob(rec.chunks,{type});
+            rec.state="done"; if(LPH.rec===rec) LPH.rec=null; lphPaintBtns();
+            if(blob.size>0) lphAddCap("video", blob, type.indexOf("mp4")>=0?"mp4":"webm"); };
+        rec.mr.start(1000);
+        rec.state="rec"; rec.t0=performance.now();
+        lph$("lphRec").classList.add("on"); lphSnd("recOn");
+        clearInterval(LPH.recTimer);
+        LPH.recTimer=setInterval(()=>{ const s=Math.floor((performance.now()-rec.t0)/1000); const e=lph$("lphRecT"); if(e) e.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")} / ${Math.floor(LPH_CFG.recMaxSec/60)}:${String(LPH_CFG.recMaxSec%60).padStart(2,"0")}`; if(rec.state!=="rec") clearInterval(LPH.recTimer); }, 250);
+    }catch(e){ console.warn("[Lite録画]", e); LPH.rec=null; lphPaintBtns(); lphMsg("動画の撮影を開始できませんでした"); }
+}
+function lphRecStop(){
+    const rec=LPH.rec; if(!rec) return;
+    clearInterval(LPH.recTimer); lph$("lphRec").classList.remove("on");
+    if(rec.state==="pending"){ LPH.rec=null; lphPaintBtns(); return; }
+    if(rec.state==="rec"){ rec.state="stopping"; lphSnd("recOff"); try{ rec.mr.stop(); }catch(_){ rec.state="done"; LPH.rec=null; } lphPaintBtns(); }
+}
+// ---- 保存・共有 ----
+function lphDownload(it){
+    const a=document.createElement("a"); a.href=it.url; a.download=it.name; a.style.display="none";
+    document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(), 0); it.saved=true;
+}
+async function lphShare(it){
+    try{
+        const f=new File([it.blob], it.name, { type:it.blob.type });
+        if(navigator.canShare && navigator.canShare({ files:[f] })){ await navigator.share({ files:[f], title:"craftARt Lite" }); it.saved=true; return true; }
+    }catch(e){ if(e && e.name==="AbortError") return false; }
+    lphDownload(it); return true;   // 共有できない端末は保存にする
+}
+function lphSheetOpen(){
+    const list=lph$("lcsList"); if(!list) return;
+    if(!LPH.caps.length) return;
+    if(!LPH.caps.some(c=>!c.saved)){ lphSheetClose(); return; }   // すべて保存済み→表示しない
+    list.innerHTML="";
+    LPH.caps.forEach(it=>{
+        const box=document.createElement("div"); box.className="lcs-item"+(it.saved?" saved":"");
+        const el=document.createElement(it.type==="photo"?"img":"video"); el.src=it.url;
+        if(it.type!=="photo"){ el.controls=true; el.playsInline=true; el.muted=true; }
+        const row=document.createElement("div"); row.className="row";
+        const sv=document.createElement("button"); sv.className="sv"; sv.textContent=it.saved?"✔ 保存済み":"💾 保存";
+        sv.onclick=()=>{ lphDownload(it); box.classList.add("saved"); sv.textContent="✔ 保存済み"; };
+        const sh=document.createElement("button"); sh.className="sh"; sh.textContent="📤 共有";
+        sh.onclick=async ()=>{ if(await lphShare(it)){ box.classList.add("saved"); sv.textContent="✔ 保存済み"; } };
+        row.appendChild(sv); row.appendChild(sh); box.appendChild(el); box.appendChild(row); list.appendChild(box);
+    });
+    lph$("liteCapSheet").classList.add("open");
+}
+function lphSheetClose(){
+    lph$("liteCapSheet").classList.remove("open"); const list=lph$("lcsList"); if(list) list.innerHTML="";
+    LPH.caps.forEach(c=>{ try{ URL.revokeObjectURL(c.url); }catch(_){ } }); LPH.caps=[]; LPH.cur=null;
+}
+// ---- 退室 ----
+function litePhoneExit(){
+    if(LPH.rec) lphRecStop();   // 録画中なら止めて書き出す（書き出し後に保存画面を出す）
+    LPH.shotReq=false; LPH.g=null; LPH.glb=null; LPH.glbTried=false;
+    LPH.lines.forEach(([o,v])=>{ o.visible=v; }); LPH.lines=[];
+    lph$("lphCap").classList.remove("on"); lph$("lphHelp").classList.remove("on"); lph$("lphRec").classList.remove("on");
+    litePhoneShow(false);
+    setTimeout(lphSheetOpen, 300);   // 撮影したものがあれば保存画面
+}
+
+renderer.setAnimationLoop((_t, _xrFrame)=>{
+    if(LITE.active){ liteArTick(); renderer.render(scene,camera); if(LITE.phone) litePhoneAfterRender(_xrFrame); return; }   // 【追加】スマホ：写真・動画の撮影   // Lite AR：ゲームを止めてモデルビューアのみ描画
     if(window.__mvPreviewPause) return;   // 「発掘モデル表示」プレビュー中はゲーム描画を止め、メモリを空ける（追加機能）
     const now=performance.now();
     const dt=Math.min(0.05,(now-lastTime)/1000); lastTime=now;
@@ -7121,6 +7596,7 @@ function tabarOpenPrep(){
     if(TABAR.on || TABAR.phase!=="idle") return;
     if(document.body.classList.contains("loading") || document.body.classList.contains("preloading")) return;
     TABAR.phase="prep"; TABAR.support=null; TABAR.starting=false;
+    try{ if(window.__tabarFloorSync) window.__tabarFloorSync(); }catch(_){ }   // 【追加】床マーカー：おすすめオン＝非表示でつかわない／オフ＝表示（既定つかわない）
     tabarUI.prep.classList.add("open");
     tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしています…");
     tabarDetect().then(r=>{ TABAR.support=r; });
@@ -8055,6 +8531,7 @@ addEventListener("resize",()=>{
         try{ viewer.activateAR(); }catch(_){ }   // 通常（Go）：model-viewer ネイティブAR
     });
     viewer.addEventListener("load", updateAR);
+    window.addEventListener("litephoneend", ()=>{ modal.style.display="flex"; window.__mvPreviewPause=true; });   // 【追加】スマホでARを終えたらモデル表示画面へ戻る
     modal.addEventListener("click", (e)=>{ if(e.target===modal && !window.__mvUrlDirect) closeModal(); });   // URL直接時は外側タップで閉じない
 
     // URLで直接 craftARt Go を開く：index.html?view=go&target=artifact|dino
@@ -8713,7 +9190,7 @@ const TF_CFG={
     libLocal:["coloring/lib/cv.js","coloring/lib/aruco.js","coloring/lib/dictionaries/aruco_5x5_1000.js"],
     libCdn:"https://cdn.jsdelivr.net/npm/js-aruco2@2.0.0/src/",
 };
-const SET=(()=>{ const d={on:true, cols:3, rows:4, sp:3}; try{ return Object.assign(d, JSON.parse(localStorage.getItem(TF_CFG.lsKey)||"{}")); }catch(_){ return d; } })();
+const SET=(()=>{ const d={on:false, cols:3, rows:4, sp:3}; try{ Object.assign(d, JSON.parse(localStorage.getItem(TF_CFG.lsKey)||"{}")); }catch(_){ } d.on=false; return d; })();   // 【変更】既定＝つかわない（以前に保存された「つかう」は引き継がない。並べ方・間隔は引き継ぐ）
 function setSave(){ try{ localStorage.setItem(TF_CFG.lsKey, JSON.stringify(SET)); }catch(_){ } }
 const F={ placed:false, C0x:0, C0z:0, yaw0:0, fy:0,
     anchor:null, anchorReq:false, anchorBase:null, dUsed:null, refHooked:null,
@@ -8913,10 +9390,12 @@ function dbgShow(now){ if(now-dbgT<250) return; dbgT=now; let d=document.getElem
         `最後の補正 ${s.last||"-"}  台 (${r.x.toFixed(2)}, ${r.z.toFixed(2)}) ${(r.yaw*180/Math.PI).toFixed(1)}°`; }
 
 // ---- 準備画面の設定（床マーカー）----
+let _floorPaint=null, _floorReco=null;   // 【追加】おすすめ設定との連動用（wire より前に宣言）
 function wire(){
     const seg=document.getElementById("segTabarFloor"), c=document.getElementById("tfmCols"), r=document.getElementById("tfmRows"), sp=document.getElementById("tfmSp"), row=document.getElementById("tfmRow"), pdf=document.getElementById("tfmPdf");
     if(!seg) return;
     const paint=()=>{ seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on", (b.dataset.v==="on")===!!SET.on)); if(row) row.style.opacity=SET.on?"1":"0.45"; };
+    _floorPaint=paint;
     seg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ SET.on=(b.dataset.v==="on"); setSave(); paint(); }));
     const num=(el,key,min,max)=>{ if(!el) return; el.value=SET[key]; el.addEventListener("change",()=>{ let v=parseFloat(el.value); if(!(v>=min)) v=min; if(v>max) v=max; if(key!=="sp") v=Math.round(v); SET[key]=v; el.value=v; setSave(); }); };
     num(c,"cols",1,10); num(r,"rows",1,10); num(sp,"sp",1,10);
@@ -8924,6 +9403,16 @@ function wire(){
     paint();
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",wire); else wire();
+// ---- 【追加】おすすめ設定との連動：オン＝トグル非表示・つかわない固定／オフ＝トグル表示（既定つかわない）----
+function floorSyncReco(){
+    const ro=(typeof recoOn!=="undefined")? !!recoOn : true;
+    if(_floorReco!==ro){ SET.on=false; _floorReco=ro; }   // おすすめの切替（と初回）では「つかわない」に戻す
+    if(ro) SET.on=false;                                   // おすすめオン：常につかわない
+    const opt=document.getElementById("tabarFloorOpt"); if(opt) opt.style.display = ro ? "none" : "";
+    if(_floorPaint) _floorPaint();
+}
+window.__tabarFloorSync=floorSyncReco;
+floorSyncReco();
 // ---- 警告の表示位置：画面下の HUD の高さを CSS 変数 --dhudH へ（HUD の帯が折り返しても警告と重ならない）----
 (function hudHeight(){ const put=()=>{ const h=document.getElementById("dhud"); if(!h) return; const r=h.getBoundingClientRect(); document.body.style.setProperty("--dhudH", Math.max(0,Math.round(innerHeight-r.top))+"px"); };
     const h=document.getElementById("dhud"); if(h && window.ResizeObserver) new ResizeObserver(put).observe(h); addEventListener("resize",put); setInterval(()=>{ if(document.body.classList.contains("tabar")) put(); },1000); put(); })();
