@@ -1125,7 +1125,9 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
                 <li><b>2本指</b>をそろえて動かす → 床の上を移動（上へ＝奥へ／下へ＝手前へ／左右）</li>
                 <li><b>床をタップ</b> → その場所へ移動（遠くへもひとっとび）</li>
                 <li><b>2本指</b>でひねる → 画面の奥に向かう軸で回す</li>
-                <li>モデルは床を見つけると、足元が床につきます（大きくしても回しても床に立ったまま）</li>
+                <li>モデルは床を見つけると、足元が床につきます（大きくしても回しても床に立ったまま）。プテラノドンは床から50cm浮かびます</li>
+                <li>恐竜の100%：プテラノドン＝翼の横幅1m／ほかの恐竜＝高さ1m</li>
+                <li>モデルを切り替えても、大きさ（%）・向き・場所はそのまま</li>
                 <li>🔄 リセット → 大きさ・向きを戻して2m先の床に置き直す</li>
                 <li>✋ 操作できる／🔒 ロック中 → さわっても動かないように固定</li>
                 <li>📷 写真／🎥 動画（最大60秒）→ カメラ映像＋モデルを撮影。💾で保存</li>
@@ -6231,6 +6233,7 @@ function liteEnterScene(model, intrinsicScale){
             const realH=(typeof DOGS!=="undefined" && LITE.curIdx<DOGS.length && DOGS[LITE.curIdx])?(DOGS[LITE.curIdx].realH||38):38;
             _sc=(realH/100)/h0;
         }
+        else if(LITE.phone && LITE.target==="dino"){ _sc=litePhoneDinoScale(model); }   // 【追加】スマホ：プテラノドン＝翼の横幅1m／他の恐竜＝高さ1m を100%に
         model.scale.setScalar(_sc);   // 出土品=原寸(1.0)／恐竜=サイズ倍率／犬=実寸(cm)
         model.updateMatrixWorld(true);   // 親なし＝matrixWorld＝局所matrix（純粋な局所bbox）
         const box=new THREE.Box3().setFromObject(model); const ctr=box.getCenter(new THREE.Vector3()); const sz=box.getSize(new THREE.Vector3());
@@ -6510,6 +6513,7 @@ async function liteSwitchModel(idx){
         m.position.set(0,0,0); m.quaternion.identity();
         let _sc=LITE.intrinsic||1;
         if(LITE.target==="dog"){ m.scale.setScalar(1); m.updateMatrixWorld(true); const h0=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3()).y||1; const realH=(typeof DOGS!=="undefined" && idx<DOGS.length && DOGS[idx])?(DOGS[idx].realH||38):38; _sc=(realH/100)/h0; }
+        else if(LITE.phone && LITE.target==="dino"){ _sc=litePhoneDinoScale(m); }   // 【追加】スマホ：恐竜の100%基準
         m.scale.setScalar(_sc); m.updateMatrixWorld(true);   // 親なし＝純粋な局所bbox
         const box=new THREE.Box3().setFromObject(m), ctr=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
         LITE.modelDepth=sz.z||0; LITE.modelH=sz.y||0; LITE.modelSize=Math.max(sz.x||0,sz.y||0,sz.z||0);
@@ -6517,7 +6521,7 @@ async function liteSwitchModel(idx){
         m.traverse(o=>{ if(o.isMesh&&o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(mm=>{ mm.depthTest=true; mm.depthWrite=true; mm.needsUpdate=true; }); } });
         m.visible=true; LITE.model=m; LITE.group.add(m);
     }
-    LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4;   // 切替時：サイズ/回転/位置リセット→正面(0.8+奥行き/2)へ再配置
+    if(!LITE.phone){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; }   // 切替時：サイズ/回転/位置リセット→正面(0.8+奥行き/2)へ再配置（【変更】スマホは切替前の大きさ・向き・位置を引き継ぐ）
     liteDrawInfo(); liteRebuildDesc(); liteDrawSelect();
     if(LITE.phone && typeof litePhoneRefresh==="function") litePhoneRefresh();   // 【追加】スマホ：名称・説明・選択を更新
 }
@@ -6582,7 +6586,9 @@ const LPH_CFG = {
     tapMs: 350, tapPx: 12,   // タップ判定（この時間・移動量以内）
     rotDeadPx: 8,            // 1本指：この距離動いてから回し始める（タップで回らないように）
     moveStepMax: 0.8,        // 2本指の移動：1回のタッチ更新で動かす上限(m)（地平線付近での飛び防止）
-    maxDist: 25              // スマホからの最大距離(m)
+    maxDist: 25,             // スマホからの最大距離(m)
+    pteraFloat: 0.5,         // プテラノドンは床から50cm浮かせる
+    shadow: true             // 足元の影（床が見つかった時）
 };
 const LPH = { built:false, g:null, caps:[], cur:null, rec:null, shotReq:false, glb:null, glbTried:false,
     prog:null, vao:null, buf:null, uTex:null, pix:null, img:null, capCam:null, helpSeen:false, msgT:0, recTimer:0, lines:[],
@@ -6651,6 +6657,23 @@ function litePhoneTick(){
     if(pct!==LITE._phPct){ LITE._phPct=pct; const e=lph$("lphPct"); if(e) e.textContent=pct+"%"; }
     lphGround();
 }
+// ---- 恐竜の100%：プテラノドン（翼あり）＝翼を広げた横幅1m／ほかの恐竜＝高さ1m ----
+function _lphIsPtera(model){ const pv=(model && model.userData && model.userData.model)?model.userData.model:model; return !!(pv && pv.userData && pv.userData.wings && pv.userData.wings.length); }
+function litePhoneDinoScale(model){
+    model.scale.setScalar(1); model.updateMatrixWorld(true);
+    const sz=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+    const ref=_lphIsPtera(model) ? sz.x : sz.y;   // 翼は左右（x）に広がる
+    return (ref>1e-6) ? 1/ref : 1;
+}
+function lphLift(){ return (LITE.target==="dino" && _lphIsPtera(LITE.model)) ? LPH_CFG.pteraFloat : 0; }   // 床から浮かせる高さ
+// ---- 描画前：three.js のGL状態（テクスチャの割り当て）を毎フレーム取り直す ----
+// カメラ映像を使う設定のARでは、ブラウザ側の処理でテクスチャの割り当てが変わることがあり、
+// その場合 three.js が「割り当て済み」と思い込んで別のテクスチャ（カメラ映像）で描いてしまう → 毎フレーム覚えを捨てて割り当て直す
+function litePhonePreRender(){
+    const rt=renderer.getRenderTarget();   // XR が今フレーム用に設定した描画先
+    renderer.resetState();
+    renderer.setRenderTarget(rt);          // 描画先を付け直す
+}
 // ---- 床：ヒットテストの結果から「いちばん低い上向きの面」を床とする ----
 const _lphHitP=new THREE.Vector3(), _lphHitQ=new THREE.Quaternion(), _lphHitN=new THREE.Vector3(), _lphCamP=new THREE.Vector3();
 function lphFloorUpdate(frame){
@@ -6716,18 +6739,18 @@ function lphGroundInfo(){   // 目標の向き・大きさでの 足元の高さ
 }
 function lphGround(){   // 足元が床に来るよう、目標の高さを毎フレーム合わせる（拡大・回転しても床に立ったまま）
     if(!LITE.group || !LITE.model) return;
-    const fy=lphFloorY(), gi=lphGroundInfo();
-    LITE.targetPos.y = fy - gi.bottom;
+    const fy=lphFloorY(), gi=lphGroundInfo(), lift=lphLift();
+    LITE.targetPos.y = fy - gi.bottom + lift;
     // 足元の影（床が見つかった時だけ）
-    if(!LPH.shadow){
-        const cv=document.createElement("canvas"); cv.width=cv.height=128; const x=cv.getContext("2d");
-        const gr=x.createRadialGradient(64,64,0,64,64,64); gr.addColorStop(0,"rgba(0,0,0,0.55)"); gr.addColorStop(0.6,"rgba(0,0,0,0.25)"); gr.addColorStop(1,"rgba(0,0,0,0)");
-        x.fillStyle=gr; x.fillRect(0,0,128,128);
-        const tx=new THREE.CanvasTexture(cv);
-        LPH.shadow=new THREE.Mesh(new THREE.PlaneGeometry(2,2), new THREE.MeshBasicMaterial({ map:tx, transparent:true, depthWrite:false }));
+    if(!LPH.shadow){   // 【変更】影は画像（テクスチャ）を使わず、シェーダーで丸いぼかしを描く
+        const mat=new THREE.ShaderMaterial({ transparent:true, depthWrite:false, uniforms:{ op:{ value:0.5 } },
+            vertexShader:"varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
+            fragmentShader:"varying vec2 vUv; uniform float op; void main(){ float d=length(vUv-0.5)*2.0; float a=op*(1.0-smoothstep(0.0,1.0,d)); if(a<0.004) discard; gl_FragColor=vec4(0.0,0.0,0.0,a); }" });
+        LPH.shadow=new THREE.Mesh(new THREE.PlaneGeometry(2,2), mat);
         LPH.shadow.rotation.x=-Math.PI/2; LPH.shadow.renderOrder=-1; scene.add(LPH.shadow);
     }
-    const sh=LPH.shadow; sh.visible=LPH.floorFound;
+    const sh=LPH.shadow; sh.visible=LPH.floorFound && LPH_CFG.shadow!==false;
+    sh.material.uniforms.op.value = lift>0 ? 0.28 : 0.5;   // 浮いている時は薄く
     if(sh.visible){ sh.position.set(LITE.group.position.x+gi.ox, fy+0.003, LITE.group.position.z+gi.oz); const rr=Math.max(0.05, gi.r*1.15); sh.scale.set(rr,rr,1); }
 }
 function litePhonePlaceFront(){   // 2m先（水平）・スマホに正対・足元は床
@@ -6736,7 +6759,7 @@ function litePhonePlaceFront(){   // 2m先（水平）・スマホに正対・�
     placeYawFront(LITE.group, 0, dist);
     LITE.targetPos.copy(LITE.group.position); LITE.targetQuat.copy(LITE.group.quaternion);
     LPH.gKey="";
-    if(LITE.model){ const gi=lphGroundInfo(); LITE.targetPos.y=lphFloorY()-gi.bottom; }
+    if(LITE.model){ const gi=lphGroundInfo(); LITE.targetPos.y=lphFloorY()-gi.bottom+lphLift(); }
     LITE.group.position.copy(LITE.targetPos);
 }
 // ---- 画面の点 → 3Dの光線／水平面との交点 ----
@@ -6893,7 +6916,7 @@ function lphComposite(frame, maxLong){
         // ① 背景：カメラ映像（無ければ暗い色）
         gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H);
         gl.disable(gl.SCISSOR_TEST); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.disable(gl.STENCIL_TEST); gl.colorMask(true,true,true,true);
-        if(camTex){ lphEnsureProg(gl); gl.useProgram(LPH.prog); gl.bindVertexArray(LPH.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,camTex); gl.uniform1i(LPH.uTex,0); gl.drawArrays(gl.TRIANGLES,0,3); gl.bindVertexArray(null); }
+        if(camTex){ lphEnsureProg(gl); gl.useProgram(LPH.prog); gl.bindVertexArray(LPH.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,camTex); gl.uniform1i(LPH.uTex,0); gl.drawArrays(gl.TRIANGLES,0,3); gl.bindVertexArray(null); gl.bindTexture(gl.TEXTURE_2D,null); }
         else { gl.clearColor(0.04,0.03,0.09,1); gl.clear(gl.COLOR_BUFFER_BIT); }
         renderer.resetState();
         // ② モデル（AR表示と同じ視点・色処理）
@@ -7036,7 +7059,7 @@ function litePhoneExit(){
 }
 
 renderer.setAnimationLoop((_t, _xrFrame)=>{
-    if(LITE.active){ liteArTick(); renderer.render(scene,camera); if(LITE.phone) litePhoneAfterRender(_xrFrame); return; }   // 【追加】スマホ：写真・動画の撮影   // Lite AR：ゲームを止めてモデルビューアのみ描画
+    if(LITE.active){ liteArTick(); if(LITE.phone) litePhonePreRender(); renderer.render(scene,camera); if(LITE.phone) litePhoneAfterRender(_xrFrame); return; }   // 【追加】スマホ：写真・動画の撮影   // Lite AR：ゲームを止めてモデルビューアのみ描画
     if(window.__mvPreviewPause) return;   // 「発掘モデル表示」プレビュー中はゲーム描画を止め、メモリを空ける（追加機能）
     const now=performance.now();
     const dt=Math.min(0.05,(now-lastTime)/1000); lastTime=now;
