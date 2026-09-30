@@ -255,9 +255,6 @@
 #nuriPrintList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
 #nuriPrintList a,#nuriResetList button{ text-align:center; padding:8px 8px; border-radius:10px; border:1px solid #6a5c94; background:#1b1428; color:#e8dcff; font-weight:700; text-decoration:none; font-size:13px; cursor:pointer; }
 #nuriResetList{ display:flex; flex-direction:column; gap:6px; }
-#nuriResetAll{ padding:9px 10px; border-radius:10px; border:1px solid #b06a6a; background:#3a1c22; color:#ffd9d9; font-weight:700; font-size:14px; cursor:pointer; }
-/* 「モデル表示」準備ゲート：プリロード・模様の復元・model-viewer・書き出し処理がそろうまで押せない（既存の preloading と同じ見た目） */
-body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointer-events:none; }
 #nuriStatus{ font-size:13px; color:#bfe9ff; min-height:1em; }
 #nuriScan{ position:fixed; inset:0; z-index:100010; display:none; background:#000; color:#fff; font-family:inherit; }
 #nuriScan.open{ display:block; }
@@ -505,7 +502,6 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
       <details id="nuriPrint"><summary>📄 ぬりえを いんさつ（きょうりゅうを えらぶ）</summary><div id="nuriPrintList"></div></details>
       <div id="nuriStatus"></div>
       <div id="nuriResetList"></div>
-      <button id="nuriResetAll" type="button" style="display:none">↩ ぜんぶ もとに もどす</button>
     </div>
 
   </div>
@@ -7830,10 +7826,7 @@ addEventListener("resize",()=>{
         opts = opts || {};
         const GLTFExporter = await getExporter();
         const exporter = new GLTFExporter();
-        // 【修正】userData（model/head/tail/legs など Object3D への参照）を外してから複製・書き出す。
-        //   付けたままだと clone(true) と GLTFExporter(extras) がモデル全体をJSON文字列にして、GLBが数十MBに膨らむ（モデル表示で落ちる原因）
-        const _ud=[]; obj.traverse(o=>{ _ud.push([o,o.userData]); o.userData={}; });
-        let clone; try{ clone = obj.clone(true); } finally { for(const [o,u] of _ud) o.userData=u; }
+        const clone = obj.clone(true);
         clone.position.set(0,0,0);
         clone.rotation.set(0,0,0);
         clone.scale.set(1,1,1);   // ゲーム表示用の拡大を解除（出土品はGLB実寸へ／恐竜はこの後で共通倍率を適用）
@@ -8059,7 +8052,6 @@ addEventListener("resize",()=>{
             if(done) return;
             if(modal.style.display==="none"){ done=true; return; }   // 待機中に閉じられたら中止
             if(typeof PRELOAD_DONE!=="undefined" && !PRELOAD_DONE && tries++<400){ setTimeout(fill,150); return; }   // プリロード完了を待つ
-            if(window.__mvReadyAll && !window.__mvReadyAll() && tries++<400){ setTimeout(fill,150); return; }   // 【追加】模様の復元・model-viewer・書き出し処理がそろうのも待つ
             done=true;
             window.__mvPreviewPause=true;   // ここで初めてゲーム描画停止（メモリ確保）
             _dinoTrexHCache={};
@@ -8098,24 +8090,23 @@ addEventListener("resize",()=>{
 /* =====================================================
  * 【追加】ぬりえスキャン → 自分の模様の恐竜（②・全8種）
  * ・①（斜め横の塗り絵→3D展開）は検証用Pythonで確認済みの方式。
- *   その3D展開（用紙に写る面／左右ミラー／包装紙方式の回り込み／境界3mm）は ①のコードから生成した対応表
- *   coloring/data/<key>_*.bin.gz に焼き込み済み（1面=1色＝①と完全一致）。ここでは表を読むだけで、展開ロジックは再実装しない。
- * ・模様は「画像」として貼る（形・大きさ・ポーズは変えない。画像・材質・形は恐竜ごとに1つを共有＝メモリを増やさない）。
- * ・塗り絵の左下2つめの四角（シートID）で恐竜を見分ける（coloring/sheets.json）。前の版の紙は「新しく印刷してね」と案内。
- * ・保存は面ごとの色（塗り絵の大きさを変えても使える）。前の版の保存は起動時に自動で引き継ぐ。
+ *   その3D展開（用紙に写る面／左右ミラー／包装紙方式の回り込み／境界3mm）は
+ *   ①のコードそのものから生成した対応表 coloring/<key>_v4_*.bin に焼き込み済み。
+ *   ここでは表を読むだけで、展開ロジックは再実装しない。
+ * ・塗り絵の左下2つめの四角（シートID）で恐竜を見分ける（coloring/sheets.json）。
  * ・カメラはスキャン画面を開いている間だけ使い、終わったら必ず停止・解放する。
- * ・「モデル表示」は、プリロード・模様の復元・model-viewer・書き出し処理がそろうまで押せない。
+ * ・既存機能は変更しない（恐竜を作る関数3か所に1行ずつ「適用フック」を足しただけ）。
  * ===================================================== */
 (function(){
 //@@CORE_START
 const NURI_CFG = {
     dir: "coloring/",
     registry: "sheets.json",        // シートID → 恐竜（key・対応表・印刷用SVG）
-    storePrefix: "dinoPaint_",      // 保存キー = dinoPaint_<key>_v4（面ごとの色＝塗り絵の大きさを変えても使える）
-    storeVer: "v4",
-    legacyV3: "_v3",                // 前の版（2×2マスごとの色）の保存を引き継ぐ
-    legacyV2: "_v2",                // その前の版（写る面ごとの色）の保存を引き継ぐ
-    legacy: { key:"trex", storeKey:"dinoPaint_trex_v1", sha1:"cc58afa821fe0ccaf4ed2e8c7ab5a4fdb72f7066" },   // 前々回版（ティラノのみ）
+    storePrefix: "dinoPaint_",      // 保存キー = dinoPaint_<key>_v2
+    storeVer: "v2",
+    legacy: { key:"trex", storeKey:"dinoPaint_trex_v1", sha1:"cc58afa821fe0ccaf4ed2e8c7ab5a4fdb72f7066" },   // 前回版（ティラノのみ）の保存を引き継ぐ
+    maxColors: 1024,            // 既存のAR書き出し（頂点カラー→パレット画像）の幅対策
+    linearColors: true,         // true=紙の色に合わせる（ゲーム内の見た目が紙に近い）。false=既存の恐竜と同じ入れ方（淡く見える）
     libLocal: ["lib/cv.js","lib/aruco.js","lib/dictionaries/aruco_4x4_1000.js"],
     libCdn: "https://cdn.jsdelivr.net/npm/js-aruco2@2.0.0/src/",
 };
@@ -8168,9 +8159,9 @@ function nuriMarkersToHomography(markers, layout, scale, sheetIds){
     const sheetId=ids.find(i=>sheetIds.includes(i));
     const otherSheet=sheetId===undefined && ids.some(i=>i>=10 && i<64);
     const found=4-missing.length;
-    if(missing.length) return { ok:false, found, missing, sheetId, otherSheet, ids };
+    if(missing.length) return { ok:false, found, missing, sheetId, otherSheet };
     const H=nuriHomography(src,dst);
-    return { ok:!!H && sheetId!==undefined, H, found, missing, sheetId, otherSheet, ids, corners:dst };
+    return { ok:!!H && sheetId!==undefined, H, found, missing, sheetId, otherSheet, corners:dst };
 }
 
 // ---- 色：① scan_v2.vivid（OpenCV 8bit Lab）と同じ手順 ----
@@ -8194,9 +8185,31 @@ function nuriVivid(r,g,b,out,k,dl){ k=k||1.6; dl=dl==null?6:dl; const lab=[0,0,0
     const cl=(v)=>Math.floor(Math.min(255,Math.max(0,v)));
     nuriRgb(cl(L8*(1-w)+L2*w)*100/255, cl(a8*(1-w)+a2*w)-128, cl(b8*(1-w)+b2*w)-128, out); }
 
-// ---- 本体：写真(RGBA) ＋ 射影変換 → マス（1面=T×T）ごとの色。①の表で展開 ----
-function nuriProcess(photo, H, D){
-    const info=D.info, F=D.F, P=D.P, X=D.X, W=info.width, HH=info.height, R=info.colorRule, T=info.cellsPerSide, TT=T*T;
+// ---- 減色（メディアンカット）：AR書き出しのパレット幅を超えないように ----
+function nuriQuantize(cols, n, maxK){   // cols: Float32Array(n*3) 0..1 → 代表色に置き換えた新配列
+    const idx=Array.from({length:n},(_,i)=>i); const boxes=[idx];
+    const range=(b)=>{ let lo=[1,1,1],hi=[0,0,0]; for(const i of b) for(let c=0;c<3;c++){ const v=cols[i*3+c]; if(v<lo[c])lo[c]=v; if(v>hi[c])hi[c]=v; } return hi.map((h,c)=>h-lo[c]); };
+    while(boxes.length<maxK){ let bi=-1,bs=0,bc=0;
+        for(let i=0;i<boxes.length;i++){ if(boxes[i].length<2) continue; const r=range(boxes[i]); const c=r.indexOf(Math.max(...r)); const s=r[c]*Math.sqrt(boxes[i].length); if(s>bs){ bs=s; bi=i; bc=c; } }
+        if(bi<0 || bs<1/255) break;
+        const b=boxes[bi].sort((x,y)=>cols[x*3+bc]-cols[y*3+bc]); const h=b.length>>1; boxes.splice(bi,1,b.slice(0,h),b.slice(h)); }
+    // 箱の平均色を初期値に、最も近い代表色へ付け直す（k-means を数回）
+    const K=boxes.length; let cen=new Float32Array(K*3); const asg=new Int32Array(n);
+    boxes.forEach((b,k)=>{ const m=[0,0,0]; for(const i of b){ asg[i]=k; for(let c=0;c<3;c++) m[c]+=cols[i*3+c]; } for(let c=0;c<3;c++) cen[k*3+c]=m[c]/b.length; });
+    for(let it=0;it<3;it++){
+        for(let i=0;i<n;i++){ const r=cols[i*3],g=cols[i*3+1],bl=cols[i*3+2]; let best=asg[i], bd=1e9;
+            for(let k=0;k<K;k++){ const dr=r-cen[k*3], dg=g-cen[k*3+1], db=bl-cen[k*3+2], d=dr*dr+dg*dg+db*db; if(d<bd){ bd=d; best=k; } } asg[i]=best; }
+        const sum=new Float64Array(K*3), cnt=new Float64Array(K);
+        for(let i=0;i<n;i++){ const k=asg[i]; cnt[k]++; for(let c=0;c<3;c++) sum[k*3+c]+=cols[i*3+c]; }
+        for(let k=0;k<K;k++) if(cnt[k]) for(let c=0;c<3;c++) cen[k*3+c]=sum[k*3+c]/cnt[k];
+    }
+    const out=new Float32Array(n*3); for(let i=0;i<n;i++) for(let c=0;c<3;c++) out[i*3+c]=cen[asg[i]*3+c];
+    return { cols:out, k:K };
+}
+
+// ---- 本体：写真(RGBA) ＋ 射影変換 → 各面の色（①の表で展開） ----
+function nuriProcess(photo, H, D, opt){
+    opt=opt||{}; const info=D.info, F=D.F, P=D.P, X=D.X, W=info.width, HH=info.height, R=info.colorRule;
     const pw=photo.width, ph=photo.height, px=photo.data, nu=X.uniq.length;
     // 1) 用紙座標の必要な画素だけを写真から読む（双線形）
     const rgb=new Float32Array(nu*3);
@@ -8219,130 +8232,77 @@ function nuriProcess(photo, H, D){
         const mx=Math.max(n[0],n[1],n[2]), mn=Math.min(n[0],n[1],n[2]), sat=(mx-mn)/Math.max(mx,1e-9);
         painted[s]=(sat>R.satThr || mx<R.valThr)?1:0;
         nuriVivid(n[0],n[1],n[2],tmp,R.vividK,R.vividDL); viv[s*3]=tmp[0]; viv[s*3+1]=tmp[1]; viv[s*3+2]=tmp[2]; }
-    // 3) マスごとの平均色（画素のないマスは、その面の平均で埋める）＋ 部位ごとの塗り判定（境界3mmを除いた芯）
-    const NC=P.cell_offs.length-1, Dn=NC/TT, DP=F.direct_part;
-    const csum=new Float64Array(NC*3), ccnt=new Uint32Array(NC), NP=info.parts.length, num=new Float64Array(NP), den=new Float64Array(NP);
-    for(let c=0;c<NC;c++){ const a=P.cell_offs[c], b=P.cell_offs[c+1], core=P.cell_core[c], part=DP[(c/TT)|0];
-        for(let i=a;i<b;i++){ const s=X.pixSlot[i]; csum[c*3]+=viv[s*3]; csum[c*3+1]+=viv[s*3+1]; csum[c*3+2]+=viv[s*3+2]; if(i-a<core){ den[part]++; num[part]+=painted[s]; } }
-        ccnt[c]=b-a; }
-    const cells=new Uint8Array(NC*3);
-    for(let d=0;d<Dn;d++){ let fr=0,fg=0,fb=0,fn=0; for(let k=0;k<TT;k++){ const c=d*TT+k; fr+=csum[c*3]; fg+=csum[c*3+1]; fb+=csum[c*3+2]; fn+=ccnt[c]; }
-        for(let k=0;k<TT;k++){ const c=d*TT+k; const n=ccnt[c];
-            for(let q=0;q<3;q++){ const v= n? csum[c*3+q]/n : (q===0?fr:q===1?fg:fb)/Math.max(fn,1); cells[c*3+q]=Math.round(Math.min(1,Math.max(0,v))*255); } } }
+    // 3) 用紙に写っている面（直接面）ごとの平均色
+    const Dn=P.direct_offs.length-1, dcol=new Float32Array(Dn*3), DP=F.direct_part;
+    const NP=info.parts.length, num=new Float64Array(NP), den=new Float64Array(NP);
+    for(let d=0;d<Dn;d++){ const a=P.direct_offs[d], b=P.direct_offs[d+1], core=P.direct_core[d], part=DP[d]; let r=0,g=0,bl=0;
+        for(let i=a;i<b;i++){ const s=X.pixSlot[i]; r+=viv[s*3]; g+=viv[s*3+1]; bl+=viv[s*3+2]; if(i-a<core){ den[part]++; num[part]+=painted[s]; } }
+        const n=b-a; dcol[d*3]=r/n; dcol[d*3+1]=g/n; dcol[d*3+2]=bl/n; }
+    // 4) 部位ごとの「塗ったかどうか」（境界3mmを除いた芯で判定）
     const frac=[], partPainted=[]; for(let p=0;p<NP;p++){ frac.push(den[p]? num[p]/den[p] : 0); partPainted.push(frac[p]>=R.paintThr); }
-    const rgba=nuriAssemble(F, T, cells, partPainted); let used=0; for(let f=3;f<rgba.length;f+=4*TT) if(rgba[f]) used++;
-    return { cells, partPainted, rgba, frac, paintedFaces:used, darkRatio:dark/nu };
+    // 5) 減色（AR書き出し対策）
+    const q=nuriQuantize(dcol, Dn, opt.maxColors||NURI_CFG.maxColors), qc=q.cols;
+    const dq=new Uint8Array(Dn*3); for(let i=0;i<Dn*3;i++) dq[i]=Math.round(qc[i]*255);
+    const rgba=nuriAssemble(F, dq, partPainted); let used=0; for(let f=3;f<rgba.length;f+=4) if(rgba[f]) used++;
+    return { dq, partPainted, rgba, frac, paintedFaces:used, colors:q.k, darkRatio:dark/nu, dcolRaw:dcol };
 }
-// 全面×全マスの色：①の表どおり（face_src＝色の取り元のマス）。未塗装の部位（自分・取り元のどちらか）は元の色のまま（alpha=0）
-function nuriAssemble(F, T, cells, partPainted){
-    const TT=T*T, N=F.face_part.length, rgba=new Uint8Array(N*TT*4), DP=F.direct_part, SRC=F.face_src;
-    for(let f=0;f<N;f++){ const pf=partPainted[F.face_part[f]];
-        for(let k=0;k<TT;k++){ const c=SRC[f*TT+k]; if(c===0xFFFFFFFF || !pf || !partPainted[DP[(c/TT)|0]]) continue;
-            const o=(f*TT+k)*4; rgba[o]=cells[c*3]; rgba[o+1]=cells[c*3+1]; rgba[o+2]=cells[c*3+2]; rgba[o+3]=255; } }
+// 全面の色：①の表どおり（root＝色の取り元の直接面）。未塗装の部位（自分・取り元のどちらか）は元の色のまま
+function nuriAssemble(F, dq, partPainted){
+    const N=F.face_root.length, rgba=new Uint8Array(N*4), DP=F.direct_part;
+    for(let f=0;f<N;f++){ const r=F.face_root[f]; if(r===0xFFFF) continue;
+        if(!partPainted[F.face_part[f]] || !partPainted[DP[r]]) continue;
+        rgba[f*4]=dq[r*3]; rgba[f*4+1]=dq[r*3+1]; rgba[f*4+2]=dq[r*3+2]; rgba[f*4+3]=255; }
     return rgba;
 }
-// 前回版（面ごとの色 dq）→ マスごとの色（同じ色で埋める）
-function nuriCellsFromFaceColors(dq, T){ const TT=T*T, Dn=dq.length/3, cells=new Uint8Array(Dn*TT*3);
-    for(let d=0;d<Dn;d++) for(let k=0;k<TT;k++){ const c=d*TT+k; cells[c*3]=dq[d*3]; cells[c*3+1]=dq[d*3+1]; cells[c*3+2]=dq[d*3+2]; } return cells; }
-// 前の版の保存（写る面ごと／マスごと）→ 今の表の「写る面」ごとの色。legacy[e]=今の面 e の前の番号（無ければ同じ番号）
-function nuriRemapLegacy(oldCells, oldTT, legacy, Dn){ const cells=new Uint8Array(Dn*3);
-    for(let e=0;e<Dn;e++){ let o= legacy? legacy[e] : e; if(o<0){ o= e>0? (legacy? legacy[e-1] : e-1) : 0; } if(o<0) o=0;
-        for(let q=0;q<3;q++){ let s=0; for(let k=0;k<oldTT;k++) s+=oldCells[(o*oldTT+k)*3+q]; cells[e*3+q]=Math.round(s/oldTT); } }
-    return cells; }
-// 前々回版（全面の色 rgba・ティラノ）→ マスごとの色
-function nuriCellsFromLegacyV1(F, T, rgba){ const TT=T*T, NC=F.direct_part.length*TT, cells=new Uint8Array(NC*3), painted=new Array(16).fill(false);
-    for(let f=0;f<F.face_part.length;f++){ if(!rgba[f*4+3]) continue; painted[F.face_part[f]]=true;
-        for(let k=0;k<TT;k++){ const c=F.face_src[f*TT+k]; if(c===0xFFFFFFFF) continue; cells[c*3]=rgba[f*4]; cells[c*3+1]=rgba[f*4+1]; cells[c*3+2]=rgba[f*4+2]; } }
-    return { cells, partPainted:painted };
+// 前回版（全面の色を保存）→ 新しい保存形（直接面の色＋部位）へ
+function nuriFromLegacy(F, rgba){
+    const Dn=F.direct_part.length, dq=new Uint8Array(Dn*3), NP=16, painted=new Array(NP).fill(false);
+    for(let f=0;f<F.face_root.length;f++){ if(!rgba[f*4+3]) continue; const r=F.face_root[f]; if(r===0xFFFF) continue;
+        painted[F.face_part[f]]=true; dq[r*3]=rgba[f*4]; dq[r*3+1]=rgba[f*4+1]; dq[r*3+2]=rgba[f*4+2]; }
+    return { dq, partPainted:painted };
 }
 
-// ---- 3D：模様を「画像」として貼る。形・大きさ・ポーズは変えない（頂点の位置はそのまま、UVと画像を足すだけ）----
-//  store（恐竜ごと・共有）：{ T, W, H, tex, mat, geos[] } … 発掘キャッシュ・相棒・確認表示で同じものを使う（メモリを増やさない）
-const NURI_ORIG=new WeakMap(), NURI_ORIGMAT=new WeakMap();   // mesh → 元のジオメトリ／材質（元に戻す用）
-const NURI_TANG=(n)=>{ const a= n[2]===0? [0,0,1] : [1,0,0]; const b=[n[1]*a[2]-n[2]*a[1], n[2]*a[0]-n[0]*a[2], n[0]*a[1]-n[1]*a[0]]; return [a,b]; };
-function nuriMeshes(root){ const ms=[]; root.traverse(o=>{ if(o.isMesh){ const g=NURI_ORIG.get(o)||o.geometry; if(g && g.getAttribute && g.getAttribute("color") && g.getAttribute("normal")) ms.push(o); } }); return ms; }
-function nuriOffset(mesh, root){ let ox=0,oy=0,oz=0; for(let o=mesh; o && o!==root; o=o.parent){ ox+=o.position.x; oy+=o.position.y; oz+=o.position.z; } return [ox,oy,oz]; }
-// 最初の1体（root）から、共有する store を作る
-function nuriBuildStore(root, rgba, F, T, keyMap, normals, V, makeMaterial){
-    const meshes=nuriMeshes(root), N=F.face_part.length, TT=T*T;
-    const R=Math.ceil(Math.sqrt(N)), W=R*T, H=Math.ceil(N/R)*T, img=new Uint8ClampedArray(W*H*4);
-    const nIdx=new Map(normals.map((n,i)=>[n.join(","),i])), EPS=0.01;
-    const geos=[]; let tot=0, hit=0;
+// ---- 3D：恐竜（build_<key> の戻り値）へ適用。形は変えず頂点カラーだけ ----
+const NURI_ORIG=new WeakMap();       // mesh → 元のジオメトリ（元に戻す用）
+function nuriApplyToRoot(root, rgba, keyMap, normals, V, linear){
+    const meshes=[]; root.traverse(o=>{ if(o.isMesh){ const g=NURI_ORIG.get(o)||o.geometry; if(g && g.getAttribute && g.getAttribute("color") && g.getAttribute("normal")) meshes.push(o); } });
+    const nIdx=new Map(normals.map((n,i)=>[n.join(","),i]));
+    const toAttr=linear? nuriLin : (c)=>c;
+    const plans=[]; let tot=0, hit=0;
     for(const mesh of meshes){
-        const base=NURI_ORIG.get(mesh)||mesh.geometry, [ox,oy,oz]=nuriOffset(mesh,root);
-        const g0=base.index? base.toNonIndexed() : base, Pa=g0.getAttribute("position"), Na=g0.getAttribute("normal"), Ca=g0.getAttribute("color");
-        const slot=new Map(); const pos=[], nor=[], uv=[], idx=[]; let nv=0;
+        const base=NURI_ORIG.get(mesh)||mesh.geometry;
+        if(!rgba){ plans.push({mesh, geo:null}); continue; }
+        let ox=0,oy=0,oz=0; for(let o=mesh; o && o!==root; o=o.parent){ ox+=o.position.x; oy+=o.position.y; oz+=o.position.z; }
+        const g=base.index? base.toNonIndexed() : base.clone();
+        const Pa=g.getAttribute("position"), Na=g.getAttribute("normal"), Ca=g.getAttribute("color");
         for(let t=0;t+2<Pa.count;t+=3){ tot++;
             const nx=Math.round(Na.getX(t)), ny=Math.round(Na.getY(t)), nz=Math.round(Na.getZ(t)); const ni=nIdx.get(nx+","+ny+","+nz); if(ni===undefined) continue;
             const cx=(Pa.getX(t)+Pa.getX(t+1)+Pa.getX(t+2))/3+ox-nx*V/2, cy=(Pa.getY(t)+Pa.getY(t+1)+Pa.getY(t+2))/3+oy-ny*V/2, cz=(Pa.getZ(t)+Pa.getZ(t+1)+Pa.getZ(t+2))/3+oz-nz*V/2;
             const f=keyMap.get(nuriKey(Math.round(cx/V),Math.round(cy/V),Math.round(cz/V),ni)); if(f===undefined) continue; hit++;
-            // 面の本当の中心（四角の三角形は対角線をまたぐので、3頂点の範囲の中点＝面の中心）
-            const fc=[0,0,0]; for(let c=0;c<3;c++){ const get=c===0?"getX":c===1?"getY":"getZ"; const v0=Pa[get](t), v1=Pa[get](t+1), v2=Pa[get](t+2); fc[c]=(Math.min(v0,v1,v2)+Math.max(v0,v1,v2))/2; }
-            // 角を共有するのは「同じ鍵」かつ「同じ四角」の三角形だけ（部品の位置がボクセルの整数倍でないと、1つの四角の2枚が別の鍵になることがある＝①と同じ三角形単位の対応）
-            const sk=f+"|"+Math.round(fc[0]/V*4)+","+Math.round(fc[1]/V*4)+","+Math.round(fc[2]/V*4);
-            let s=slot.get(sk), tileNew=!slot.has("t"+f);
-            if(s===undefined){ s=[-1,-1,-1,-1]; slot.set(sk,s); }
-            if(tileNew){ slot.set("t"+f,1);
-                // この面の画像タイル（T×T）：塗った所は紙の色、それ以外（未塗装・目）は元の頂点色
-                const tx=(f%R)*T, ty=Math.floor(f/R)*T, or_=Ca.getX(t), og=Ca.getY(t), ob=Ca.getZ(t);
-                for(let i=0;i<T;i++) for(let j=0;j<T;j++){ const k=i*T+j, o=((ty+j)*W+(tx+i))*4, q=(f*TT+k)*4;
-                    if(rgba && rgba[q+3]){ img[o]=rgba[q]; img[o+1]=rgba[q+1]; img[o+2]=rgba[q+2]; } else { img[o]=Math.round(or_*255); img[o+1]=Math.round(og*255); img[o+2]=Math.round(ob*255); } img[o+3]=255; } }
-            const [a,b]=NURI_TANG([nx,ny,nz]);
-            for(let q=0;q<3;q++){ const vi=t+q, lx=Pa.getX(vi), ly=Pa.getY(vi), lz=Pa.getZ(vi);
-                const dx=lx-fc[0], dy=ly-fc[1], dz=lz-fc[2];
-                const i=(dx*a[0]+dy*a[1]+dz*a[2])>0?1:0, j=(dx*b[0]+dy*b[1]+dz*b[2])>0?1:0, corner=i*2+j;
-                if(s[corner]<0){ s[corner]=nv++; pos.push(lx,ly,lz); nor.push(nx,ny,nz);
-                    const tx=(f%R)*T, ty=Math.floor(f/R)*T; uv.push((tx+(i? T-EPS : EPS))/W, (ty+(j? T-EPS : EPS))/H); }
-                idx.push(s[corner]); } }
-        const g=new THREE.BufferGeometry();
-        g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); g.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3)); g.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
-        g.setIndex(nv>65535? new THREE.Uint32BufferAttribute(idx,1) : new THREE.Uint16BufferAttribute(idx,1)); g.computeBoundingSphere(); g.computeBoundingBox();
-        g.userData.nuriBase=base.getAttribute("position").count;
-        if(g0!==base) g0.dispose();
-        geos.push(g);
+            if(!rgba[f*4+3]) continue;
+            const r=toAttr(rgba[f*4]/255), gg=toAttr(rgba[f*4+1]/255), b=toAttr(rgba[f*4+2]/255);
+            Ca.setXYZ(t,r,gg,b); Ca.setXYZ(t+1,r,gg,b); Ca.setXYZ(t+2,r,gg,b); }
+        Ca.needsUpdate=true; plans.push({mesh, geo:g});
     }
-    if(tot===0 || hit/tot<0.98){ geos.forEach(g=>g.dispose()); return { ok:false, hit, tot }; }   // 形が表と合わない → 何もしない
-    const cv=(typeof document!=="undefined")? document.createElement("canvas") : null; let tex=null;
-    if(cv){ cv.width=W; cv.height=H; cv.getContext("2d").putImageData(new ImageData(img,W,H),0,0); tex=new THREE.CanvasTexture(cv); }
-    else { tex=new THREE.DataTexture(img,W,H); }
-    if("colorSpace" in tex) tex.colorSpace=THREE.SRGBColorSpace; tex.flipY=false; tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.NearestFilter; tex.generateMipmaps=false;
-    tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping; tex.needsUpdate=true;
-    return { ok:true, hit, tot, T, W, H, img, tex, mat:makeMaterial(tex), geos };
+    if(rgba && (tot===0 || hit/tot<0.98)){ plans.forEach(p=>p.geo&&p.geo.dispose()); return {ok:false, hit, tot}; }   // 形が表と合わない（別解像度など）→ 何もしない
+    for(const p of plans){ const cur=p.mesh.geometry, orig=NURI_ORIG.get(p.mesh);
+        if(p.geo){ if(!orig) NURI_ORIG.set(p.mesh,cur); else if(cur!==orig) cur.dispose(); p.mesh.geometry=p.geo; }
+        else if(orig){ if(cur!==orig) cur.dispose(); p.mesh.geometry=orig; NURI_ORIG.delete(p.mesh); } }
+    return {ok:true, hit, tot};
 }
-// 1体（root）に store を貼る。store=null なら元に戻す
-function nuriApplyStore(root, store){
-    const meshes=nuriMeshes(root);
-    if(store){ if(meshes.length!==store.geos.length) return {ok:false};
-        for(let i=0;i<meshes.length;i++){ const base=NURI_ORIG.get(meshes[i])||meshes[i].geometry; if(base.getAttribute("position").count!==store.geos[i].userData.nuriBase) return {ok:false}; } }
-    for(let i=0;i<meshes.length;i++){ const m=meshes[i], og=NURI_ORIG.get(m), om=NURI_ORIGMAT.get(m);
-        if(store){ if(!og){ NURI_ORIG.set(m,m.geometry); NURI_ORIGMAT.set(m,m.material); } m.geometry=store.geos[i]; m.material=store.mat; }
-        else if(og){ m.geometry=og; m.material=om; NURI_ORIG.delete(m); NURI_ORIGMAT.delete(m); } }
-    return {ok:true};
-}
-function nuriDisposeStore(store){ if(!store) return; try{ store.geos.forEach(g=>g.dispose()); store.mat.dispose(); store.tex.dispose(); }catch(_){ } }
 //@@CORE_END
 /* ---------------- ここからアプリ内の状態・読み込み・UI（複数恐竜） ---------------- */
-const NURI={ reg:null, layout:null, maps:{}, paint:{}, store:{}, lastInfo:null };   // maps[key]={info,F,keyMap,P,X}  paint[key]={rgba}（面ごとの色）  store[key]=共有の画像・材質・形
+const NURI={ reg:null, layout:null, maps:{}, paint:{}, lastInfo:null };   // maps[key]={info,F,keyMap,P,X}  paint[key]={dq,partPainted,rgba}
 const V_SMOOTH = VOX/6;                                  // makeDigDino の「なめらか」解像度と同じ
 const dinoIdx = (key)=> (typeof DINOS!=="undefined")? DINOS.findIndex(d=>d.key===key) : -1;
 const sheetOf = (key)=> NURI.reg && NURI.reg.sheets.find(s=>s.key===key);
 
-async function nuriFetch(name, type, bytes){
-    const r=await fetch(NURI_CFG.dir+name,{cache:"no-cache"}); if(!r.ok) throw new Error(name+" "+r.status);
-    if(type==="json") return r.json();
-    let buf=await r.arrayBuffer(); const h=new Uint8Array(buf,0,Math.min(2,buf.byteLength));
-    if(h[0]===0x1f && h[1]===0x8b){                                                        // 表は gzip 圧縮（data/*.bin.gz）
-        if(typeof DecompressionStream==="undefined") throw new Error("このブラウザは圧縮ファイルを開けません");
-        buf=await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer(); }
-    // 先頭が gzip でない＝サーバーが解凍して渡した → そのまま使う
-    if(bytes && buf.byteLength!==bytes) throw new Error(name+" size");
-    return buf;
-}
+async function nuriFetch(name, type){ const r=await fetch(NURI_CFG.dir+name,{cache:"no-cache"}); if(!r.ok) throw new Error(name+" "+r.status); return type==="json"? r.json() : r.arrayBuffer(); }
 async function nuriLoadRegistry(){ if(NURI.reg) return NURI.reg; NURI.reg=await nuriFetch(NURI_CFG.registry,"json"); return NURI.reg; }
 async function nuriLoadFaces(key){
     if(NURI.maps[key]) return NURI.maps[key];
     const sh=sheetOf(key); if(!sh) throw new Error("no sheet "+key);
-    const info=await nuriFetch(sh.map,"json"); const fb=await nuriFetch(info.files.faces.name,"bin",info.files.faces.bytes);
+    const info=await nuriFetch(sh.map,"json"); const fb=await nuriFetch(info.files.faces.name,"bin");
     if(fb.byteLength!==info.files.faces.bytes) throw new Error("faces size "+key);
     const F=nuriSections(fb, info.files.faces.sections);
     if(!NURI.layout) NURI.layout={ pxPerMm:info.pxPerMm, markers:info.markers };   // 全シート共通の配置（四隅マーカー）
@@ -8350,7 +8310,7 @@ async function nuriLoadFaces(key){
 }
 async function nuriLoadPix(key){
     const D=await nuriLoadFaces(key); if(D.P) return D;
-    const pb=await nuriFetch(D.info.files.pix.name,"bin",D.info.files.pix.bytes); if(pb.byteLength!==D.info.files.pix.bytes) throw new Error("pix size "+key);
+    const pb=await nuriFetch(D.info.files.pix.name,"bin"); if(pb.byteLength!==D.info.files.pix.bytes) throw new Error("pix size "+key);
     D.P=nuriSections(pb, D.info.files.pix.sections); D.X=nuriPrepPix(D.P, D.info.width, D.info.height); return D;
 }
 function nuriDropPix(keep){ for(const k in NURI.maps){ if(k!==keep && NURI.maps[k].P){ NURI.maps[k].P=null; NURI.maps[k].X=null; } } }   // 使い終わった画素リストは手放す
@@ -8361,42 +8321,21 @@ async function nuriLoadLib(){
     catch(e){ for(const f of ["cv.js","aruco.js","dictionaries/aruco_4x4_1000.js"]) await nuriLoadScript(NURI_CFG.libCdn+f); }
 }
 
-// ---- 保存（ブラウザ内・恐竜ごと）：マスごとの色＋部位の塗り判定（圧縮できれば圧縮）----
+// ---- 保存（ブラウザ内・恐竜ごと）：直接面の色＋部位の塗り判定だけ（約55KB/体）----
 function nuriB64(u8){ let s=""; for(let i=0;i<u8.length;i+=0x8000) s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(s); }
 function nuriUnB64(b){ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
-async function nuriZip(u8, on){ if(!on || typeof CompressionStream==="undefined") return {z:0,d:u8}; try{ return {z:1,d:new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer())}; }catch(_){ return {z:0,d:u8}; } }
-async function nuriUnzip(u8, z){ if(!z) return u8; return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer()); }
 const storeKey=(key)=> NURI_CFG.storePrefix+key+"_"+NURI_CFG.storeVer;
-async function nuriSave(key, rgba, info){ try{ const zz=await nuriZip(rgba, true);
-    localStorage.setItem(storeKey(key), JSON.stringify({v:4, key, keysSha1:info.keysSha1, date:Date.now(), z:zz.z, rgba:nuriB64(zz.d)})); return true; }
-    catch(e){ console.warn("[ぬりえ] 保存できませんでした", e); return false; } }
-async function nuriLoadSaved(key){ try{ const j=JSON.parse(localStorage.getItem(storeKey(key))||"null"); if(!j||!j.rgba) return null;
-    return { keysSha1:j.keysSha1, rgba:await nuriUnzip(nuriUnB64(j.rgba), j.z) }; }catch(e){ return null; } }
-function nuriClearSaved(key){ try{ for(const s of ["_"+NURI_CFG.storeVer, NURI_CFG.legacyV3, NURI_CFG.legacyV2]) localStorage.removeItem(NURI_CFG.storePrefix+key+s);
-    if(key===NURI_CFG.legacy.key) localStorage.removeItem(NURI_CFG.legacy.storeKey); }catch(e){} }
-async function nuriLegacyV3(key){ try{ const j=JSON.parse(localStorage.getItem(NURI_CFG.storePrefix+key+NURI_CFG.legacyV3)||"null"); if(!j||!j.cells) return null;
-    return { keysSha1:j.keysSha1, T:j.T||2, cells:await nuriUnzip(nuriUnB64(j.cells), j.z), partPainted:j.parts.map(Boolean) }; }catch(e){ return null; } }
-function nuriLegacyV2(key){ try{ const j=JSON.parse(localStorage.getItem(NURI_CFG.storePrefix+key+NURI_CFG.legacyV2)||"null"); if(!j||!j.dq) return null; return { keysSha1:j.keysSha1, dq:nuriUnB64(j.dq), partPainted:j.parts.map(Boolean) }; }catch(e){ return null; } }
+function nuriSave(key, p, info){ try{ localStorage.setItem(storeKey(key), JSON.stringify({v:2, key, keysSha1:info.keysSha1, date:Date.now(), parts:p.partPainted.map(b=>b?1:0), dq:nuriB64(p.dq)})); return true; }catch(e){ console.warn("[ぬりえ] 保存できませんでした", e); return false; } }
+function nuriLoadSaved(key){ try{ const j=JSON.parse(localStorage.getItem(storeKey(key))||"null"); if(!j||!j.dq) return null; return { keysSha1:j.keysSha1, dq:nuriUnB64(j.dq), partPainted:j.parts.map(Boolean) }; }catch(e){ return null; } }
+function nuriClearSaved(key){ try{ localStorage.removeItem(storeKey(key)); }catch(e){} }
 function nuriLegacy(){ const L=NURI_CFG.legacy; try{ const j=JSON.parse(localStorage.getItem(L.storeKey)||"null"); if(!j||!j.rgba||j.sha1!==L.sha1) return null; return nuriUnB64(j.rgba); }catch(e){ return null; } }
 
 // ---- 既存の恐竜へ反映（発掘キャッシュ・軽量表示・相棒）----
-function nuriMakeMaterial(tex){ const m=(typeof _voxMat!=="undefined")? _voxMat.clone() : new THREE.MeshStandardMaterial({roughness:0.9, metalness:0, side:THREE.DoubleSide}); m.vertexColors=false; m.map=tex; m.needsUpdate=true; return m; }   // 既存の材質と同じ質感＋画像
 function nuriApply(key, root){
     const D=NURI.maps[key]; if(!D) return null; const p=NURI.paint[key];
-    if(!p) return nuriApplyStore(root, null);
-    let st=NURI.store[key];
-    if(!st){ st=nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH, nuriMakeMaterial);
-        if(!st.ok){ console.warn("[ぬりえ] この恐竜モデルには適用できませんでした", key, st); return st; }
-        NURI.store[key]=st; }
-    const r=nuriApplyStore(root, st); if(!r.ok) console.warn("[ぬりえ] 形が合わないモデルには貼りません", key);
+    const r=nuriApplyToRoot(root, p? p.rgba : null, D.keyMap, D.info.normals, V_SMOOTH, NURI_CFG.linearColors);
+    if(!r.ok && p) console.warn("[ぬりえ] この恐竜モデルには適用できませんでした", key, r);
     return r;
-}
-function nuriSetPaint(key, p){      // 模様を差し替える：古い共有物は、全部の持ち主を元に戻してから捨てる
-    const old=NURI.store[key];
-    if(old){ for(const r of nuriHolders(key)){ try{ nuriApplyStore(r,null); }catch(_){ } } delete NURI.store[key]; }
-    if(p) NURI.paint[key]=p; else delete NURI.paint[key];
-    nuriRefreshHolders(key);
-    if(old) nuriDisposeStore(old);
 }
 function nuriHolders(key){
     const i=dinoIdx(key), roots=[];
@@ -8412,14 +8351,11 @@ window.__dinoPaintApply = function(key, root){ if(!root || !NURI.paint[key] || !
 // ---- 画面：メニュー ----
 const $=(id)=>document.getElementById(id);
 function nuriMenuRefresh(){
-    const st=$("nuriStatus"), rl=$("nuriResetList"), pl=$("nuriPrintList"), sb=$("nuriScanBtn"), pr=$("nuriPrint"), ra=$("nuriResetAll");
+    const st=$("nuriStatus"), rl=$("nuriResetList"), pl=$("nuriPrintList"), sb=$("nuriScanBtn");
     const painted=Object.keys(NURI.paint).filter(k=>NURI.paint[k]);
     const nm=(k)=>{ const s=sheetOf(k); return s? s.name : k; };
-    const reco=(typeof recoOn!=="undefined") && recoOn;                        // おすすめ設定オン：印刷と「恐竜ごとに戻す」は出さない
     if(st) st.textContent = painted.length? "じぶんで ぬった きょうりゅう： "+painted.map(nm).join("・") : "";
-    if(rl){ rl.innerHTML=""; rl.style.display=reco? "none" : ""; if(!reco) for(const k of painted){ const b=document.createElement("button"); b.type="button"; b.textContent="↩ "+nm(k)+"を もとに もどす"; b.addEventListener("click",()=>nuriReset(k)); rl.appendChild(b); } }
-    if(ra) ra.style.display = painted.length? "" : "none";
-    if(pr) pr.style.display = reco? "none" : "";
+    if(rl){ rl.innerHTML=""; for(const k of painted){ const b=document.createElement("button"); b.type="button"; b.textContent="↩ "+nm(k)+"を もとに もどす"; b.addEventListener("click",()=>nuriReset(k)); rl.appendChild(b); } }
     if(pl && NURI.reg && !pl.childElementCount){ for(const s of NURI.reg.sheets){ const a=document.createElement("a"); a.href=NURI_CFG.dir+s.svg; a.target="_blank"; a.rel="noopener"; a.textContent=s.name; pl.appendChild(a); } }
     if(sb && !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ sb.style.display="none"; if(st) st.textContent="この きかいでは カメラが つかえません"; }
 }
@@ -8478,7 +8414,6 @@ function scTick(){
     }else{
         SC.stable=0; SC.last=null;
         if(lum<55) scMsg("ちょっと くらいみたい","もうすこし あかるい ばしょで とってみよう");
-        else if(res && res.ids && NURI.reg.retired && res.ids.some(i=>NURI.reg.retired[String(i)])) scMsg("まえの ぬりえだね","あたらしく いんさつした ぬりえを つかってね");
         else if(res && res.otherSheet) scMsg("この ぬりえは まだ よめないよ","あたらしい きょうりゅうの ぬりえを つかってね");
         else if(res && res.found===4 && res.sheetId===undefined) scMsg("もうすこし！","ひだりしたの 2つめの しかくも うつるように してね");
         else if(res && res.found>0) scMsg("もうすこし！","4つの かどの くろい しかくが ぜんぶ うつるように してね");
@@ -8501,10 +8436,10 @@ function scCapture(resSmall, s, key){
             const out=nuriProcess(photo, res.H, D);
             photo=null;
             if(out.paintedFaces===0){ SC.busy=false; scMode("error"); scMsg("いろが みつからなかったよ","ぬった ぬりえで もういちど ためしてね"); return; }
-            nuriPreviewStop();
-            nuriSetPaint(key, { rgba:out.rgba });
-            NURI.lastInfo={ key, frac:out.frac, partPainted:out.partPainted, cellsPerSide:D.info.cellsPerSide, parts:D.info.parts };
-            nuriSave(key, out.rgba, D.info);
+            NURI.paint[key]={ dq:out.dq, partPainted:out.partPainted, rgba:out.rgba };
+            NURI.lastInfo={ key, frac:out.frac, partPainted:out.partPainted, colors:out.colors, parts:D.info.parts };
+            nuriSave(key, NURI.paint[key], D.info);
+            nuriRefreshHolders(key);
             SC.busy=false; scMode("done"); scMsg("できた！ "+sheetOf(key).name,"ゆびで うごかして いろんな むきから みてね");
             nuriPreviewStart(key);
         }catch(e){ console.warn("[ぬりえ]",e); SC.busy=false; scMode("error"); scMsg("うまく よめなかったよ","もういちど ためしてね"); }
@@ -8542,27 +8477,19 @@ function nuriPreviewStart(key){
 function nuriPreviewView(yaw,pitch){ if(!PV) return; PV.auto=false; PV.yaw=yaw; PV.pitch=pitch; }
 function nuriPreviewStop(){
     if(!PV) return; cancelAnimationFrame(PV.raf);
-    PV.model.traverse(o=>{ if(o.isMesh && o.geometry){ const og=NURI_ORIG.get(o); if(og){ og.dispose(); NURI_ORIG.delete(o); NURI_ORIGMAT.delete(o); } else o.geometry.dispose(); } });   // 確認用に作った元の形だけ破棄（模様の形・材質・画像は恐竜ごとの共有なので残す／_voxMat も共有）
+    PV.model.traverse(o=>{ if(o.isMesh && o.geometry){ const og=NURI_ORIG.get(o); if(og && og!==o.geometry) og.dispose(); o.geometry.dispose(); } });   // 確認用に作ったモデルだけ破棄（_voxMat は共有なので触らない）
     try{ PV.r.dispose(); PV.r.forceContextLoss(); }catch(_){}
     PV.cv.remove(); PV=null;
 }
 function nuriReset(key){
     const s=sheetOf(key); if(!confirm("ぬった もようを けして、もとの "+(s?s.name:key)+"に もどしますか？")) return;
-    nuriClearSaved(key); nuriSetPaint(key, null); nuriMenuRefresh();
-}
-function nuriResetAll(){
-    const keys=Object.keys(NURI.paint).filter(k=>NURI.paint[k]); if(!keys.length) return;
-    if(!confirm("ぬった もようを ぜんぶ けして、もとの きょうりゅうに もどしますか？")) return;
-    for(const k of keys){ nuriClearSaved(k); nuriSetPaint(k, null); }
-    if(NURI.reg) for(const s of NURI.reg.sheets) nuriClearSaved(s.key);                        // 読み込めなかった古い保存も消す
-    nuriMenuRefresh();
+    delete NURI.paint[key]; nuriClearSaved(key); if(key===NURI_CFG.legacy.key){ try{ localStorage.removeItem(NURI_CFG.legacy.storeKey); }catch(_){ } }
+    nuriRefreshHolders(key); nuriMenuRefresh();
 }
 // ---- 配線 ----
 function nuriWire(){
     const sb=$("nuriScanBtn");
     if(sb) sb.addEventListener("click",()=>{ if(!nuriCanScan()) return; nuriStartScan(); });
-    const ra=$("nuriResetAll"); if(ra) ra.addEventListener("click",nuriResetAll);
-    document.querySelectorAll("#segReco button").forEach(b=>b.addEventListener("click",()=>setTimeout(nuriMenuRefresh,0)));   // おすすめ設定の切替に合わせて表示を変える（既存の onclick の後に動く）
     const back=$("nuriBack"), done=$("nuriDone"), again=$("nuriAgain");
     if(back) back.addEventListener("click",scClose);
     if(done) done.addEventListener("click",scClose);
@@ -8571,56 +8498,31 @@ function nuriWire(){
     nuriMenuRefresh();
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",nuriWire); else nuriWire();
-// ---- 「モデル表示」の準備ゲート：プリロード・模様の復元・model-viewer 本体・書き出し処理がそろうまで押せない ----
-const MV_READY={ preload:false, paint:false, viewer:false, exporter:false };
-function mvCheck(){ const ok=Object.values(MV_READY).every(Boolean); document.body.classList.toggle("nuri-mv-wait", !ok); return ok; }
-window.__mvReadyAll=()=>Object.values(MV_READY).every(Boolean);
-mvCheck();
-(function waitPreload(){ if(typeof PRELOAD_DONE!=="undefined" && PRELOAD_DONE){ MV_READY.preload=true; mvCheck(); return; } setTimeout(waitPreload,200); })();
-try{ Promise.race([customElements.whenDefined("model-viewer"), new Promise(r=>setTimeout(r,30000))]).then(()=>{ MV_READY.viewer=true; mvCheck(); }); }catch(_){ MV_READY.viewer=true; }   // 最大30秒（読めない時は既存の動きに任せる）
-import("three/addons/exporters/GLTFExporter.js").catch(()=>{}).finally(()=>{ MV_READY.exporter=true; mvCheck(); });   // 先に読み込む＝モデル表示側の読み込みは一瞬で終わる
-
 // ---- 起動時：保存してある模様があれば、その恐竜の表（小さい方）だけ読んで既存モデルへ反映 ----
 (async function nuriBoot(){
-    try{
-        try{ await nuriLoadRegistry(); }catch(e){ console.warn("[ぬりえ] 登録表を読めませんでした",e); return; }
-        nuriMenuRefresh();
-        const todo=[];
-        for(const sh of NURI.reg.sheets){
-            const saved=await nuriLoadSaved(sh.key);
-            const v3 = saved? null : await nuriLegacyV3(sh.key);
-            const v2 = (saved||v3)? null : nuriLegacyV2(sh.key);
-            const v1 = (!saved && !v3 && !v2 && sh.key===NURI_CFG.legacy.key)? nuriLegacy() : null;
-            if(saved || v3 || v2 || v1) todo.push({sh, saved, v3, v2, v1, load:nuriLoadFaces(sh.key)});      // 表の読み込みは並行して始める
-        }
-        for(const t of todo){ const sh=t.sh;                                                      // 届いたものから順に反映し、そのたびにメニューも更新
-            try{
-                const D=await t.load, T=D.info.cellsPerSide, Dn=D.F.direct_part.length; let rgba=null;
-                if(t.saved){ if(t.saved.keysSha1===D.info.keysSha1 && t.saved.rgba.length===D.F.face_part.length*T*T*4) rgba=t.saved.rgba; }
-                else if(t.v1){ if(t.v1.length===D.F.face_part.length*4) rgba=t.v1; }                   // 前々回版は面ごとの色そのもの
-                else { const old=t.v3||t.v2, oldTT= t.v3? t.v3.T*t.v3.T : 1, oldCells= t.v3? t.v3.cells : t.v2.dq;
-                    let legacy=null, oldDn=Dn;
-                    if(D.info.files.legacy){ const lb=await nuriFetch(D.info.files.legacy.name,"bin",D.info.files.legacy.bytes); legacy=new Int32Array(lb); oldDn=D.info.files.legacy.oldDirectFaces; }
-                    if(old.keysSha1===D.info.keysSha1 && oldCells.length===oldDn*oldTT*3){
-                        const cells=nuriRemapLegacy(oldCells, oldTT, legacy, Dn); rgba=nuriAssemble(D.F, T, cells, old.partPainted); } }
-                if(!rgba){ console.warn("[ぬりえ] 表が更新されたため、保存した模様は使えません", sh.key); continue; }
-                if(!t.saved){ if(await nuriSave(sh.key, rgba, D.info)){ try{ for(const s of [NURI_CFG.legacyV3, NURI_CFG.legacyV2]) localStorage.removeItem(NURI_CFG.storePrefix+sh.key+s); if(sh.key===NURI_CFG.legacy.key) localStorage.removeItem(NURI_CFG.legacy.storeKey); }catch(_){ } } }   // 古い保存を新しい形へ
-                nuriSetPaint(sh.key, { rgba });
-                nuriMenuRefresh();
-                await new Promise(r=>setTimeout(r,0));                                              // 1体ごとに描画へ手番を返す（固まらないように）
-            }catch(e){ console.warn("[ぬりえ] 表を読めませんでした", sh.key, e); }
-        }
-        nuriMenuRefresh();
-    } finally { MV_READY.paint=true; mvCheck(); }                                                    // 模様の復元が終わった（失敗でも）→ モデル表示の準備ゲートへ
+    try{ await nuriLoadRegistry(); }catch(e){ console.warn("[ぬりえ] 登録表を読めませんでした",e); return; }
+    nuriMenuRefresh();
+    const todo=[];
+    for(const sh of NURI.reg.sheets){
+        let saved=null; try{ saved=nuriLoadSaved(sh.key); }catch(_){}
+        const legacy = (!saved && sh.key===NURI_CFG.legacy.key)? nuriLegacy() : null;
+        if(saved || legacy) todo.push({sh, saved, legacy, load:nuriLoadFaces(sh.key)});      // 表の読み込みは並行して始める
+    }
+    for(const {sh, legacy, load} of todo){ let saved=todo.find(t=>t.sh===sh).saved;          // 届いたものから順に反映し、そのたびにメニューも更新
+        try{
+            const D=await load;
+            if(legacy){ if(legacy.length!==D.F.face_root.length*4) continue; saved=nuriFromLegacy(D.F, legacy); saved.keysSha1=D.info.keysSha1;
+                if(nuriSave(sh.key, saved, D.info)) try{ localStorage.removeItem(NURI_CFG.legacy.storeKey); }catch(_){ } }   // 前回版の保存を新しい形へ引き継ぐ
+            if(saved.keysSha1!==D.info.keysSha1 || saved.dq.length!==D.F.direct_part.length*3){ console.warn("[ぬりえ] 表が更新されたため、保存した模様は使えません", sh.key); continue; }
+            NURI.paint[sh.key]={ dq:saved.dq, partPainted:saved.partPainted, rgba:nuriAssemble(D.F, saved.dq, saved.partPainted) };
+            nuriRefreshHolders(sh.key); nuriMenuRefresh();
+            await new Promise(r=>setTimeout(r,0));                                              // 1体ごとに描画へ手番を返す（固まらないように）
+        }catch(e){ console.warn("[ぬりえ] 表を読めませんでした", sh.key, e); }
+    }
+    nuriMenuRefresh();
 })();
 window.NURI_DEBUG={ state:NURI, info:()=>NURI.lastInfo, view:(y,p)=>nuriPreviewView(y,p),   // 確認用（大人向け・コンソールから）
-    painted:()=>Object.keys(NURI.paint), mvReady:()=>Object.assign({},MV_READY),
-    exportTest:async(key)=>{ const i=dinoIdx(key); const ps=dinoSmooth; let m; try{ dinoSmooth=true; m=makeDigDino(DINOS[i]); }finally{ dinoSmooth=ps; }   // モデル表示と同じ GLTFExporter で書き出せるか
-        const {GLTFExporter}=await import("three/addons/exporters/GLTFExporter.js"); let colorAttr=false, maps=0; m.traverse(o=>{ if(o.isMesh){ if(o.geometry.getAttribute("color")) colorAttr=true; if(o.material.map) maps++; } });
-        const _ud=[]; m.traverse(o=>{ _ud.push([o,o.userData]); o.userData={}; });           // モデル表示（objToBlobUrl）と同じく userData を外して書き出す
-        let glb; try{ glb=await new Promise((res,rej)=>new GLTFExporter().parse(m,res,rej,{binary:true,onlyVisible:false})); } finally { for(const [o,u] of _ud) o.userData=u; }
-        m.traverse(o=>{ if(o.isMesh){ const og=NURI_ORIG.get(o); if(og){ og.dispose(); NURI_ORIG.delete(o); NURI_ORIGMAT.delete(o); } } });
-        return { bytes:glb.byteLength, meshesWithImage:maps, vertexColors:colorAttr }; },
+    painted:()=>Object.keys(NURI.paint),
     holders:(key)=>nuriHolders(key).map(r=>{ let meshes=0,painted=0; r.traverse(o=>{ if(o.isMesh){ meshes++; const g=NURI_ORIG.get(o); if(g && g!==o.geometry) painted++; } }); return {meshes,painted}; }) };
 })();
 </script>
