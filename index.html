@@ -878,6 +878,9 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     #tabarWarn.show{ display:block; }
     #tabarWarn.out, #tabarWarn.run{ background:rgba(70,10,4,.94); border-color:#ff5a32; }
     #tabarWarn.track{ border-color:#8ff0ff; background:rgba(8,20,30,.92); }
+    /* 【追加】タブレットARの警告は、画面下の HUD（ボタンの帯）のすぐ上に小さめに表示（中央をふさがない） */
+    body.tabar #tabarWarn{ top:auto; bottom:calc(var(--dhudH, 72px) + 10px); transform:translateX(-50%);
+        padding:7px 14px; font-size:13px; line-height:1.45; letter-spacing:.5px; border-radius:10px; border-width:1.5px; max-width:80vw; }
 
     /* 準備・終了確認 */
     #tabarPrep, #tabarConfirm, #wsAsk{ position:fixed; inset:0; z-index:100000; display:none; align-items:center; justify-content:center;
@@ -3501,7 +3504,8 @@ function tickHatch(now, dt){
             m.position.set(cX, GROUND_Y, cZ);   // 本体中心C（回転中心もここ）
             const footY=dinoFootY();   // 恐竜の足元（VR/ARは床から1.6m）
             const flying=!!m.userData.flying;
-            const baseY = footY + (flying ? height : 0);   // 飛行種（プテラノドン）は自分の高さ1つ分だけ上に配置
+            const _tabarLow=(typeof TABAR!=="undefined" && TABAR.on);   // 【追加】タブレットARは床の近くに出す
+            const baseY = _tabarLow ? (flying ? 0.5 : 0.3) : footY + (flying ? height : 0);   // 【変更】タブレットAR：足元を床から0.3m（プテラノドン0.5m）／それ以外は従来（飛行種は自分の高さ1つ分だけ上）
             m.userData.baseY=baseY; m.userData.settled=false;
             m.userData.homeX=cX; m.userData.homeZ=cZ;   // アイドル回転の中心＝C（毎フレーム更新）
             m.userData.origX=cX; m.userData.origZ=cZ;   // 気づく前の定位置（離れたら戻る先）
@@ -3517,7 +3521,7 @@ function tickHatch(now, dt){
             const _lblScale = fieldScale();   // 全環境でフィールド寸法に連動
             const _lw=0.54*_lblScale; const label=makeLabelSprite(nm, e.color, _lw, 0);   // 名称パネル（プレイヤー向きSprite）
             const _lh=_lw*96/256;   // ラベルの高さ
-            label.position.set(cX, footY-0.1-_lh/2, cZ);   // 名称パネルは全恐竜とも足元(地面)基準の同じ高さ
+            label.position.set(cX, _tabarLow ? Math.max(baseY-0.1-_lh/2, _lh/2+0.02) : footY-0.1-_lh/2, cZ);   // 【変更】タブレットAR：恐竜の足元のすぐ下（床にもぐらない）／それ以外は従来
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
         }
@@ -7503,11 +7507,11 @@ function tabarSafety(dt, now){
     if(edge<0){ key="out"; msg="エリアの外に出ています\n水色の線の内側にもどろう"; }
     else if(running){ key="run"; msg="走らないで、ゆっくり歩こうね"; }
     else if(TABAR.backend==="webxr" && !TABAR.tracking){ key="track"; msg="まわりを映しながら\nタブレットをゆっくり動かしてね"; }
-    else if(edge<TABAR_CFG.edgeWarn){ key="near"; msg="エリアのはしっこです\n内側へもどろう"; }
+    // 【変更】「エリアのはしっこです」は表示しない（以前：edge<TABAR_CFG.edgeWarn で key="near"）
     if(key!==TABAR.warnKey){
         TABAR.warnKey=key; tabarUI.warn.textContent=msg; tabarUI.warn.className=key?("show "+key):"";
-        if(key==="out" || key==="run"){ tabarWarnBeep(); TABAR.warnBeepT=now; }
-    } else if((key==="out" || key==="run") && now-TABAR.warnBeepT>1500){ tabarWarnBeep(); TABAR.warnBeepT=now; }
+        // 【変更】警告音は鳴らさない（以前：「エリアの外」「走らないで」で tabarWarnBeep）
+    }
 }
 
 /* ---------- 探知の画面表示（コントローラー振動の代わり：音＋画面） ---------- */
@@ -8114,7 +8118,7 @@ addEventListener("resize",()=>{
  * ・①（斜め横の塗り絵→3D展開）は検証用Pythonで確認済みの方式。
  *   その3D展開（用紙に写る面／左右ミラー／包装紙方式の回り込み／境界3mm）は ①のコードから生成した対応表
  *   coloring/data/<key>_*.bin.gz に焼き込み済み（1面=1色＝①と完全一致）。ここでは表を読むだけで、展開ロジックは再実装しない。
- * ・模様は「画像」として貼る（形・大きさ・ポーズは変えない。画像・材質・形は恐竜ごとに1つを共有＝メモリを増やさない）。
+ * ・模様は「頂点の色」で付ける（前の版と同じ描き方・1024色）。形・大きさ・ポーズは変えない。模様を付けた形は恐竜ごとに1つを共有。
  * ・塗り絵の左下2つめの四角（シートID）で恐竜を見分ける（coloring/sheets.json）。前の版の紙は「新しく印刷してね」と案内。
  * ・保存は面ごとの色（塗り絵の大きさを変えても使える）。前の版の保存は起動時に自動で引き継ぐ。
  * ・カメラはスキャン画面を開いている間だけ使い、終わったら必ず停止・解放する。
@@ -8208,6 +8212,28 @@ function nuriVivid(r,g,b,out,k,dl){ k=k||1.6; dl=dl==null?6:dl; const lab=[0,0,0
     const cl=(v)=>Math.floor(Math.min(255,Math.max(0,v)));
     nuriRgb(cl(L8*(1-w)+L2*w)*100/255, cl(a8*(1-w)+a2*w)-128, cl(b8*(1-w)+b2*w)-128, out); }
 
+// ---- 減色（メディアンカット）：AR書き出しのパレット幅を超えないように ----
+function nuriQuantize(cols, n, maxK){   // cols: Float32Array(n*3) 0..1 → 代表色に置き換えた新配列
+    const idx=Array.from({length:n},(_,i)=>i); const boxes=[idx];
+    const range=(b)=>{ let lo=[1,1,1],hi=[0,0,0]; for(const i of b) for(let c=0;c<3;c++){ const v=cols[i*3+c]; if(v<lo[c])lo[c]=v; if(v>hi[c])hi[c]=v; } return hi.map((h,c)=>h-lo[c]); };
+    while(boxes.length<maxK){ let bi=-1,bs=0,bc=0;
+        for(let i=0;i<boxes.length;i++){ if(boxes[i].length<2) continue; const r=range(boxes[i]); const c=r.indexOf(Math.max(...r)); const s=r[c]*Math.sqrt(boxes[i].length); if(s>bs){ bs=s; bi=i; bc=c; } }
+        if(bi<0 || bs<1/255) break;
+        const b=boxes[bi].sort((x,y)=>cols[x*3+bc]-cols[y*3+bc]); const h=b.length>>1; boxes.splice(bi,1,b.slice(0,h),b.slice(h)); }
+    // 箱の平均色を初期値に、最も近い代表色へ付け直す（k-means を数回）
+    const K=boxes.length; let cen=new Float32Array(K*3); const asg=new Int32Array(n);
+    boxes.forEach((b,k)=>{ const m=[0,0,0]; for(const i of b){ asg[i]=k; for(let c=0;c<3;c++) m[c]+=cols[i*3+c]; } for(let c=0;c<3;c++) cen[k*3+c]=m[c]/b.length; });
+    for(let it=0;it<3;it++){
+        for(let i=0;i<n;i++){ const r=cols[i*3],g=cols[i*3+1],bl=cols[i*3+2]; let best=asg[i], bd=1e9;
+            for(let k=0;k<K;k++){ const dr=r-cen[k*3], dg=g-cen[k*3+1], db=bl-cen[k*3+2], d=dr*dr+dg*dg+db*db; if(d<bd){ bd=d; best=k; } } asg[i]=best; }
+        const sum=new Float64Array(K*3), cnt=new Float64Array(K);
+        for(let i=0;i<n;i++){ const k=asg[i]; cnt[k]++; for(let c=0;c<3;c++) sum[k*3+c]+=cols[i*3+c]; }
+        for(let k=0;k<K;k++) if(cnt[k]) for(let c=0;c<3;c++) cen[k*3+c]=sum[k*3+c]/cnt[k];
+    }
+    const out=new Float32Array(n*3); for(let i=0;i<n;i++) for(let c=0;c<3;c++) out[i*3+c]=cen[asg[i]*3+c];
+    return { cols:out, k:K };
+}
+
 // ---- 本体：写真(RGBA) ＋ 射影変換 → マス（1面=T×T）ごとの色。①の表で展開 ----
 function nuriProcess(photo, H, D){
     const info=D.info, F=D.F, P=D.P, X=D.X, W=info.width, HH=info.height, R=info.colorRule, T=info.cellsPerSide, TT=T*T;
@@ -8244,6 +8270,7 @@ function nuriProcess(photo, H, D){
         for(let k=0;k<TT;k++){ const c=d*TT+k; const n=ccnt[c];
             for(let q=0;q<3;q++){ const v= n? csum[c*3+q]/n : (q===0?fr:q===1?fg:fb)/Math.max(fn,1); cells[c*3+q]=Math.round(Math.min(1,Math.max(0,v))*255); } } }
     const frac=[], partPainted=[]; for(let p=0;p<NP;p++){ frac.push(den[p]? num[p]/den[p] : 0); partPainted.push(frac[p]>=R.paintThr); }
+    { const n=NC, f=new Float32Array(n*3); for(let i=0;i<n*3;i++) f[i]=cells[i]/255; const qq=nuriQuantize(f,n,1024).cols; for(let i=0;i<n*3;i++) cells[i]=Math.round(qq[i]*255); }   // 前の版と同じく1024色にまとめる（AR書き出しのパレット対策）
     const rgba=nuriAssemble(F, T, cells, partPainted); let used=0; for(let f=3;f<rgba.length;f+=4*TT) if(rgba[f]) used++;
     return { cells, partPainted, rgba, frac, paintedFaces:used, darkRatio:dark/nu };
 }
@@ -8270,70 +8297,57 @@ function nuriCellsFromLegacyV1(F, T, rgba){ const TT=T*T, NC=F.direct_part.lengt
     return { cells, partPainted:painted };
 }
 
-// ---- 3D：模様を「画像」として貼る。形・大きさ・ポーズは変えない（頂点の位置はそのまま、UVと画像を足すだけ）----
-//  store（恐竜ごと・共有）：{ T, W, H, tex, mat, geos[] } … 発掘キャッシュ・相棒・確認表示で同じものを使う（メモリを増やさない）
-const NURI_ORIG=new WeakMap(), NURI_ORIGMAT=new WeakMap();   // mesh → 元のジオメトリ／材質（元に戻す用）
-const NURI_TANG=(n)=>{ const a= n[2]===0? [0,0,1] : [1,0,0]; const b=[n[1]*a[2]-n[2]*a[1], n[2]*a[0]-n[0]*a[2], n[0]*a[1]-n[1]*a[0]]; return [a,b]; };
+function nuriQuantizeRgba(rgba){   // 面ごとの色（塗った面だけ）を1024色以内に。すでに以内ならそのまま
+    const map=new Map(); for(let f=0;f<rgba.length;f+=4){ if(!rgba[f+3]) continue; const k=(rgba[f]<<16)|(rgba[f+1]<<8)|rgba[f+2]; if(!map.has(k)) map.set(k,map.size); }
+    if(map.size<=1024) return rgba;
+    const n=map.size, cols=new Float32Array(n*3); for(const [k,i] of map){ cols[i*3]=(k>>16&255)/255; cols[i*3+1]=(k>>8&255)/255; cols[i*3+2]=(k&255)/255; }
+    const qq=nuriQuantize(cols,n,1024).cols, out=new Uint8Array(rgba);
+    for(let f=0;f<out.length;f+=4){ if(!out[f+3]) continue; const i=map.get((out[f]<<16)|(out[f+1]<<8)|out[f+2]); out[f]=Math.round(qq[i*3]*255); out[f+1]=Math.round(qq[i*3+1]*255); out[f+2]=Math.round(qq[i*3+2]*255); }
+    return out;
+}
+// ---- 3D：模様を「頂点の色」で付ける（前の版と同じ描き方）。形・大きさ・ポーズは変えない ----
+//  store（恐竜ごと・共有）：{ geos[] } … 発掘キャッシュ・相棒・確認表示で同じ形を使う（メモリを増やさない）
+const NURI_ORIG=new WeakMap(), NURI_ORIGMAT=new WeakMap();   // mesh → 元のジオメトリ（元に戻す用）
+const NURI_LIN=(c)=> c<=0.04045? c/12.92 : Math.pow((c+0.055)/1.055,2.4);   // 紙の色（sRGB）→ 頂点カラー（前の版の linearColors:true と同じ）
 function nuriMeshes(root){ const ms=[]; root.traverse(o=>{ if(o.isMesh){ const g=NURI_ORIG.get(o)||o.geometry; if(g && g.getAttribute && g.getAttribute("color") && g.getAttribute("normal")) ms.push(o); } }); return ms; }
 function nuriOffset(mesh, root){ let ox=0,oy=0,oz=0; for(let o=mesh; o && o!==root; o=o.parent){ ox+=o.position.x; oy+=o.position.y; oz+=o.position.z; } return [ox,oy,oz]; }
-// 最初の1体（root）から、共有する store を作る
-function nuriBuildStore(root, rgba, F, T, keyMap, normals, V, makeMaterial){
-    const meshes=nuriMeshes(root), N=F.face_part.length, TT=T*T;
-    const R=Math.ceil(Math.sqrt(N)), W=R*T, H=Math.ceil(N/R)*T, img=new Uint8ClampedArray(W*H*4);
-    const nIdx=new Map(normals.map((n,i)=>[n.join(","),i])), EPS=0.01;
+function nuriBuildStore(root, rgba, F, T, keyMap, normals, V){
+    const meshes=nuriMeshes(root), nIdx=new Map(normals.map((n,i)=>[n.join(","),i]));
     const geos=[]; let tot=0, hit=0;
     for(const mesh of meshes){
         const base=NURI_ORIG.get(mesh)||mesh.geometry, [ox,oy,oz]=nuriOffset(mesh,root);
-        const g0=base.index? base.toNonIndexed() : base, Pa=g0.getAttribute("position"), Na=g0.getAttribute("normal"), Ca=g0.getAttribute("color");
-        const slot=new Map(); const pos=[], nor=[], uv=[], idx=[]; let nv=0;
+        const g0=base.index? base.toNonIndexed() : base.clone(), Pa=g0.getAttribute("position"), Na=g0.getAttribute("normal"), Ca=g0.getAttribute("color");
         for(let t=0;t+2<Pa.count;t+=3){ tot++;
             const nx=Math.round(Na.getX(t)), ny=Math.round(Na.getY(t)), nz=Math.round(Na.getZ(t)); const ni=nIdx.get(nx+","+ny+","+nz); if(ni===undefined) continue;
             const cx=(Pa.getX(t)+Pa.getX(t+1)+Pa.getX(t+2))/3+ox-nx*V/2, cy=(Pa.getY(t)+Pa.getY(t+1)+Pa.getY(t+2))/3+oy-ny*V/2, cz=(Pa.getZ(t)+Pa.getZ(t+1)+Pa.getZ(t+2))/3+oz-nz*V/2;
             const f=keyMap.get(nuriKey(Math.round(cx/V),Math.round(cy/V),Math.round(cz/V),ni)); if(f===undefined) continue; hit++;
-            // 面の本当の中心（四角の三角形は対角線をまたぐので、3頂点の範囲の中点＝面の中心）
-            const fc=[0,0,0]; for(let c=0;c<3;c++){ const get=c===0?"getX":c===1?"getY":"getZ"; const v0=Pa[get](t), v1=Pa[get](t+1), v2=Pa[get](t+2); fc[c]=(Math.min(v0,v1,v2)+Math.max(v0,v1,v2))/2; }
-            // 角を共有するのは「同じ鍵」かつ「同じ四角」の三角形だけ（部品の位置がボクセルの整数倍でないと、1つの四角の2枚が別の鍵になることがある＝①と同じ三角形単位の対応）
-            const sk=f+"|"+Math.round(fc[0]/V*4)+","+Math.round(fc[1]/V*4)+","+Math.round(fc[2]/V*4);
-            let s=slot.get(sk), tileNew=!slot.has("t"+f);
-            if(s===undefined){ s=[-1,-1,-1,-1]; slot.set(sk,s); }
-            if(tileNew){ slot.set("t"+f,1);
-                // この面の画像タイル（T×T）：塗った所は紙の色、それ以外（未塗装・目）は元の頂点色
-                const tx=(f%R)*T, ty=Math.floor(f/R)*T, or_=Ca.getX(t), og=Ca.getY(t), ob=Ca.getZ(t);
-                for(let i=0;i<T;i++) for(let j=0;j<T;j++){ const k=i*T+j, o=((ty+j)*W+(tx+i))*4, q=(f*TT+k)*4;
-                    if(rgba && rgba[q+3]){ img[o]=rgba[q]; img[o+1]=rgba[q+1]; img[o+2]=rgba[q+2]; } else { img[o]=Math.round(or_*255); img[o+1]=Math.round(og*255); img[o+2]=Math.round(ob*255); } img[o+3]=255; } }
-            const [a,b]=NURI_TANG([nx,ny,nz]);
-            for(let q=0;q<3;q++){ const vi=t+q, lx=Pa.getX(vi), ly=Pa.getY(vi), lz=Pa.getZ(vi);
-                const dx=lx-fc[0], dy=ly-fc[1], dz=lz-fc[2];
-                const i=(dx*a[0]+dy*a[1]+dz*a[2])>0?1:0, j=(dx*b[0]+dy*b[1]+dz*b[2])>0?1:0, corner=i*2+j;
-                if(s[corner]<0){ s[corner]=nv++; pos.push(lx,ly,lz); nor.push(nx,ny,nz);
-                    const tx=(f%R)*T, ty=Math.floor(f/R)*T; uv.push((tx+(i? T-EPS : EPS))/W, (ty+(j? T-EPS : EPS))/H); }
-                idx.push(s[corner]); } }
+            if(!rgba || !rgba[f*4+3]) continue;
+            const r=NURI_LIN(rgba[f*4]/255), gg=NURI_LIN(rgba[f*4+1]/255), b=NURI_LIN(rgba[f*4+2]/255);
+            Ca.setXYZ(t,r,gg,b); Ca.setXYZ(t+1,r,gg,b); Ca.setXYZ(t+2,r,gg,b); }
+        // 位置・向き・色が同じ頂点をまとめて、インデックス付きに戻す（形は同じ・メモリが減る）
+        const map=new Map(), idx=new Uint32Array(Pa.count), pos=[], nor=[], col=[]; let k=0;
+        for(let i=0;i<Pa.count;i++){ const key=Pa.getX(i)+","+Pa.getY(i)+","+Pa.getZ(i)+","+Na.getX(i)+","+Na.getY(i)+","+Na.getZ(i)+","+Math.round(Ca.getX(i)*1e5)+","+Math.round(Ca.getY(i)*1e5)+","+Math.round(Ca.getZ(i)*1e5);
+            let j=map.get(key); if(j===undefined){ j=k++; map.set(key,j); pos.push(Pa.getX(i),Pa.getY(i),Pa.getZ(i)); nor.push(Na.getX(i),Na.getY(i),Na.getZ(i)); col.push(Ca.getX(i),Ca.getY(i),Ca.getZ(i)); } idx[i]=j; }
         const g=new THREE.BufferGeometry();
-        g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); g.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3)); g.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
-        g.setIndex(nv>65535? new THREE.Uint32BufferAttribute(idx,1) : new THREE.Uint16BufferAttribute(idx,1)); g.computeBoundingSphere(); g.computeBoundingBox();
+        g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); g.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3)); g.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
+        g.setIndex(k>65535? new THREE.BufferAttribute(idx,1) : new THREE.BufferAttribute(Uint16Array.from(idx),1)); g.computeBoundingSphere(); g.computeBoundingBox();
         g.userData.nuriBase=base.getAttribute("position").count;
-        if(g0!==base) g0.dispose();
-        geos.push(g);
+        g0.dispose(); geos.push(g);
     }
     if(tot===0 || hit/tot<0.98){ geos.forEach(g=>g.dispose()); return { ok:false, hit, tot }; }   // 形が表と合わない → 何もしない
-    const cv=(typeof document!=="undefined")? document.createElement("canvas") : null; let tex=null;
-    if(cv){ cv.width=W; cv.height=H; cv.getContext("2d").putImageData(new ImageData(img,W,H),0,0); tex=new THREE.CanvasTexture(cv); }
-    else { tex=new THREE.DataTexture(img,W,H); }
-    if("colorSpace" in tex) tex.colorSpace=THREE.SRGBColorSpace; tex.flipY=false; tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.NearestFilter; tex.generateMipmaps=false;
-    tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping; tex.needsUpdate=true;
-    return { ok:true, hit, tot, T, W, H, img, tex, mat:makeMaterial(tex), geos };
+    return { ok:true, hit, tot, geos };
 }
-// 1体（root）に store を貼る。store=null なら元に戻す
+// 1体（root）に store を付ける。store=null なら元に戻す（材質は元のまま＝_voxMat）
 function nuriApplyStore(root, store){
     const meshes=nuriMeshes(root);
     if(store){ if(meshes.length!==store.geos.length) return {ok:false};
         for(let i=0;i<meshes.length;i++){ const base=NURI_ORIG.get(meshes[i])||meshes[i].geometry; if(base.getAttribute("position").count!==store.geos[i].userData.nuriBase) return {ok:false}; } }
     for(let i=0;i<meshes.length;i++){ const m=meshes[i], og=NURI_ORIG.get(m), om=NURI_ORIGMAT.get(m);
-        if(store){ if(!og){ NURI_ORIG.set(m,m.geometry); NURI_ORIGMAT.set(m,m.material); } m.geometry=store.geos[i]; m.material=store.mat; }
-        else if(og){ m.geometry=og; m.material=om; NURI_ORIG.delete(m); NURI_ORIGMAT.delete(m); } }
+        if(store){ if(!og) NURI_ORIG.set(m,m.geometry); m.geometry=store.geos[i]; }
+        else if(og){ m.geometry=og; if(om) m.material=om; NURI_ORIG.delete(m); NURI_ORIGMAT.delete(m); } }
     return {ok:true};
 }
-function nuriDisposeStore(store){ if(!store) return; try{ store.geos.forEach(g=>g.dispose()); store.mat.dispose(); store.tex.dispose(); }catch(_){ } }
+function nuriDisposeStore(store){ if(!store) return; try{ store.geos.forEach(g=>g.dispose()); }catch(_){ } }
 //@@CORE_END
 /* ---------------- ここからアプリ内の状態・読み込み・UI（複数恐竜） ---------------- */
 const NURI={ reg:null, layout:null, maps:{}, paint:{}, store:{}, lastInfo:null };   // maps[key]={info,F,keyMap,P,X}  paint[key]={rgba}（面ごとの色）  store[key]=共有の画像・材質・形
@@ -8395,12 +8409,11 @@ function nuriLegacyV2(key){ try{ const j=JSON.parse(localStorage.getItem(NURI_CF
 function nuriLegacy(){ const L=NURI_CFG.legacy; try{ const j=JSON.parse(localStorage.getItem(L.storeKey)||"null"); if(!j||!j.rgba||j.sha1!==L.sha1) return null; return nuriUnB64(j.rgba); }catch(e){ return null; } }
 
 // ---- 既存の恐竜へ反映（発掘キャッシュ・軽量表示・相棒）----
-function nuriMakeMaterial(tex){ const m=(typeof _voxMat!=="undefined")? _voxMat.clone() : new THREE.MeshStandardMaterial({roughness:0.9, metalness:0, side:THREE.DoubleSide}); m.vertexColors=false; m.map=tex; m.needsUpdate=true; return m; }   // 既存の材質と同じ質感＋画像
 function nuriApply(key, root){
     const D=NURI.maps[key]; if(!D) return null; const p=NURI.paint[key];
     if(!p) return nuriApplyStore(root, null);
     let st=NURI.store[key];
-    if(!st){ st=nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH, nuriMakeMaterial);
+    if(!st){ st=nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH);
         if(!st.ok){ console.warn("[ぬりえ] この恐竜モデルには適用できませんでした", key, st); return st; }
         NURI.store[key]=st; }
     const r=nuriApplyStore(root, st); if(!r.ok) console.warn("[ぬりえ] 形が合わないモデルには貼りません", key);
@@ -8619,6 +8632,7 @@ import("three/addons/exporters/GLTFExporter.js").catch(()=>{}).finally(()=>{ MV_
                     if(old.keysSha1===D.info.keysSha1 && oldCells.length===oldDn*oldTT*3){
                         const cells=nuriRemapLegacy(oldCells, oldTT, legacy, Dn); rgba=nuriAssemble(D.F, T, cells, old.partPainted); } }
                 if(!rgba){ console.warn("[ぬりえ] 表が更新されたため、保存した模様は使えません", sh.key); continue; }
+                { const q=nuriQuantizeRgba(rgba); if(q!==rgba){ rgba=q; await nuriSave(sh.key, rgba, D.info); } }   // 1024色以内に（前の版と同じ）
                 if(!t.saved){ if(await nuriSave(sh.key, rgba, D.info)){ try{ for(const s of [NURI_CFG.legacyV3, NURI_CFG.legacyV2]) localStorage.removeItem(NURI_CFG.storePrefix+sh.key+s); if(sh.key===NURI_CFG.legacy.key) localStorage.removeItem(NURI_CFG.legacy.storeKey); }catch(_){ } } }   // 古い保存を新しい形へ
                 nuriSetPaint(sh.key, { rgba });
                 nuriMenuRefresh();
@@ -8910,6 +8924,9 @@ function wire(){
     paint();
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",wire); else wire();
+// ---- 警告の表示位置：画面下の HUD の高さを CSS 変数 --dhudH へ（HUD の帯が折り返しても警告と重ならない）----
+(function hudHeight(){ const put=()=>{ const h=document.getElementById("dhud"); if(!h) return; const r=h.getBoundingClientRect(); document.body.style.setProperty("--dhudH", Math.max(0,Math.round(innerHeight-r.top))+"px"); };
+    const h=document.getElementById("dhud"); if(h && window.ResizeObserver) new ResizeObserver(put).observe(h); addEventListener("resize",put); setInterval(()=>{ if(document.body.classList.contains("tabar")) put(); },1000); put(); })();
 window.TABAR_FIX_DEBUG={ stats:()=>window.__tabarFix.stats(), set:SET };
 })();
 </script>
