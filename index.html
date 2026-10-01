@@ -273,6 +273,8 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 #nuriScan .nuriActions button{ flex:1; padding:14px 10px; border-radius:12px; font-weight:800; font-size:17px; border:1px solid #6a5c94; background:#241a34; color:#e8dcff; }
 #nuriDone{ background:linear-gradient(#2f7a3a,#1d5226)!important; border-color:#7fe08f!important; color:#fff!important; }
 #nuriDone,#nuriAgain{ display:none; }
+#nuriAR{ background:linear-gradient(135deg,#7c3aed,#1d4ed8)!important; border-color:#8ff0ff!important; color:#fff!important; }
+#nuriScan:not([data-mode="done"]) #nuriAR, #nuriScan:not([data-mode="done"]) #nuriHatchHere{ display:none!important; }
 #nuriScan[data-mode="making"] #nuriVideo, #nuriScan[data-mode="making"] #nuriFrame,
 #nuriScan[data-mode="done"] #nuriVideo, #nuriScan[data-mode="done"] #nuriFrame,
 #nuriScan[data-mode="error"] #nuriFrame{ display:none; }
@@ -1105,6 +1107,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
             <button data-a="reset">🔄<span>リセット</span></button>
             <button data-a="lock" id="lphLockBtn">✋<span>操作できる</span></button>
             <button data-a="anim" id="lphAnimBtn">🎞<span>アニメ</span></button>
+            <button data-a="walk" id="lphWalkBtn" style="display:none">🚶<span>あるく</span></button>
             <button data-a="desc" id="lphDescBtn">📖<span>説明</span></button>
             <button data-a="shot" class="cap">📷<span>写真</span></button>
             <button data-a="rec" class="cap lph-recbtn">🎥<span>動画</span></button>
@@ -1127,7 +1130,8 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
                 <li><b>2本指</b>でひねる → 画面の奥に向かう軸で回す</li>
                 <li>モデルは床を見つけると、足元が床につきます（大きくしても回しても床に立ったまま）。プテラノドンは床から50cm浮かびます</li>
                 <li>恐竜の100%：プテラノドンの翼の横幅が0.8m。ほかの恐竜は、本物の大きさの比のまま</li>
-                <li>モデルを切り替えても、大きさ（%）・向き・場所はそのまま</li>
+                <li>モデルを切り替えても、大きさ（%）・向き・左右の場所はそのまま。恐竜は手前の端の距離もそろえます</li>
+                <li>ぬりえから入ったとき：たまごから うまれて、左右に あるきます。🚶あるく／🧍とまる で切り替え。さわっている間は止まります</li>
                 <li>🔄 リセット → 大きさ・向きを戻して床に置き直す（恐竜はいちばん手前の端が2m先）</li>
                 <li>✋ 操作できる／🔒 ロック中 → さわっても動かないように固定</li>
                 <li>📷 写真／🎥 動画（最大60秒）→ カメラ映像＋モデルを撮影。💾で保存</li>
@@ -1162,6 +1166,8 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <button type="button" data-yaw="-0.9" data-pitch="-1.25">した</button>
   </div>
   <div class="nuriActions">
+    <button id="nuriAR" type="button" style="display:none">📱 ARで かえす</button>
+    <button id="nuriHatchHere" type="button" style="display:none">ここで かえす</button>
     <button id="nuriAgain" type="button">もういちど よむ</button>
     <button id="nuriDone" type="button">できた！</button>
     <button id="nuriBack" type="button">もどる</button>
@@ -6526,6 +6532,7 @@ function liteApplyDim(){
 }
 function liteToggleMode(){ LITE.mode=(LITE.mode==="panel")?"model":"panel"; try{ chord(LITE.mode==="panel"?[523,660]:[660,523],0.05,"triangle",0.4); }catch(_){ } liteApplyDim(); }
 async function liteSwitchModel(idx){
+    const _phNear=(LITE.phone && LITE.target==="dino" && typeof litePhoneNearBefore==="function") ? litePhoneNearBefore() : null;   // 【追加】スマホ：切替前の手前の端の距離
     LITE.curIdx=idx;
     // 名称・説明を更新
     if(LITE.target==="dino"){ LITE.curName=(DINOS[idx]&&DINOS[idx].label)||""; LITE.curDesc=""; }
@@ -6550,6 +6557,7 @@ async function liteSwitchModel(idx){
     }
     if(!LITE.phone){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; }   // 切替時：サイズ/回転/位置リセット→正面(0.8+奥行き/2)へ再配置（【変更】スマホは切替前の大きさ・向き・位置を引き継ぐ）
     liteDrawInfo(); liteRebuildDesc(); liteDrawSelect();
+    if(_phNear) litePhoneNearAfter(_phNear);   // 【追加】スマホ：新しい恐竜も同じ距離に手前の端をそろえる（方向＝左右の位置はそのまま）
     if(LITE.phone && typeof litePhoneRefresh==="function") litePhoneRefresh();   // 【追加】スマホ：名称・説明・選択を更新
 }
 function liteSelectPick(){ return (typeof litePickAny==="function") && litePickAny(); }
@@ -6563,7 +6571,7 @@ function _liteSelectPickOld(){   // 旧
 }
 
 // AR開始：immersive-ar セッションを張り、選択モデルを表示（段階2）
-async function enterLiteAR(target, idx, quality, intrinsicScale){
+async function enterLiteAR(target, idx, quality, intrinsicScale, opts){   // opts（スマホ）：{ nuri:ぬりえから, egg:卵から孵す }
     if(!(navigator.xr)){ return false; }
     const _phone = (typeof litePhoneWanted==="function") && litePhoneWanted();   // 【追加】Androidスマホ（ヘッドセット以外）
     if(_phone) litePhoneShow(true);   // セッション要求の前に画面パネル（dom-overlay の root）を用意
@@ -6573,6 +6581,7 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
             : { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
     catch(e){ if(_phone) litePhoneShow(false); return false; }
     LITE.phone=_phone && !!session.domOverlayState;   // 画面パネルを重ねられない端末は従来の表示にする
+    LITE.nuri = (LITE.phone && opts && opts.nuri) ? { egg:!!opts.egg } : null;   // 【追加】ぬりえから：卵→孵化→左右に歩く
     if(_phone && !LITE.phone) litePhoneShow(false);
     try{ await litePrewarmAll(target, quality); }catch(_){ }   // 入室時に選択画質で全モデル先読み（完了まで開始しない＝切替時に固まらない）
     const model = liteBuildModel(target, idx, quality);   // キャッシュから同期取得
@@ -6591,7 +6600,8 @@ async function enterLiteAR(target, idx, quality, intrinsicScale){
     LITE.active=true;
     if(LITE.phone) litePhoneStarted();
     session.addEventListener("end", ()=>{ LITE.active=false; const wasPhone=LITE.phone; liteExitScene(); LITE.phone=false;
-        if(wasPhone){ try{ window.dispatchEvent(new Event("litephoneend")); }catch(_){ } } }, { once:true });
+        const wasNuri=!!LITE.nuri; LITE.nuri=null;
+        if(wasPhone){ try{ window.dispatchEvent(new CustomEvent("litephoneend", { detail:{ nuri:wasNuri } })); }catch(_){ } } }, { once:true });
     return true;
 }
 
@@ -6615,6 +6625,9 @@ const LPH_CFG = {
     moveStepMax: 0.8,        // 2本指の移動：1回のタッチ更新で動かす上限(m)（地平線付近での飛び防止）
     maxDist: 25,             // スマホからの最大距離(m)
     pteraFloat: 0.5,         // プテラノドンは床から50cm浮かせる
+    walkHalf: 0.5, walkSpeed: 0.2, walkTurnMs: 700,   // ぬりえから：左右に0.5mずつ往復（秒速0.2m）、端で0.7秒かけて向きを変える
+    hatchT: 1.5,             // ぬりえから：卵の演出の長さ（ゲームの発掘演出 ×1.5）
+    eggWaitMaxMs: 8000,      // 床が見つからない時、この時間で目安の床に卵を出す
     shadow: true             // 足元の影（床が見つかった時）
 };
 const LPH = { built:false, g:null, caps:[], cur:null, rec:null, shotReq:false, glb:null, glbTried:false,
@@ -6660,6 +6673,12 @@ function litePhoneStarted(){
             });
         }).catch(()=>{});
     } else lph$("lphFloor").textContent="この端末では床を見つけられません（目安の高さに置きます）";
+    LPH.hatch=null; LPH.walk=null; LPH.popY=0;
+    if(LITE.nuri){   // ぬりえから：卵（または生まれた恐竜）→ 左右に歩く。操作方法は後で（❓）
+        if(LITE.nuri.egg){ LPH.hatch={ phase:"wait", t0:performance.now(), egg:null }; if(LITE.model) LITE.model.visible=false; }
+        else LPH.walk=lphWalkNew(1200);
+        litePhoneRefresh(); return;
+    }
     if(!LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); }   // 初回だけ操作方法を表示
 }
 function litePhoneRefresh(){
@@ -6670,11 +6689,14 @@ function litePhoneRefresh(){
     const hasDesc=!LITE.isDino && !!LITE.curDesc;
     lph$("lphDescBtn").style.display=hasDesc?"":"none";
     lph$("lphAnimBtn").style.display=LITE.isDino?"":"none";
+    lph$("lphWalkBtn").style.display=LITE.nuri?"":"none";   // ぬりえから：歩く オン/オフ
+    sel.style.display=LITE.nuri?"none":"";                  // ぬりえから：その恐竜だけ（切り替えなし）
     const d=lph$("lphDesc"); d.textContent=LITE.curDesc||""; if(!hasDesc) d.classList.remove("on");
     lphPaintBtns(); LITE._phPct=-1; litePhoneTick();
 }
 function lphPaintBtns(){
     const lk=lph$("lphLockBtn"); lk.classList.toggle("off", LITE.opEnabled===false); lk.innerHTML = (LITE.opEnabled===false) ? "🔒<span>ロック中</span>" : "✋<span>操作できる</span>";
+    const wk=lph$("lphWalkBtn"); if(wk){ const wo=!(LPH.walk && LPH.walk.off); wk.classList.toggle("off", !wo); wk.innerHTML = wo ? "🚶<span>あるく</span>" : "🧍<span>とまる</span>"; }
     const an=lph$("lphAnimBtn"); const ao=(window.MV_ANIM!==false); an.classList.toggle("off", !ao); an.innerHTML = ao ? "🎞<span>アニメ オン</span>" : "🎞<span>アニメ オフ</span>";
     const recOn=!!(LPH.rec && LPH.rec.state!=="done");
     document.querySelectorAll("#litePh .lph-recbtn").forEach(b=>{ b.classList.toggle("recording", recOn); b.innerHTML = recOn ? "⏹<span>停止</span>" : "🎥<span>動画</span>"; });
@@ -6682,7 +6704,70 @@ function lphPaintBtns(){
 function litePhoneTick(){
     const pct=Math.round(((LITE.group?LITE.group.scale.x:1)||1)*100);
     if(pct!==LITE._phPct){ LITE._phPct=pct; const e=lph$("lphPct"); if(e) e.textContent=pct+"%"; }
+    if(LPH.hatch) lphHatchTick();
+    if(LPH.walk) lphWalkTick();
     lphGround();
+}
+// ---- 【追加】ぬりえから：ARの床で卵から生まれる（ゲームの発掘演出と同じ卵・動き・音。時間は×1.5） ----
+//   床が見つかる → 恐竜の手前の端（2.0m）の位置に卵が跳ねて着地・回転 → 揺れる → 割れる（掘る音）→ 恐竜が跳ねて登場（鳴き声・振動）→ 左右に歩く
+function lphHatchTick(){
+    const H=LPH.hatch, now=performance.now(), T=LPH_CFG.hatchT, lerp=THREE.MathUtils.lerp;
+    if(H.phase==="wait"){   // 床さがし（見つからなければ目安の床で開始）
+        if(LITE.model) LITE.model.visible=false;
+        if(!LPH.floorFound && now-H.t0<LPH_CFG.eggWaitMaxMs) return;
+        litePhonePlaceFront();   // 今のスマホの向きで、恐竜の手前の端を2.0mに
+        camera.getWorldPosition(_lphCamP);
+        let fx=LITE.targetPos.x-_lphCamP.x, fz=LITE.targetPos.z-_lphCamP.z; const fl=Math.hypot(fx,fz)||1; fx/=fl; fz/=fl;
+        const near=LPH_CFG.placeDist;   // 卵は恐竜の手前の端の位置（ゲーム：卵＝発掘ポイント、恐竜は奥へ）
+        const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
+        const egg=build_egg(); makeFit(egg, Math.max(sz.y*0.35, sz.length()*0.18, 0.12)); scene.add(egg);
+        const eggH=new THREE.Box3().setFromObject(egg).getSize(new THREE.Vector3()).y;
+        egg.position.set(_lphCamP.x+fx*near, lphFloorY(), _lphCamP.z+fz*near);
+        egg.rotation.y=Math.atan2(-fx,-fz);
+        Object.assign(H, { phase:"egg", egg, eggH, t1:now, last:now, wob:0, height:sz.y });
+        lph$("lphFloor").classList.remove("on");
+        return;
+    }
+    if(H.phase==="egg"){
+        const dt=Math.min(0.05,(now-H.last)/1000); H.last=now; const el=(now-H.t1)/1000;
+        const fy=lphFloorY(), r=Math.min(el/(0.7*T),1);
+        H.egg.position.y = r<0.5 ? lerp(fy, fy+H.eggH*0.9, r*2) : lerp(fy+H.eggH*0.9, fy, (r-0.5)*2);   // 上昇→頂点→着地
+        if(r<1) H.egg.rotation.y+=0.12;
+        H.wob+=dt; H.egg.rotation.z=Math.sin(H.wob*11)*0.16*Math.min(1,H.wob*1.5);   // 孵化前に揺れる
+        if(el>=1.3*T){   // 孵化
+            scene.remove(H.egg); H.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); H.egg=null;
+            try{ sfxDig(); }catch(_){ }
+            if(LITE.model) LITE.model.visible=true;
+            LITE.group.position.copy(LITE.targetPos);
+            try{ sfxCry(); }catch(_){ } try{ vibrate(220,0.85); }catch(_){ }
+            const nm=(LITE.curName||"").replace(/^\S+\s*/,""); lphMsg(nm?("「"+nm+"」が うまれたよ！"):"うまれたよ！", 3000);
+            H.phase="dino"; H.t2=now;
+        }
+        return;
+    }
+    if(H.phase==="dino"){   // 跳ねて登場（上昇→頂点→着地）
+        const r=Math.min((now-H.t2)/1000/(1.0*T),1), peak=H.height*0.35;
+        LPH.popY = r<0.5 ? lerp(0,peak,r*2) : lerp(peak,0,(r-0.5)*2);
+        if(r>=1){ LPH.popY=0; H.phase="done"; LPH.walk=lphWalkNew(600); setTimeout(()=>{ if(LITE.active && LITE.phone && !LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); } }, 2500); }
+    }
+}
+// ---- 【追加】ぬりえから：左右に0.5mずつ往復して歩く（さわっている間は止まり、離すとその場所を中心に再開） ----
+function lphWalkNew(delayMs){
+    camera.getWorldQuaternion(_lphQ); const ax=new THREE.Vector3(1,0,0).applyQuaternion(_lphQ); ax.y=0; if(ax.lengthSq()<1e-6) ax.set(1,0,0); ax.normalize();
+    return { axis:ax, home:LITE.targetPos.clone(), s:0, dir:1, turnUntil:performance.now()+(delayMs||0), last:performance.now(), held:true, off:false };
+}
+function lphWalkTick(){
+    const W=LPH.walk, now=performance.now(), dt=Math.min(0.05,(now-W.last)/1000); W.last=now;
+    if(LPH.g || LPH.tap || LITE.placeFrames>0){ W.held=true; return; }   // さわっている間・置き直し中は止まる
+    if(W.held){ W.held=false; W.home.copy(LITE.targetPos); W.s=0; W.turnUntil=Math.max(W.turnUntil, now+800);   // 離したら、その場所を中心に再開
+        camera.getWorldQuaternion(_lphQ); W.axis.set(1,0,0).applyQuaternion(_lphQ); W.axis.y=0; if(W.axis.lengthSq()<1e-6) W.axis.set(1,0,0); W.axis.normalize(); }   // 今の画面の左右に歩く
+    if(W.off) return;
+    const fx=W.axis.x*W.dir, fz=W.axis.z*W.dir;
+    LITE.targetQuat.setFromAxisAngle(_lphUp, Math.atan2(fx, fz));   // 進む向きへ鼻先（+Z）を向ける
+    if(now<W.turnUntil) return;   // 向きを変えている間は止まる
+    W.s += W.dir*LPH_CFG.walkSpeed*dt;
+    if(Math.abs(W.s)>=LPH_CFG.walkHalf){ W.s=Math.sign(W.s)*LPH_CFG.walkHalf; W.dir*=-1; W.turnUntil=now+LPH_CFG.walkTurnMs; }
+    LITE.targetPos.x=W.home.x+W.axis.x*W.s; LITE.targetPos.z=W.home.z+W.axis.z*W.s;
 }
 // ---- プテラノドン（翼あり）の判定 ----
 function _lphIsPtera(model){ const pv=(model && model.userData && model.userData.model)?model.userData.model:model; return !!(pv && pv.userData && pv.userData.wings && pv.userData.wings.length); }
@@ -6761,7 +6846,7 @@ function lphGroundInfo(){   // 目標の向き・大きさでの 足元の高さ
 function lphGround(){   // 足元が床に来るよう、目標の高さを毎フレーム合わせる（拡大・回転しても床に立ったまま）
     if(!LITE.group || !LITE.model) return;
     const fy=lphFloorY(), gi=lphGroundInfo(), lift=lphLift();
-    LITE.targetPos.y = fy - gi.bottom + lift;
+    LITE.targetPos.y = fy - gi.bottom + lift + (LPH.popY||0);
     // 足元の影（床が見つかった時だけ）
     if(!LPH.shadow){   // 【変更】影は画像（テクスチャ）を使わず、シェーダーで丸いぼかしを描く
         const mat=new THREE.ShaderMaterial({ transparent:true, depthWrite:false, uniforms:{ op:{ value:0.5 } },
@@ -6770,7 +6855,7 @@ function lphGround(){   // 足元が床に来るよう、目標の高さを毎�
         LPH.shadow=new THREE.Mesh(new THREE.PlaneGeometry(2,2), mat);
         LPH.shadow.rotation.x=-Math.PI/2; LPH.shadow.renderOrder=-1; scene.add(LPH.shadow);
     }
-    const sh=LPH.shadow; sh.visible=LPH.floorFound && LPH_CFG.shadow!==false;
+    const sh=LPH.shadow; sh.visible=LPH.floorFound && LPH_CFG.shadow!==false && LITE.model.visible;   // 卵の間は恐竜の影を出さない
     sh.material.uniforms.op.value = lift>0 ? 0.28 : 0.5;   // 浮いている時は薄く
     if(sh.visible){ sh.position.set(LITE.group.position.x+gi.ox, fy+0.003, LITE.group.position.z+gi.oz); const rr=Math.max(0.05, gi.r*1.15); sh.scale.set(rr,rr,1); }
 }
@@ -6781,6 +6866,20 @@ function lphNearMin(fx, fz){   // 目標の向き・大きさで、中心から�
     for(let i=0;i<P.length;i+=3){ const x=P[i], y=P[i+1], z=P[i+2];
         const d=(e[0]*x+e[4]*y+e[8]*z)*fx + (e[2]*x+e[6]*y+e[10]*z)*fz; if(d<mn) mn=d; }
     return mn*sc;
+}
+function litePhoneNearBefore(){   // 今の恐竜の「スマホからの方向」と「手前の端までの水平距離」
+    if(!LITE.model || !LITE.group) return null;
+    camera.getWorldPosition(_lphCamP);
+    let fx=LITE.targetPos.x-_lphCamP.x, fz=LITE.targetPos.z-_lphCamP.z; const D=Math.hypot(fx,fz); if(D<1e-4) return null; fx/=D; fz/=D;
+    return { fx, fz, near: D + lphNearMin(fx, fz) };
+}
+function litePhoneNearAfter(o){   // 新しい恐竜を、同じ方向・同じ手前の端の距離へ
+    LPH.gpModel=null;   // 新しいモデルの点で測り直す
+    const D=Math.max(0.3, o.near - lphNearMin(o.fx, o.fz));
+    camera.getWorldPosition(_lphCamP);
+    LITE.targetPos.x=_lphCamP.x+o.fx*D; LITE.targetPos.z=_lphCamP.z+o.fz*D;
+    LITE.group.position.x=LITE.targetPos.x; LITE.group.position.z=LITE.targetPos.z;   // 切替の瞬間に置き直す（すべって見えないように）
+    if(LPH.walk) LPH.walk.held=true;   // 歩く中心も置き直し
 }
 function litePhonePlaceFront(){   // スマホに正対・足元は床。恐竜＝手前の端が2.0m／それ以外＝中心が2.0m先
     const gi0=(LITE.model)?lphGroundInfo():null;
@@ -6818,6 +6917,7 @@ function lphClampDist(){   // スマホから遠くなりすぎないように
 }
 function lphTap(x,y){   // 床をタップ → その場所へ移動（モデル自体をタップした時は動かさない）
     if(!LITE.active || LITE.opEnabled===false) return;
+    if(LPH.hatch && LPH.hatch.phase!=="done") return;   // 卵の演出中
     const r=lphScreenRay(x,y);
     if(LITE.model){ _lphRay.set(r.o, r.d); try{ if(_lphRay.intersectObject(LITE.model, true).length) return; }catch(_){ } }
     if(!LPH.floorFound){ lphMsg("床をさがしています。スマホを少し下に向けてください"); return; }
@@ -6827,9 +6927,11 @@ function lphTap(x,y){   // 床をタップ → その場所へ移動（モデル
 }
 function lphAction(a){
     if(!LITE.active) return;
-    if(a==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; lphSnd(); lphMsg("大きさ・向きを戻して、2m先の床に置き直しました"); }   // スマホ：位置も2m先の床へ
+    if(LPH.hatch && LPH.hatch.phase!=="done" && a!=="shot" && a!=="rec" && a!=="fold") return;   // 卵の演出中は撮影以外の操作をしない
+    if(a==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; if(LPH.walk) LPH.walk.held=true; lphSnd(); lphMsg("大きさ・向きを戻して、2m先の床に置き直しました"); }   // スマホ：位置も2m先の床へ
     else if(a==="lock"){ LITE.opEnabled=(LITE.opEnabled===false); LPH.g=null; lphPaintBtns(); lphSnd(); lphMsg(LITE.opEnabled?"さわって動かせます":"ロック中：さわっても動きません"); }
     else if(a==="anim"){ window.MV_ANIM=(window.MV_ANIM===false); lphPaintBtns(); lphSnd(); }
+    else if(a==="walk"){ if(LPH.walk){ LPH.walk.off=!LPH.walk.off; LPH.walk.held=true; lphMsg(LPH.walk.off?"その場に とまります":"左右に あるきます"); } lphPaintBtns(); lphSnd(); }
     else if(a==="desc"){ lph$("lphDesc").classList.toggle("on"); }
     else if(a==="shot"){ LPH.shotReq=true; }
     else if(a==="rec"){ if(LPH.rec && (LPH.rec.state==="pending"||LPH.rec.state==="rec")) lphRecStop(); else lphRecStart(); }
@@ -6874,6 +6976,7 @@ function lphRebase(tt){
 }
 function lphMove(tt){
     if(!LITE.active || LITE.opEnabled===false || !tt || !tt.length) return;
+    if(LPH.hatch && LPH.hatch.phase!=="done") return;   // 卵の演出中
     const n=Math.min(2, tt.length), g=LPH.g;
     if(!g || g.n!==n){ lphRebase(tt); return; }
     camera.getWorldQuaternion(_lphQ);
@@ -7085,6 +7188,8 @@ function lphSheetClose(){
 function litePhoneExit(){
     if(LPH.rec) lphRecStop();   // 録画中なら止めて書き出す（書き出し後に保存画面を出す）
     LPH.shotReq=false; LPH.g=null; LPH.tap=null; LPH.glb=null; LPH.glbTried=false;
+    if(LPH.hatch && LPH.hatch.egg){ scene.remove(LPH.hatch.egg); LPH.hatch.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
+    LPH.hatch=null; LPH.walk=null; LPH.popY=0; if(LITE.model) LITE.model.visible=true;
     LPH.hts.forEach(h=>{ try{ h.cancel(); }catch(_){ } }); LPH.hts=[]; LPH.floorFound=false; LPH.floorY=null; LPH.gpModel=null; LPH.gp=null; LPH.gKey="";
     if(LPH.shadow) LPH.shadow.visible=false; lph$("lphFloor").classList.remove("on");
     LPH.lines.forEach(([o,v])=>{ o.visible=v; }); LPH.lines=[];
@@ -8755,7 +8860,7 @@ addEventListener("resize",()=>{
         try{ viewer.activateAR(); }catch(_){ }   // 通常（Go）：model-viewer ネイティブAR
     });
     viewer.addEventListener("load", updateAR);
-    window.addEventListener("litephoneend", ()=>{ modal.style.display="flex"; window.__mvPreviewPause=true; });   // 【追加】スマホでARを終えたらモデル表示画面へ戻る
+    window.addEventListener("litephoneend", (e)=>{ if(e && e.detail && e.detail.nuri) return; modal.style.display="flex"; window.__mvPreviewPause=true; });   // 【追加】スマホでARを終えたらモデル表示画面へ戻る（ぬりえから入った時はぬりえ画面へ）
     modal.addEventListener("click", (e)=>{ if(e.target===modal && !window.__mvUrlDirect) closeModal(); });   // URL直接時は外側タップで閉じない
 
     // URLで直接 craftARt Go を開く：index.html?view=go&target=artifact|dino
@@ -9169,7 +9274,7 @@ function scStopCamera(){
     for(const k of ["small","full"]){ if(SC[k]){ SC[k].width=0; SC[k].height=0; SC[k]=null; } }
     SC.det=null; SC.stable=0; SC.last=null; SC.lastKey=null;
 }
-function scClose(){ scStopCamera(); nuriPreviewStop(); const o=$("nuriScan"); if(o) o.classList.remove("open"); nuriMenuRefresh(); }
+function scClose(){ scStopCamera(); nuriPreviewStop(); NURI_AR.ok=false; const o=$("nuriScan"); if(o) o.classList.remove("open"); nuriMenuRefresh(); }
 async function nuriStartScan(){
     if(!nuriCanScan()){ return; }
     const o=$("nuriScan"); o.classList.add("open"); scMode("camera"); scMsg("じゅんびしているよ…","");
@@ -9235,7 +9340,7 @@ function scCapture(resSmall, s, key){
             NURI.lastInfo={ key, frac:out.frac, partPainted:out.partPainted, cellsPerSide:D.info.cellsPerSide, parts:D.info.parts };
             nuriSave(key, out.rgba, D.info);
             SC.busy=false; scMode("done"); scMsg("あれ？ たまごが…！","");   // 生まれたら「できた！」に変わる
-            nuriPreviewStart(key, { hatch:true });   // 【変更】卵から生まれる演出つき
+            nuriAfterScan(key);   // 【変更】卵から生まれる演出（ARが使えるAndroidは、卵のままARで孵す）
         }catch(e){ console.warn("[ぬりえ]",e); SC.busy=false; scMode("error"); scMsg("うまく よめなかったよ","もういちど ためしてね"); }
     }, 30);
 }
@@ -9257,7 +9362,7 @@ function nuriPreviewStart(key, opt){
     const vd=(NURI.maps[key] && NURI.maps[key].info.viewDir) || [-0.78,0,0.62];      // 最初は用紙と同じ向きから
     const fitDist=(size/2)/Math.sin(THREE.MathUtils.degToRad(cam.fov/2))*1.12;   // 外接球が縦の視野に収まる距離＝どの向きに回しても全身が入る
     PV={ r, scene, cam, model, cv, box, yaw:Math.atan2(vd[0],vd[2]), pitch:Math.asin(Math.max(-1,Math.min(1,vd[1])))+0.1, auto:true, raf:0, drag:null, ctr, dist:fitDist, key };
-    if(opt && opt.hatch) nuriHatchSetup(PV, bb);   // 【追加】卵 → 孵化 → 恐竜
+    if(opt && opt.hatch) nuriHatchSetup(PV, bb, !!opt.wait);   // 【追加】卵 → 孵化 → 恐竜（wait＝ARで孵すまで揺れて待つ）
     const onDown=(e)=>{ PV.drag={x:e.clientX,y:e.clientY,yaw:PV.yaw,pitch:PV.pitch}; PV.auto=false; cv.setPointerCapture(e.pointerId); };
     const onMove=(e)=>{ if(!PV||!PV.drag) return; PV.yaw=PV.drag.yaw-(e.clientX-PV.drag.x)*0.01; PV.pitch=Math.max(-1.45,Math.min(1.45,PV.drag.pitch+(e.clientY-PV.drag.y)*0.01)); };
     const onUp=()=>{ if(PV) PV.drag=null; };
@@ -9272,7 +9377,8 @@ function nuriPreviewStart(key, opt){
 }
 // ---- 【追加】卵から生まれる演出：ゲームの発掘（revealDino / tickHatch / ポップアニメ）と同じ卵モデル・動き・タイミング・音 ----
 //   卵が地面から跳ねて着地（0.7秒・回転）→ 揺れる → 1.3秒で割れる（掘る音）→ 恐竜が跳ねて登場（1.0秒・鳴き声・振動）
-function nuriHatchSetup(P, bb){
+const NURI_HATCH_T = 1.5;   // 【変更】演出の長さの倍率（ゲームの発掘演出 ×1.5）
+function nuriHatchSetup(P, bb, wait){
     const size=bb.getSize(new THREE.Vector3()), groundY=bb.min.y, cx=(bb.min.x+bb.max.x)/2, cz=(bb.min.z+bb.max.z)/2;
     const egg=build_egg(); makeFit(egg, Math.max(size.y*0.35, size.length()*0.18));   // 恐竜の大きさに合わせた卵
     egg.position.set(cx, groundY, cz); P.scene.add(egg);
@@ -9282,7 +9388,7 @@ function nuriHatchSetup(P, bb){
     // 卵が画面の中心に来るよう、最初は卵を見る（生まれたら恐竜全体へ戻す）
     P._ctr0=P.ctr.clone(); P._dist0=P.dist;
     P.ctr=new THREE.Vector3(cx, groundY+eggH*0.6, cz); P.dist=Math.max(P._dist0*0.55, eggH*4);
-    P.hatch={ egg, t0:null, n:0, groundY, eggH, cx, cz, wob:0, last:0, phase:"egg", dinoY0:P.model.position.y, height:size.y };   // 時計は最初の画面が出てから開始
+    P.hatch={ egg, t0:null, n:0, groundY, eggH, cx, cz, wob:0, last:0, phase:"egg", dinoY0:P.model.position.y, height:size.y, wait:!!wait };   // 時計は最初の画面が出てから開始／wait＝ARで孵すのを待つ（揺れ続ける）
 }
 function nuriHatchTick(P){
     const H=P.hatch, now=performance.now();
@@ -9290,11 +9396,12 @@ function nuriHatchTick(P){
     const dt=Math.min(0.05,(now-H.last)/1000); H.last=now;
     const lerp=THREE.MathUtils.lerp, el=(now-H.t0)/1000;
     if(H.phase==="egg"){
-        const r=Math.min(el/0.7,1);   // ゲームと同じ：上昇→頂点→着地（0.7秒）＋回転
+        const r=Math.min(el/(0.7*NURI_HATCH_T),1);   // ゲームと同じ：上昇→頂点→着地（0.7秒×1.5）＋回転
         const y = r<0.5 ? lerp(H.groundY, H.groundY+H.eggH*0.9, r*2) : lerp(H.groundY+H.eggH*0.9, H.groundY, (r-0.5)*2);
         H.egg.position.y=y; if(r<1) H.egg.rotation.y+=0.12;
         H.wob+=dt; H.egg.rotation.z=Math.sin(H.wob*11)*0.16*Math.min(1,H.wob*1.5);   // 孵化前に揺れる（ゲームと同じ）
-        if(el>=1.3){   // 1.3秒で孵化
+        if(H.wait) return;   // ARで孵す時は、ここでは割れずに待つ
+        if(el>=1.3*NURI_HATCH_T){   // 1.3秒×1.5で孵化
             P.scene.remove(H.egg); H.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); H.egg=null;
             try{ sfxDig(); }catch(_){ }
             P.model.visible=true; H.phase="dino"; H.t1=now;
@@ -9305,11 +9412,45 @@ function nuriHatchTick(P){
         return;
     }
     // 恐竜：跳ねて登場（ゲームと同じ 1.0秒の上昇→頂点→着地）
-    const r=Math.min((now-H.t1)/1000/1.0,1), peak=H.height*0.35;
-    const k=THREE.MathUtils.smoothstep(Math.min(1,(now-H.t1)/700),0,1); P.ctr.lerpVectors(H.c0, P._ctr0, k); P.dist=lerp(H.d0, P._dist0, k);
+    const r=Math.min((now-H.t1)/1000/(1.0*NURI_HATCH_T),1), peak=H.height*0.35;
+    const k=THREE.MathUtils.smoothstep(Math.min(1,(now-H.t1)/(700*NURI_HATCH_T)),0,1); P.ctr.lerpVectors(H.c0, P._ctr0, k); P.dist=lerp(H.d0, P._dist0, k);
     P.model.position.y = H.dinoY0 + (r<0.5 ? lerp(0, peak, r*2) : lerp(peak, 0, (r-0.5)*2));
-    if(r>=1){ P.model.position.y=H.dinoY0; P.ctr.copy(P._ctr0); P.dist=P._dist0; P.hatch=null; if(!P.drag) P.auto=true; }
+    if(r>=1){ P.model.position.y=H.dinoY0; P.ctr.copy(P._ctr0); P.dist=P._dist0; P.hatch=null; if(!P.drag) P.auto=true; nuriArButtons(); }
 }
+// ---- 【追加】ぬりえ → AR：卵の段階からARで（Androidのみ。ARはボタンを押した時しか始められない） ----
+const NURI_AR={ key:null, ok:false, hatched:false };
+async function nuriArSupported(){
+    if(typeof litePhoneWanted!=="function" || !litePhoneWanted() || !navigator.xr || !navigator.xr.isSessionSupported) return false;
+    try{ return await navigator.xr.isSessionSupported("immersive-ar"); }catch(_){ return false; }
+}
+async function nuriAfterScan(key){
+    NURI_AR.key=key; NURI_AR.hatched=false; NURI_AR.ok=await nuriArSupported();
+    if(NURI_AR.ok){ nuriPreviewStart(key, { hatch:true, wait:true }); scMsg("たまごが できたよ！","「ARで かえす」で、へやの ゆかで うまれるよ"); }
+    else nuriPreviewStart(key, { hatch:true });
+    nuriArButtons();
+}
+function nuriArButtons(){   // 卵で待っている時＝「ARで かえす」「ここで かえす」／生まれた後＝「ARで みる」
+    const ar=$("nuriAR"), here=$("nuriHatchHere"); if(!ar || !here) return;
+    const waiting=!!(PV && PV.hatch && PV.hatch.wait);
+    ar.style.display = NURI_AR.ok ? "block" : "none";
+    ar.textContent = waiting ? "📱 ARで かえす" : "📱 ARで みる";
+    here.style.display = waiting ? "block" : "none";
+}
+function nuriHatchHere(){ if(PV && PV.hatch && PV.hatch.wait){ PV.hatch.wait=false; PV.hatch.t0=performance.now()-1300*NURI_HATCH_T; PV.hatch.last=performance.now(); } nuriArButtons(); }   // すぐ割れる
+async function nuriEnterAR(){
+    const key=NURI_AR.key, i=dinoIdx(key); if(i<0 || typeof enterLiteAR!=="function") return;
+    const egg=!!(PV && PV.hatch && PV.hatch.wait);   // まだ卵なら AR で孵す
+    nuriPreviewStop();
+    const ok=await enterLiteAR("dino", i, "small", 1, { nuri:true, egg });
+    if(!ok){ scMsg("ARを はじめられなかったよ","もういちど ためしてね"); nuriPreviewStart(key, egg?{hatch:true, wait:true}:null); nuriArButtons(); return; }
+    if(egg) NURI_AR.hatched=true;
+}
+window.addEventListener("litephoneend", e=>{   // ARを終えたら「できた！」画面に戻る
+    if(!(e && e.detail && e.detail.nuri)) return;
+    const key=NURI_AR.key; if(!key) return;
+    nuriPreviewStart(key); scMode("done");
+    const s=sheetOf(key); scMsg("できた！ "+(s?s.name:""),"ゆびで うごかして いろんな むきから みてね"); nuriArButtons();
+});
 function nuriPreviewView(yaw,pitch){ if(!PV) return; PV.auto=false; PV.yaw=yaw; PV.pitch=pitch; }
 function nuriPreviewStop(){
     if(!PV) return; cancelAnimationFrame(PV.raf);
@@ -9338,7 +9479,10 @@ function nuriWire(){
     const back=$("nuriBack"), done=$("nuriDone"), again=$("nuriAgain");
     if(back) back.addEventListener("click",scClose);
     if(done) done.addEventListener("click",scClose);
-    if(again) again.addEventListener("click",()=>{ nuriPreviewStop(); scStopCamera(); nuriStartScan(); });
+    if(again) again.addEventListener("click",()=>{ nuriPreviewStop(); scStopCamera(); NURI_AR.ok=false; nuriArButtons(); nuriStartScan(); });
+    const nar=$("nuriAR"), nh=$("nuriHatchHere");
+    if(nar) nar.addEventListener("click", nuriEnterAR);
+    if(nh) nh.addEventListener("click", nuriHatchHere);
     document.querySelectorAll("#nuriViews button").forEach(b=>b.addEventListener("click",()=>nuriPreviewView(+b.dataset.yaw, +b.dataset.pitch)));
     nuriMenuRefresh();
 }
