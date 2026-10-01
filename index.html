@@ -271,6 +271,14 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 #nuriViews button{ padding:8px 12px; border-radius:10px; border:1px solid #6a5c94; background:#241a34; color:#e8dcff; font-weight:700; }
 #nuriScan .nuriActions{ position:absolute; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:10px; width:min(560px,94vw); }
 #nuriScan .nuriActions button{ flex:1; padding:14px 10px; border-radius:12px; font-weight:800; font-size:17px; border:1px solid #6a5c94; background:#241a34; color:#e8dcff; }
+/* 【追加】スマホ（幅が狭い時）：ボタンを2列にして、向きのボタンと3D表示をボタンの上に並べる（重ならない）。タブレット以上は今のまま */
+@media (max-width: 600px){
+  #nuriScan .nuriActions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; bottom:calc(env(safe-area-inset-bottom) + 12px); }
+  #nuriScan .nuriActions button{ padding:10px 6px; font-size:15px; min-height:48px; line-height:1.3; word-break:keep-all; }   /* ことばの途中で折り返さない */
+  #nuriViews{ bottom:calc(var(--nuriActH, 120px) + env(safe-area-inset-bottom) + 20px); gap:5px; }
+  #nuriViews button{ padding:7px 10px; font-size:14px; }
+  #nuriPreview{ bottom:calc(var(--nuriActH, 120px) + var(--nuriViewsH, 44px) + env(safe-area-inset-bottom) + 28px); }
+}
 #nuriDone{ background:linear-gradient(#2f7a3a,#1d5226)!important; border-color:#7fe08f!important; color:#fff!important; }
 #nuriDone,#nuriAgain{ display:none; }
 #nuriAR, #nuriARBig{ background:linear-gradient(135deg,#7c3aed,#1d4ed8)!important; border-color:#8ff0ff!important; color:#fff!important; }
@@ -1075,8 +1083,8 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     #lphMsg{ position:absolute; left:50%; top:36%; transform:translateX(-50%); max-width:86vw; display:none;
         padding:8px 14px; border-radius:10px; background:rgba(12,10,26,.92); border:1px solid rgba(143,240,255,.5); font-size:13px; font-weight:700; text-align:center; pointer-events:none; }
     #lphMsg.on{ display:block; }
-    #lphBubble{ position:absolute; transform:translate(-50%,-100%); display:none; max-width:70vw; padding:8px 14px; border-radius:16px; background:#fff; color:#3a2600;
-        font-size:15px; font-weight:800; line-height:1.4; text-align:center; white-space:pre-line; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+    #lphBubble{ position:absolute; left:0; top:0; display:none; width:min(250px,76vw); box-sizing:border-box; padding:9px 12px; border-radius:16px; background:#fff; color:#3a2600;
+        font-size:15px; font-weight:800; line-height:1.45; text-align:center; white-space:normal; word-break:keep-all; overflow-wrap:anywhere; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); will-change:transform; }   /* 【変更】幅は固定（セリフの長さで変わらない） */
     #lphBubble::after{ content:""; position:absolute; left:50%; bottom:-9px; transform:translateX(-50%); border:9px solid transparent; border-bottom:0; border-top-color:#fff; }
     #lphBubble.on{ display:block; }
     /* 操作方法 */
@@ -7055,15 +7063,23 @@ function lphJoyLine(type){   // ゲームの相棒と同じ語尾（恐竜＝鳴
     return fukui ? { hop:`うれしいざ〜 ${cry}！`, spin:`くるっと まわるざ ${cry}！`, wiggle:`なでなで だいすきやざ ${cry}！` }[type]
                  : { hop:`うれしいぞ ${cry}！`, spin:`くるっと まわるぞ ${cry}！`, wiggle:`なでなで だいすきだぞ ${cry}！` }[type];
 }
-function lphSay(text, ms){ const b=lph$("lphBubble"); if(!b) return; b.textContent=text; b.classList.add("on"); LPH.sayUntil=performance.now()+(ms||2000); }
-function lphBubbleTick(){   // 吹き出しを恐竜（犬）の頭の上に
+function lphSay(text, ms){
+    const b=lph$("lphBubble"); if(!b) return; b.textContent=text; b.classList.add("on"); LPH.sayUntil=performance.now()+(ms||2000);
+    LPH.sayH = LITE.model ? Math.max(0.02, -lphGroundInfo().bottom*1.9) : 0.3;   // 体の高さ（その時の大きさ）。跳ねる・回る動きでは変えない
+    LPH.bpos=null;   // 最初の位置はすぐ合わせる
+}
+function lphBubbleTick(){   // 吹き出し：恐竜（犬）の頭の上。跳ねる・回る動きでは動かさず、歩いた分だけなめらかに追う
     const b=lph$("lphBubble"); if(!b || !b.classList.contains("on")) return;
-    if(performance.now()>LPH.sayUntil || !LITE.model || !LITE.model.visible){ b.classList.remove("on"); return; }
-    const bb=new THREE.Box3().setFromObject(LITE.model), p=new THREE.Vector3((bb.min.x+bb.max.x)/2, bb.max.y, (bb.min.z+bb.max.z)/2);
+    if(performance.now()>LPH.sayUntil || !LITE.model || !LITE.model.visible){ b.classList.remove("on"); LPH.bpos=null; return; }
+    const p=new THREE.Vector3(LITE.targetPos.x, lphFloorY()+lphLift()+(LPH.sayH||0.3), LITE.targetPos.z);   // 足元の中心＋体の高さ（跳ねる高さは入れない）
     let c0=camera; try{ const xc=renderer.xr.getCamera(); if(renderer.xr.isPresenting && xc.cameras && xc.cameras[0]) c0=xc.cameras[0]; }catch(_){ }
     p.applyMatrix4(c0.matrixWorldInverse).applyMatrix4(c0.projectionMatrix);
     if(p.z>1){ b.style.opacity="0"; return; }
-    b.style.opacity="1"; b.style.left=Math.max(70, Math.min(innerWidth-70, (p.x+1)/2*innerWidth))+"px"; b.style.top=Math.max(150, (1-p.y)/2*innerHeight-12)+"px";
+    const half=Math.min(250, innerWidth*0.76)/2+8;
+    const tx=Math.max(half, Math.min(innerWidth-half, (p.x+1)/2*innerWidth)), ty=Math.max(170, (1-p.y)/2*innerHeight-14);
+    if(!LPH.bpos) LPH.bpos={ x:tx, y:ty }; else { LPH.bpos.x+=(tx-LPH.bpos.x)*0.12; LPH.bpos.y+=(ty-LPH.bpos.y)*0.12; }   // なめらかに（ぶれない）
+    b.style.opacity="1";
+    b.style.transform=`translate(${Math.round(LPH.bpos.x)}px, ${Math.round(LPH.bpos.y)}px) translate(-50%,-100%)`;
 }
 function lphJoy(x, y){
     if(LPH.joy || !LPH.walk || LPH.faceTurn) return;
@@ -9911,6 +9927,13 @@ window.addEventListener("litephoneend", e=>{   // ARを終えたら「できた�
     nuriPreviewStart(key); scMode("done");
     const s=sheetOf(key); scMsg("できた！ "+(s?s.name:""),"ゆびで うごかして いろんな むきから みてね"); nuriArButtons();
 });
+// 【追加】スマホ：ボタン・向きのボタンの高さに合わせて、3D表示と向きのボタンの位置を決める（重ならないように）
+(function(){
+    const sc=document.getElementById("nuriScan"), act=sc&&sc.querySelector(".nuriActions"), vw=document.getElementById("nuriViews");
+    if(!sc || !act || !vw || typeof ResizeObserver==="undefined") return;
+    const upd=()=>{ sc.style.setProperty("--nuriActH", act.offsetHeight+"px"); sc.style.setProperty("--nuriViewsH", vw.offsetHeight+"px"); };
+    const ro=new ResizeObserver(upd); ro.observe(act); ro.observe(vw); upd();
+})();
 function nuriPreviewView(yaw,pitch){ if(!PV) return; PV.auto=false; PV.yaw=yaw; PV.pitch=pitch; }
 function nuriPreviewStop(){
     if(!PV) return; cancelAnimationFrame(PV.raf);
