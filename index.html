@@ -1016,6 +1016,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     .lph-heart{ position:absolute; color:#ff5c8a; pointer-events:none; text-shadow:0 0 6px rgba(255,255,255,.7); animation:lphHeart 1.4s ease-out forwards; opacity:0; }
     @keyframes lphHeart{ 0%{ transform:translate(-50%,0) scale(.6); opacity:0; } 15%{ opacity:1; } 100%{ transform:translate(-50%,-110px) scale(1.2); opacity:0; } }
     #lphBtns button.on{ background:linear-gradient(135deg,#16a34a,#0d9488); border-color:#a7f3d0; }
+    #lphBtns button:disabled{ opacity:.35; filter:grayscale(1); }
     #lphRec{ position:absolute; top:calc(env(safe-area-inset-top) + 104px); left:50%; transform:translateX(-50%); display:none; align-items:center; gap:6px;
         padding:5px 12px; border-radius:99px; background:rgba(120,10,10,.85); font-weight:800; font-size:13px; letter-spacing:1px; pointer-events:none; }
     #lphRec.on{ display:flex; }
@@ -1144,11 +1145,10 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
         <div class="card" role="dialog" aria-label="操作方法">
             <h3>📱 操作方法</h3>
             <ul>
-                <li><b>1本指</b>で左右になぞる → 左右に回す</li>
-                <li><b>1本指</b>で上下になぞる → 前後にかたむける</li>
+                <li><b>1本指</b>で恐竜・犬（モデル）を つかんで動かす → 床の上を移動</li>
+                <li><b>2本指</b>でひねる → 向きを変える</li>
                 <li><b>2本指</b>でつまむ／ひろげる → 小さく／大きく</li>
-                <li><b>2本指</b>をそろえて動かす → 床の上を移動（上へ＝奥へ／下へ＝手前へ）</li>
-                <li><b>2本指</b>でひねる → 回す</li>
+                <li><b>2本指</b>で上下になぞる → 前後にかたむける（出土品だけ）</li>
                 <li><b>床をタップ</b> → その場所へ移動</li>
                 <li><b>恐竜・犬をタップ</b> → よろこぶ</li>
             </ul>
@@ -6645,6 +6645,7 @@ const LPH_CFG = {
     walkHalf: 0.5, walkSpeed: 0.2, walkTurnMs: 700,   // ぬりえから：左右に0.5mずつ往復（秒速0.2m）、端で0.7秒かけて向きを変える
     walkHalfPaper: 0.10, walkSpeedPaper: 0.04,        // 用紙の上：秒速4cm
     walkRadius: 0.5, walkPaperMargin: 0.02,            // あるく範囲：床＝半径0.5m／用紙＝A4の中（端から2cm内側）
+    turnDeg: 60, turnDegJoy: 180,                      // 方向転換の速さ（度/秒）：歩く・見る＝ゆっくり／喜ぶ時＝少し速く
     hatchT: 1.5,             // ぬりえから：卵の演出の長さ（ゲームの発掘演出 ×1.5）
     eggWaitMaxMs: 8000,      // 床が見つからない時、この時間で目安の床に卵を出す
     shadow: true             // 足元の影（床が見つかった時）
@@ -6693,6 +6694,7 @@ function litePhoneStarted(){
         }).catch(()=>{});
     } else lph$("lphFloor").textContent="この端末では床を見つけられません（目安の高さに置きます）";
     LPH.hatch=null; LPH.walk=null; LPH.popY=0;
+    window.MV_ANIM=true;   // 【変更】スマホのLite・ぬりえは「アニメ オン」＋「あるく」で始める
     if(LITE.nuri){   // ぬりえから：卵（または生まれた恐竜）→ 左右に歩く。操作方法は後で（❓）
         if(LITE.nuri.scan){ LPH.hatch={ phase:"scan", t0:performance.now(), egg:null }; if(LITE.model) LITE.model.visible=false; r.classList.add("lph-scan"); if(window.__nuriArScan) window.__nuriArScan.start(); }   // AR内で読み取りから
         else if(LITE.nuri.egg){ LPH.hatch={ phase:"wait", t0:performance.now(), egg:null }; if(LITE.model) LITE.model.visible=false; r.classList.add("lph-ncard"); }
@@ -6718,7 +6720,7 @@ function litePhoneRefresh(){
 }
 function lphPaintBtns(){
     const lk=lph$("lphLockBtn"); lk.classList.toggle("off", LITE.opEnabled===false); lk.innerHTML = (LITE.opEnabled===false) ? "🔒<span>ロック中</span>" : "✋<span>操作できる</span>";
-    const wk=lph$("lphWalkBtn"); if(wk){ const wo=!!(LPH.walk && !LPH.walk.off); wk.classList.toggle("on", wo); wk.innerHTML = wo ? "🚶<span>あるく</span>" : "🧍<span>とまる</span>"; }   // 今の状態を表示
+    const wk=lph$("lphWalkBtn"); if(wk){ const animOn=(window.MV_ANIM!==false), wo=!!(LPH.walk && !LPH.walk.off) && animOn; wk.disabled=!animOn; wk.classList.toggle("on", wo); wk.innerHTML = wo ? "🚶<span>あるく</span>" : "🧍<span>とまる</span>"; }   // 今の状態を表示（アニメ オフは灰色で押せない）
     const an=lph$("lphAnimBtn"); const ao=(window.MV_ANIM!==false); an.classList.toggle("off", !ao); an.innerHTML = ao ? "🎞<span>アニメ オン</span>" : "🎞<span>アニメ オフ</span>";
     const recOn=!!(LPH.rec && LPH.rec.state!=="done");
     document.querySelectorAll("#litePh .lph-recbtn").forEach(b=>{ b.classList.toggle("recording", recOn); b.innerHTML = recOn ? "⏹<span>停止</span>" : "🎥<span>動画</span>"; });
@@ -6953,7 +6955,7 @@ function iarComposite(maxLong){   // 写真・動画：画面に見えている�
 }
 // ---- 【追加】ぬりえから：左右に0.5mずつ往復して歩く（さわっている間は止まり、離すとその場所を中心に再開） ----
 function lphWalkNew(){   // 「とまる」が初期。あるく時は範囲の中を歩き回り、ときどきプレイヤーを見たり床を嗅いだりする
-    return { off:true, state:"pause", until:performance.now()+800, target:new THREE.Vector3(), home:LITE.targetPos.clone(), last:performance.now(), held:true, hx:0, hy:0 };
+    return { off:false, state:"pause", until:performance.now()+800, target:new THREE.Vector3(), home:LITE.targetPos.clone(), last:performance.now(), held:true, hx:0, hy:0, yaw:lphYawOf(LITE.targetQuat) };   // 【変更】初期は「あるく」
 }
 function lphWalkArea(){   // 歩ける範囲：用紙の上＝A4の中（少し内側）／床＝中心から半径0.5m
     if(LPH.paper && LPH.paper.xAxis){ const ax=LPH.paper.xAxis, az=new THREE.Vector3().crossVectors(ax,_lphUp).negate(); return { paper:true, c:LPH.paper.center, ax, az, hx:Math.max(0.01,0.1485-LPH_CFG.walkPaperMargin), hz:Math.max(0.01,0.105-LPH_CFG.walkPaperMargin) }; }
@@ -6970,40 +6972,49 @@ function lphWalkPick(W){   // 次に歩いていく場所（今の場所から�
 }
 const _lphHk=new THREE.Vector3(), _lphHc=new THREE.Vector3();
 function lphFaceCamYaw(){ camera.getWorldPosition(_lphHc); return Math.atan2(_lphHc.x-LITE.targetPos.x, _lphHc.z-LITE.targetPos.z); }
+const _lphE=new THREE.Euler();
+function lphYawOf(q){ return _lphE.setFromQuaternion(q,"YXZ").y; }
+function lphTurn(W, want, degPerSec, dt){   // 向きを want へ、1秒あたり degPerSec 度まで回す。残りの角度（ラジアン）を返す
+    let d=want-W.yaw; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI;
+    const st=THREE.MathUtils.degToRad(degPerSec)*dt; W.yaw += Math.max(-st, Math.min(st, d));
+    LITE.targetQuat.setFromAxisAngle(_lphUp, W.yaw);
+    return Math.abs(d)-Math.min(Math.abs(d), st);
+}
 function lphWalkTick(){
     const W=LPH.walk, now=performance.now(), dt=Math.min(0.05,(now-W.last)/1000); W.last=now;
+    const anim=(window.MV_ANIM!==false);   // アニメ オフ＝標準姿勢で静止（歩かない・頭も動かさない）
     let wantX=0, wantY=0;   // 頭：x＝下向き（嗅ぐ）、y＝左右
     const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, head=pv&&pv.userData?pv.userData.head:null, tail=pv&&pv.userData?pv.userData.tail:null;
-    if(LPH.joy){   // さわられて喜んでいる：プレイヤーを向いて、跳ねて、しっぽを大きく振る
+    if(LPH.joy){   // さわられて喜んでいる：プレイヤーを向いて、跳ねて、しっぽを大きく振る（アニメ オフ＝鳴き声と♥だけ）
         const J=LPH.joy, r=(now-J.t0)/J.dur;
         if(r>=1){ LPH.joy=null; LPH.popY=0; W.state="pause"; W.until=now+600; }
-        else {
-            LITE.targetQuat.setFromAxisAngle(_lphUp, lphFaceCamYaw());
+        else if(anim){
+            lphTurn(W, lphFaceCamYaw(), LPH_CFG.turnDegJoy, dt);
             LPH.popY=J.h*Math.abs(Math.sin(Math.PI*2*r))*(1-0.35*r);   // ぴょん、ぴょん
             if(tail) tail.rotation.y=Math.sin(now*0.03)*0.65;
             wantX=-0.25;   // 顔を上げる
         }
-    } else if(LPH.g || LPH.tap || LITE.placeFrames>0){ W.held=true; }   // さわっている間・置き直し中は止まる
+    } else if(LPH.g || LPH.tap || LITE.placeFrames>0 || !anim){ W.held=true; }   // さわっている間・置き直し中・アニメ オフは止まる
     else {
-        if(W.held){ W.held=false; W.home.copy(LITE.targetPos); W.state="pause"; W.until=now+800; }   // 離したら、その場所を中心に
+        if(W.held){ W.held=false; W.home.copy(LITE.targetPos); W.yaw=lphYawOf(LITE.targetQuat); W.state="pause"; W.until=now+800; }   // その場所・その向きから
         if(!W.off){
-            const spd=LPH.paper?LPH_CFG.walkSpeedPaper:LPH_CFG.walkSpeed;
-            if(W.state==="pause" && now>=W.until){ lphWalkPick(W); W.state="turn"; W.until=now+450; }
+            const spd=LPH.paper?LPH_CFG.walkSpeedPaper:LPH_CFG.walkSpeed, tr=LPH_CFG.turnDeg;
+            if(W.state==="pause" && now>=W.until){ lphWalkPick(W); W.state="turn"; }
             if(W.state==="turn" || W.state==="walk"){
                 const dx=W.target.x-LITE.targetPos.x, dz=W.target.z-LITE.targetPos.z, d=Math.hypot(dx,dz);
-                LITE.targetQuat.setFromAxisAngle(_lphUp, Math.atan2(dx,dz));   // 行く方へ鼻先（+Z）を向ける
-                if(W.state==="turn" && now>=W.until) W.state="walk";
+                const left=lphTurn(W, Math.atan2(dx,dz), tr, dt);   // ゆっくり向きを変える
+                if(W.state==="turn" && left<THREE.MathUtils.degToRad(12)) W.state="walk";
                 if(W.state==="walk"){
-                    const step=spd*dt;
-                    if(d<=step){ LITE.targetPos.x=W.target.x; LITE.targetPos.z=W.target.z;
+                    const step=spd*dt*Math.max(0, Math.cos(Math.min(left, Math.PI/2)));   // 向きがずれている間はゆっくり
+                    if(d<=Math.max(step, 1e-4)){ LITE.targetPos.x=W.target.x; LITE.targetPos.z=W.target.z;
                         const r=Math.random();   // 着いたら：プレイヤーを見る／床を嗅ぐ／すぐ次へ
-                        if(r<0.4){ W.state="look"; W.until=now+1500+Math.random()*1000; }
+                        if(r<0.4){ W.state="look"; W.until=now+2200+Math.random()*1200; }
                         else if(r<0.75){ W.state="sniff"; W.until=now+2000+Math.random()*1000; }
                         else { W.state="pause"; W.until=now+300; }
                     } else { LITE.targetPos.x+=dx/d*step; LITE.targetPos.z+=dz/d*step; }
                 }
             } else if(W.state==="look"){
-                LITE.targetQuat.setFromAxisAngle(_lphUp, lphFaceCamYaw());   // 体ごとプレイヤーの方を向く
+                lphTurn(W, lphFaceCamYaw(), tr, dt);   // 体ごとプレイヤーの方へ（ゆっくり）
                 if(head){ head.getWorldPosition(_lphHk); camera.getWorldPosition(_lphHc); const dy=_lphHc.y-_lphHk.y, hz=Math.hypot(_lphHc.x-_lphHk.x,_lphHc.z-_lphHk.z)||1e-4; wantX=THREE.MathUtils.clamp(-Math.atan2(dy,hz),-0.5,0.45); }
                 if(now>=W.until){ W.state="pause"; W.until=now+200; }
             } else if(W.state==="sniff"){
@@ -7012,13 +7023,13 @@ function lphWalkTick(){
             }
         }
     }
-    if(head){ W.hx+=(wantX-W.hx)*0.12; W.hy+=(wantY-W.hy)*0.12; head.rotation.x=W.hx; head.rotation.y=W.hy; }
+    if(head){ if(anim){ W.hx+=(wantX-W.hx)*0.12; W.hy+=(wantY-W.hy)*0.12; } else { W.hx=0; W.hy=0; } head.rotation.x=W.hx; head.rotation.y=W.hy; }
 }
 // ---- 【追加】さわると喜ぶ（ゲームのなでなでの応用：鳴き声・ぴょんぴょん・しっぽ・♡） ----
 function lphJoy(x, y){
     if(LPH.joy || !LPH.walk) return;
     const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
-    LPH.joy={ t0:performance.now(), dur:1200, h:Math.max(0.01, sz.y*0.15) };
+    LPH.joy={ t0:performance.now(), dur:1200, h:(window.MV_ANIM!==false)?Math.max(0.01, sz.y*0.15):0 };   // アニメ オフ＝跳ねない
     try{ if(LITE.target==="dog" && typeof sfxBark==="function") sfxBark(); else sfxCry(); }catch(_){ }
     try{ vibrate(60,0.5); }catch(_){ }
     const root=lph$("litePh");
@@ -7199,10 +7210,10 @@ function lphTap(x,y){   // 床をタップ → その場所へ移動／恐竜・
 function lphAction(a){
     if(!LITE.active) return;
     if(LPH.hatch && LPH.hatch.phase!=="done" && a!=="shot" && a!=="rec" && a!=="fold") return;   // 卵の演出中は撮影以外の操作をしない
-    if(a==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; if(LPH.walk) LPH.walk.held=true; lphSnd(); lphMsg("大きさ・向きを戻して、2m先の床に置き直しました"); }   // スマホ：位置も2m先の床へ
+    if(a==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; if(LPH.walk) LPH.walk.held=true; lphSnd(); lphMsg(LPH.paper?"大きさ・向きを戻して、ぬりえの上に置き直しました":"大きさ・向きを戻して、床に置き直しました"); if(LPH.walk) LPH.walk.held=true; }   // スマホ：位置も2m先の床へ
     else if(a==="lock"){ LITE.opEnabled=(LITE.opEnabled===false); LPH.g=null; lphPaintBtns(); lphSnd(); lphMsg(LITE.opEnabled?"さわって動かせます":"ロック中：さわっても動きません"); }
     else if(a==="anim"){ window.MV_ANIM=(window.MV_ANIM===false); lphPaintBtns(); lphSnd(); }
-    else if(a==="walk"){ if(LPH.walk){ LPH.walk.off=!LPH.walk.off; LPH.walk.held=true; lphMsg(LPH.walk.off?"その場に とまります":(LPH.paper?"ぬりえの うえを あるきまわります":"あるきまわります")); } lphPaintBtns(); lphSnd(); }
+    else if(a==="walk"){ if(window.MV_ANIM===false){ lphMsg("「アニメ オン」の時に えらべます"); return; } if(LPH.walk){ LPH.walk.off=!LPH.walk.off; LPH.walk.held=true; lphMsg(LPH.walk.off?"その場に とまります":(LPH.paper?"ぬりえの うえを あるきまわります":"あるきまわります")); } lphPaintBtns(); lphSnd(); }
     else if(a==="desc"){ lph$("lphDesc").classList.toggle("on"); }
     else if(a==="shot"){ LPH.shotReq=true; }
     else if(a==="rec"){ if(LPH.rec && (LPH.rec.state==="pending"||LPH.rec.state==="rec")) lphRecStop(); else lphRecStart(); }
@@ -7234,57 +7245,56 @@ function lphWire(){
 }
 
 // ---- タッチ操作（画面上の指の動きで統一） ----
+function lphHitModel(x,y){   // 画面の点がモデルに当たっているか（当たった点を返す）
+    if(!LITE.model || !LITE.model.visible || (LITE.group && !LITE.group.visible)) return null;
+    const r=lphScreenRay(x,y); _lphRay.set(r.o, r.d);
+    try{ const h=_lphRay.intersectObject(LITE.model, true); return h.length ? h[0].point.clone() : null; }catch(_){ return null; }
+}
 function lphRebase(tt){
     const n=tt?tt.length:0; if(!n){ LPH.g=null; return; }
-    if(n===1){ LPH.g={ n:1, x:tt[0].clientX, y:tt[0].clientY, sx:tt[0].clientX, sy:tt[0].clientY, live:false }; return; }
+    if(n===1){   // 1本指：モデルをつかんだ時だけ、床の上を前後左右に移動（つかんだ点が指についてくる）
+        const x=tt[0].clientX, y=tt[0].clientY, g={ n:1, sx:x, sy:y, live:false, grab:false };
+        const hp=lphHitModel(x,y);
+        if(hp){ camera.getWorldPosition(_lphCamP); g.grab=true; g.planeY=Math.min(hp.y, _lphCamP.y-0.1); g.fp=lphPlanePoint(x,y,g.planeY); }
+        LPH.g=g; return;
+    }
     const a=tt[0], b=tt[1], dx=b.clientX-a.clientX, dy=b.clientY-a.clientY;
     LPH.g={ n:2, cx:(a.clientX+b.clientX)/2, cy:(a.clientY+b.clientY)/2, dist:Math.max(24,Math.hypot(dx,dy)), ang:Math.atan2(dy,dx), baseScale:LITE.targetScale.x||1 };
     LPH.g.baseDist=LPH.g.dist;
-    // 床に沿って動かすための水平面：モデルの中心の高さ（スマホより高い時はスマホの35cm下）。つまんだ場所がそのまま指についてくる
-    camera.getWorldPosition(_lphCamP);
-    LPH.g.planeY=Math.min(LITE.group?LITE.group.position.y:LITE.targetPos.y, _lphCamP.y-0.35);
-    LPH.g.fp=lphPlanePoint(LPH.g.cx, LPH.g.cy, LPH.g.planeY);
 }
 function lphMove(tt){
     if(!LITE.active || LITE.opEnabled===false || !tt || !tt.length) return;
     if(LPH.hatch && LPH.hatch.phase!=="done") return;   // 卵の演出中
     const n=Math.min(2, tt.length), g=LPH.g;
     if(!g || g.n!==n){ lphRebase(tt); return; }
-    camera.getWorldQuaternion(_lphQ);
-    if(n===1){   // 1本指：左右＝上軸まわり／上下＝カメラの右軸まわり
+    if(n===1){
+        if(!g.grab) return;   // モデル以外をなぞっても動かない
         const x=tt[0].clientX, y=tt[0].clientY;
-        if(!g.live){ if(Math.hypot(x-g.sx, y-g.sy)<LPH_CFG.rotDeadPx) return; g.live=true; g.x=x; g.y=y; return; }   // 少し動いてから回す（タップでは回らない）
-        const dx=x-g.x, dy=y-g.y; g.x=x; g.y=y;
-        const k=LPH_CFG.rotPerShort/Math.max(200, Math.min(innerWidth, innerHeight));
-        const right=_lphV1.set(1,0,0).applyQuaternion(_lphQ); right.y=0; if(right.lengthSq()<1e-6) right.set(1,0,0); right.normalize();
-        LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(_lphUp, dx*k));
-        LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(right, dy*k));
+        if(!g.live){ if(Math.hypot(x-g.sx, y-g.sy)<LPH_CFG.rotDeadPx) return; g.live=true; }   // 少し動いてから（タップで動かない）
+        const np=lphPlanePoint(x, y, g.planeY);
+        if(g.fp && np){
+            let mx=np.x-g.fp.x, mz=np.z-g.fp.z; const L=Math.hypot(mx,mz);
+            if(L>LPH_CFG.moveStepMax){ mx*=LPH_CFG.moveStepMax/L; mz*=LPH_CFG.moveStepMax/L; }
+            LITE.targetPos.x+=mx; LITE.targetPos.z+=mz; lphClampDist();
+        }
+        if(np) g.fp=np;
         return;
     }
     const a=tt[0], b=tt[1], ddx=b.clientX-a.clientX, ddy=b.clientY-a.clientY;
     const cx=(a.clientX+b.clientX)/2, cy=(a.clientY+b.clientY)/2, dist=Math.max(24,Math.hypot(ddx,ddy)), ang=Math.atan2(ddy,ddx);
-    // 拡大縮小：つまんだ比率そのまま
+    // つまむ／ひろげる：大きさ（つまんだ比率そのまま）
     const ns=Math.min(LPH_CFG.scaleMax, Math.max(LPH_CFG.scaleMin, g.baseScale*dist/g.baseDist)); LITE.targetScale.set(ns,ns,ns);
-    // 移動：床に沿って（上へ＝奥へ／下へ＝手前へ／左右）。つまんだ点が指についてくる量で動く（遠くほど大きく動く）
-    const fwd=_lphV1.set(0,0,-1).applyQuaternion(_lphQ);
-    const np=lphPlanePoint(cx, cy, g.planeY);
-    if(g.fp && np){
-        let mx=np.x-g.fp.x, mz=np.z-g.fp.z; const L=Math.hypot(mx,mz);
-        if(L>LPH_CFG.moveStepMax){ mx*=LPH_CFG.moveStepMax/L; mz*=LPH_CFG.moveStepMax/L; }
-        LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
-    } else {   // 指が地平線より上など、水平面に当たらない時：画面の量で動かす
-        camera.getWorldPosition(_lphV3);
-        const depth=Math.max(0.3, Math.hypot(LITE.targetPos.x-_lphV3.x, LITE.targetPos.z-_lphV3.z));
-        let p5=1.5; try{ const xc=renderer.xr.getCamera(); const c0=(renderer.xr.isPresenting && xc.cameras && xc.cameras[0])||camera; p5=c0.projectionMatrix.elements[5]||p5; }catch(_){ }
-        const wpp=2*depth/(p5*Math.max(1,innerHeight));
-        const rt=_lphV2.set(1,0,0).applyQuaternion(_lphQ); rt.y=0; rt.normalize();
-        const fh=_lphV3.copy(fwd); fh.y=0; if(fh.lengthSq()<1e-6) fh.set(0,0,-1); fh.normalize();
-        LITE.targetPos.addScaledVector(rt, (cx-g.cx)*wpp).addScaledVector(fh, -(cy-g.cy)*wpp*2);
-    }
-    g.fp=np; lphClampDist();
-    // ひねり：指の角度の変化そのまま（視線軸まわり）
+    // ひねる：縦の軸で向きを変える（画面で時計回りにひねる＝上から見て時計回り）
     let da=ang-g.ang; if(da>Math.PI) da-=2*Math.PI; if(da<-Math.PI) da+=2*Math.PI;
-    LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(fwd.normalize(), da));
+    LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(_lphUp, -da));
+    // 出土品だけ：2本指で上下になぞる → 前後に傾ける
+    if(LITE.target!=="dino" && LITE.target!=="dog"){
+        camera.getWorldQuaternion(_lphQ);
+        const right=_lphV1.set(1,0,0).applyQuaternion(_lphQ); right.y=0; if(right.lengthSq()<1e-6) right.set(1,0,0); right.normalize();
+        const k=LPH_CFG.rotPerShort/Math.max(200, Math.min(innerWidth, innerHeight));
+        LITE.targetQuat.premultiply(_lphQ2.setFromAxisAngle(right, (cy-g.cy)*k));
+    }
+    if(LPH.walk) LPH.walk.held=true;   // ひねった向きから歩き直す
     g.cx=cx; g.cy=cy; g.ang=ang;
 }
 
