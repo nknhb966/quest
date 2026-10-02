@@ -6274,8 +6274,8 @@ function liteDinoK(){
     if(!_liteDinoK.hs){ const h=_liteMeasureDino("trex","y"); _liteDinoK.hs = h>1e-6 ? LITE_DINO_REF.headsetTrexH/h : 1; } return _liteDinoK.hs;
 }
 // 【追加】恐竜の大きさの比をデフォルメ（スマホ・タブレットの「モデルを みる」「ARで みる」「ぬりえ」だけ。ゲーム・パソコン・ヘッドセットは実寸の比のまま）
-//   ティラノサウルスを基準（大きさは今のまま）に、ほかの恐竜の高さを (実寸の比)^0.7 にする → 小さい恐竜は小さすぎず、大きい恐竜は大きすぎない
-const DINO_DEFORM = { base:"trex", pow:0.7 };
+//   ティラノサウルスを基準（大きさは今のまま）に、ほかの恐竜の高さを (実寸の比)^0.5（平方根）にする → 小さい恐竜は小さすぎず、大きい恐竜は大きすぎない
+const DINO_DEFORM = { base:"trex", pow:0.5 };   // 【変更】平方根（大きさの差をもっと小さく）
 function dinoDeform(idx){   // 実寸の比のときの大きさに掛ける倍率
     try{ const k=DINOS[idx]&&DINOS[idx].key, h=REAL_H[k], hb=REAL_H[DINO_DEFORM.base]; if(!(h>0) || !(hb>0)) return 1; return Math.pow(hb/h, 1-DINO_DEFORM.pow); }catch(_){ return 1; }   // 実寸の高さ＝YEAR_CONFIG（REAL_H）
 }
@@ -6876,6 +6876,8 @@ const IAR_CFG = {
     holdHeight: 1.1,      // カメラ＋ジャイロ：スマホを持つ高さ(m)＝床はこの下
     fovLongDeg: 67,       // カメラの視野（長辺）の初期値。ぬりえを読むと、ジャイロの向きと用紙から実際の値を求めて端末に覚える
 };
+function iarPaperDropSave(d){ try{ if(d>0.12 && d<1.8) sessionStorage.setItem("iarPaperDrop", String(d)); }catch(_){ } }   // スマホから用紙（机など）までの高さ
+function iarPaperDropLoad(){ try{ const d=parseFloat(sessionStorage.getItem("iarPaperDrop")); return (d>0.12 && d<1.8) ? d : 0; }catch(_){ return 0; } }
 function iarWanted(){   // iPhone / iPad（WebXR の immersive-ar が無い iOS）でカメラが使える
     const ua=navigator.userAgent||"", ios=/iPhone|iPad|iPod/i.test(ua) || (navigator.platform==="MacIntel" && (navigator.maxTouchPoints||0)>1);
     return ios && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -6893,7 +6895,8 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     litePhoneShow(true);
     LITE.phone=true; LITE.nuri = (opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, small:!!opts.small } : null;
     LITE.paperScale = (LITE.nuri && LITE.nuri.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;
-    LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0,
+    const _drop=(opts && opts.nuri && opts.small) ? iarPaperDropLoad() : 0;   // 「ARで もういちど みる」：さっきの用紙の高さを台にする（Androidで机が床として見つかるのと同じ見え方）
+    LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, hold:(_drop||IAR_CFG.holdHeight),
         save:{ pPos:player.position.clone(), pQ:player.quaternion.clone(), pS:player.scale.clone(), cPos:camera.position.clone(), cQ:camera.quaternion.clone() } };   // リグとカメラは入る前の状態を保存
     // 3) モデル（Androidと同じ準備）
     try{ await litePrewarmAll(target, quality); }catch(_){ }
@@ -6912,7 +6915,7 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     cv.style.position="fixed"; cv.style.inset="0"; cv.style.width="100%"; cv.style.height="100%"; cv.style.zIndex="100001"; cv.style.pointerEvents="none"; cv.style.display="block";
     renderer.setClearColor(0x000000, 0); scene.background=null; scene.fog=null;
     player.position.set(0,0,0); player.quaternion.identity(); player.scale.set(1,1,1); player.updateMatrixWorld(true);
-    camera.position.set(0, IAR_CFG.holdHeight, 0); camera.quaternion.identity();
+    camera.position.set(0, LITE.iar.hold, 0); camera.quaternion.identity();
     window.addEventListener("deviceorientation", iarOnOrient);
     window.__mvPreviewPause=false;
     LITE.active=true;
@@ -6938,7 +6941,7 @@ function iarEnd(){
 // 画面に合わせた投影（ビデオは画面いっぱいに「はみ出して」表示＝cover）
 function iarProj(I){
     const v=I.video, vw=v.videoWidth, vh=v.videoHeight, sw=innerWidth, sh=innerHeight; if(!vw || !vh) return false;
-    if(!I.f){ let fov=IAR_CFG.fovLongDeg; try{ const v2=parseFloat(localStorage.getItem("iarFovLong")); if(v2>=45 && v2<=85) fov=v2; }catch(_){ } I.f=0.5*Math.max(vw,vh)/Math.tan(THREE.MathUtils.degToRad(fov/2)); }   // ぬりえで求めた視野があれば使う
+    if(!I.f){ const fov=iarFovLoad()||IAR_CFG.fovLongDeg; I.f=0.5*Math.max(vw,vh)/Math.tan(THREE.MathUtils.degToRad(fov/2)); }   // 【変更】ぬりえで2回以上そろった視野があれば使う（なければ初期値）
     const s=Math.max(sw/vw, sh/vh), ox=(sw-vw*s)/2, oy=(sh-vh*s)/2, fx=I.f*s, cx=vw/2*s+ox, cy=vh/2*s+oy, n=0.02, fa=100;
     const e=camera.projectionMatrix.elements; e.fill(0);
     e[0]=2*fx/sw; e[5]=2*fx/sh; e[8]=1-2*cx/sw; e[9]=2*cy/sh-1; e[10]=-(fa+n)/(fa-n); e[11]=-1; e[14]=-2*fa*n/(fa-n);
@@ -6959,13 +6962,18 @@ function iarUpdate(){
     if(I.ori){   // ジャイロ：スマホの向き → カメラの向き（three.js の DeviceOrientationControls と同じ計算）
         const d=THREE.MathUtils.DEG2RAD, o=I.ori, so=((screen.orientation && screen.orientation.angle)||window.orientation||0)*d;
         _iarE.set(o.b*d, o.a*d, -o.g*d, "YXZ"); _iarQ.setFromEuler(_iarE).multiply(_iarQ1).multiply(new THREE.Quaternion().setFromAxisAngle(_iarZ, -so));
-        camera.quaternion.slerp(_iarQ, 0.5); camera.position.set(0, IAR_CFG.holdHeight, 0);
+        camera.quaternion.slerp(_iarQ, 0.5); camera.position.set(0, I.hold||IAR_CFG.holdHeight, 0);
     }
 }
 // ---- 用紙の位置（iPhone）：ジャイロで「下」が分かるので、用紙がまっすぐ上を向くカメラの視野を探す（1枚の写真だけで推定するより安定） ----
+const IAR_FOV_OK=[58,76];   // iPhoneのカメラ（動画）の視野（長辺）としてありえる範囲
+function iarFovStore(fov){ try{ if(!(fov>=IAR_FOV_OK[0] && fov<=IAR_FOV_OK[1])) return; const a=JSON.parse(localStorage.getItem("iarFovList")||"[]"); a.push(fov); while(a.length>7) a.shift(); localStorage.setItem("iarFovList", JSON.stringify(a)); }catch(_){ } }
+function iarFovLoad(){   // 覚えた視野（2回以上・中央値）。足りなければ 0
+    try{ localStorage.removeItem("iarFovLong"); const a=JSON.parse(localStorage.getItem("iarFovList")||"[]").filter(v=>v>=IAR_FOV_OK[0] && v<=IAR_FOV_OK[1]); if(a.length<2) return 0; a.sort((x,y)=>x-y); return a[Math.floor(a.length/2)]; }catch(_){ return 0; }
+}
 function iarPaperPose(Hm, W, H, camM, pxPerMm, wMm, hMm){
     let best=null;
-    for(let fov=45; fov<=85; fov+=0.25){
+    for(let fov=50; fov<=80; fov+=0.25){
         const f=0.5*Math.max(W,H)/Math.tan(fov*Math.PI/360), P=new Array(16).fill(0); P[0]=2*f/W; P[5]=2*f/H; P[10]=-1; P[11]=-1; P[14]=-0.04;
         const p=lphPaperPose(Hm, W, H, P, camM, pxPerMm, wMm, hMm);
         if(p && (!best || p.normal.y>best.pose.normal.y)) best={ pose:p, f, fov };
@@ -9867,7 +9875,12 @@ function lphScanCapture(frame, resSmall, key){
             const _mm={ ppm:D.info.pxPerMm, w:D.info.width/D.info.pxPerMm, h:D.info.height/D.info.pxPerMm };
             let pose=null;
             try{
-                if(LITE.iar){ const b=iarPaperPose(res.H, full.W, full.H, full.camM, _mm.ppm, _mm.w, _mm.h); if(b){ pose=b.pose; if(b.pose.normal.y>0.97){ LITE.iar.f=b.f; try{ localStorage.setItem("iarFovLong", String(b.fov)); }catch(_){ } } } }
+                if(LITE.iar){   // iPhone：ジャイロの向きと用紙から視野を求める。ありえない値の時は、いまの視野で用紙の位置を求める
+                    const b=iarPaperPose(res.H, full.W, full.H, full.camM, _mm.ppm, _mm.w, _mm.h);
+                    if(b && b.fov>=IAR_FOV_OK[0] && b.fov<=IAR_FOV_OK[1] && b.pose.normal.y>0.97){ pose=b.pose; LITE.iar.f=b.f; iarFovStore(b.fov); }
+                    else pose=lphPaperPose(res.H, full.W, full.H, iarProjFake(LITE.iar), full.camM, _mm.ppm, _mm.w, _mm.h);
+                    if(pose){ camera.getWorldPosition(_lphCamP); iarPaperDropSave(_lphCamP.y-pose.center.y); }   // 用紙までの高さを覚える（「ARで もういちど みる」に使う）
+                }
                 else pose=lphPaperPose(res.H, full.W, full.H, full.proj, full.camM, _mm.ppm, _mm.w, _mm.h);
             }catch(e){ console.warn("[ぬりえAR] 用紙の位置", e); }
             if(!(pose && pose.normal.y>0.6 && pose.dist>0.08 && pose.dist<3)){
