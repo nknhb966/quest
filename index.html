@@ -256,11 +256,7 @@
 #nuriScanBtn{ display:block; width:100%; padding:15px 0; border:none; border-radius:12px; cursor:pointer; font-size:16px; font-weight:800; letter-spacing:1px; color:#fff;
     background:linear-gradient(135deg,#7c3aed,#1d4ed8); box-shadow:0 0 26px rgba(120,80,255,.5), inset 0 1px 0 rgba(255,255,255,.15); }
 #nuriScanBtn:active{ transform:scale(.99); }
-#nuriAgainBox{ display:flex; flex-direction:column; gap:6px; padding:10px; border-radius:12px; border:1px solid rgba(143,240,255,.35); background:rgba(10,30,40,.35); }
-#nuriAgainBox .nuriAgainLbl{ font:800 12px sans-serif; color:#9fe8f5; letter-spacing:1px; text-align:center; }
-#nuriAgainSel{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
-#nuriAgainSel button{ min-height:40px; padding:0 14px; border-radius:10px; border:1px solid rgba(150,170,210,.5); background:rgba(20,26,44,.92); color:#eaf2ff; font-size:14px; font-weight:800; cursor:pointer; }
-#nuriAgainSel button.on{ background:#0e7490; border-color:#8ff0ff; }
+#nuriAgainBox{ display:flex; flex-direction:column; gap:6px; }
 #nuriAgainAR{ display:block; width:100%; padding:14px 0; border:none; border-radius:12px; cursor:pointer; font-size:16px; font-weight:800; letter-spacing:1px; color:#fff;
     background:linear-gradient(135deg,#0e7490,#1d4ed8); box-shadow:0 0 20px rgba(80,200,255,.35); }
 #nuriAgainAR:disabled{ opacity:.4; box-shadow:none; cursor:default; }
@@ -530,8 +526,6 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
       <button id="nuriScanBtn" type="button">🖍 ぬりえを よみこむ</button>
       <!-- 【追加】ぬりえの恐竜を、メイン画面から ARで もういちど みる -->
       <div id="nuriAgainBox" style="display:none">
-        <div class="nuriAgainLbl">ぬった きょうりゅうを えらんでね</div>
-        <div id="nuriAgainSel"></div>
         <button id="nuriAgainAR" type="button">📱 ARで もういちど みる</button>
         <div id="nuriAgainNote"></div>
       </div>
@@ -1195,7 +1189,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <div id="lphDig">
         <div class="card" role="dialog" aria-modal="true" aria-label="はっくつ">
             <h3>⛏ はっくつ <span class="dev">🚧 かいはつちゅう</span></h3>
-            <p class="lead">タブレットARで きょうりゅうを ほりだそう！<br>カメラの えいぞうに はっくつの ばしょを かさねて、あるいて さがすよ。</p>
+            <p class="lead" id="lphDigLead"></p>
             <div class="lbl">モード</div>
             <div class="seg3" id="lphDigMode">
                 <button type="button" data-v="challenge">🏆<span>はっくつ<br>チャレンジ</span></button>
@@ -2643,6 +2637,7 @@ dog.position.set(2,GROUND_Y,2);
 const COMPANIONS={};
 const SHIBA_LABEL = (YEAR_CONFIG.companions && YEAR_CONFIG.companions.dog && YEAR_CONFIG.companions.dog.label) || "🐕 しば犬";   // 犬種一覧の末尾に並ぶしば犬の表示名（他の犬種と同じくアイコン付き）
 let companionKind=DEFAULT_KIND;
+let BUDDY_LOCK=null;   // 【追加】相棒の固定（ARモデル画面の「はっくつ」：表示していたモデルを最後まで相棒にする。null＝固定なし）
 function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
 // 喜び動作中（撫で／掘り当て）に頭のヨー（左右）を固定するか。恐竜=既定ON、犬=既定OFF。
 // 犬種・恐竜ごとに個別制御したい場合は LOCK_YAW_OVERRIDE にキーを追加（例：LOCK_YAW_OVERRIDE.golden=true / LOCK_YAW_OVERRIDE.trex=false）
@@ -2729,6 +2724,7 @@ function preloadCompanionBody(key, smooth){   // プリロード用：指定ボ�
 }
 function activeBody(){ return ensureBody(companionKind) || ensureBody(DEFAULT_KIND); }
 function setCompanion(kind){
+    if(BUDDY_LOCK && COMPANIONS[BUDDY_LOCK]) kind=BUDDY_LOCK;   // 固定中は、どこから呼ばれても固定の相棒のまま
     if(!COMPANIONS[kind]) kind=DEFAULT_KIND;
     companionKind=kind;
     refreshBuddyBodies();                               // 両ボクセル版から現在版を表示（再生成しない）
@@ -2802,6 +2798,7 @@ function unlockBuddy(key){ if(key && key!=="dog" && unlockedBuddies.indexOf(key)
 function buddyKeyForCard(target, idx){ if(target!=="dino"){ const di=linkedDinoIdx(idx); return (typeof DOGS!=="undefined"&&DOGS[di])?DOGS[di].key:null; } return (typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null; }   // 出土品発掘=犬種／恐竜発掘=恐竜
 // 現在の相棒候補（COMPANION_ORDER順）
 function buddyCandidates(){
+    if(BUDDY_LOCK && COMPANIONS[BUDDY_LOCK]) return [BUDDY_LOCK];   // 固定中は候補もその相棒だけ
     if(buddyMode!=="unlock") return curBuddyKeys().filter(k=>COMPANIONS[k]);
     return curBuddyKeys().filter(k=>COMPANIONS[k] && (k==="dog" || unlockedBuddies.indexOf(k)>=0));
 }
@@ -2824,6 +2821,14 @@ function updateBuddyStandbyUI(){
         el.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9996;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;width:min(680px,94vw);box-sizing:border-box;background:rgba(20,16,8,0.82);border:2px solid #e6c26a;border-radius:12px;padding:10px 12px;";
         document.body.appendChild(el); }
     el.innerHTML="";
+    if(BUDDY_LOCK && COMPANIONS[BUDDY_LOCK]){   // 【追加】相棒の固定中（はっくつ）：相棒えらびは出さない
+        if(companionKind!==BUDDY_LOCK) setCompanion(BUDDY_LOCK);
+        const lab=document.createElement("div"); lab.textContent="相棒："+(COMPANIONS[BUDDY_LOCK].label||BUDDY_LOCK); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
+        const start=document.createElement("button"); start.textContent="▶ スタート";
+        start.style.cssText="font:bold 14px sans-serif;padding:8px 18px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:8px;";
+        start.onclick=()=>{ taAdvance(); };
+        el.appendChild(start); el.style.display="flex"; return;
+    }
     if(dogOnly){
         if(companionKind!=="dog") setCompanion("dog");
         const lab=document.createElement("div"); lab.textContent="相棒：しば犬"+(dogLevelUp?"（レベルアップ制）":"（固定）"); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
@@ -6607,6 +6612,10 @@ function litePickAny(){   // 右手レイで①ボタン・②セルを判定（
 
 // ② モデルえらび（3列×N・列幅2倍。camera前方右側HUD）。右手レイ＋パネル操作モードで選択
 function liteSelList(){   // 現在の対象のモデル一覧 [{idx,name}]
+    if(LITE.nuri && LITE.nuri.pick && LITE.target==="dino"){   // 【追加】ぬりえの恐竜だけ（メイン画面の「ARで もういちど みる」）
+        const ks=(window.__nuriPaintedKeys ? window.__nuriPaintedKeys() : []);
+        return ks.map(k=>{ const i=DINOS.findIndex(d=>d.key===k); return { idx:i, name:(DINOS[i]&&DINOS[i].label)||k }; }).filter(it=>it.idx>=0).sort((a,b)=>a.idx-b.idx);
+    }
     if(LITE.target==="dino"){ const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
     if(LITE.target==="dog"){ const a=[]; const N=(typeof DOGS!=="undefined"?DOGS.length:8); for(let i=0;i<N;i++) a.push({idx:i, name:((typeof DOGS!=="undefined"&&DOGS[i])?DOGS[i].label:("犬"+(i+1)))}); a.push({idx:N, name:SHIBA_LABEL}); return a; }   // 犬種＋末尾しば犬
     const arts=mvArtifactRows(), sites=mvSiteRows(), a=[]; arts.forEach((r,i)=>a.push({idx:i, name:r.name||("出土品"+(i+1))}));
@@ -6687,7 +6696,7 @@ async function enterLiteAR(target, idx, quality, intrinsicScale, opts){   // opt
             : { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
     catch(e){ if(_phone) litePhoneShow(false); return false; }
     LITE.phone=_phone && !!session.domOverlayState;   // 画面パネルを重ねられない端末は従来の表示にする
-    LITE.nuri = (LITE.phone && opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan } : null;
+    LITE.nuri = (LITE.phone && opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, pick:!!opts.pick } : null;
     LITE.paperScale = (LITE.nuri && opts && opts.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;   // 用紙と同じ大きさ（「ARで もういちど みる」）。用紙モードはAR内でぬりえを読めた時
     if(LITE.nuri) LITE.nuri.small=!!(opts && opts.small);   // 【追加】ぬりえから：（AR内で読み取り→）卵→孵化→左右に歩く
     if(_phone && !LITE.phone) litePhoneShow(false);
@@ -6806,7 +6815,8 @@ function litePhoneRefresh(){
     lph$("lphDescBtn").style.display=hasDesc?"":"none";
     lph$("lphAnimBtn").style.display=LITE.isDino?"":"none";
     lph$("lphWalkBtn").style.display=LPH.walk?"":"none";   // 恐竜・犬：あるく／とまる（卵の間は出さない）
-    sel.style.display=LITE.nuri?"none":"";                  // ぬりえから：その恐竜だけ（切り替えなし）
+    sel.style.display=(LITE.nuri && !LITE.nuri.pick)?"none":"";   // ぬりえから：その恐竜だけ（切り替えなし）。メイン画面から：ぬりえの恐竜を選べる
+    { const dg=lph$("lphDigBtn"); if(dg) dg.style.display=(LITE.target==="dino"||LITE.target==="dog")?"":"none"; }   // はっくつ：出土品のときは出さない
     const d=lph$("lphDesc"); d.textContent=LITE.curDesc||""; if(!hasDesc) d.classList.remove("on");
     lphPaintBtns(); LITE._phPct=-1; litePhoneTick();
 }
@@ -6881,6 +6891,19 @@ function lphHatchTick(){
     }
 }
 // ---- 【追加】ぬりえから（Android）：AR内のカメラ映像でぬりえを読み取る（通常の読み取りと同じ判定・処理） ----
+// 【追加】ぬりえの恐竜を選び直した：その恐竜を、目の前で卵からかえす
+function lphNuriRepick(idx){
+    liteSwitchModel(idx);
+    LPH.walk=null; LPH.gpModel=null; LPH.gKey=""; LPH.popY=0; LPH.joy=null; LPH.faceTurn=null;
+    LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
+    if(LITE.model) LITE.model.visible=false;
+    lph$("litePh").classList.add("lph-ncard");
+    LPH.hatch={ phase:"wait", t0:performance.now(), egg:null };
+    const nm=(LITE.curName||"").replace(/^\S+\s*/,"");
+    lphNCard((nm||"きょうりゅう")+"の たまご", "まえを むいてね。たまごが でてくるよ");
+    try{ if(window.__nuriSetArKey && DINOS[idx]) window.__nuriSetArKey(DINOS[idx].key); }catch(_){ }
+    litePhoneRefresh();
+}
 function lphNCard(t, sub){ const a=lph$("lphNCardT"), b=lph$("lphNCardS"); if(a && a.textContent!==t) a.textContent=t; if(b && b.textContent!==(sub||"")) b.textContent=sub||""; }
 // 用紙の位置・向き（ワールド）。Hm＝用紙px→画像pxの射影変換（行優先）、W×H＝画像、P＝投影行列（列優先16）、camM＝撮影時のカメラ（ワールド）
 const _lphV4=new THREE.Vector3();
@@ -6951,7 +6974,7 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     catch(e){ console.warn("[iPhone AR] camera", e); return "camera"; }
     const v=document.getElementById("iarVideo"); v.srcObject=stream; v.style.opacity="0"; v.style.display="block"; try{ await v.play(); }catch(_){ }   // 【修正】最初は見せない（最初の数コマが横向きで、拡大されて見えるため）
     litePhoneShow(true);
-    LITE.phone=true; LITE.nuri = (opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, small:!!opts.small } : null;
+    LITE.phone=true; LITE.nuri = (opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, small:!!opts.small, pick:!!opts.pick } : null;
     LITE.paperScale = (LITE.nuri && LITE.nuri.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;
     const _drop=(opts && opts.nuri && opts.small) ? iarPaperDropLoad() : 0;   // 「ARで もういちど みる」：さっきの用紙の高さを台にする（Androidで机が床として見つかるのと同じ見え方）
     LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, hold:(_drop||IAR_CFG.holdHeight),
@@ -7375,6 +7398,10 @@ function lphWire(){
     root.addEventListener("beforexrselect", e=>{ if(LITE.active && LITE.phone) e.preventDefault(); });   // 画面タッチを XR の select にしない（ジェスチャ・ボタンはDOMで処理）
     root.querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click", e=>{ e.stopPropagation(); lphAction(b.dataset.a); }));
     lph$("lphSel").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b || !LITE.active) return; const idx=+b.dataset.idx;
+        if(LITE.nuri && LITE.nuri.pick){   // ぬりえの恐竜を選び直す → 卵からかえす
+            if(LPH.hatch && LPH.hatch.phase!=="done") return;
+            if(idx!==LITE.curIdx){ lphNuriRepick(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } }
+            return; }
         if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } });
     lph$("lphExit").addEventListener("click", ()=>{ if(LITE.iar){ iarEnd(); return; } const s=renderer.xr.getSession(); if(s) s.end().catch(()=>{}); });
     lph$("lphHelpBtn").addEventListener("click", ()=>lph$("lphHelp").classList.add("on"));
@@ -9129,7 +9156,15 @@ function ldigPaint(){
     const wx=lph$("lphDigWx"), wz=lph$("lphDigWz"); if(wx) wx.textContent=LDIG.wx; if(wz) wz.textContent=LDIG.wz;
     document.querySelectorAll("#lphDig .szrow button").forEach(b=>{ const v=LDIG[b.dataset.k]+(+b.dataset.d); b.disabled=(v<LDIG.min || v>LDIG.max); });
 }
-function ldigOpen(){ if(!LITE.active || LDIG.on) return; ldigPaint(); lph$("lphDig").classList.add("on"); }
+function ldigBuddyKey(){   // 表示中のモデル → 相棒のキー（恐竜＝DINOS／いぬ＝犬種、末尾はしば犬）
+    if(LITE.target==="dino") return (DINOS[LITE.curIdx]&&DINOS[LITE.curIdx].key)||null;
+    if(LITE.target==="dog") return (typeof DOGS!=="undefined" && LITE.curIdx<DOGS.length && DOGS[LITE.curIdx]) ? DOGS[LITE.curIdx].key : "dog";
+    return null;
+}
+function ldigOpen(){ if(!LITE.active || LDIG.on || !ldigBuddyKey()) return;   // 出土品は対象外
+    const nm=(LITE.curName||"").replace(/^\S+\s*/,""), lead=lph$("lphDigLead");
+    if(lead) lead.innerHTML=(LITE.target==="dog" ? "「"+nm+"」と いっしょに しゅつどひんを ほりだそう！" : "「"+nm+"」と いっしょに きょうりゅうを ほりだそう！")+"<br>カメラの えいぞうに はっくつの ばしょを かさねて、あるいて さがすよ。";
+    ldigPaint(); lph$("lphDig").classList.add("on"); }
 function ldigClose(){ const d=lph$("lphDig"); if(d) d.classList.remove("on"); }
 (function ldigWire(){
     const d=document.getElementById("lphDig"); if(!d) return;
@@ -9143,7 +9178,8 @@ function ldigClose(){ const d=lph$("lphDig"); if(d) d.classList.remove("on"); }
 function ldigGo(){
     if(!LITE.active || LDIG.on) return;
     LDIG.ret={ target:LITE.target, idx:LITE.curIdx, quality:LITE.quality, intrinsic:LITE.intrinsic||1,
-        opts: LITE.nuri ? { nuri:true, egg:false, small:!!LITE.nuri.small } : undefined, iar:!!LITE.iar };   // 戻る時は卵からではなく、そのまま表示
+        opts: LITE.nuri ? { nuri:true, egg:false, small:!!LITE.nuri.small, pick:!!LITE.nuri.pick } : undefined, iar:!!LITE.iar,   // 戻る時は卵からではなく、そのまま表示
+        buddy:ldigBuddyKey(), dig:(LITE.target==="dog") ? "artifact" : "dino" };   // 表示中のモデル＝相棒。いぬ＝出土品を掘る／恐竜＝恐竜を掘る
     LDIG.on=true; LDIG.leaving=true; window.__liteDigLeaving=true;   // ARモデル画面の終了後の画面（モデル表示・ぬりえ）を開かせない
     ldigClose();
     if(LITE.iar){ iarEnd(); return; }   // iPhone・iPad：その場で終わる（litephoneend）
@@ -9161,11 +9197,15 @@ function ldigSnapshot(){
         disp:[...document.querySelectorAll("#menu .opt, #worldSizeOpt, #siteSizeOpt")].map(e=>[e, e.style.display]) };
 }
 function ldigApply(){
+    const r=LDIG.ret||{}, dig=(r.dig==="artifact") ? "artifact" : "dino";
+    BUDDY_LOCK = (r.buddy && COMPANIONS[r.buddy]) ? r.buddy : null;   // 表示していたモデルを最後まで相棒に（相棒えらびは出さない）
     recoOn=true; segSelect("segReco","on");
     chosenMode=LDIG.mode; segSelect("segMode", LDIG.mode);
-    segSelect("segDig","dino");
+    segSelect("segDig", dig);
     setWorldX(LDIG.wx, true); setWorldZ(LDIG.wz, true);
-    onDigTargetChosen("dino");   // 恐竜＋おすすめのプリセット（チャレンジはチャレンジ用）。サイトモデルは非表示＝ワールドの広さで遊ぶ
+    onDigTargetChosen(dig);   // おすすめのプリセット（チャレンジはチャレンジ用）
+    if(siteVisible){ setSiteVisible(false); syncSiteSeg(); updateWorldSizeUI(); }   // 出土品も、サイトモデルは出さずワールドの広さで遊ぶ
+    if(BUDDY_LOCK) setCompanion(BUDDY_LOCK);
     updateEntryButtons();
     if(loadDiffs().length) loadApplyAll();   // 広さ・恐竜の大きさが変わればモデルを作り直す
 }
@@ -9181,6 +9221,7 @@ function ldigSetVars(v){
     if(companionKind!==v.companionKind && typeof setCompanion==="function"){ try{ setCompanion(v.companionKind); }catch(_){ } }
 }
 function ldigRestore(){
+    BUDDY_LOCK=null;   // 相棒の固定をやめる
     const S=LDIG.snap; if(!S) return; LDIG.snap=null;
     try{
         ldigSetVars(S.v);
@@ -10152,25 +10193,26 @@ function nuriMenuRefresh(){
     nuriAgainRefresh(painted, nm);
 }
 // 【追加】メイン画面の「ARで もういちど みる」：ARが使える端末（Android の AR／iPhone・iPad のカメラ方式）だけ表示
-const NURI_AGAIN={ sel:null };
+// ・恐竜は AR画面の下で選ぶ（ぬりえがある恐竜だけ）。最初は、いちばん最近 読み込んだ ぬりえの恐竜
+function nuriPaintedKeys(){ return Object.keys(NURI.paint).filter(k=>NURI.paint[k] && dinoIdx(k)>=0); }
+function nuriPaintDate(k){ try{ const t=localStorage.getItem(storeKey(k))||""; const m=/"date":(\d+)/.exec(t.slice(0,400)); return m?+m[1]:0; }catch(_){ return 0; } }
+function nuriLatestKey(){ let best=null, bd=-1; for(const k of nuriPaintedKeys()){ const d=nuriPaintDate(k); if(d>bd){ bd=d; best=k; } } return best; }
+window.__nuriPaintedKeys=nuriPaintedKeys;
+window.__nuriSetArKey=(k)=>{ if(k) NURI_AR.key=k; };
 function nuriAgainRefresh(painted, nm){
-    const box=$("nuriAgainBox"), sel=$("nuriAgainSel"), btn=$("nuriAgainAR"), note=$("nuriAgainNote"); if(!box||!sel||!btn) return;
+    const box=$("nuriAgainBox"), btn=$("nuriAgainAR"), note=$("nuriAgainNote"); if(!box||!btn) return;
     const can=!!NURI_AR.cap || (typeof iarWanted==="function" && iarWanted());
     box.style.display = can ? "" : "none"; if(!can) return;
-    const keys=painted.filter(k=>dinoIdx(k)>=0);
-    if(keys.indexOf(NURI_AGAIN.sel)<0) NURI_AGAIN.sel=keys[0]||null;
-    sel.innerHTML="";
-    for(const k of keys){ const b=document.createElement("button"); b.type="button"; b.textContent=nm(k); b.classList.toggle("on", k===NURI_AGAIN.sel);
-        b.addEventListener("click",()=>{ NURI_AGAIN.sel=k; sel.querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b)); }); sel.appendChild(b); }
-    btn.disabled=!keys.length;
-    if(note) note.textContent = keys.length ? "" : "ぬりえを よみこむと えらべるよ";
+    const n=nuriPaintedKeys().length;
+    btn.disabled=!n;
+    if(note) note.textContent = n ? "" : "ぬりえを よみこむと みられるよ";
 }
 async function nuriAgainAR(){
-    const key=NURI_AGAIN.sel, i=dinoIdx(key); if(!key || i<0) return;
+    const key=nuriLatestKey(), i=dinoIdx(key); if(!key || i<0) return;
     if(typeof LITE!=="undefined" && LITE.active) return;
     const btn=$("nuriAgainAR"); if(btn) btn.disabled=true;
     NURI_AR.key=key; NURI_AR.fromMenu=true;
-    const opts={ nuri:true, egg:true, small:true };   // できた！画面の「ARで もういちど みる」と同じ（卵から・用紙と同じ大きさ）
+    const opts={ nuri:true, egg:true, small:true, pick:true };   // できた！画面の「ARで もういちど みる」と同じ（卵から・用紙と同じ大きさ）＋AR画面で恐竜を選べる
     const _iar=(!NURI_AR.cap && typeof iarWanted==="function" && iarWanted());
     let ok=false;
     try{ ok = _iar ? (await enterLiteIAR("dino", i, "small", 1, opts))===true : await enterLiteAR("dino", i, "small", 1, opts); }catch(e){ console.warn("[ぬりえ] ARで もういちど みる", e); ok=false; }
