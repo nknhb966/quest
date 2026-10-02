@@ -1220,6 +1220,8 @@ const TABAR = { on:false, backend:null, phase:"idle", heldKey:"adult" };
 let _loaded=null;        // 最後に読み込み（モデル生成）に使った設定 {sm:サイト倍率, wx/wz:広さ, rs:実寸になる短辺, cap:実寸まで, ds:恐竜の原寸比}
 let _userEditT=-1e9;     // メニューの設定をユーザーが操作した時刻（起動時の自動設定は従来どおりすぐ読み込む）   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
 const TABAR_CFG = {
+    buddyHold:     0.45,// 相棒の待機：行き先がこれ(m)以上ずれるまでは動かない（タブレットを少し動かしても止まったまま）
+    buddyArrive:   0.15,// 追いかけ中の相棒が行き先にこれ(m)以内まで近づいたら、また待機にもどる
     digNear:       1.2, // 掘れる距離：タブレット位置→ブロック外周の水平距離(m)。発掘ポイントに着いてから掘る
     dogFwd:        1.5, // 相棒の前方距離(m)。縦持ちタブレットの画面下端に見える距離
     edgeWarn:      1.0, // 活動範囲の境界の手前この距離(m)で注意表示
@@ -1315,6 +1317,11 @@ function regenerateCustomSpots(){
 }
 // リセット時：ワールド矩形＋発掘ポイントを3秒間オーラ表示（VR/AR/スマホ/PC共通）
 let worldAura=null, worldAuraT=0;
+// 自動で数秒出す発掘ポイントのヒント（カウントダウン開始・リセット時）は、フィールドの長辺が7m以下なら出さない
+// （長辺＝サイト表示中はサイトモデルの幅・奥行き、非表示ならワールドの広さの長いほう。手動のヒント＝Quest の X 長押しは対象外）
+const AUTO_HINT_MIN_LONG = 7.0;
+function fieldLongSide(){ return customWorldOn() ? Math.max(WORLD_X, WORLD_Z) : Math.max(SITE_X, SITE_Z); }
+function autoHintAllowed(){ return fieldLongSide() > AUTO_HINT_MIN_LONG; }
 function showWorldAura(rectOnly){
     if(worldAura){ stage.remove(worldAura); worldAura=null; }
     const g=new THREE.Group();
@@ -3574,7 +3581,7 @@ function makeDigDino(dn){
     const prevVox=VOX_CUR, prevVary=VOX_VARY;
     if(dinoSmooth){ VOX_CUR=VOX/6; VOX_VARY=true; }                       // ③なめらか：解像度6倍＋肌に微陰影
     const inner=dn.build(); VOX_CUR=prevVox; VOX_VARY=prevVary;
-    try{ if(window.__dinoPaintApply) window.__dinoPaintApply(dn.key, inner); }catch(_){ }   // 【追加】ぬりえの模様（あれば）を反映。形は変えない
+    // ぬりえの模様は、ここ（発掘モデル・ホログラム共通の生成）では貼らない。相棒・リザルトの相棒・craftARt・ぬりえ画面で個別に貼る
     makeFit(inner, dinoTargetHeight(dn.key)); inner.updateMatrixWorld(true);   // 恐竜サイズ（実寸モードは実物大×倍率）
     const bb=new THREE.Box3().setFromObject(inner);
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
@@ -4609,7 +4616,7 @@ renderer.xr.addEventListener("sessionstart", ()=>{ unlockAudio();
     if(!GAME.active) startGame(false);
 });
 renderer.xr.addEventListener("sessionend", ()=>{
-    if(TABAR.on){ tabarCleanup(); return; }   // タブレットAR終了（Quest用の退室処理は行わない）
+    if(TABAR.on){ tabarFinishXREnd(); return; }   // タブレットAR終了（Quest用の退室処理は行わない）。少し待ってから片付ける
     GAME.moveLock=false;   // 退室でフィールド固定を解除
     GAME._heightReady=false;   // 高さ確定フラグをリセット
     if(inAR){ scene.background=_savedBg; scene.fog=_savedFog; renderer.setClearColor(0x000000,1); }
@@ -4896,6 +4903,7 @@ const resultBuddy=(function(){
             if(!m){ const dn=(typeof DINOS!=="undefined")?DINOS[i]:null; if(dn){ const ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
                 try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; m=makeDigDino(dn); }catch(e){ m=null; }
                 finally{ if(typeof dinoSmooth!=="undefined") dinoSmooth=ps; } } }
+            if(m && typeof DINOS!=="undefined" && DINOS[i]){ try{ if(window.__dinoPaintApply) window.__dinoPaintApply(DINOS[i].key, m.userData.model||m); }catch(_){ } }   // 相棒扱い：ぬりえを適用（複製だけに貼る）
         }
         if(!m) return null;
         m.visible=true;   // キャッシュ元は非表示のことがあるので必ず表示に
@@ -5055,7 +5063,7 @@ function taBeginCountdown(){
     regenerateCustomSpots();
     if(!customWorldOn() && digPosRandom && curTarget==="dino"){ regenerateSiteRandomSpots(); } else { GAME.siteSpots=null; }   // サイト表示×恐竜系ランダムは毎回新配置
     if(GAME.challenge && GAME.ch && GAME.ch.turn===1) showWorldAura(true);   // 1ターン目はヒント演出なし（矩形オーラのみ）
-    else showWorldAura();             // 矩形内にランダム再配置＋オーラ（＋発掘ポイントのヒント）
+    else showWorldAura(!autoHintAllowed());   // 矩形内にランダム再配置＋オーラ（＋発掘ポイントのヒント。長辺7m以下はヒントなし）
     TA.state="countdown"; TA.cdEnd=performance.now()+COUNTDOWN_MS; TA._lastN=null; if(typeof vibrate==="function") vibrate(220,0.9);   // カウントダウン開始（3）でバイブ（2/1はなし。1秒ごとの音は別途）
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     worldHud.drawCountdown("3","まもなくスタート");
@@ -6203,7 +6211,8 @@ function _liteDinoBuild(idx){
     if(typeof makeDigDino!=="function" || typeof DINOS==="undefined" || !DINOS[idx]) return null;
     const pv=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
     try{ dinoSmooth=true; _liteDino[idx]=makeDigDino(DINOS[idx]); }finally{ try{ dinoSmooth=pv; }catch(_){ } }
-    if(_liteDino[idx]) _liteDino[idx].visible=false;
+    if(_liteDino[idx]){ _liteDino[idx].visible=false;
+        try{ if(window.__dinoPaintApply) window.__dinoPaintApply(DINOS[idx].key, _liteDino[idx].userData.model||_liteDino[idx]); }catch(_){ } }   // craftARt Lite：ぬりえを適用
     return _liteDino[idx];
 }
 function _liteDogBuild(idx){
@@ -7567,6 +7576,7 @@ function litePhoneExit(){
 renderer.setAnimationLoop((_t, _xrFrame)=>{
     if(LITE.active){ liteArTick(); if(LITE.phone) litePhonePreRender(); renderer.render(scene,camera); if(LITE.phone) litePhoneAfterRender(_xrFrame); return; }   // 【追加】スマホ：写真・動画の撮影   // Lite AR：ゲームを止めてモデルビューアのみ描画
     if(window.__mvPreviewPause) return;   // 「発掘モデル表示」プレビュー中はゲーム描画を止め、メモリを空ける（追加機能）
+    if(TABAR.ending) return;              // タブレットAR（WebXR）の終了処理中は描画しない（終了直後にタブが落ちる対策）
     const now=performance.now();
     const dt=Math.min(0.05,(now-lastTime)/1000); lastTime=now;
     const isVR=questXR();
@@ -7924,7 +7934,7 @@ function restartCollection(){
     GAME.collectedCount=0; GAME.score=0;
     regenerateCustomSpots();                                   // 矩形内にランダム再配置
     afterSite(()=>{ clearTargets(); spawnAllTargets(); });
-    showWorldAura();
+    showWorldAura(!autoHintAllowed());   // 長辺7m以下はヒントなし
     updateGoal(); showToast("図鑑をリセット。もう一度発掘スタート！");
 }
 // Ｙボタン長押し / リセットボタン：図鑑リセット＋ワールド再センター。TAはスタンバイへ
@@ -7950,7 +7960,7 @@ function resetDexAndStandby(rotate){
     else { GAME.standby=true; if(GAME.desktop && !IS_TOUCH){ worldHud.drawCountdown("⭐","スタート/スペースで開始", true); } showToast("リセット。スタート待ち"); }
     if(GAME.challenge){ const ut=(GAME.ch && GAME.ch.userTime>=60)?GAME.ch.userTime:90; GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:ut}; if(typeof chApplyTurn==="function") chApplyTurn(1); }   // チャレンジは1ターン目からやり直し（userTimeは保持）
     updateBuddyStandbyUI();
-    if(!GAME.challenge) showWorldAura();                       // 矩形＋発掘ポイントを3秒オーラ表示（チャレンジはヒント演出なし）
+    if(!GAME.challenge) showWorldAura(!autoHintAllowed());     // 矩形＋発掘ポイントを3秒オーラ表示（チャレンジはヒント演出なし・長辺7m以下はヒントなし）
     updateGoal(); updateTAButton();
 }
 const _vdRhand=new THREE.Vector3(),_vdDogW=new THREE.Vector3();
@@ -8019,6 +8029,25 @@ function handleVRDig(){
     }
 }
 
+/* タブレットAR：相棒の行き先のゆれ止め
+ * ・行き先＝「タブレットの水平前方」（床に向けて傾けても振れない tabarForwardH）の少し先。
+ * ・少し動かしただけでは行き先を変えない。buddyHold 以上ずれたら追いかけ、着いたらまた待つ。
+ * ・発見ブロック横・急行先の「横」の向きは、その場所に向かい始めた時の向きで固定する。 */
+const _tbBuddy={ goal:new THREE.Vector3(), has:false, follow:false, sideKey:"", side:new THREE.Vector3(1,0,0) };
+const _tbF=new THREE.Vector3();
+function tabarBuddyReset(){ _tbBuddy.has=false; _tbBuddy.follow=false; _tbBuddy.sideKey=""; }
+function tabarBuddyHold(desired, dogPos){
+    const H=_tbBuddy;
+    if(!H.has){ H.goal.copy(desired); H.has=true; H.follow=false; return H.goal; }
+    if(!H.follow && Math.hypot(desired.x-H.goal.x, desired.z-H.goal.z)>TABAR_CFG.buddyHold) H.follow=true;
+    if(H.follow){ H.goal.copy(desired); if(Math.hypot(desired.x-dogPos.x, desired.z-dogPos.z)<TABAR_CFG.buddyArrive) H.follow=false; }
+    return H.goal;
+}
+function tabarBuddySide(key, out){
+    const H=_tbBuddy;
+    if(H.sideKey!==key){ H.sideKey=key; tabarForwardH(_tbF); H.side.set(-_tbF.z, 0, _tbF.x); }   // 水平前方を右へ90°
+    return out.copy(H.side);
+}
 /* 犬：常に視界の前方（画面内）に付く。聞かれたらヒント地点へ行って少し待つ。 */
 let _playerPrev = new THREE.Vector3();
 let _dogWalkPhase = 0;
@@ -8059,6 +8088,7 @@ function updateDog(dt, now){
     if(dog.userData.rushTo){
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        if(TABAR.on){ tabarBuddySide("r"+dog.userData.rushTo.x.toFixed(2)+","+dog.userData.rushTo.z.toFixed(2), side); _tbBuddy.has=false; }   // タブレットAR：横の向きを固定
         goal=_udGoal.set(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 0.65);   // 発掘場所の横に近づく
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.3){ dog.userData.rushTo=null; }   // 横に到着したら解除→その場で発掘セリフを言って留まる
@@ -8074,9 +8104,11 @@ function updateDog(dt, now){
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        if(TABAR.on){ tabarBuddySide("f"+focus.pos.x.toFixed(2)+","+focus.pos.z.toFixed(2), side); _tbBuddy.has=false; }   // タブレットAR：横の向きを固定
         goal=_udGoal.set(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 0.65);   // ブロック横に近づく
     } else if(dog.userData.hintActive && dog.userData.hintPos){
         dog.userData.atBlock=false;
+        if(TABAR.on) _tbBuddy.has=false;   // ヒント地点から戻る時は、その時の前方へ
         goal=_udGoal.copy(dog.userData.hintPos); goal.y=0;
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.8){   // ヒント地点に到着 → 少し待つ
@@ -8091,12 +8123,14 @@ function updateDog(dt, now){
         const q=camQuat();
         const fwd =_udF.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
+        if(TABAR.on){ tabarForwardH(fwd); side.set(-fwd.z, 0, fwd.x); }   // タブレットAR：床に向けて傾けても振れない水平前方
         { const _b=(typeof activeBody==="function")?activeBody():null;
           const r=(_b&&_b.userData&&_b.userData.sizeRatio!=null)?_b.userData.sizeRatio:1;
           // サイズ段階（停止中：SIZE_DIST_ON=trueで有効）：0.9倍以下は10cm近づく／1.1倍以上は10cm離れる
           const off = SIZE_DIST_ON ? ((r>=1.1)?0.10:(r<=0.9?-0.10:0)) : 0;
           const _fwdDist=(DOG_FWD+off)*distF;   // 目線が低いほど近づく（1.5m以上=現状／1.0m以下=半分）
           goal=_udGoal.copy(playerPos).addScaledVector(fwd,_fwdDist).addScaledVector(side,DOG_SIDE); goal.y=0; }
+        if(TABAR.on) goal=tabarBuddyHold(goal, dog.position);   // タブレットAR：少しのずれでは動かない
     }
     }   // end if(!rushing)
 
@@ -8129,7 +8163,14 @@ function updateDog(dt, now){
         dog.position.x=nx; dog.position.z=nz;
     }
     const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
-    const moving = moved > 0.004;
+    let moving = moved > 0.004, walkAmt = moving?1:0;
+    if(TABAR.on){   // タブレットAR：速さで判定（歩き出し0.18m/s・止まる0.06m/s）し、歩く動きは0.2秒ほどかけて出し入れ
+        const ud=dog.userData, spd=moved/Math.max(dt,1e-3);
+        if(ud._tbMov){ if(spd<0.06) ud._tbMov=false; } else if(spd>0.18) ud._tbMov=true;
+        moving=!!ud._tbMov;
+        ud._tbWalk=(ud._tbWalk||0) + ((moving?1:0)-(ud._tbWalk||0))*Math.min(1, dt*5);
+        walkAmt=ud._tbWalk;
+    }
 
     // 向き：進行方向 or プレイヤー（最短角でなめらかに追従＝切替時の小刻み揺れを防ぐ）
     const faceDir = moving ? to : _udFace.subVectors(playerPos,dog.position);
@@ -8162,18 +8203,18 @@ function updateDog(dt, now){
     }
 
     // 歩行アニメ（脚の振り＋上下バウンド）
-    _dogWalkPhase += (moving?6.5:0)*dt;   // 歩調をゆっくり（重量感）。移動速度自体は不変
+    _dogWalkPhase += 6.5*walkAmt*dt;   // 歩調をゆっくり（重量感）。移動速度自体は不変
     const body=activeBody();
-    if(body.userData.legs && !body.userData.wings){ body.userData.legs.forEach(p=>{ const sw=Math.sin(_dogWalkPhase + p.userData.phase)*(moving?0.5:0.0); p.rotation.x += (sw - p.rotation.x)*0.2; }); }   // プテラノドンは脚を動かさない
+    if(body.userData.legs && !body.userData.wings){ body.userData.legs.forEach(p=>{ const sw=Math.sin(_dogWalkPhase + p.userData.phase)*(0.5*walkAmt); p.rotation.x += (sw - p.rotation.x)*0.2; }); }   // プテラノドンは脚を動かさない
     // 羽を持つ相棒（将来のマスコット等）は羽ばたく
     if(body.userData.wings){
-        const amp = moving ? 0.85 : 0.35;
+        const amp = 0.35 + 0.5*walkAmt;
         const flapPhase = moving ? _dogWalkPhase : performance.now()*0.0065;   // 首振り(と脚)と同じ周期＝同調（現状より遅く≒1/2）
         const f = Math.sin(flapPhase);
         body.userData.wings.forEach(w=>{ w.rotation.z = w.userData.sign * (0.25 + f*amp*0.5); w.rotation.y = w.userData.sign * f*0.15; });
         if(body.userData.petals) body.userData.petals.rotation.y += (moving?0.012:0.004);
     }
-    const bob = moving ? Math.abs(Math.sin(_dogWalkPhase))*0.06 : 0;
+    const bob = Math.abs(Math.sin(_dogWalkPhase))*0.06*walkAmt;
     if(body.userData.tail){
         if(dogTailWagT>0){ dogTailWagT-=dt; body.userData.tail.rotation.y = Math.sin(now*0.03)*0.9; }   // 大きくブンブン
         else { const wag = moving ? Math.sin(_dogWalkPhase*1.3)*0.6 : Math.sin(now*0.009)*0.35;
@@ -8737,6 +8778,7 @@ function tabarEnterCommon(backend){
     TABAR.warnKey=""; TABAR.lvl=-1; TABAR.radarOn=false; TABAR.digShown=false; TABAR.tracking=true; TABAR.pointers.clear();
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
     tabarLock.reset();   // 床ロックの状態を消す
+    tabarBuddyReset();   // 相棒の待機位置を消す
 }
 function tabarReticle(){
     if(TABAR.reticle) return TABAR.reticle;
@@ -8844,9 +8886,21 @@ function tabarCancelRescan(){   // 床さがしで「もどる」：置き直さ
 function tabarExit(){
     tabarAskDone(false);
     if(TABAR.backend==="webxr" && TABAR.session && renderer.xr.isPresenting){
-        try{ TABAR.session.end(); return; }catch(_){}   // sessionend → tabarCleanup
+        // AR終了の手順（Android で終了直後にタブが落ちる対策）：
+        //  ①描画を止める ②セッションが生きているうちにアンカー・ヒットテストを片付ける
+        //  ③ボタンのタップ処理から抜けてから end() ④終了後、少し待ってから画面を戻す（sessionend 側）
+        TABAR.ending=true;
+        tabarLock.cleanup(); TABAR.hitSource=null;
+        const ses=TABAR.session;
+        setTimeout(()=>{ try{ const p=ses.end(); if(p && p.catch) p.catch(()=>{}); }catch(_){ tabarFinishXREnd(); } }, 60);
+        return;
     }
     tabarCleanup();
+}
+// WebXR のセッションが終わった後：ARCore の後片付けが落ち着くまで待ってから、メニューへ戻す（その間は描画しない）
+function tabarFinishXREnd(){
+    TABAR.ending=true;
+    setTimeout(()=>{ try{ tabarCleanup(); } finally { TABAR.ending=false; } }, 450);
 }
 function tabarCleanup(){
     if(!TABAR.on) return;
@@ -8864,7 +8918,8 @@ function tabarCleanup(){
     player.position.set(0,0,0); player.rotation.set(0,0,0);
     camera.position.copy(sv.camPos||new THREE.Vector3(0,1.6,0)); camera.quaternion.identity();
     camera.fov=sv.fov||60; camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
-    if(sv.dpr) renderer.setPixelRatio(sv.dpr); renderer.setSize(innerWidth, innerHeight);
+    if(TABAR.backend==="camera"){ if(sv.dpr) renderer.setPixelRatio(sv.dpr); renderer.setSize(innerWidth, innerHeight); }   // WebXR は three.js が終了時に元の大きさへ戻す（二重に作り直さない）
+    else if(renderer.domElement.clientWidth!==innerWidth || renderer.domElement.clientHeight!==innerHeight) renderer.setSize(innerWidth, innerHeight);
     try{ renderer.xr.setReferenceSpaceType("local-floor"); }catch(_){}
     controllers.forEach(c=>{ c.visible=true; if(c.userData.grip) c.userData.grip.visible=true; if(c.userData.line) c.userData.line.visible=true; });
     hands.forEach(h=>{ h.visible=true; });
@@ -8876,7 +8931,7 @@ function tabarCleanup(){
     updateSiteVis(); updatePanelScale(); applyWorldParams();   // 相棒距離などを通常値へ
     menu.style.display="flex"; refreshDexHTML();
     if(TABAR.keepPrep){ TABAR.keepPrep=false; TABAR.phase="prep"; tabarUI.prep.classList.add("open"); return; }   // 開始に失敗：準備画面に戻って別方式を試す
-    TABAR.phase="idle"; TABAR.starting=false;
+    TABAR.phase="idle"; TABAR.starting=false; TABAR.ending=false;
 }
 
 /* ---------- 活動範囲（安全）：境界の表示・接近/はみ出し/走りすぎの警告 ---------- */
@@ -9159,6 +9214,9 @@ addEventListener("resize",()=>{
                 try{ dinoSmooth = true; m = makeDigDino(DINOS[idx]); }
                 finally{ try{ dinoSmooth = prev; }catch(_){ } }
             }
+            if(m && DINOS[idx] && window.__dinoHasPaint && window.__dinoHasPaint(DINOS[idx].key)){   // craftARt Go：ぬりえを適用（ゲームのモデルは元の模様のまま）
+                try{ const pm=(cache && cache[idx]===m && typeof cloneCont==="function") ? cloneCont(m) : m;
+                    window.__dinoPaintApply(DINOS[idx].key, pm.userData.model||pm); m=pm; }catch(e){ console.warn("[ぬりえ] モデルを みる", e); } }
             if(m){ const pv=m.userData.model||m;   // 標準姿勢へ（アニメの脚/尾/翼/首を中立に戻す）
                 if(pv&&pv.userData){ if(pv.userData.head)pv.userData.head.rotation.set(0,0,0); if(pv.userData.tail)pv.userData.tail.rotation.set(0,0,0); (pv.userData.wings||[]).forEach(w=>w&&w.rotation.set(0,0,0)); (pv.userData.legs||[]).forEach(p=>p&&p.rotation.set(0,0,0)); }
                 m.updateMatrixWorld(true); }
@@ -9847,6 +9905,7 @@ function nuriApply(key, root){
     return r;
 }
 function nuriSetPaint(key, p){      // 模様を差し替える：古い共有物は、全部の持ち主を元に戻してから捨てる
+    try{ if(window.__resultBuddy && window.__resultBuddy.invalidate) window.__resultBuddy.invalidate(); }catch(_){ }   // リザルトの相棒（複製）は次に表示する時に貼り直す
     const old=NURI.store[key];
     if(old){ for(const r of nuriHolders(key)){ try{ nuriApplyStore(r,null); }catch(_){ } } delete NURI.store[key]; }
     if(p) NURI.paint[key]=p; else delete NURI.paint[key];
@@ -9855,13 +9914,13 @@ function nuriSetPaint(key, p){      // 模様を差し替える：古い共有�
 }
 function nuriHolders(key){
     const i=dinoIdx(key), roots=[];
-    try{ if(i>=0 && typeof _dinoCacheS!=="undefined" && _dinoCacheS[i] && _dinoCacheS[i].userData.model) roots.push(_dinoCacheS[i].userData.model); }catch(_){}
     try{ if(i>=0 && typeof _liteDino!=="undefined" && _liteDino[i] && _liteDino[i].userData.model) roots.push(_liteDino[i].userData.model); }catch(_){}
     try{ const c=(typeof COMPANIONS!=="undefined")? COMPANIONS[key] : null; if(c){ if(c.bodyS) roots.push(c.bodyS); if(c.bodyB) roots.push(c.bodyB); } }catch(_){}
     return roots;
 }
 function nuriRefreshHolders(key){ for(const r of nuriHolders(key)){ try{ nuriApply(key, r); }catch(e){ console.warn("[ぬりえ]",e); } } }
 // 既存の恐竜生成関数から呼ばれるフック（makeDigDino / ensureBody / preloadCompanionBody）
+window.__dinoHasPaint = function(key){ return !!(NURI.paint[key] && NURI.maps[key]); };
 window.__dinoPaintApply = function(key, root){ if(!root || !NURI.paint[key] || !NURI.maps[key]) return; try{ nuriApply(key, root); }catch(e){ console.warn("[ぬりえ]",e); } };
 
 // ---- 画面：メニュー ----
@@ -9996,6 +10055,7 @@ function nuriPreviewStart(key, opt){
     const scene=new THREE.Scene(); scene.add(new THREE.HemisphereLight(0xcfe0ff,0x3a3450,1.55)); const dl=new THREE.DirectionalLight(0xfff2d8,1.75); dl.position.set(-2,3,2.5); scene.add(dl);
     const dl2=new THREE.DirectionalLight(0xdfe6ff,0.7); dl2.position.set(2,2.5,-3); scene.add(dl2); scene.add(new THREE.AmbientLight(0x555577,0.85));
     let model=null; const ps=dinoSmooth; try{ dinoSmooth=true; model=makeDigDino(DINOS[i]); }finally{ dinoSmooth=ps; }
+    try{ window.__dinoPaintApply(key, model.userData.model||model); }catch(_){ }   // ぬりえ画面：模様を貼る
     model.visible=true; scene.add(model);
     const bb=new THREE.Box3().setFromObject(model), ctr=bb.getCenter(new THREE.Vector3()), size=bb.getSize(new THREE.Vector3()).length();
     const cam=new THREE.PerspectiveCamera(30,1,size/50,size*20);
@@ -10290,7 +10350,7 @@ import("three/addons/exporters/GLTFExporter.js").catch(()=>{}).finally(()=>{ MV_
 })();
 window.NURI_DEBUG={ state:NURI, info:()=>NURI.lastInfo, view:(y,p)=>nuriPreviewView(y,p),   // 確認用（大人向け・コンソールから）
     painted:()=>Object.keys(NURI.paint), mvReady:()=>Object.assign({},MV_READY),
-    exportTest:async(key)=>{ const i=dinoIdx(key); const ps=dinoSmooth; let m; try{ dinoSmooth=true; m=makeDigDino(DINOS[i]); }finally{ dinoSmooth=ps; }   // モデル表示と同じ GLTFExporter で書き出せるか
+    exportTest:async(key)=>{ const i=dinoIdx(key); const ps=dinoSmooth; let m; try{ dinoSmooth=true; m=makeDigDino(DINOS[i]); window.__dinoPaintApply(key, m.userData.model||m); }finally{ dinoSmooth=ps; }   // モデル表示と同じ GLTFExporter で書き出せるか
         const {GLTFExporter}=await import("three/addons/exporters/GLTFExporter.js"); let colorAttr=false, maps=0; m.traverse(o=>{ if(o.isMesh){ if(o.geometry.getAttribute("color")) colorAttr=true; if(o.material.map) maps++; } });
         const _ud=[]; m.traverse(o=>{ _ud.push([o,o.userData]); o.userData={}; });           // モデル表示（objToBlobUrl）と同じく userData を外して書き出す
         let glb; try{ glb=await new Promise((res,rej)=>new GLTFExporter().parse(m,res,rej,{binary:true,onlyVisible:false})); } finally { for(const [o,u] of _ud) o.userData=u; }
