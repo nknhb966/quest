@@ -67,6 +67,9 @@
         letter-spacing:1px; cursor:pointer; transition:.15s;
     }
     .desktop-btn:hover{ background:rgba(40,26,80,.8); color:#fff; }
+    /* 【追加】開発中の機能（タブレットAR）：点線の枠・うすい色＋「開発中」の札 */
+    #startTabletAR{ border-style:dashed; border-color:rgba(255,200,90,.55); color:#bba98a; background:rgba(40,30,14,.45); }
+    #startTabletAR .devBadge{ display:inline-block; margin-left:8px; padding:2px 8px; border-radius:99px; background:#f7c948; color:#3a2600; font-size:12px; font-weight:800; letter-spacing:0; vertical-align:1px; }
 
     .cardgrid{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
     .opt{ background:rgba(12,9,32,.62); border:1px solid rgba(180,140,255,.24); border-radius:12px; padding:12px 14px; }
@@ -247,18 +250,21 @@
 </style>
 <style>
 /* 【追加】ぬりえスキャン（②）— 既存のスタイルには触れない */
-#nuriSection{ margin-top:14px; padding-top:12px; border-top:1px dashed rgba(143,240,255,.35); display:flex; flex-direction:column; gap:8px; }
-#nuriSection .nuriTitle{ font-weight:800; color:#ffe6a8; }
-#nuriScanBtn{ padding:12px 14px; border-radius:12px; border:1px solid #ffb84d; background:linear-gradient(#5a3a12,#3a240a); color:#fff3d6; font-weight:800; font-size:16px; cursor:pointer; }
+/* 【変更】「モデルを みよう」の区切りと同じ見た目（区切り線・見出し・ボタンの幅と色） */
+#nuriSection{ width:100%; margin-top:16px; padding-top:14px; border-top:1px solid rgba(180,140,255,.28); display:flex; flex-direction:column; gap:8px; }
+#nuriSection .nuriTitle{ font:800 13px sans-serif; color:#c3b3f2; letter-spacing:1.5px; margin:0 0 1px; opacity:.95; }
+#nuriScanBtn{ display:block; width:100%; padding:15px 0; border:none; border-radius:12px; cursor:pointer; font-size:16px; font-weight:800; letter-spacing:1px; color:#fff;
+    background:linear-gradient(135deg,#7c3aed,#1d4ed8); box-shadow:0 0 26px rgba(120,80,255,.5), inset 0 1px 0 rgba(255,255,255,.15); }
+#nuriScanBtn:active{ transform:scale(.99); }
 #nuriSection .nuriRow{ display:flex; gap:8px; flex-wrap:wrap; }
-#nuriPrint summary{ cursor:pointer; padding:9px 10px; border-radius:10px; border:1px solid #6a5c94; background:#241a34; color:#d9cbf5; font-weight:700; font-size:14px; }
+#nuriPrint summary{ cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; }
 #nuriPrintList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
-#nuriPrintList a,#nuriResetList button{ text-align:center; padding:8px 8px; border-radius:10px; border:1px solid #6a5c94; background:#1b1428; color:#e8dcff; font-weight:700; text-decoration:none; font-size:13px; cursor:pointer; }
+#nuriPrintList a,#nuriResetList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; text-decoration:none; font-size:14px; cursor:pointer; }
 #nuriResetList{ display:flex; flex-direction:column; gap:6px; }
-#nuriResetAll{ padding:9px 10px; border-radius:10px; border:1px solid #b06a6a; background:#3a1c22; color:#ffd9d9; font-weight:700; font-size:14px; cursor:pointer; }
+#nuriResetAll{ width:100%; padding:12px 0; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; cursor:pointer; }
 /* 「モデル表示」準備ゲート：プリロード・模様の復元・model-viewer・書き出し処理がそろうまで押せない（既存の preloading と同じ見た目） */
 body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointer-events:none; }
-#nuriStatus{ font-size:13px; color:#bfe9ff; min-height:1em; }
+#nuriStatus{ font-size:13px; color:#c3b3f2; min-height:1em; text-align:center; }
 #nuriScan{ position:fixed; inset:0; z-index:100010; display:none; background:#000; color:#fff; font-family:inherit; }
 #nuriScan.open{ display:block; }
 #nuriVideo{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#000; }
@@ -304,7 +310,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <p id="loadingNote"><i></i>データを読み込み中…</p>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
-    <button class="desktop-btn" id="startTabletAR" style="display:none">📷 タブレットARであそぶ（カメラ）</button>
+    <button class="desktop-btn" id="startTabletAR" style="display:none">📷 タブレットARであそぶ（カメラ）<span class="devBadge">🚧 開発中</span></button>
     <div id="loadBar" style="display:none">
       <div class="lbText"><b>未反映の変更があります</b><span id="loadBarItems"></span></div>
       <button type="button" id="loadBarBtn" class="applyBtn">🔄 まとめて更新</button>
@@ -494,16 +500,16 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 
     <!-- ここから独立パート：発掘モデルを見る（区切り線＋見出しで上の各種ボタンと分離） -->
     <div id="mvSection">
-      <div class="mvSectionTitle">🔍 モデルを見る</div>
-      <button id="mvOpenBtn">🔍 モデル表示</button>
-      <button id="mvArOpenBtn">📱 モデル表示（AR）</button>
+      <div class="mvSectionTitle">🔍 モデルを みよう</div>
+      <button id="mvOpenBtn">🔍 モデルを みる</button>
+      <button id="mvArOpenBtn">📱 ARで みる</button>
       <!-- モデル選択（＝発掘する対象/モードに相当）。他と同じ .opt 枠＋ .seg -->
       <div class="opt wide" id="optMvKind" style="margin-top:12px;">
-        <div class="lbl">モデル選択</div>
+        <div class="lbl">モデルを えらぶ</div>
         <div class="seg" id="mvKindSeg">
-          <button type="button" data-t="artifact" class="on">出土品</button>
-          <button type="button" data-t="dog">犬</button>
-          <button type="button" data-t="dino">恐竜</button>
+          <button type="button" data-t="artifact" class="on">🏺 しゅつどひん</button>
+          <button type="button" data-t="dog">🐶 いぬ</button>
+          <button type="button" data-t="dino">🦕 きょうりゅう</button>
         </div>
       </div>
     </div>
@@ -811,27 +817,27 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     .mvurl a{ color:#8ecbff; text-decoration:none; } .mvurl a:hover{ text-decoration:underline; }
 </style>
 <div id="mvModal">
-    <div class="mvbox" role="dialog" aria-modal="true" aria-label="発掘モデル表示">
+    <div class="mvbox" role="dialog" aria-modal="true" aria-label="モデルを みる">
         <div class="mvhead">
             <h2 id="mvTitle">craftARt Go</h2>
-            <button id="mvCloseBtn" class="mvclose">✕ 閉じる</button>
+            <button id="mvCloseBtn" class="mvclose">✕ とじる</button>
         </div>
         <div class="mvctl">
-            <select id="mvSelect"><option>読み込み中...</option></select>
-            <button id="mvARBtn">📱 ARで見る</button>
+            <select id="mvSelect"><option>よみこみちゅう…</option></select>
+            <button id="mvARBtn">📱 ARで みる</button>
         </div>
         <div class="mvctl" id="mvToggleRow">
-            <span class="mvlabel" id="mvArtLabel">画質</span>
+            <span class="mvlabel" id="mvArtLabel">きれいさ</span>
             <div class="mvseg" id="mvArtSeg">
-                <button data-q="small" class="on">軽い</button>
-                <button data-q="mid">普通</button>
+                <button data-q="small" class="on">かるい</button>
+                <button data-q="mid">ふつう</button>
                 <button data-q="hi">きれい</button>
             </div>
             <span class="mvlabel" id="mvDinoLabel">サイズ</span>
             <div class="mvseg" id="mvDinoSeg">
-                <button data-s="fit" class="on">小さい</button>
-                <button data-s="mid">普通</button>
-                <button data-s="raw">大きい</button>
+                <button data-s="fit" class="on">ちいさい</button>
+                <button data-s="mid">ふつう</button>
+                <button data-s="raw">おおきい</button>
             </div>
         </div>
         <div id="mvNote"></div>
@@ -845,9 +851,9 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
             </button>
         </model-viewer>
         <div class="mvurl" id="mvUrl" style="display:none"></div>
-        <div class="mvhint">ドラッグで回転／ピンチ・ホイールで拡大縮小／2本指ドラッグ（右ドラッグ）で移動</div>
+        <div class="mvhint">ゆびで まわす／つまむと おおきさが かわる／2ほんゆびで うごかす</div>
         <div class="mvlibs" style="text-align:center; font-size:11px; color:rgba(180,170,210,.7); margin-top:6px; letter-spacing:.5px;">
-            使用ライブラリ：<a href="https://modelviewer.dev/" target="_blank" rel="noopener" style="color:#8ecbff; text-decoration:none;">model-viewer</a>、<a href="https://threejs.org/" target="_blank" rel="noopener" style="color:#8ecbff; text-decoration:none;">three.js</a>
+            つかっている ライブラリ：<a href="https://modelviewer.dev/" target="_blank" rel="noopener" style="color:#8ecbff; text-decoration:none;">model-viewer</a>、<a href="https://threejs.org/" target="_blank" rel="noopener" style="color:#8ecbff; text-decoration:none;">three.js</a>
         </div>
     </div>
 </div>
@@ -1116,22 +1122,22 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     #lcsClose{ padding:13px 0; border:1px solid rgba(180,140,255,.35); border-radius:11px; background:rgba(18,12,40,.6); color:#c9bcff; font-family:inherit; font-weight:700; font-size:15px; }
     @media (prefers-reduced-motion: reduce){ #lphRec i{ animation:none; } }
 </style>
-<div id="litePh" aria-label="craftARt Lite 操作パネル">
+<div id="litePh" aria-label="craftARt Lite そうさ パネル">
     <div id="lphTouch"></div>
-    <div id="lphLoad">📱 ARを準備しています…</div>
+    <div id="lphLoad">📱 ARを じゅんびしているよ…</div>
     <div id="lphTop">
         <div id="lphInfo"><span id="lphName"></span><span id="lphPct">100%</span></div>
-        <button id="lphHelpBtn" class="lph-round" aria-label="操作方法">？ そうさ</button>
-        <button id="lphExit" class="lph-round" aria-label="ARを終了">✕ おわる</button>
+        <button id="lphHelpBtn" class="lph-round" aria-label="そうさの しかた">？ そうさ</button>
+        <button id="lphExit" class="lph-round" aria-label="ARを おわる">✕ おわる</button>
     </div>
     <div id="lphRec"><i></i><span id="lphRecT">0:00</span></div>
-    <div id="lphFloor">🔍 床をさがしています… スマホを少し下に向けて、ゆっくり左右に動かしてください</div>
+    <div id="lphFloor">🔍 ゆかを さがしているよ… スマホを すこし したに むけて、ゆっくり うごかしてね</div>
     <div id="lphScanFrame"></div>
     <div id="lphNCard"><b id="lphNCardT"></b><span id="lphNCardS"></span></div>
     <div id="lphFlash"></div>
     <div id="lphCap">
         <div id="lphCapThumb"></div>
-        <div class="row"><button id="lphCapSave">💾 保存</button><button id="lphCapClose" aria-label="閉じる">✕</button></div>
+        <div class="row"><button id="lphCapSave">💾 ほぞん</button><button id="lphCapClose" aria-label="とじる">✕</button></div>
     </div>
     <div id="lphMsg"></div>
     <div id="lphBubble"></div>
@@ -1140,30 +1146,30 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
         <div id="lphSel"></div>
         <div id="lphBtns">
             <button data-a="reset">🔄<span>リセット</span></button>
-            <button data-a="lock" id="lphLockBtn">✋<span>操作できる</span></button>
+            <button data-a="lock" id="lphLockBtn">✋<span>うごかせる</span></button>
             <button data-a="anim" id="lphAnimBtn">🎞<span>アニメ</span></button>
             <button data-a="walk" id="lphWalkBtn" style="display:none">🚶<span>あるく</span></button>
-            <button data-a="desc" id="lphDescBtn">📖<span>説明</span></button>
-            <button data-a="shot" class="cap">📷<span>写真</span></button>
-            <button data-a="rec" class="cap lph-recbtn">🎥<span>動画</span></button>
+            <button data-a="desc" id="lphDescBtn">📖<span>せつめい</span></button>
+            <button data-a="shot" class="cap">📷<span>しゃしん</span></button>
+            <button data-a="rec" class="cap lph-recbtn">🎥<span>どうが</span></button>
             <button data-a="fold">▼<span>しまう</span></button>
         </div>
     </div>
     <div id="lphMini">
-        <button data-a="shot" class="cap">📷<span>写真</span></button>
-        <button data-a="rec" class="cap lph-recbtn">🎥<span>動画</span></button>
+        <button data-a="shot" class="cap">📷<span>しゃしん</span></button>
+        <button data-a="rec" class="cap lph-recbtn">🎥<span>どうが</span></button>
         <button data-a="fold">▲<span>パネル</span></button>
     </div>
     <div id="lphHelp">
-        <div class="card" role="dialog" aria-label="操作方法">
-            <h3>📱 操作方法</h3>
+        <div class="card" role="dialog" aria-label="そうさの しかた">
+            <h3>📱 そうさの しかた</h3>
             <ul>
-                <li><b>1本指</b>で恐竜・犬（モデル）を つかんで動かす → 床の上を移動</li>
-                <li><b>2本指</b>でひねる → 向きを変える</li>
-                <li><b>2本指</b>でつまむ／ひろげる → 小さく／大きく</li>
-                <li><b>2本指</b>で上下になぞる → 前後にかたむける（出土品だけ）</li>
-                <li><b>床をタップ</b> → その場所へ移動</li>
-                <li><b>恐竜・犬をタップ</b> → よろこぶ</li>
+                <li><b>1ぽんゆび</b>で きょうりゅう・いぬ（モデル）を つかんで うごかす → ゆかの うえを いどう</li>
+                <li><b>2ほんゆび</b>で ひねる → むきを かえる</li>
+                <li><b>2ほんゆび</b>で つまむ／ひろげる → ちいさく／おおきく</li>
+                <li><b>2ほんゆび</b>で うえしたに なぞる → まえうしろに かたむける（しゅつどひん だけ）</li>
+                <li><b>ゆかを タップ</b> → その ばしょへ いどう</li>
+                <li><b>きょうりゅう・いぬを タップ</b> → よろこぶ</li>
             </ul>
             <button id="lphHelpOk">OK</button>
         </div>
@@ -1171,9 +1177,9 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 </div>
 <video id="iarVideo" playsinline muted autoplay></video>
 <div id="liteCapSheet">
-    <div class="sheet" role="dialog" aria-modal="true" aria-label="撮影した写真・動画">
-        <h2>📷 撮影した写真・動画</h2>
-        <p>「保存」で端末のダウンロードフォルダに保存します。「共有」でフォトやアプリへ送れます。<br>とじると、保存していないものは消えます。</p>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="とった しゃしん・どうが">
+        <h2>📷 とった しゃしん・どうが</h2>
+        <p>「ほぞん」で ダウンロード フォルダに ほぞんするよ。「おくる」で フォトや アプリに おくれるよ。<br>とじると、ほぞん していない ものは きえるよ。</p>
         <div id="lcsList"></div>
         <button id="lcsClose">とじる</button>
     </div>
@@ -2019,7 +2025,7 @@ async function loadArtifactRoot(fullUrl, MAX){
 // 出土品モデル：models.csv の出土品行(path=フル版)のみを読み、1024に縮小して使用（ART_FILES/_small は使わない）。
 // CSV取得失敗時はフォールバックせず、簡易メッセージを表示。
 function mvShowCsvError(msg){
-    msg = msg || "モデル一覧（models.csv）を読み込めませんでした。通信環境をご確認ください。";
+    msg = msg || "モデルの いちらんを よみこめませんでした。インターネットに つながって いるか たしかめてね。";
     let el=document.getElementById("mvCsvErr");
     if(!el){ el=document.createElement("div"); el.id="mvCsvErr";
         el.style.cssText="position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:13000;"
@@ -4183,11 +4189,13 @@ function updateEntryButtons(){   // 入室ボタン＋発掘モデル表示ボ�
     const mvAr=document.getElementById("mvArOpenBtn");
     if(recoOn){
         if(IS_HEADSET){ if(wrap) wrap.style.display=""; if(dtop) dtop.style.display="none"; if(mvB) mvB.style.display="none"; if(mvAr) mvAr.style.display=""; }   // ヘッドセット：VR/ARで入室＋発掘モデル表示AR
-        else { if(wrap) wrap.style.display="none"; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display="";
+        else { if(wrap) wrap.style.display="none"; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display="none";   // 【変更】おすすめオン：「モデルを みる」は出さない
                if(mvAr) mvAr.style.display = ((typeof litePhoneWanted==="function" && litePhoneWanted()) || (typeof iarWanted==="function" && iarWanted())) ? "" : "none"; }   // スマホ/PC：ヘッドセットなしで入室＋発掘モデル表示（【変更】Androidはモデル表示ARも表示）
     } else { if(wrap) wrap.style.display=""; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display=""; if(mvAr) mvAr.style.display=""; }                        // おすすめオフ：入室・発掘モデル表示とも両方表示
     const tab=document.getElementById("startTabletAR");
-    if(tab) tab.style.display = (_coarsePtr && !IS_HEADSET) ? "" : "none";   // タブレットAR：タッチ端末（ヘッドセット以外）のみ
+    if(tab) tab.style.display = recoOn ? "none" : "";   // 【変更】タブレットAR（開発中）：おすすめオフの時だけ
+    const sec=document.getElementById("mvSection");   // ボタンが1つもない時は「モデルを みよう」の区切りごと出さない
+    if(sec) sec.style.display = ((mvB && mvB.style.display!=="none") || (mvAr && mvAr.style.display!=="none")) ? "" : "none";
 }
 function applyDeviceAutoSize(){   // 起動時の初期値：スマホ/PC＋おすすめオンのとき、サイト表示=3倍／サイト非表示=30×30m。ヘッドセットは既定のまま（モード・発掘対象の変更では呼ばない）
     if(!headsetDetected || IS_HEADSET || !recoOn) return;   // 判定完了まで／ヘッドセット／おすすめオフ：既定のまま
@@ -6708,7 +6716,7 @@ function litePhoneStarted(){
                 ses.requestHitTestSource(ray?{space:vs, offsetRay:ray}:{space:vs}).then(src=>{ if(LITE.active && LITE.phone) LPH.hts.push(src); else try{ src.cancel(); }catch(_){ } }).catch(()=>{});
             });
         }).catch(()=>{});
-    } else lph$("lphFloor").textContent="この端末では床を見つけられません（目安の高さに置きます）";
+    } else lph$("lphFloor").textContent="この きかいでは ゆかを みつけられないよ（だいたいの たかさに おくね）";
     LPH.hatch=null; LPH.walk=null; LPH.popY=0;
     window.MV_ANIM=true;   // 【変更】スマホのLite・ぬりえは「アニメ オン」＋「あるく」で始める
     if(LITE.nuri){   // ぬりえから：卵（または生まれた恐竜）→ 左右に歩く。操作方法は後で（❓）
@@ -6735,11 +6743,11 @@ function litePhoneRefresh(){
     lphPaintBtns(); LITE._phPct=-1; litePhoneTick();
 }
 function lphPaintBtns(){
-    const lk=lph$("lphLockBtn"); lk.classList.toggle("off", LITE.opEnabled===false); lk.innerHTML = (LITE.opEnabled===false) ? "🔒<span>ロック中</span>" : "✋<span>操作できる</span>";
+    const lk=lph$("lphLockBtn"); lk.classList.toggle("off", LITE.opEnabled===false); lk.innerHTML = (LITE.opEnabled===false) ? "🔒<span>ロックちゅう</span>" : "✋<span>うごかせる</span>";
     const wk=lph$("lphWalkBtn"); if(wk){ const animOn=(window.MV_ANIM!==false), wo=!!(LPH.walk && !LPH.walk.off) && animOn; wk.disabled=!animOn; wk.classList.toggle("on", wo); wk.innerHTML = wo ? "🚶<span>あるく</span>" : "🧍<span>とまる</span>"; }   // 今の状態を表示（アニメ オフは灰色で押せない）
     const an=lph$("lphAnimBtn"); const ao=(window.MV_ANIM!==false); an.classList.toggle("off", !ao); an.innerHTML = ao ? "🎞<span>アニメ オン</span>" : "🎞<span>アニメ オフ</span>";
     const recOn=!!(LPH.rec && LPH.rec.state!=="done");
-    document.querySelectorAll("#litePh .lph-recbtn").forEach(b=>{ b.classList.toggle("recording", recOn); b.innerHTML = recOn ? "⏹<span>停止</span>" : "🎥<span>動画</span>"; });
+    document.querySelectorAll("#litePh .lph-recbtn").forEach(b=>{ b.classList.toggle("recording", recOn); b.innerHTML = recOn ? "⏹<span>とめる</span>" : "🎥<span>どうが</span>"; });
 }
 function litePhoneTick(){
     const pct=Math.round(((LITE.group?LITE.group.scale.x:1)||1)*100);
@@ -6758,12 +6766,12 @@ function lphHatchTick(){
     if(H.phase==="wait"){   // 床さがし（見つからなければ目安の床で開始）
         if(LITE.model) LITE.model.visible=false;
         if(LITE.nuri && now-H.t0<(LPH.paper?900:1500)) return;   // 「よめたよ！」を少し見せる
-        if(LITE.nuri && (LPH.paper || (LITE.nuri.small && LPH.floorFound))) lphNCard("あれ？ たまごが…！","");   // 用紙の上・目の前：そのまま卵
+        if(LITE.nuri && (LPH.paper || (LITE.nuri.small && LPH.floorFound))) lph$("litePh").classList.remove("lph-ncard");   // 用紙の上・目の前：そのまま卵（【変更】セリフは出さない）
         else if(LITE.nuri){   // スマホが下を向いたまま（ぬりえを見ている）なら、前を向くのを待つ
             camera.getWorldQuaternion(_lphQ); const fy=_lphV1.set(0,0,-1).applyQuaternion(_lphQ).y;
             if(fy<-0.72 && now-H.t0<15000){ lphNCard("まえを むいてね！","たまごが ゆかに でてくるよ"); return; }
             if(!LPH.floorFound && now-H.t0<LPH_CFG.eggWaitMaxMs){ lphNCard("ゆかを うつしてね","スマホを すこし したに むけて、ゆっくり うごかしてね"); return; }
-            lphNCard("あれ？ たまごが…！","");
+            lph$("litePh").classList.remove("lph-ncard");   // 【変更】卵が出る時のセリフは出さない
         }
         if(!LPH.floorFound && now-H.t0<LPH_CFG.eggWaitMaxMs) return;
         litePhonePlaceFront();   // 今のスマホの向きで、恐竜の手前の端を2.0mに
@@ -6900,7 +6908,7 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     LITE.active=true;
     litePhoneStarted();
     LPH.floorFound=true; LPH.floorY=0; lph$("lphFloor").classList.remove("on");   // 床＝持つ高さの下（ぬりえは読めた後に用紙の面）
-    lph$("lphFloor").textContent="🔍 床をさがしています… スマホを少し下に向けて、ゆっくり左右に動かしてください";
+    lph$("lphFloor").textContent="🔍 ゆかを さがしているよ… スマホを すこし したに むけて、ゆっくり うごかしてね";
     return true;
 }
 function iarEnd(){
@@ -7125,7 +7133,7 @@ function lphFloorUpdate(frame){
         }
     }
     if(best===null) return;
-    if(!LPH.floorFound){ LPH.floorFound=true; LPH.floorY=best; lph$("lphFloor").classList.remove("on"); lphMsg("床を見つけました。モデルを床に置きます"); try{ chord([523,659,784],0.05,"triangle",0.35); }catch(_){ } }
+    if(!LPH.floorFound){ LPH.floorFound=true; LPH.floorY=best; lph$("lphFloor").classList.remove("on"); lphMsg("ゆかを みつけたよ！ ゆかに おくね"); try{ chord([523,659,784],0.05,"triangle",0.35); }catch(_){ } }
     else if(best<LPH.floorY) LPH.floorY=best;   // より低い面が見えたら床を下げる（机などより床を優先）
 }
 function lphFloorY(){
@@ -7265,21 +7273,21 @@ function lphTap(x,y){   // 床をタップ → その場所へ移動／恐竜・
     const r=lphScreenRay(x,y);
     if(LITE.model){ _lphRay.set(r.o, r.d); let hit=false; try{ hit=_lphRay.intersectObject(LITE.model, true).length>0; }catch(_){ } if(hit){ if(LPH.walk) lphJoy(x,y); return; } }
     if(LITE.opEnabled===false) return;
-    if(!LPH.floorFound){ lphMsg("床をさがしています。スマホを少し下に向けてください"); return; }
-    const p=lphPlanePoint(x,y,LPH.floorY); if(!p){ lphMsg("床の上をタップしてください"); return; }
+    if(!LPH.floorFound){ lphMsg("ゆかを さがしているよ。スマホを すこし したに むけてね"); return; }
+    const p=lphPlanePoint(x,y,LPH.floorY); if(!p){ lphMsg("ゆかの うえを タップしてね"); return; }
     const gi=lphGroundInfo(); LITE.targetPos.x=p.x-gi.ox; LITE.targetPos.z=p.z-gi.oz; lphClampDist();
     try{ beep(880,0.05,0.25,"triangle"); }catch(_){ }
 }
 function lphAction(a){
     if(!LITE.active) return;
     if(LPH.hatch && LPH.hatch.phase!=="done" && a!=="shot" && a!=="rec" && a!=="fold") return;   // 卵の演出中は撮影以外の操作をしない
-    if(a==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; if(LPH.walk) LPH.walk.held=true; lphSnd(); lphMsg(LPH.paper?"大きさ・向きを戻して、ぬりえの上に置き直しました":"大きさ・向きを戻して、床に置き直しました"); if(LPH.walk) LPH.walk.held=true; }   // スマホ：位置も2m先の床へ
-    else if(a==="lock"){ LITE.opEnabled=(LITE.opEnabled===false); LPH.g=null; lphPaintBtns(); lphSnd(); lphMsg(LITE.opEnabled?"さわって動かせます":"ロック中：さわっても動きません"); }
+    if(a==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); LITE.placeFrames=4; if(LPH.walk) LPH.walk.held=true; lphSnd(); lphMsg(LPH.paper?"おおきさと むきを もどして、ぬりえの うえに おいたよ":"おおきさと むきを もどして、ゆかに おいたよ"); if(LPH.walk) LPH.walk.held=true; }   // スマホ：位置も2m先の床へ
+    else if(a==="lock"){ LITE.opEnabled=(LITE.opEnabled===false); LPH.g=null; lphPaintBtns(); lphSnd(); lphMsg(LITE.opEnabled?"さわって うごかせるよ":"ロックちゅう：さわっても うごかないよ"); }
     else if(a==="anim"){
         if(window.MV_ANIM!==false && LPH.walk){ LPH.joy=null; LPH.popY=0; LPH.faceTurn={ until:performance.now()+900, then:"animoff" }; lphSnd(); return; }   // オフ：スマホの方を向いてから標準姿勢に
         window.MV_ANIM=(window.MV_ANIM===false); lphPaintBtns(); lphSnd(); }
-    else if(a==="walk"){ if(window.MV_ANIM===false){ lphMsg("「アニメ オン」の時に えらべます"); return; } if(LPH.walk){ LPH.walk.off=!LPH.walk.off; LPH.walk.held=true;
-        /* とまる：スマホの方をくるっと向いて止まる */ if(LPH.walk.off){ LPH.joy=null; LPH.popY=0; LPH.faceTurn={ until:performance.now()+900, then:"stop" }; } lphMsg(LPH.walk.off?"その場に とまります":"あるきまわります"); } lphPaintBtns(); lphSnd(); }
+    else if(a==="walk"){ if(window.MV_ANIM===false){ lphMsg("「アニメ オン」の ときに えらべるよ"); return; } if(LPH.walk){ LPH.walk.off=!LPH.walk.off; LPH.walk.held=true;
+        /* とまる：スマホの方をくるっと向いて止まる */ if(LPH.walk.off){ LPH.joy=null; LPH.popY=0; LPH.faceTurn={ until:performance.now()+900, then:"stop" }; } lphMsg(LPH.walk.off?"その ばに とまるよ":"あるきまわるよ"); } lphPaintBtns(); lphSnd(); }
     else if(a==="desc"){ lph$("lphDesc").classList.toggle("on"); }
     else if(a==="shot"){ LPH.shotReq=true; }
     else if(a==="rec"){ if(LPH.rec && (LPH.rec.state==="pending"||LPH.rec.state==="rec")) lphRecStop(); else lphRecStart(); }
@@ -7295,7 +7303,7 @@ function lphWire(){
     lph$("lphHelpBtn").addEventListener("click", ()=>lph$("lphHelp").classList.add("on"));
     lph$("lphHelpOk").addEventListener("click", ()=>lph$("lphHelp").classList.remove("on"));
     lph$("lphCapClose").addEventListener("click", ()=>lph$("lphCap").classList.remove("on"));
-    lph$("lphCapSave").addEventListener("click", ()=>{ if(LPH.cur){ lphDownload(LPH.cur); lphMsg("ダウンロードフォルダに保存しました"); lph$("lphCap").classList.remove("on"); } });
+    lph$("lphCapSave").addEventListener("click", ()=>{ if(LPH.cur){ lphDownload(LPH.cur); lphMsg("ほぞん したよ（ダウンロード フォルダ）"); lph$("lphCap").classList.remove("on"); } });
     const t=lph$("lphTouch"), opt={passive:false};
     t.addEventListener("touchstart", e=>{ e.preventDefault(); const tt=e.targetTouches;
         if(tt.length===1 && !LPH.tap) LPH.tap={ x:tt[0].clientX, y:tt[0].clientY, t:performance.now(), ok:true }; else if(LPH.tap) LPH.tap.ok=false;   // 2本目が来たらタップではない
@@ -7430,7 +7438,7 @@ function litePhoneAfterRender(frame){
     const rec=LPH.rec;
     if(!LPH.shotReq && !(rec && (rec.state==="pending"||rec.state==="rec"))) return;
     try{
-        if(LPH.shotReq){ LPH.shotReq=false; const img=lphComposite(frame, LPH_CFG.shotLong); if(img) lphPhoto(img); else lphMsg("撮影できませんでした。もう一度おしてください"); }
+        if(LPH.shotReq){ LPH.shotReq=false; const img=lphComposite(frame, LPH_CFG.shotLong); if(img) lphPhoto(img); else lphMsg("とれなかったよ。もういちど おしてね"); }
         if(rec && (rec.state==="pending"||rec.state==="rec")){
             const now=performance.now();
             if(rec.state==="rec" && now-rec.lastT < 1000/LPH_CFG.recFps-4) return;
@@ -7438,7 +7446,7 @@ function litePhoneAfterRender(frame){
             rec.lastT=now;
             if(rec.state==="pending") lphRecBegin(img);
             else if(img.width===rec.cv.width && img.height===rec.cv.height) rec.ctx.putImageData(img,0,0);
-            if(rec.state==="rec" && (now-rec.t0)/1000>=LPH_CFG.recMaxSec){ lphRecStop(); lphMsg("最大"+LPH_CFG.recMaxSec+"秒になったので録画を止めました"); }
+            if(rec.state==="rec" && (now-rec.t0)/1000>=LPH_CFG.recMaxSec){ lphRecStop(); lphMsg(LPH_CFG.recMaxSec+"びょうに なったので どうがを とめたよ"); }
         }
     }catch(e){ console.warn("[Lite撮影]", e); }
 }
@@ -7462,7 +7470,7 @@ function lphPhoto(img){
     const cv=document.createElement("canvas"); cv.width=img.width; cv.height=img.height; cv.getContext("2d").putImageData(img,0,0);
     const fl=lph$("lphFlash"); fl.classList.add("on"); requestAnimationFrame(()=>setTimeout(()=>fl.classList.remove("on"),30));
     lphSnd("shot");
-    cv.toBlob(b=>{ if(!b){ lphMsg("写真を作れませんでした"); return; } lphAddCap("photo", b, "jpg"); if(LPH.noCam) lphMsg("この端末ではカメラ映像を写せないため、背景なしで撮影しました", 3500); }, "image/jpeg", 0.92);
+    cv.toBlob(b=>{ if(!b){ lphMsg("しゃしんを つくれなかったよ"); return; } lphAddCap("photo", b, "jpg"); if(LPH.noCam) lphMsg("この きかいでは カメラの えいぞうが うつせないので、けしき なしで とったよ", 3500); }, "image/jpeg", 0.92);
 }
 function lphPickMime(){
     if(!window.MediaRecorder) return null;
@@ -7470,7 +7478,7 @@ function lphPickMime(){
     return "";
 }
 function lphRecStart(){
-    const mime=lphPickMime(); if(mime===null){ lphMsg("この端末・ブラウザでは動画を撮影できません"); return; }
+    const mime=lphPickMime(); if(mime===null){ lphMsg("この きかいでは どうがを とれないよ"); return; }
     LPH.rec={ state:"pending", mime, lastT:0, t0:0, chunks:[] }; lphPaintBtns();
 }
 function lphRecBegin(img){
@@ -7491,7 +7499,7 @@ function lphRecBegin(img){
         lph$("lphRec").classList.add("on"); lphSnd("recOn");
         clearInterval(LPH.recTimer);
         LPH.recTimer=setInterval(()=>{ const s=Math.floor((performance.now()-rec.t0)/1000); const e=lph$("lphRecT"); if(e) e.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")} / ${Math.floor(LPH_CFG.recMaxSec/60)}:${String(LPH_CFG.recMaxSec%60).padStart(2,"0")}`; if(rec.state!=="rec") clearInterval(LPH.recTimer); }, 250);
-    }catch(e){ console.warn("[Lite録画]", e); LPH.rec=null; lphPaintBtns(); lphMsg("動画の撮影を開始できませんでした"); }
+    }catch(e){ console.warn("[Lite録画]", e); LPH.rec=null; lphPaintBtns(); lphMsg("どうがを はじめられなかったよ"); }
 }
 function lphRecStop(){
     const rec=LPH.rec; if(!rec) return;
@@ -7521,10 +7529,10 @@ function lphSheetOpen(){
         const el=document.createElement(it.type==="photo"?"img":"video"); el.src=it.url;
         if(it.type!=="photo"){ el.controls=true; el.playsInline=true; el.muted=true; }
         const row=document.createElement("div"); row.className="row";
-        const sv=document.createElement("button"); sv.className="sv"; sv.textContent=it.saved?"✔ 保存済み":"💾 保存";
-        sv.onclick=()=>{ lphDownload(it); box.classList.add("saved"); sv.textContent="✔ 保存済み"; };
-        const sh=document.createElement("button"); sh.className="sh"; sh.textContent="📤 共有";
-        sh.onclick=async ()=>{ if(await lphShare(it)){ box.classList.add("saved"); sv.textContent="✔ 保存済み"; } };
+        const sv=document.createElement("button"); sv.className="sv"; sv.textContent=it.saved?"✔ ほぞん ずみ":"💾 ほぞん";
+        sv.onclick=()=>{ lphDownload(it); box.classList.add("saved"); sv.textContent="✔ ほぞん ずみ"; };
+        const sh=document.createElement("button"); sh.className="sh"; sh.textContent="📤 おくる";
+        sh.onclick=async ()=>{ if(await lphShare(it)){ box.classList.add("saved"); sv.textContent="✔ ほぞん ずみ"; } };
         row.appendChild(sv); row.appendChild(sh); box.appendChild(el); box.appendChild(row); list.appendChild(box);
     });
     lph$("liteCapSheet").classList.add("open");
@@ -8837,7 +8845,7 @@ addEventListener("resize",()=>{
     let _csvArts=[], _csvSites=[];
     function classifyCsv(){
         _csvArts=[]; _csvSites=[];
-        const pre=(typeof MV_CFG!=="undefined" && MV_CFG.sitePrefix)?MV_CFG.sitePrefix:"遺構";
+        const pre=(typeof MV_CFG!=="undefined" && MV_CFG.sitePrefix)?MV_CFG.sitePrefix:"いこう";
         (csvRows||[]).forEach(r=>{ const nm=(r.name||"").trim(); if(nm.indexOf(pre)===0) _csvSites.push(r); else _csvArts.push(r); });
     }
     function artModelCount(){ return _csvArts.length; }   // 出土品数＝CSVの出土品行数（CSVのみ）
@@ -8923,12 +8931,12 @@ addEventListener("resize",()=>{
             const opt=document.createElement("option");
             opt.value=String(i);
             opt.textContent = isDino
-                ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("恐竜 "+(i+1)))
+                ? ((typeof DINOS!=="undefined" && DINOS[i]) ? DINOS[i].label : ("きょうりゅう "+(i+1)))
                 : isDog
                 ? ((typeof DOGS!=="undefined" && DOGS[i]) ? DOGS[i].label : SHIBA_LABEL)
                 : ((artInfo(i) && artInfo(i).name)
                     ? artInfo(i).name                                                            // CSVの名称（出土品名・遺構XXXX）
-                    : (i < artModelCount() ? ("出土品 No."+String(i+1).padStart(2,"0")) : "遺構"));  // フォールバック
+                    : (i < artModelCount() ? ("しゅつどひん No."+String(i+1).padStart(2,"0")) : "いこう"));  // フォールバック
             sel.appendChild(opt); curList.push(i);
         }
     }
@@ -9105,14 +9113,14 @@ addEventListener("resize",()=>{
         const isDino = (target==="dino");
         const isVoxel = (target==="dino" || target==="dog");
         applyAnnotation(isVoxel, idx);   // 恐竜・犬は注釈なし（出土品のみCSV注釈）
-        setNote("読み込み中…");
+        setNote("よみこみちゅう…");
         viewer.setAttribute("exposure", "1.0");
 
         // 出土品・遺構：CSVの path（フル版）を読み、全画質でテクスチャ縮小のみ変える（_smallは経由しない）
         if(!isVoxel){
             const fullUrl = modelUrl(idx);
             const MAX = (artQuality==="hi") ? (typeof liteHiMax==="function"?liteHiMax():0) : (artQuality==="mid" ? 3072 : 1024);   // 軽い1024／普通3072／きれい=端末上限（iOSキャップ）
-            setNote(artQuality==="hi" ? "読み込み中…（きれい）" : (artQuality==="mid" ? "読み込み中…（普通）" : "読み込み中…"));
+            setNote(artQuality==="hi" ? "よみこみちゅう…（きれい）" : (artQuality==="mid" ? "よみこみちゅう…（ふつう）" : "よみこみちゅう…"));
             try{
                 const url = await loadArtifactHiRes(fullUrl, MAX);
                 if(_tok !== showModel._tok){ try{ URL.revokeObjectURL(url); }catch(_){ } return; }   // 新しい切替が来た＝この結果は破棄して中止（積み上げ防止）
@@ -9124,7 +9132,7 @@ addEventListener("resize",()=>{
                 if(_tok !== showModel._tok) return;   // 古い要求は無視
                 if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; }
                 viewer.setAttribute("src", fullUrl);   // 縮小に失敗した場合は原本を直接表示
-                setNote("この端末では縮小できないため、原本を表示しています。");
+                setNote("この きかいでは ちいさく できないので、もとの まま ひょうじして います。");
             }
             updateAR();
             return;
@@ -9132,7 +9140,7 @@ addEventListener("resize",()=>{
 
         // 恐竜：既存の生成モデルをGLB化（色はテクスチャ焼き込み）。サイズは fit(補正) or raw(等倍)
         const obj = getObject(target, idx);
-        if(!obj){ setNote("モデルを準備中です。少し待ってからもう一度お試しください。"); viewer.removeAttribute("src"); updateAR(); return; }
+        if(!obj){ setNote("モデルを じゅんびちゅうです。すこし まってから もういちど ためしてね。"); viewer.removeAttribute("src"); updateAR(); return; }
         const _freshVoxel = (target==="dog");   // 犬は毎回新規生成（非キャッシュ）＝使い終わりに破棄。恐竜はキャッシュのため破棄しない
         const _disposeVox=(o)=>{ if(!o||!o.traverse) return; try{ o.traverse(x=>{ if(x.geometry) x.geometry.dispose(); if(x.material){ const ms=Array.isArray(x.material)?x.material:[x.material]; ms.forEach(m=>{ if(m){ if(m.map) m.map.dispose(); m.dispose(); } }); } }); }catch(_){ } };
         try{
@@ -9153,7 +9161,7 @@ addEventListener("resize",()=>{
         }catch(e){
             if(_freshVoxel) _disposeVox(obj);
             if(_tok !== showModel._tok) return;   // 古い要求は無視
-            setNote("このモデルは表示に失敗しました。");
+            setNote("この モデルは ひょうじ できませんでした。");
             viewer.removeAttribute("src");
         }
         updateAR();
@@ -9184,7 +9192,7 @@ addEventListener("resize",()=>{
         updateToggles();
         modal.style.display="flex";
         if(curList.length){ sel.value="0"; showModel(0); }
-        else { setNote("モデル一覧（models.csv）を読み込めませんでした。通信環境をご確認ください。"); }
+        else { setNote("モデルの いちらんを よみこめませんでした。インターネットに つながって いるか たしかめてね。"); }
     }
     function closeModal(){
         modal.style.display="none";
@@ -9206,7 +9214,7 @@ addEventListener("resize",()=>{
             const useIar=!navigator.xr && typeof iarWanted==="function" && iarWanted();   // iPhone（WebXRなし）：タップ直後に許可を求めるので、ここでは待たない
             const ok = useIar ? (await enterLiteIAR(tgt, i, artQuality, intrinsic))===true : await enterLiteAR(tgt, i, artQuality, intrinsic);   // 【追加】iPhone：カメラ＋ジャイロ方式
             if(ok){ modal.style.display="none"; window.__mvPreviewPause=false; }   // 入室成功でモーダルを閉じる
-            else { setNote("ARを開始できませんでした。AR対応ブラウザ/端末でお試しください。"); }
+            else { setNote("ARを はじめられませんでした。ARが つかえる きかいで ためしてね。"); }
             return;
         }
         try{ viewer.activateAR(); }catch(_){ }   // 通常（Go）：model-viewer ネイティブAR
@@ -9229,7 +9237,7 @@ addEventListener("resize",()=>{
         modal.style.display="flex";
         try{ sel.innerHTML='<option>読み込み中...</option>'; }catch(_){ }
         try{ viewer.removeAttribute("src"); }catch(_){ }
-        setNote("準備中… モデルの読み込みを待っています");
+        setNote("じゅんびちゅう… モデルを よみこんで います");
         let done=false, tries=0;
         const fill=async ()=>{
             if(done) return;
@@ -9241,7 +9249,7 @@ addEventListener("resize",()=>{
             _dinoTrexHCache={};
             try{ await loadCsvRows(); }catch(_){ }
             buildOptions(); updateToggles();
-            if(curList.length){ sel.value="0"; showModel(0); } else { setNote("モデル一覧（models.csv）を読み込めませんでした。通信環境をご確認ください。"); }
+            if(curList.length){ sel.value="0"; showModel(0); } else { setNote("モデルの いちらんを よみこめませんでした。インターネットに つながって いるか たしかめてね。"); }
         };
         setTimeout(fill, 100);
     })();
@@ -9710,7 +9718,7 @@ function scCapture(resSmall, s, key){
             nuriSetPaint(key, { rgba:out.rgba });
             NURI.lastInfo={ key, frac:out.frac, partPainted:out.partPainted, cellsPerSide:D.info.cellsPerSide, parts:D.info.parts };
             nuriSave(key, out.rgba, D.info);
-            SC.busy=false; scMode("done"); scMsg("あれ？ たまごが…！","");   // 生まれたら「できた！」に変わる
+            SC.busy=false; scMode("done"); scMsg("","");   // 【変更】卵の間はセリフなし（生まれたら「できた！」）
             nuriAfterScan(key);   // 【変更】卵から生まれる演出（ARが使えるAndroidは、卵のままARで孵す）
         }catch(e){ console.warn("[ぬりえ]",e); SC.busy=false; scMode("error"); scMsg("うまく よめなかったよ","もういちど ためしてね"); }
     }, 30);
