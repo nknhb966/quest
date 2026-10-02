@@ -6973,7 +6973,7 @@ function iarFovLoad(){   // 覚えた視野（2回以上・中央値）。足り
 }
 function iarPaperPose(Hm, W, H, camM, pxPerMm, wMm, hMm){
     let best=null;
-    for(let fov=50; fov<=80; fov+=0.25){
+    for(let fov=40; fov<=95; fov+=0.25){   // 【修正】広い範囲で探す（読み取りを止めないため）
         const f=0.5*Math.max(W,H)/Math.tan(fov*Math.PI/360), P=new Array(16).fill(0); P[0]=2*f/W; P[5]=2*f/H; P[10]=-1; P[11]=-1; P[14]=-0.04;
         const p=lphPaperPose(Hm, W, H, P, camM, pxPerMm, wMm, hMm);
         if(p && (!best || p.normal.y>best.pose.normal.y)) best={ pose:p, f, fov };
@@ -6987,6 +6987,18 @@ function iarGrabVideo(maxLong){   // ビデオの1コマ（読み取り・追跡
     const x=c.getContext("2d",{willReadFrequently:true}); x.drawImage(v,0,0,W,H);
     camera.updateMatrixWorld(true);
     return { img:x.getImageData(0,0,W,H), W, H, fullW:vw, fullH:vh, s:W/vw, camM:camera.matrixWorld.clone(), proj:iarProjFake(I) };   // camM＝撮った瞬間のカメラ（ジャイロの向き・持つ高さ）
+}
+function iarGrabScanCrop(maxLong){   // 【追加】iPhone の読み取り：わくのまわり（少し広め）を元の解像度で切り出す
+    const I=LITE.iar; if(!I || !I.cover) return null;
+    const v=I.video, vw=v.videoWidth, vh=v.videoHeight, fe=document.getElementById("lphScanFrame"); if(!vw || !vh || !fe) return null;
+    const fr=fe.getBoundingClientRect(); if(!(fr.width>10)) return null;
+    const C=I.cover, mx=fr.width*0.18, my=fr.height*0.30;
+    const x0=Math.max(0,(fr.left-mx-C.ox)/C.s), y0=Math.max(0,(fr.top-my-C.oy)/C.s), x1=Math.min(vw,(fr.right+mx-C.ox)/C.s), y1=Math.min(vh,(fr.bottom+my-C.oy)/C.s);
+    const cw=x1-x0, ch=y1-y0; if(cw<50 || ch<50) return null;
+    const sc=Math.min(1, maxLong/Math.max(cw,ch)), W=Math.max(2,Math.round(cw*sc)), H=Math.max(2,Math.round(ch*sc));
+    const c=I.gc||(I.gc=document.createElement("canvas")); if(c.width!==W || c.height!==H){ c.width=W; c.height=H; }
+    const x=c.getContext("2d",{willReadFrequently:true}); x.drawImage(v, x0, y0, cw, ch, 0, 0, W, H);
+    return { img:x.getImageData(0,0,W,H), W, H, fullW:vw, fullH:vh, s:sc, ox:x0, oy:y0 };
 }
 function iarComposite(maxLong){   // 写真・動画：画面に見えている範囲のビデオ＋描画結果（描画の直後に呼ぶ）
     const I=LITE.iar; if(!I || !I.cover) return null;
@@ -9830,7 +9842,9 @@ async function lphScanStart(){
 function lphScanFrame(frame){
     const S=LPH.scan; if(!S || !S.ready || S.busy) return;
     const now=performance.now(); if(now<S.nextT) return; S.nextT=now+200;   // 通常の読み取りと同じ 0.2秒ごと
-    const g=lphGrabCam(frame, 960);
+    let g=null;
+    if(LITE.iar && S.mode!=="full") g=iarGrabScanCrop(1700);   // 【追加】iPhone：わくのまわりを元の解像度で（マーカーが大きく写る）。読めている方法を続け、読めなければ切りかえる
+    if(!g) g=lphGrabCam(frame, 960);
     if(!g){   // カメラ映像が使えない端末 → ARを終えて、通常のカメラで読み取る
         if(now-S.camMissT>3000){ NURI_AR.fallback=true; S.ready=false; const ses=renderer.xr.getSession(); if(ses) ses.end().catch(()=>{}); }
         return;
@@ -9838,7 +9852,13 @@ function lphScanFrame(frame){
     S.camMissT=now;
     const img=g.img, w=g.W, h=g.H, vw=g.fullW, vh=g.fullH;
     let lum=0; for(let i=0;i<img.data.length;i+=64) lum+=img.data[i]*0.3+img.data[i+1]*0.59+img.data[i+2]*0.11; lum/=img.data.length/64;
-    let res=null; try{ res=nuriMarkersToHomography(S.det.detectImage(w,h,img.data), NURI.layout, g.s, NURI.reg.sheets.map(x=>x.id)); }catch(e){ res=null; }
+    let res=null;
+    try{
+        let marks=S.det.detectImage(w,h,img.data), sc=g.s;
+        if(g.ox!=null){ marks.forEach(m=>m.corners.forEach(c=>{ c.x=c.x/g.s+g.ox; c.y=c.y/g.s+g.oy; })); sc=1; }   // 切り出した位置を、元の画像の位置に直す
+        res=nuriMarkersToHomography(marks, NURI.layout, sc, NURI.reg.sheets.map(x=>x.id));
+        if(LITE.iar && !(res && res.found===4)) S.mode = (g.ox!=null) ? "full" : "crop";   // 四隅がそろわなければ、次は別の方法で
+    }catch(e){ res=null; }
     const el=(now-S.t0)/1000;
     const key=res && res.sheetId!==undefined ? scSheetKey(res.sheetId) : null;
     if(key && !(NURI.maps[key] && NURI.maps[key].P)){   // 見つけた恐竜の対応表を読む
@@ -9876,9 +9896,13 @@ function lphScanCapture(frame, resSmall, key){
             let pose=null;
             try{
                 if(LITE.iar){   // iPhone：ジャイロの向きと用紙から視野を求める。ありえない値の時は、いまの視野で用紙の位置を求める
+                    // 【修正】視野の値で読み取りを止めない：用紙が適当な距離に見つかれば、その位置を使う（上向き＝ジャイロの上。用紙は置いてある前提）
                     const b=iarPaperPose(res.H, full.W, full.H, full.camM, _mm.ppm, _mm.w, _mm.h);
-                    if(b && b.fov>=IAR_FOV_OK[0] && b.fov<=IAR_FOV_OK[1] && b.pose.normal.y>0.97){ pose=b.pose; LITE.iar.f=b.f; iarFovStore(b.fov); }
-                    else pose=lphPaperPose(res.H, full.W, full.H, iarProjFake(LITE.iar), full.camM, _mm.ppm, _mm.w, _mm.h);
+                    if(b && b.pose.dist>0.08 && b.pose.dist<3 && b.pose.normal.y>0.3){
+                        pose=b.pose; LITE.iar.f=b.f;   // この回の表示は、求めた視野で（用紙の上にぴったり）
+                        if(b.fov>=IAR_FOV_OK[0] && b.fov<=IAR_FOV_OK[1] && b.pose.normal.y>0.97) iarFovStore(b.fov);   // あとで使う視野として覚えるのは、ありえる値の時だけ
+                    } else pose=lphPaperPose(res.H, full.W, full.H, iarProjFake(LITE.iar), full.camM, _mm.ppm, _mm.w, _mm.h);
+                    if(pose && pose.dist>0.08 && pose.dist<3) pose.normal.set(0,1,0);
                     if(pose){ camera.getWorldPosition(_lphCamP); iarPaperDropSave(_lphCamP.y-pose.center.y); }   // 用紙までの高さを覚える（「ARで もういちど みる」に使う）
                 }
                 else pose=lphPaperPose(res.H, full.W, full.H, full.proj, full.camM, _mm.ppm, _mm.w, _mm.h);
