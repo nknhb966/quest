@@ -518,7 +518,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <div id="nuriSection">
       <div class="nuriTitle">🖍 ぬりえで じぶんの きょうりゅう</div>
       <button id="nuriScanBtn" type="button">🖍 ぬりえを よみこむ</button>
-      <details id="nuriPrint"><summary>📄 ぬりえを いんさつ（きょうりゅうを えらぶ）</summary><div id="nuriPrintList"></div></details>
+      <details id="nuriPrint"><summary>📄 ぬりえを いんさつ</summary><div id="nuriPrintList"></div></details>
       <div id="nuriStatus"></div>
       <div id="nuriResetList"></div>
       <button id="nuriResetAll" type="button" style="display:none">↩ ぜんぶ もとに もどす</button>
@@ -6273,6 +6273,16 @@ function liteDinoK(){
     if(LITE.phone){ if(!_liteDinoK.ph){ const w=_liteMeasureDino("ptera","x"); _liteDinoK.ph = w>1e-6 ? LITE_DINO_REF.phonePteraW/w : 1; } return _liteDinoK.ph*(LITE.paperScale||1); }   // 用紙モードは ×(0.15/0.8)
     if(!_liteDinoK.hs){ const h=_liteMeasureDino("trex","y"); _liteDinoK.hs = h>1e-6 ? LITE_DINO_REF.headsetTrexH/h : 1; } return _liteDinoK.hs;
 }
+// 【追加】恐竜の大きさの比をデフォルメ（スマホ・タブレットの「モデルを みる」「ARで みる」「ぬりえ」だけ。ゲーム・パソコン・ヘッドセットは実寸の比のまま）
+//   ティラノサウルスを基準（大きさは今のまま）に、ほかの恐竜の高さを (実寸の比)^0.7 にする → 小さい恐竜は小さすぎず、大きい恐竜は大きすぎない
+const DINO_DEFORM = { base:"trex", pow:0.7 };
+function dinoDeform(idx){   // 実寸の比のときの大きさに掛ける倍率
+    try{ const k=DINOS[idx]&&DINOS[idx].key, h=REAL_H[k], hb=REAL_H[DINO_DEFORM.base]; if(!(h>0) || !(hb>0)) return 1; return Math.pow(hb/h, 1-DINO_DEFORM.pow); }catch(_){ return 1; }   // 実寸の高さ＝YEAR_CONFIG（REAL_H）
+}
+function dinoDeformOn(){   // スマホ・タブレット（ヘッドセット以外のタッチ端末）
+    if(typeof IS_HEADSET!=="undefined" && IS_HEADSET) return false;
+    return (typeof _coarsePtr!=="undefined" && _coarsePtr) || (typeof litePhoneWanted==="function" && litePhoneWanted()) || (typeof iarWanted==="function" && iarWanted());
+}
 function liteBuildModel(target, idx, quality){   // キャッシュから取得（プリロード済み前提）
     if(target==="dino") return _liteDinoBuild(idx);
     if(target==="dog") return _liteDogBuild(idx);
@@ -6303,7 +6313,7 @@ function liteEnterScene(model, intrinsicScale){
             const realH=(typeof DOGS!=="undefined" && LITE.curIdx<DOGS.length && DOGS[LITE.curIdx])?(DOGS[LITE.curIdx].realH||38):38;
             _sc=(realH/100)/h0;
         }
-        else if(LITE.target==="dino"){ _sc=liteDinoK(); }   // 【変更】Liteの恐竜100%：ヘッドセット＝ティラノ高さ1m／スマホ＝プテラノドン翼幅0.8m（他は実寸の比）
+        else if(LITE.target==="dino"){ _sc=liteDinoK()*(LITE.phone?dinoDeform(LITE.curIdx):1); }   // 【変更】Liteの恐竜100%：ヘッドセット＝ティラノ高さ1m（実寸の比）／スマホ・タブレット＝デフォルメした比
         model.scale.setScalar(_sc);   // 出土品=原寸(1.0)／恐竜=サイズ倍率／犬=実寸(cm)
         model.updateMatrixWorld(true);   // 親なし＝matrixWorld＝局所matrix（純粋な局所bbox）
         const box=new THREE.Box3().setFromObject(model); const ctr=box.getCenter(new THREE.Vector3()); const sz=box.getSize(new THREE.Vector3());
@@ -6585,7 +6595,7 @@ async function liteSwitchModel(idx){
         m.position.set(0,0,0); m.quaternion.identity();
         let _sc=LITE.intrinsic||1;
         if(LITE.target==="dog"){ m.scale.setScalar(1); m.updateMatrixWorld(true); const h0=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3()).y||1; const realH=(typeof DOGS!=="undefined" && idx<DOGS.length && DOGS[idx])?(DOGS[idx].realH||38):38; _sc=(realH/100)/h0; }
-        else if(LITE.target==="dino"){ _sc=liteDinoK(); }   // 【変更】Liteの恐竜100%（全種共通の倍率）
+        else if(LITE.target==="dino"){ _sc=liteDinoK()*(LITE.phone?dinoDeform(LITE.curIdx):1); }   // 【変更】Liteの恐竜100%（スマホ・タブレットはデフォルメした比）
         m.scale.setScalar(_sc); m.updateMatrixWorld(true);   // 親なし＝純粋な局所bbox
         const box=new THREE.Box3().setFromObject(m), ctr=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
         LITE.modelDepth=sz.z||0; LITE.modelH=sz.y||0; LITE.modelSize=Math.max(sz.x||0,sz.y||0,sz.z||0);
@@ -6668,7 +6678,7 @@ const LPH_CFG = {
     pteraFloat: 0.5,         // プテラノドンは床から50cm浮かせる
     walkHalf: 0.5, walkSpeed: 0.2, walkTurnMs: 700,   // ぬりえから：左右に0.5mずつ往復（秒速0.2m）、端で0.7秒かけて向きを変える
     walkHalfPaper: 0.10, walkSpeedPaper: 0.04,        // 用紙の上：秒速4cm
-    walkRadiusBL: 3, walkSpeedBL: 0.16,                // あるく範囲＝中心から体長×3（用紙の上でもはみ出してよい）／速さ＝体長×0.16 /秒
+    walkRadiusBL: 1.2, walkSpeedBL: 0.16,              // あるく範囲＝中心から体長×1.2（用紙の上でもはみ出してよい）／速さ＝体長×0.16 /秒
     turnDeg: 60, turnDegJoy: 180, turnDegFace: 450,    // 方向転換の速さ（度/秒）：歩く・見る＝ゆっくり／喜ぶ時＝少し速く／「とまる」「アニメ オフ」でスマホを向く＝くるっと（約0.4秒）
     hatchT: 1.5,             // ぬりえから：卵の演出の長さ（ゲームの発掘演出 ×1.5）
     eggWaitMaxMs: 8000,      // 床が見つからない時、この時間で目安の床に卵を出す
@@ -6985,7 +6995,7 @@ function lphWalkNew(){   // 「とまる」が初期。あるく時は範囲の�
     return { off:false, state:"pause", until:performance.now()+800, target:new THREE.Vector3(), home:LITE.targetPos.clone(), last:performance.now(), held:true, hx:0, hy:0, yaw:lphYawOf(LITE.targetQuat) };   // 【変更】初期は「あるく」
 }
 function lphBodyLen(){ const gi=lphGroundInfo(); return Math.max(0.02, gi.r*2); }   // 体長（今の大きさ・向きでの床の上の長さ）
-function lphWalkPick(W){   // 次に歩いていく場所：中心から 体長×3 の円の中（用紙の上でもはみ出してよい）
+function lphWalkPick(W){   // 次に歩いていく場所：中心から 体長×1.2 の円の中（用紙の上でもはみ出してよい）
     const L=lphBodyLen(), R=L*LPH_CFG.walkRadiusBL, minD=L*0.3, c=W.home;
     for(let k=0;k<12;k++){
         const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*R, x=c.x+Math.cos(a)*r, z=c.z+Math.sin(a)*r;
@@ -9150,7 +9160,7 @@ addEventListener("resize",()=>{
                 const h0=new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3()).y||1;
                 const realH=(typeof DOGS!=="undefined" && idx<DOGS.length && DOGS[idx])?(DOGS[idx].realH||38):38;
                 factor=(realH/100)/h0;
-            } else { factor = dinoFactor(target==="dino", dinoSize); }
+            } else { factor = dinoFactor(target==="dino", dinoSize); if(target==="dino" && dinoDeformOn()) factor*=dinoDeform(idx); }   // 【追加】スマホ・タブレット：デフォルメした比
             const url = await objToBlobUrl(obj, { scaleFactor:factor, bakeVoxelColors:true });
             if(_tok !== showModel._tok){ try{ URL.revokeObjectURL(url); }catch(_){ } if(_freshVoxel) _disposeVox(obj); return; }   // 新しい切替が来た＝破棄（犬は生成物も解放）
             if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
