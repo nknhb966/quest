@@ -913,10 +913,6 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     #segTabarH button{ min-height:44px; }
     .tabar-status{ margin:0; min-height:1.6em; font-size:13px; line-height:1.6; letter-spacing:.5px; color:#c9bcff; text-align:center; white-space:pre-line; }
     .tabar-status.err{ color:#ffb3a1; }
-    /* 【追加】床マーカーの設定 */
-    #tfmRow{ margin-top:6px; font-size:13px; color:#d9cbf5; display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
-    #tfmRow input{ width:3.4em; padding:3px 4px; border-radius:6px; border:1px solid #6a5c94; background:#1b1428; color:#fff; font-size:14px; text-align:center; }
-    #tfmRow a{ color:#9fe0ff; text-decoration:none; margin-left:4px; }
     .tabar-confirm-msg{ margin:0; font-size:13.5px; line-height:1.75; color:rgba(226,216,255,.9); text-align:center; white-space:pre-line; }
     .tabar-confirm-msg:empty{ display:none; }
     .tabar-go{ padding:15px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; letter-spacing:1px;
@@ -974,12 +970,6 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
                 <button data-v="child">🧒 子ども 1.2m</button>
                 <button data-v="adult" class="on">🧑 大人 1.5m</button>
             </div>
-        </div>
-        <!-- 【追加】床マーカー（ずれ直し）：印刷した印を床に並べると、見えた時に位置と向きを合わせ直す -->
-        <div class="opt wide" id="tabarFloorOpt">
-            <div class="lbl">床マーカー（ずれ直し）</div>
-            <div class="seg" id="segTabarFloor"><button data-v="on">つかう</button><button data-v="off">つかわない</button></div>
-            <div id="tfmRow">ならべ方 <input id="tfmCols" type="number" min="1" max="10" inputmode="numeric"> 列 × <input id="tfmRows" type="number" min="1" max="10" inputmode="numeric"> 行・間隔 <input id="tfmSp" type="number" min="1" max="10" step="0.5" inputmode="decimal"> m　<a id="tfmPdf" target="_blank" rel="noopener">📄 マーカーを印刷</a></div>
         </div>
         <p id="tabarPrepStatus" class="tabar-status"></p>
         <button id="tabarStartBtn" class="tabar-go" disabled>カメラをはじめる</button>
@@ -4348,7 +4338,6 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
         if(recoOn){ applyAutoForTarget(chosenDigTarget); }   // オンにしたら現在の対象で①の値を強制セット
         updateRecoVisibility();
         updateEntryButtons();   // おすすめ切替で入室ボタンの表示も更新（オフ＝両方表示）
-        try{ if(window.__tabarFloorSync) window.__tabarFloorSync(); }catch(_){ }   // 【追加】床マーカーのトグル表示・既定値を連動
     });
 });
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
@@ -8301,7 +8290,6 @@ function tabarOpenPrep(){
     if(TABAR.on || TABAR.phase!=="idle") return;
     if(document.body.classList.contains("loading") || document.body.classList.contains("preloading")) return;
     TABAR.phase="prep"; TABAR.support=null; TABAR.starting=false;
-    try{ if(window.__tabarFloorSync) window.__tabarFloorSync(); }catch(_){ }   // 【追加】床マーカー：おすすめオン＝非表示でつかわない／オフ＝表示（既定つかわない）
     tabarUI.prep.classList.add("open");
     tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしています…");
     tabarDetect().then(r=>{ TABAR.support=r; });
@@ -8351,7 +8339,7 @@ async function tabarStartWebXR(){
     let session;
     try{
         session = await navigator.xr.requestSession("immersive-ar", {
-            requiredFeatures:["hit-test"], optionalFeatures:["dom-overlay","local-floor","anchors","camera-access"], domOverlay:{ root:document.body } });   // 【変更】anchors・camera-access を追加（ずれ直し）
+            requiredFeatures:["hit-test"], optionalFeatures:["dom-overlay","anchors"], domOverlay:{ root:document.body } });   // 床ロック：anchors（マーカーは使わない）
     }catch(e){ console.warn("tabar webxr", e); return "ARを開始できませんでした（"+((e&&e.name)||"error")+"）。"; }
     if(!session.domOverlayState){   // 画面のボタン類を重ねられない＝操作できないため、カメラ映像方式へ切り替える
         try{ await session.end(); }catch(_){}
@@ -8363,8 +8351,7 @@ async function tabarStartWebXR(){
         await renderer.xr.setSession(session);
     }catch(e){ console.warn("tabar setSession", e); TABAR.keepPrep=true; try{ await session.end(); }catch(_){} tabarCleanup(); return "ARを開始できませんでした。"; }
     TABAR.session=session;
-    try{ const vs=await session.requestReferenceSpace("viewer"); TABAR.hitSource=await session.requestHitTestSource({ space:vs }); }
-    catch(e){ console.warn("tabar hit-test", e); TABAR.hitSource=null; }   // 無ければ端末の高さから床を推定
+    await tabarLock.begin(session);   // 床ロック：ヒットテスト（中央＋足もと寄り）を用意。無ければ端末の高さから床を推定
     tabarBeginScan();
     return true;
 }
@@ -8374,8 +8361,266 @@ function tabarXRFrame(){
     if(!frame || !ref) return null;
     const vp=frame.getViewerPose(ref);
     TABAR.tracking = !!vp && !vp.emulatedPosition;   // emulatedPosition＝位置を見失っている
-    return { frame, ref };
+    return { frame, ref, vp };
 }
+/* ---------- 床ロック（マーカーなし／WebXR＝Android Chrome＋ARCore）----------
+ * フィールドなどのコンテンツは three.js の世界座標に置いたまま動かさない。代わりに台（player＝カメラの親）を
+ * 「世界 ← ARの基準座標」の変換として毎フレーム求め直す（水平の向き＋平行移動の4自由度。傾きは ARCore が重力で合わせている）。
+ *  ・床のアンカー：「ここではじめる」で1つ、その後は歩いた先に約1.2m間隔で自動で打つ（最大16個）。
+ *    ARCore は地図を直すたびにアンカーも一緒に動かす。アンカーごとに「この床の点は世界のどこか」を覚えておき、
+ *    今のアンカーの姿勢から台を逆算する → 歩き回っても、見失って戻っても、フィールドが現実の床に付いたままになる。
+ *  ・カメラに近いアンカーほど重く平均する（遠いアンカーほど ARCore の誤差が大きいため）。食い違いすぎるものは外す。
+ *  ・見え始めたアンカーは0.6秒かけて効かせる（切り替わりで飛ばない）。それ以外に遅らせる平滑化はしない
+ *    （ARCore の修正はカメラの姿勢と同じフレームで起きるので、すぐ反映するほど現実とぴったり合う）。
+ *  ・アンカーは床の平面に付け、高さは「その場所の床＝フィールドの床」とする → 場所ごとの床の高さのずれも直る。
+ *  ・アンカーが使えない端末：基準座標の作り直し（reset）の移動量と、足もとの床の実測で高さだけ合わせる。
+ *  ・URL に ?tabardebug=1 で、状態を画面左下に表示する。
+ */
+const tabarLock=(()=>{
+const CFG={
+    gap:1.2,            // いちばん近いアンカーからこれだけ離れたら、新しく打つ(m)
+    max:16,             // アンカーの最大数（超えたら、いちばん遠いものを消す）
+    every:600,          // アンカーを打つ最短の間隔(ms)
+    hitDist:2.5,        // アンカーに使う床の点：カメラからの水平距離の上限(m)
+    floorTol:0.08,      // 床とみなす高さの幅(m)。これより高い／低い面（机・いす・段差）には打たない
+    fadeIn:0.6,         // 見え始めたアンカーが効ききるまでの時間(秒)
+    soft:1.0,           // 重み 1/(距離²＋soft²) の下駄(m)
+    outPos:0.5, outYaw:15*Math.PI/180,   // 他のアンカーとの食い違いがこれ以上なら外す（3個以上見えている時）
+    primaryWait:1500,   // 「ここではじめる」後、床の点が取れないまま過ぎたら、足もとの床の高さに浮いたアンカーで代用(ms)
+    failMax:5,          // アンカー作成の失敗がこの回数続いたら、アンカーなしの方式に切り替える
+    scanWin:1500, scanBin:0.03, scanMin:12, scanStable:500,   // 床さがし：直近の時間(ms)・かたまりの幅(m)・最少数・安定時間(ms)
+    yWin:1500, yMin:10, yDead:0.015, yRate:1.5,               // アンカーなし時の高さ合わせ：時間(ms)・最少数・不感帯(m)・速さ(1/秒)
+};
+const _q=new THREE.Quaternion(), _v=new THREE.Vector3();
+// ---- 4自由度（yaw＋x,y,z）の変換。three.js の rotation.y と同じ向き ----
+const R4={
+    wrap(a){ while(a>Math.PI) a-=2*Math.PI; while(a<-Math.PI) a+=2*Math.PI; return a; },
+    rot(t,x,z){ const c=Math.cos(t), s=Math.sin(t); return [x*c+z*s, -x*s+z*c]; },
+    compose(A,B){ const [x,z]=R4.rot(A.yaw,B.x,B.z); return {yaw:R4.wrap(A.yaw+B.yaw), x:x+A.x, y:A.y+B.y, z:z+A.z}; },   // A∘B
+    inv(A){ const [x,z]=R4.rot(-A.yaw,-A.x,-A.z); return {yaw:-A.yaw, x, y:-A.y, z}; },
+    apply(A,p){ const [x,z]=R4.rot(A.yaw,p.x,p.z); return {x:x+A.x, y:p.y+A.y, z:z+A.z}; },
+    fromPose(t){ const o=t.orientation, p=t.position; _q.set(o.x,o.y,o.z,o.w);
+        const f=_v.set(0,0,-1).applyQuaternion(_q); let yaw;
+        if(f.x*f.x+f.z*f.z>0.25) yaw=Math.atan2(-f.x,-f.z);
+        else { const r=_v.set(1,0,0).applyQuaternion(_q); yaw=Math.atan2(-r.z, r.x); }
+        return {yaw, x:p.x, y:p.y, z:p.z}; },
+    // カメラ位置 c（基準座標）を支点に A→B を q だけ進める（台の原点まわりに混ぜると、遠くで大きく振れるため）
+    lerpAt(A,B,q,c){ const a=R4.apply(A,c), b=R4.apply(B,c), yaw=R4.wrap(A.yaw+R4.wrap(B.yaw-A.yaw)*q), [rx,rz]=R4.rot(yaw,c.x,c.z);
+        return {yaw, x:a.x+(b.x-a.x)*q-rx, y:a.y+(b.y-a.y)*q-c.y, z:a.z+(b.z-a.z)*q-rz}; },
+};
+const L={ gen:0, session:null, viewer:null, hc:null, hn:null, sup:false, placed:false, fy:0,
+    list:[], creating:false, lastMake:0, wantPrimary:false, primaryT:0, refHooked:null, wasTracking:true, lastCam:{x:0,y:0,z:0},
+    scan:[], cand:null, candT:0, best:null, ys:[],
+    st:{ lost:0, resets:0, made:0, fail:0, dropped:0, used:0, tracked:0, jump:0, jumpMax:0, mode:"-" } };
+const DBG=/[?&]tabardebug=1/.test(location.search);
+
+function rigGet(){ return {yaw:player.rotation.y, x:player.position.x, y:player.position.y, z:player.position.z}; }
+function rigSet(n){
+    if(!(isFinite(n.yaw) && isFinite(n.x) && isFinite(n.y) && isFinite(n.z))) return;
+    const o=rigGet();
+    if(TABAR.prevOk){ const p=R4.apply(R4.compose(n,R4.inv(o)), TABAR.prevPos); TABAR.prevPos.set(p.x,p.y,p.z); }   // 走りすぎ判定が、台の補正を「移動」と数えないように
+    player.rotation.set(0,n.yaw,0); player.position.set(n.x,n.y,n.z); player.updateMatrixWorld(true);
+}
+// ヒットテストの結果のうち、上向きの水平面（床・机の面）だけを、基準座標と世界座標の両方で返す
+function hits(fr, src, rig, maxY){
+    const out=[]; if(!src) return out;
+    let res; try{ res=fr.frame.getHitTestResults(src); }catch(_){ return out; }
+    for(const r of res){
+        let p=null; try{ p=r.getPose(fr.ref); }catch(_){ } if(!p) continue;
+        const o=p.transform.orientation; _q.set(o.x,o.y,o.z,o.w);
+        if(_v.set(0,1,0).applyQuaternion(_q).y<0.9) continue;   // 壁・斜めの面は除く
+        const q=p.transform.position, w=R4.apply(rig,q);
+        if(w.y>maxY) continue;                                    // 端末より十分下の面だけ
+        out.push({ r, ref:{x:q.x,y:q.y,z:q.z}, x:w.x, y:w.y, z:w.z });
+    }
+    return out;
+}
+
+/* ---- 開始：ヒットテスト（画面の中央の光線＋足もと寄りの斜め下の光線）を用意 ---- */
+async function begin(session){
+    reset(); L.session=session;
+    const ef=session.enabledFeatures;
+    L.sup=(!ef || ef.includes("anchors")) && typeof XRFrame!=="undefined" &&
+        (("createAnchor" in XRFrame.prototype) || (typeof XRHitTestResult!=="undefined" && ("createAnchor" in XRHitTestResult.prototype)));
+    try{ L.viewer=await session.requestReferenceSpace("viewer"); }catch(e){ console.warn("[床ロック] viewer", e); return; }
+    const mk=async(extra)=>{ for(const et of [["plane"], null]){   // 平面だけに当てる（特徴点は高さがばらつく）。未対応なら既定で
+        try{ const o=Object.assign({ space:L.viewer }, extra); if(et) o.entityTypes=et; return await session.requestHitTestSource(o); }catch(_){ } } return null; };
+    L.hc=await mk({});
+    let ray=null; try{ ray=new XRRay({x:0,y:0,z:0,w:1},{x:0,y:-1,z:-1,w:0}); }catch(_){ }   // 縦に持つと約1m先の床、床に向けると足もとの床
+    L.hn=ray ? await mk({ offsetRay:ray }) : null;
+    TABAR.hitSource=L.hc||L.hn;   // 既存の「ヒットテストあり」の判定用
+    L.st.mode=L.sup ? "アンカー" : "高さのみ";
+}
+
+/* ---- 床さがし：直近1.5秒の床の点の「いちばん低いかたまり」を床とする（机・いすの座面より床を優先）---- */
+function scanReset(){ L.scan.length=0; L.cand=null; L.candT=0; L.best=null; }
+function scan(fr){
+    if(!fr || !fr.vp || !(L.hc||L.hn)) return null;
+    const now=performance.now(), rig=rigGet(), cw=R4.apply(rig, fr.vp.transform.position), maxY=cw.y-0.35;
+    const hc=hits(fr,L.hc,rig,maxY), hn=hits(fr,L.hn,rig,maxY);
+    if(hc[0]) L.scan.push({y:hc[0].y, t:now});
+    if(hn[0]) L.scan.push({y:hn[0].y, t:now});
+    while(L.scan.length && now-L.scan[0].t>CFG.scanWin) L.scan.shift();
+    const ys=L.scan.map(s=>s.y).sort((a,b)=>a-b); let floor=null;
+    for(let i=0,j=0;i<ys.length;i++){ if(j<i) j=i; while(j<ys.length && ys[j]-ys[i]<=CFG.scanBin) j++; if(j-i>=CFG.scanMin){ floor=ys[i+((j-i)>>1)]; break; } }
+    if(floor!=null){
+        if(L.cand==null || Math.abs(floor-L.cand)>0.02){ L.cand=floor; L.candT=now; } else L.cand+=(floor-L.cand)*0.2;
+        if(now-L.candT>=CFG.scanStable){   // 安定した床：一度決まったら、それより明らかに高い面（机など）には乗り換えない
+            if(L.best==null || L.cand<L.best-0.05) L.best=L.cand;
+            else if(Math.abs(L.cand-L.best)<=0.05) L.best+=(L.cand-L.best)*0.2;
+        }
+    }
+    const fy=(L.best!=null) ? L.best : L.cand, on=(h)=>h && fy!=null && Math.abs(h.y-fy)<0.06;
+    let ret=null;
+    if(on(hc[0])) ret={x:hc[0].x, y:fy, z:hc[0].z};
+    else if(on(hn[0])) ret={x:hn[0].x, y:fy, z:hn[0].z};
+    else if(fy==null && (hc[0]||hn[0])){ const h=hc[0]||hn[0]; ret={x:h.x, y:h.y, z:h.z}; }
+    return { reticle:ret, floorY:L.best, ready:L.best!=null };
+}
+
+/* ---- 「ここではじめる」：床の高さ fy（世界）を記録し、最初のアンカーを打つ ---- */
+function onPlace(fy){
+    L.fy=fy; L.ys.length=0;
+    if(L.placed){ for(const A of L.list){ if(A.W) A.W.y=fy; } }   // 置き直し：世界はそのまま（フィールドだけ移る）なので、アンカーは使い続ける
+    else { clearAnchors(); }
+    L.placed=true; L.wantPrimary=L.sup; L.primaryT=performance.now();
+}
+function delAnchor(A){ try{ A.a.delete(); }catch(_){ } }
+function clearAnchors(){ L.gen++; for(const A of L.list) delAnchor(A); L.list.length=0; L.creating=false; }
+function nearestRef(x,z){ let m=Infinity; for(const A of L.list){ if(A.P) m=Math.min(m, Math.hypot(A.P.x-x, A.P.z-z)); } return m; }
+function trim(c){
+    while(L.list.length>CFG.max){
+        let k=0, m=-1; L.list.forEach((A,i)=>{ if(!A.P) return; const d=Math.hypot(A.P.x-c.x, A.P.z-c.z); if(d>m){ m=d; k=i; } });
+        delAnchor(L.list[k]); L.list.splice(k,1); L.st.dropped++;
+    }
+}
+function failed(e){
+    L.st.fail++;
+    if(L.st.fail===1) console.warn("[床ロック] アンカーを作れませんでした", e);
+    if(L.st.fail>=CFG.failMax && !L.list.length){ L.sup=false; L.wantPrimary=false; L.st.mode="高さのみ"; }
+}
+function maybeMake(fr, rig, c, now){
+    if(!L.sup || L.creating || now-L.lastMake<CFG.every) return;
+    if(!(L.wantPrimary || (TABAR.phase==="play" && nearestRef(c.x,c.z)>CFG.gap))) return;
+    const maxY=R4.apply(rig,c).y-0.35; let best=null;
+    for(const h of hits(fr,L.hn,rig,maxY).concat(hits(fr,L.hc,rig,maxY))){
+        if(Math.abs(h.y-L.fy)>CFG.floorTol || !h.r.createAnchor) continue;
+        const d=Math.hypot(h.ref.x-c.x, h.ref.z-c.z); if(d>CFG.hitDist) continue;
+        if(!L.wantPrimary && nearestRef(h.ref.x,h.ref.z)<CFG.gap*0.6) continue;   // 既にあるアンカーのすぐ近くには打たない
+        if(!best || d<best.d) best={h,d};
+    }
+    let pr=null;
+    try{
+        if(best) pr=best.h.r.createAnchor();   // 床の平面に付いたアンカー（平面の高さが直ると一緒に直る）
+        else if(L.wantPrimary && now-L.primaryT>CFG.primaryWait && fr.frame.createAnchor)
+            pr=fr.frame.createAnchor(new XRRigidTransform({x:c.x, y:L.fy-rig.y, z:c.z},{x:0,y:0,z:0,w:1}), fr.ref);
+    }catch(e){ failed(e); L.lastMake=now; return; }
+    if(!pr || typeof pr.then!=="function") return;
+    const g=L.gen, prim=L.wantPrimary; L.wantPrimary=false; L.creating=true; L.lastMake=now;
+    pr.then(a=>{ if(g!==L.gen || !L.placed){ try{ a.delete(); }catch(_){ } return; }
+            L.st.fail=0; L.list.push({ a, W:null, P:null, fade:0, ok:false }); trim(L.lastCam); })
+      .catch(e=>{ if(g!==L.gen) return; failed(e); if(prim && L.sup) L.wantPrimary=true; })
+      .finally(()=>{ if(g===L.gen) L.creating=false; });
+}
+/* ---- 台の推定：アンカーごとの「台＝W∘P⁻¹」を、カメラ位置を支点に距離の重みで平均 ---- */
+function solve(used, c){
+    const avg=(list)=>{ let sw=0, y0=null, sy=0, x=0, y=0, z=0;
+        for(const A of list){
+            const R=R4.compose(A.W, R4.inv(A.P)), cw=R4.apply(R,c), d=Math.hypot(A.P.x-c.x, A.P.z-c.z), w=A.fade/(d*d+CFG.soft*CFG.soft);
+            A._R=R; A._c=cw;
+            if(y0==null) y0=R.yaw;
+            sy+=w*R4.wrap(R.yaw-y0); x+=w*cw.x; y+=w*cw.y; z+=w*cw.z; sw+=w;
+        }
+        if(!(sw>1e-9)) return null;
+        const yaw=R4.wrap(y0+sy/sw), [rx,rz]=R4.rot(yaw,c.x,c.z);
+        return { yaw, cx:x/sw, cz:z/sw, R:{yaw, x:x/sw-rx, y:y/sw-c.y, z:z/sw-rz}, used:list };
+    };
+    let e=avg(used); if(!e) return null;
+    if(used.length>=3){
+        const keep=used.filter(A=>Math.hypot(A._c.x-e.cx, A._c.z-e.cz)<CFG.outPos && Math.abs(R4.wrap(A._R.yaw-e.yaw))<CFG.outYaw);
+        if(keep.length && keep.length<used.length){ const e2=avg(keep); if(e2) e=e2; }
+    }
+    return e;
+}
+/* ---- アンカーなし：足もとの床の実測で高さだけ合わせる ---- */
+function yTrack(fr, rig, c, now, dt){
+    const maxY=R4.apply(rig,c).y-0.35, h=hits(fr,L.hn,rig,maxY)[0] || hits(fr,L.hc,rig,maxY)[0];
+    if(h && Math.abs(h.y-L.fy)<0.15) L.ys.push({ ry:h.ref.y, t:now });   // 机などは除く
+    while(L.ys.length && now-L.ys[0].t>CFG.yWin) L.ys.shift();
+    if(L.ys.length<CFG.yMin) return;
+    const es=L.ys.map(s=>rig.y+s.ry-L.fy).sort((a,b)=>a-b), m=es[es.length>>1];
+    if(Math.abs(m)<CFG.yDead) return;
+    rigSet({ yaw:rig.yaw, x:rig.x, y:rig.y-m*Math.min(1,dt*CFG.yRate), z:rig.z });
+}
+function hookReset(ref){
+    if(L.refHooked===ref) return; L.refHooked=ref;
+    try{ ref.addEventListener("reset", ev=>{
+        if(ref!==L.refHooked || !L.placed) return;
+        L.st.resets++;
+        if(L.list.some(A=>A.ok)) return;   // アンカーが見えていれば、次のフレームでアンカーから合わせ直る
+        const t=ev && ev.transform; if(t) rigSet(R4.compose(rigGet(), R4.fromPose(t)));
+    }); }catch(_){ }
+}
+/* ---- 毎フレーム（tabarTick から。描画の前）---- */
+function tick(dt, now, fr){
+    try{
+        if(!fr || !fr.vp) return;
+        hookReset(fr.ref);
+        const tracking=!fr.vp.emulatedPosition;
+        if(L.wasTracking && !tracking) L.st.lost++;
+        L.wasTracking=tracking;
+        if(!L.placed){ if(DBG) dbgShow(now); return; }
+        const p=fr.vp.transform.position, c={x:p.x, y:p.y, z:p.z}; L.lastCam=c;
+        const ta=fr.frame.trackedAnchors; let nT=0;
+        for(const A of L.list){
+            let P=null;
+            if(!ta || ta.has(A.a)){ try{ const ps=fr.frame.getPose(A.a.anchorSpace, fr.ref); if(ps) P=R4.fromPose(ps.transform); }catch(_){ } }
+            if(!P){ A.ok=false; A.fade=0; continue; }   // 見失ったアンカー：次に見えた時は0から効かせ直す
+            A.P=P; A.ok=true; nT++;
+        }
+        L.st.tracked=nT;
+        if(!tracking){ L.st.used=0; if(DBG) dbgShow(now); return; }   // 見失い中は台を止める（戻ったらアンカーで合わせ直す）
+        let rig=rigGet();
+        for(const A of L.list){ if(A.ok && !A.W){ A.W=R4.compose(rig, A.P); A.W.y=L.fy; L.st.made++; } }   // 初めて見えた：今の台で世界の位置を決める
+        const used=L.list.filter(A=>A.ok && A.W);
+        for(const A of used) A.fade=Math.min(1, A.fade+dt/CFG.fadeIn);
+        const e=used.length ? solve(used, c) : null;
+        if(e){
+            let a=0; for(const A of e.used) a=Math.max(a, A.fade);
+            const nr=(a>=1) ? e.R : R4.lerpAt(rig, e.R, a, c);
+            const o=R4.apply(rig,c), n=R4.apply(nr,c), j=Math.hypot(n.x-o.x, n.z-o.z);
+            L.st.jump=j; if(j>L.st.jumpMax) L.st.jumpMax=j; L.st.used=e.used.length;
+            rigSet(nr); rig=nr;
+        } else { L.st.used=0; yTrack(fr, rig, c, now, dt); rig=rigGet(); }
+        maybeMake(fr, rig, c, now);
+        if(DBG) dbgShow(now);
+    }catch(e){ console.warn("[床ロック]", e); }
+}
+function reset(){
+    clearAnchors(); L.placed=false; L.wantPrimary=false; L.refHooked=null; L.wasTracking=true; L.ys.length=0; scanReset();
+    Object.assign(L.st,{ lost:0, resets:0, made:0, fail:0, dropped:0, used:0, tracked:0, jump:0, jumpMax:0, mode:"-" });
+}
+function cleanup(){
+    for(const s of [L.hc, L.hn]){ if(s){ try{ s.cancel(); }catch(_){ } } }
+    L.hc=L.hn=null; L.viewer=null; L.session=null; reset();
+    const d=document.getElementById("tlockDbg"); if(d) d.style.display="none";
+}
+let dbgT=0;
+function dbgShow(now){
+    if(now-dbgT<250) return; dbgT=now;
+    let d=document.getElementById("tlockDbg");
+    if(!d){ d=document.createElement("div"); d.id="tlockDbg"; d.style.cssText="position:fixed;left:6px;bottom:6px;z-index:100005;background:rgba(0,0,0,.6);color:#bff;font:11px/1.35 monospace;padding:4px 6px;border-radius:6px;pointer-events:none;white-space:pre"; document.body.appendChild(d); }
+    d.style.display=""; const r=rigGet(), s=L.st;
+    d.textContent=`床ロック ${s.mode}  追跡 ${TABAR.tracking?"○":"×"}  見失い ${s.lost}回  reset ${s.resets}回\n`+
+        `アンカー ${L.list.length}個（見えている ${s.tracked}・使用 ${s.used}）  作成 ${s.made}  削除 ${s.dropped}  失敗 ${s.fail}\n`+
+        `補正 今${(s.jump*100).toFixed(1)}cm 最大${(s.jumpMax*100).toFixed(1)}cm  床 ${L.fy.toFixed(3)}m\n`+
+        `台 (${r.x.toFixed(2)}, ${r.y.toFixed(2)}, ${r.z.toFixed(2)}) ${(r.yaw*180/Math.PI).toFixed(1)}°`;
+}
+const api={ begin, scan, scanReset, onPlace, tick, reset, cleanup,
+    stats:()=>Object.assign({ placed:L.placed, anchors:L.list.length, fy:L.fy, rig:rigGet(), supported:L.sup }, L.st) };
+window.TABAR_LOCK_DEBUG=api;
+return api;
+})();
 
 /* ---------- camera バックエンド（iPadOS Safari 等） ---------- */
 function tabarCamErrMsg(e){
@@ -8491,7 +8736,7 @@ function tabarEnterCommon(backend){
     TABAR.walk.set(0,0,0); TABAR.step.times.length=0; TABAR.step.up=false; TABAR.spd=0; TABAR.prevOk=false; TABAR.runT=0;
     TABAR.warnKey=""; TABAR.lvl=-1; TABAR.radarOn=false; TABAR.digShown=false; TABAR.tracking=true; TABAR.pointers.clear();
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
-    if(window.__tabarFix) window.__tabarFix.reset();   // 【追加】ずれ直しの状態を消す
+    tabarLock.reset();   // 床ロックの状態を消す
 }
 function tabarReticle(){
     if(TABAR.reticle) return TABAR.reticle;
@@ -8507,6 +8752,7 @@ function tabarBeginScan(){
     stage.visible=false;   // 床が決まるまでフィールドは出さない
     tabarReticle().visible=false;
     tabarUI.placeBtn.disabled=true;
+    tabarLock.scanReset();
     tabarUI.scanMsg.textContent="あそぶ場所のまん中に立って、タブレットを床に向けてね";
     tabarUI.scanSub.textContent="床をさがしています… ゆっくり左右に動かしてね";
     tabarUI.scan.classList.add("open");
@@ -8517,23 +8763,21 @@ function tabarFloorSample(y, x, z){
     if(TABAR.floorN===0 || Math.abs(y-TABAR.floorY)>0.08){ TABAR.floorY=y; TABAR.floorN=1; }
     else { TABAR.floorY += (y-TABAR.floorY)*0.2; TABAR.floorN++; }
     ret.position.set(x, TABAR.floorY+0.005, z); ret.visible=true;
-    if(!TABAR.floorOk && TABAR.floorN>=18){   // 安定して見つかったら確定できる（以後は保持）
-        TABAR.floorOk=true; tabarUI.placeBtn.disabled=false;
-        tabarUI.scanSub.textContent="床が見つかりました！「ここではじめる」をタップしてね";
-        try{ chord([523,659],0.06,"triangle",0.35); }catch(_){}
-    }
+    if(!TABAR.floorOk && TABAR.floorN>=18) tabarFloorFound();   // 安定して見つかったら確定できる（以後は保持）
+}
+function tabarFloorFound(){
+    TABAR.floorOk=true; tabarUI.placeBtn.disabled=false;
+    tabarUI.scanSub.textContent="床が見つかりました！「ここではじめる」をタップしてね";
+    try{ chord([523,659],0.06,"triangle",0.35); }catch(_){}
 }
 function tabarScanTick(fr){
     const cp=camera.getWorldPosition(_taCp);
     const d=_taD.set(0,0,-1).applyQuaternion(camera.getWorldQuaternion(_taQ));
-    if(TABAR.backend==="webxr" && TABAR.hitSource){
-        let hit=null;
-        if(fr){ const res=fr.frame.getHitTestResults(TABAR.hitSource);
-            for(const r of res){ const p=r.getPose(fr.ref); if(!p) continue;
-                const o=p.transform.orientation; _taN.set(0,1,0).applyQuaternion(_taQ0.set(o.x,o.y,o.z,o.w));
-                const q=p.transform.position;
-                if(_taN.y>0.85 && q.y<cp.y-0.3){ hit=q; break; } } }   // 端末より下の水平面＝床
-        tabarFloorSample(hit?hit.y:null, hit?hit.x:0, hit?hit.z:0);
+    if(TABAR.backend==="webxr" && TABAR.hitSource){   // 床ロック：直近の床の点の「いちばん低いかたまり」＝床（机などより床を優先）
+        const r=tabarLock.scan(fr), ret=tabarReticle();
+        if(!r){ ret.visible=false; return; }
+        if(r.reticle){ ret.position.set(r.reticle.x, r.reticle.y+0.005, r.reticle.z); ret.visible=true; } else ret.visible=false;
+        if(r.ready){ TABAR.floorY=r.floorY; if(!TABAR.floorOk) tabarFloorFound(); }
         return;
     }
     // 床の推定（camera／ヒットテスト非対応）：選んだ「持つ高さ」の下に床があるとみなす
@@ -8547,7 +8791,7 @@ function tabarPlace(){
     stage.position.y=fy; worldYAdjust=fy;
     recenterFieldHere();   // 現在地＝フィールド中央、向いている方向＝奥(-Z)（Quest の基準設定と同じ処理）
     stage.position.y=fy; worldYAdjust=fy;
-    if(window.__tabarFix) window.__tabarFix.onPlace();   // 【追加】置いた中心・向きを記録し、アンカーを作る
+    if(TABAR.backend==="webxr") tabarLock.onPlace(fy);   // 床ロック：床の高さを記録し、床にアンカーを打ち始める
     stage.visible=true;
     tabarReticle().visible=false;
     tabarUI.scan.classList.remove("open");
@@ -8607,10 +8851,9 @@ function tabarExit(){
 function tabarCleanup(){
     if(!TABAR.on) return;
     if(GAME.active) endGame(false);
-    if(TABAR.hitSource){ try{ TABAR.hitSource.cancel(); }catch(_){} TABAR.hitSource=null; }
+    tabarLock.cleanup(); TABAR.hitSource=null;   // 床ロック：アンカー・ヒットテストを片付ける
     TABAR.session=null;
     tabarRemoveSensorListeners();
-    if(window.__tabarFix) window.__tabarFix.cleanup();   // 【追加】アンカー・カメラ映像用の資源を片付ける
     if(TABAR.stream){ try{ TABAR.stream.getTracks().forEach(t=>t.stop()); }catch(_){} TABAR.stream=null; }
     tabarUI.video.srcObject=null;
     tabarRemoveSiteBorder(); TABAR.area=null;
@@ -8747,7 +8990,7 @@ function tabarTick(dt, now){
         const v=tabarUI.video;
         if(v.paused && !document.hidden && now-(TABAR.vidRetryT||0)>1000){ TABAR.vidRetryT=now; const pr=v.play(); if(pr && pr.catch) pr.catch(()=>{}); }   // 映像が止まったら再生し直す
     }
-    if(window.__tabarFix) window.__tabarFix.tick(dt, now, fr);   // 【追加】アンカー・床マーカーで台（カメラの親）を合わせ直す
+    if(fr) tabarLock.tick(dt, now, fr);   // 床ロック：アンカーから台（カメラの親）を求め直す（床さがし・判定より先に）
     if(TABAR.phase==="scan") tabarScanTick(fr);
     else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); }
 }
@@ -10055,295 +10298,9 @@ window.NURI_DEBUG={ state:NURI, info:()=>NURI.lastInfo, view:(y,p)=>nuriPreviewV
         return { bytes:glb.byteLength, meshesWithImage:maps, vertexColors:colorAttr }; },
     holders:(key)=>nuriHolders(key).map(r=>{ let meshes=0,painted=0; r.traverse(o=>{ if(o.isMesh){ meshes++; const g=NURI_ORIG.get(o); if(g && g!==o.geometry) painted++; } }); return {meshes,painted}; }) };
 })();
-/* =====================================================
- * 【追加】タブレットARのずれ直し（アンカー＋床マーカー）
- * ・台（player＝カメラの親）の位置と向きだけを動かす。フィールド・発掘ポイント・判定のコードは変えない。
- * ・WebXR（Android ARCore）：「ここではじめる」で床にアンカーを作り、ARCore がアンカーを直した分だけ台を動かす。
- *   座標の作り直し（reset）はアンカーで吸収（アンカーが無い時は reset の移動量で補正）。
- * ・床マーカー（ArUco 5x5・armarker/floor_markers_A4.pdf を床に並べる）：カメラ映像から0.5秒ごとに探し、
- *   見えた位置・向きと本来の位置の差を少しずつ寄せる（WebXR は camera-access、camera 方式は映像そのもの）。
- * ・URL に ?tabardebug=1 で、見失い・reset・補正の記録を画面に表示。
- * ===================================================== */
-(function(){
-//@@TFX_CORE_START
-// ---- ずれ直しの計算（three.js・DOMに依存しない部分）----
-// 台（player）の位置・向き＝「水平の回転 yaw ＋ 平行移動 (x,y,z)」。three.js の rotation.y と同じ向き。
-const TFX={
-    rot(t,x,z){ const c=Math.cos(t), s=Math.sin(t); return [x*c+z*s, -x*s+z*c]; },
-    wrap(a){ while(a>Math.PI) a-=2*Math.PI; while(a<-Math.PI) a+=2*Math.PI; return a; },
-    heading(dx,dz){ return Math.atan2(-dx,-dz); },                       // (dx,dz) を向く yaw（recenterFieldHere と同じ式）
-    I(){ return {yaw:0,x:0,y:0,z:0}; },
-    compose(A,B){ const [x,z]=TFX.rot(A.yaw,B.x,B.z); return {yaw:TFX.wrap(A.yaw+B.yaw), x:x+A.x, y:A.y+B.y, z:z+A.z}; },   // A∘B
-    inv(A){ const [x,z]=TFX.rot(-A.yaw,-A.x,-A.z); return {yaw:-A.yaw, x, y:-A.y, z}; },
-    apply(A,p){ const [x,z]=TFX.rot(A.yaw,p.x,p.z); return {x:x+A.x, y:(p.y||0)+A.y, z:z+A.z}; },
-    lerp(A,B,q){ return {yaw:TFX.wrap(A.yaw+TFX.wrap(B.yaw-A.yaw)*q), x:A.x+(B.x-A.x)*q, y:A.y+(B.y-A.y)*q, z:A.z+(B.z-A.z)*q}; },
-    // アンカー：置いた時の姿勢 base、今の姿勢 now（どちらも基準座標）→ 現実が動いた量 Δ = now∘base⁻¹
-    delta(base, now){ return TFX.compose(now, TFX.inv(base)); },
-    // 台の更新（右から掛ける）：rig_new = rig ∘ Δprev ∘ Δnew⁻¹ ＝ 「rig_base ∘ Δ⁻¹」を少しずつ保つ
-    rigAfterAnchor(rig, dPrev, dNew){ return TFX.compose(rig, TFX.compose(dPrev, TFX.inv(dNew))); },
-    // マーカー：見えた位置 O・向き hObs を、本来の位置 E・向き hExp へ寄せる（左から掛ける：点 P を中心に回して E へ）
-    markerStep(rig, P, E, yawRem, q){
-        const dy=yawRem*q, tx=(E.x-P.x)*q, tz=(E.z-P.z)*q;
-        const [rx,rz]=TFX.rot(dy, rig.x-P.x, rig.z-P.z);
-        return { rig:{yaw:TFX.wrap(rig.yaw+dy), x:rx+P.x+tx, y:rig.y, z:rz+P.z+tz}, P:{x:P.x+tx, z:P.z+tz}, yawRem:yawRem-dy };
-    },
-    // 世界の点を「台が old→new に変わった分」だけ動かす（D = new∘old⁻¹）
-    moveWorld(oldR,newR,p){ const q=TFX.apply(TFX.compose(newR,TFX.inv(oldR)),p); p.x=q.x; p.y=q.y; p.z=q.z; return p; },
-    // 光線と床（y=fy）の交点
-    floorHit(o,d,fy){ if(d.y>-0.12) return null; const t=(fy-o.y)/d.y; if(!(t>0 && t<15)) return null; return {x:o.x+d.x*t, y:fy, z:o.z+d.z*t}; },
-    // 床の上のマーカーの四隅（TL,TR,BR,BL の順）→ 中心・向き・辺の長さ
-    markerOnFloor(P){
-        const cx=(P[0].x+P[1].x+P[2].x+P[3].x)/4, cz=(P[0].z+P[1].z+P[2].z+P[3].z)/4;
-        const ux=(P[0].x+P[1].x-P[2].x-P[3].x)/2, uz=(P[0].z+P[1].z-P[2].z-P[3].z)/2;   // 下辺の中点→上辺の中点＝紙の矢印の向き
-        const side=[0,1,2,3].map(i=>Math.hypot(P[(i+1)%4].x-P[i].x, P[(i+1)%4].z-P[i].z));
-        return { x:cx, z:cz, heading:TFX.heading(ux,uz), sideMin:Math.min(...side), sideMax:Math.max(...side) };
-    },
-    // 番号 → 並べ方での位置（フィールドの座標）。0番＝おくの列の左端。おく＝フィールドの -Z
-    markerField(id, cols, rows, sp){ if(id<0 || id>=cols*rows) return null; const r=Math.floor(id/cols), c=id%cols; return { x:(c-(cols-1)/2)*sp, z:(r-(rows-1)/2)*sp }; },
-    // フィールドの座標 → 世界（置いた時の中心 C0・向き yaw0）
-    fieldToWorld(f, C0x, C0z, yaw0){ const [x,z]=TFX.rot(yaw0,f.x,f.z); return {x:x+C0x, z:z+C0z}; },
-};
-//@@TFX_CORE_END
-/* ---------------- ここからアプリ内（three.js・WebXR・画面）---------------- */
-const TF_CFG={
-    everyMs:500, detW:640,                  // 床マーカーを探す間隔・カメラ画像を縮める幅
-    gain:0.7, rate:3,                       // 1回の観測で寄せる割合・寄せる速さ（1/秒）
-    maxErr:2.5, maxYaw:40*Math.PI/180,      // これより大きい補正は、同じ補正が2回続いた時だけ採用（見間違い対策）
-    sameErr:0.4, sameYaw:10*Math.PI/180,
-    sideMin:0.09, sideMax:0.34,             // 床に写した印の1辺（A4=16cm・A3=22.6cm）の許容範囲
-    anchorRate:3,                           // アンカーの動きへ追いつく速さ（1/秒）
-    lsKey:"tabarFloorMarkers", pdf:"armarker/floor_markers_A4.pdf",
-    libLocal:["coloring/lib/cv.js","coloring/lib/aruco.js","coloring/lib/dictionaries/aruco_5x5_1000.js"],
-    libCdn:"https://cdn.jsdelivr.net/npm/js-aruco2@2.0.0/src/",
-};
-const SET=(()=>{ const d={on:false, cols:3, rows:4, sp:3}; try{ Object.assign(d, JSON.parse(localStorage.getItem(TF_CFG.lsKey)||"{}")); }catch(_){ } d.on=false; return d; })();   // 【変更】既定＝つかわない（以前に保存された「つかう」は引き継がない。並べ方・間隔は引き継ぐ）
-function setSave(){ try{ localStorage.setItem(TF_CFG.lsKey, JSON.stringify(SET)); }catch(_){ } }
-const F={ placed:false, C0x:0, C0z:0, yaw0:0, fy:0,
-    anchor:null, anchorReq:false, anchorBase:null, dUsed:null, refHooked:null,
-    glb:null, glbTried:false, gl:null, prog:null, vao:null, buf:null, fbo:null, fboTex:null, fw:0, fh:0, pix:null, img:null, uTex:null,
-    det:null, libP:null, canvas:null, lastDet:0, busy:false, pend:null, cand:null,
-    st:{ lost:0, resets:0, anchors:false, anchorTracked:false, anchorShift:0, anchorMax:0, camImg:"", seen:0, applied:0, rejected:0, last:"", wasTracking:true } };
-const DBG=/[?&]tabardebug=1/.test(location.search);
-
-function rigGet(){ return { yaw:player.rotation.y, x:player.position.x, y:player.position.y, z:player.position.z }; }
-function rigSet(nr){                         // 台だけを動かす。速さの判定（走ってない？）と歩数の位置にも同じ分を反映
-    const or=rigGet();
-    if(TABAR.prevPos) TFX.moveWorld(or, nr, TABAR.prevPos);
-    if(TABAR.backend==="camera" && TABAR.walk) TFX.moveWorld(or, nr, TABAR.walk);
-    player.rotation.y=nr.yaw; player.position.set(nr.x, nr.y, nr.z); player.updateMatrixWorld(true);
-}
-function poseToRigid(t){ const q=t.orientation; const e=new THREE.Euler().setFromQuaternion(new THREE.Quaternion(q.x,q.y,q.z,q.w),"YXZ"); return {yaw:e.y, x:t.position.x, y:t.position.y, z:t.position.z}; }
-
-// ---- ライブラリ（床マーカー＝ArUco 5x5。ぬりえと同じ js-aruco2 に 5x5 の辞書を足して使う）----
-function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=()=>res(); s.onerror=()=>{ s.remove(); rej(new Error(src)); }; document.head.appendChild(s); }); }
-function loadLib(){
-    if(F.libP) return F.libP;
-    F.libP=(async()=>{
-        const has=()=>window.AR && window.AR.Detector && window.AR.DICTIONARIES && window.AR.DICTIONARIES.ARUCO_5X5_1000;
-        if(!has()){
-            try{ for(const f of TF_CFG.libLocal){ if(f.includes("cv.js") && window.CV) continue; if(f.includes("aruco.js") && window.AR && window.AR.Detector) continue; await loadScript(f); } }
-            catch(e){ for(const f of ["cv.js","aruco.js","dictionaries/aruco_5x5_1000.js"]){ if(f==="cv.js" && window.CV) continue; if(f==="aruco.js" && window.AR && window.AR.Detector) continue; await loadScript(TF_CFG.libCdn+f); } }
-        }
-        F.det=new AR.Detector({ dictionaryName:"ARUCO_5X5_1000", maxHammingDistance:0 });
-    })().catch(e=>{ console.warn("[ARずれ直し] マーカー検出を読み込めませんでした", e); F.libP=null; });
-    return F.libP;
-}
-
-// ---- カメラ画像：WebXR（camera-access）は GPU で縮めて読み出す ----
-function glSetup(gl){
-    const vs=gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(vs,"attribute vec2 p; varying vec2 uv; void main(){ uv=p*0.5+0.5; gl_Position=vec4(p,0.0,1.0); }"); gl.compileShader(vs);
-    const fs=gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(fs,"precision mediump float; uniform sampler2D t; varying vec2 uv; void main(){ gl_FragColor=texture2D(t,uv); }"); gl.compileShader(fs);
-    const pr=gl.createProgram(); gl.attachShader(pr,vs); gl.attachShader(pr,fs); gl.bindAttribLocation(pr,0,"p"); gl.linkProgram(pr);
-    F.prog=pr; F.uTex=gl.getUniformLocation(pr,"t");
-    F.vao=gl.createVertexArray? gl.createVertexArray() : null; if(F.vao) gl.bindVertexArray(F.vao);
-    F.buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,F.buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-    if(F.vao) gl.bindVertexArray(null);
-    F.gl=gl;
-}
-function glGrab(tex, W, H){
-    const gl=renderer.getContext(); const w=TF_CFG.detW, h=Math.max(8,Math.round(w*H/W));
-    const prevFb=gl.getParameter(gl.FRAMEBUFFER_BINDING);
-    try{
-        if(!F.prog) glSetup(gl);
-        if(F.fw!==w || F.fh!==h){
-            if(F.fbo){ gl.deleteFramebuffer(F.fbo); gl.deleteTexture(F.fboTex); }
-            F.fboTex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,F.fboTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
-            gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-            F.fbo=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,F.fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,F.fboTex,0);
-            F.fw=w; F.fh=h; F.pix=new Uint8Array(w*h*4); F.img=new Uint8ClampedArray(w*h*4);
-        }
-        gl.bindFramebuffer(gl.FRAMEBUFFER,F.fbo); gl.viewport(0,0,w,h);
-        gl.disable(gl.SCISSOR_TEST); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.disable(gl.STENCIL_TEST); gl.colorMask(true,true,true,true);
-        gl.useProgram(F.prog);
-        if(F.vao) gl.bindVertexArray(F.vao); else { gl.bindBuffer(gl.ARRAY_BUFFER,F.buf); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0); }
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.uniform1i(F.uTex,0);
-        gl.drawArrays(gl.TRIANGLES,0,3);
-        gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,F.pix);
-        if(F.vao) gl.bindVertexArray(null);
-    } finally { gl.bindFramebuffer(gl.FRAMEBUFFER,prevFb); renderer.resetState(); }   // three.js の状態の覚えを捨てて、次の描画で設定し直させる
-    for(let y=0;y<h;y++) F.img.set(F.pix.subarray((h-1-y)*w*4,(h-y)*w*4), y*w*4);    // GL は下から上 → 上から下へ
-    return { width:w, height:h, data:F.img };
-}
-function glRelease(){ const gl=F.gl; if(!gl) return; try{ if(F.fbo){ gl.deleteFramebuffer(F.fbo); gl.deleteTexture(F.fboTex); } if(F.prog) gl.deleteProgram(F.prog); if(F.buf) gl.deleteBuffer(F.buf); if(F.vao && gl.deleteVertexArray) gl.deleteVertexArray(F.vao); }catch(_){ }
-    F.gl=null; F.prog=null; F.vao=null; F.buf=null; F.fbo=null; F.fboTex=null; F.fw=F.fh=0; F.pix=null; F.img=null; try{ renderer.resetState(); }catch(_){ } }
-
-// ---- 1枚の画像から、床マーカーを探して「見えた位置・向き」を返す ----
-function capture(fr){
-    if(TABAR.backend==="webxr"){
-        if(!fr || !TABAR.session) return null;
-        if(!F.glbTried){ F.glbTried=true; try{ if(window.XRWebGLBinding) F.glb=new XRWebGLBinding(TABAR.session, renderer.getContext()); }catch(e){ F.glb=null; } }
-        if(!F.glb || !F.glb.getCameraImage){ F.st.camImg="この端末では AR 中のカメラ映像を使えません"; return null; }
-        const vp=fr.frame.getViewerPose(fr.ref); if(!vp) return null;
-        const view=vp.views.find(v=>v.camera); if(!view){ F.st.camImg="カメラ映像なし（camera-access 未許可）"; return null; }
-        let tex=null; try{ tex=F.glb.getCameraImage(view.camera); }catch(e){ F.st.camImg="カメラ映像を取れません"; return null; }
-        if(!tex) return null;
-        const W=view.camera.width, H=view.camera.height, img=glGrab(tex,W,H); F.st.camImg=W+"x"+H;
-        const P=view.projectionMatrix, sx=img.width/W, sy=img.height/H;
-        const fx=P[0]*W/2, fy=P[5]*H/2, cx=(1-P[8])*W/2, cy=(1+P[9])*H/2;
-        const t=view.transform, q=new THREE.Quaternion(t.orientation.x,t.orientation.y,t.orientation.z,t.orientation.w);
-        const o=new THREE.Vector3(t.position.x,t.position.y,t.position.z).applyMatrix4(player.matrixWorld);
-        const qw=new THREE.Quaternion().setFromRotationMatrix(player.matrixWorld).multiply(q);
-        const ray=(u,v)=>{ const X=(u/sx-cx)/fx, Y=(cy-v/sy)/fy; const d=new THREE.Vector3(X,Y,-1).applyQuaternion(qw).normalize(); return {o, d}; };
-        return { img, ray };
-    }
-    // camera 方式：画面の映像（object-fit:cover）と3Dカメラは tabarFitCameraFov で合わせてある → 同じ対応で画素→光線
-    const v=tabarUI.video; const vw=v.videoWidth, vh=v.videoHeight; if(!vw || v.readyState<2) return null;
-    const w=TF_CFG.detW, h=Math.round(w*vh/vw); if(!F.canvas) F.canvas=document.createElement("canvas");
-    if(F.canvas.width!==w){ F.canvas.width=w; F.canvas.height=h; }
-    const ctx=F.canvas.getContext("2d",{willReadFrequently:true}); ctx.drawImage(v,0,0,w,h); const img=ctx.getImageData(0,0,w,h);
-    F.st.camImg=vw+"x"+vh;
-    camera.updateMatrixWorld(true);
-    const sw=innerWidth, sh=innerHeight, s=Math.max(sw/vw, sh/vh);
-    const o=camera.getWorldPosition(new THREE.Vector3());
-    const ray=(u,vv)=>{ const X=(u*vw/w - vw/2)*s + sw/2, Y=(vv*vh/h - vh/2)*s + sh/2;
-        const p=new THREE.Vector3(X/sw*2-1, -(Y/sh*2-1), 0.5).unproject(camera); return {o, d:p.sub(o).normalize()}; };
-    return { img, ray };
-}
-function observe(fr){
-    if(!F.det) return null;
-    const cap=capture(fr); if(!cap) return null;
-    let ms=[]; try{ ms=F.det.detectImage(cap.img.width, cap.img.height, cap.img.data); }catch(e){ return null; }
-    const best={}; for(const m of ms){ let a=0; for(let i=0;i<4;i++){ const p=m.corners[i], q=m.corners[(i+1)%4]; a+=p.x*q.y-q.x*p.y; } a=Math.abs(a); if(!best[m.id] || best[m.id].a<a) best[m.id]={a, c:m.corners}; }
-    const out=[];
-    for(const id in best){
-        const fpos=TFX.markerField(+id, SET.cols, SET.rows, SET.sp); if(!fpos) continue;
-        const pts=best[id].c.map(p=>{ const r=cap.ray(p.x,p.y); return TFX.floorHit(r.o, r.d, F.fy); });
-        if(pts.some(p=>!p)) continue;
-        const m=TFX.markerOnFloor(pts);
-        if(m.sideMin<TF_CFG.sideMin || m.sideMax>TF_CFG.sideMax || m.sideMax/m.sideMin>1.5) continue;   // 床に写した形が四角でない＝見間違い
-        const E=TFX.fieldToWorld(fpos, F.C0x, F.C0z, F.yaw0);
-        const cam=cap.ray(cap.img.width/2, cap.img.height/2).o;
-        out.push({ id:+id, O:{x:m.x, z:m.z}, E, yaw:TFX.wrap(F.yaw0-m.heading), dist:Math.hypot(m.x-cam.x, m.z-cam.z) });
-    }
-    out.sort((a,b)=>a.dist-b.dist);
-    return out[0]||null;                     // いちばん近い印を使う（写りが大きく、確か）
-}
-function accept(ob){
-    F.st.seen++;
-    const err=Math.hypot(ob.E.x-ob.O.x, ob.E.z-ob.O.z), big=(err>TF_CFG.maxErr || Math.abs(ob.yaw)>TF_CFG.maxYaw);
-    let g=TF_CFG.gain;
-    if(big){
-        const c=F.cand; F.cand=ob;
-        if(!(c && c.id===ob.id && Math.hypot((c.E.x-c.O.x)-(ob.E.x-ob.O.x),(c.E.z-c.O.z)-(ob.E.z-ob.O.z))<TF_CFG.sameErr && Math.abs(TFX.wrap(c.yaw-ob.yaw))<TF_CFG.sameYaw)){ F.st.rejected++; return; }
-        g=1;                                 // 大きなずれが2回続けて同じ＝本当にずれた（見失って戻った時の飛びなど）
-    }
-    F.cand=null;
-    F.pend={ P:{x:ob.O.x, z:ob.O.z}, E:{x:ob.O.x+(ob.E.x-ob.O.x)*g, z:ob.O.z+(ob.E.z-ob.O.z)*g}, yawRem:ob.yaw*g };
-    F.st.applied++; F.st.last=`No.${ob.id} ${(err*100).toFixed(0)}cm ${(ob.yaw*180/Math.PI).toFixed(1)}°`;
-}
-
-// ---- 公開：既存のタブレットARから呼ばれる ----
-window.__tabarFix={
-    reset(){ F.placed=false; F.pend=null; F.cand=null; F.anchor=null; F.anchorReq=false; F.anchorBase=null; F.dUsed=null; F.glb=null; F.glbTried=false; F.refHooked=null;
-        Object.assign(F.st,{ lost:0, resets:0, anchors:false, anchorTracked:false, anchorShift:0, anchorMax:0, camImg:"", seen:0, applied:0, rejected:0, last:"", wasTracking:true }); },
-    onPlace(){                                // 「ここではじめる」の直後（recenterFieldHere と同じ中心・向きを記録）
-        try{
-            const cw=camera.getWorldPosition(new THREE.Vector3()), d=tabarForwardH(new THREE.Vector3()); d.y=0; if(d.lengthSq()<1e-4) d.set(0,0,-1); d.normalize();
-            F.C0x=cw.x; F.C0z=cw.z; F.yaw0=TFX.heading(d.x,d.z); F.fy=(typeof worldYAdjust!=="undefined")? worldYAdjust : 0;
-            F.placed=true; F.pend=null; F.cand=null;
-            if(TABAR.backend==="webxr"){ if(F.anchor){ try{ F.anchor.delete(); }catch(_){ } } F.anchor=null; F.anchorBase=null; F.dUsed=null; F.anchorReq=true; }
-            if(SET.on) loadLib();
-        }catch(e){ console.warn("[ARずれ直し]",e); }
-    },
-    tick(dt, now, fr){
-        try{
-            if(!F.placed) return;
-            // 見失った回数
-            if(TABAR.backend==="webxr"){ if(F.st.wasTracking && !TABAR.tracking) F.st.lost++; F.st.wasTracking=TABAR.tracking; }
-            // 基準座標の作り直し（reset）：アンカーが無い時は、その移動量で台を直す
-            if(fr && F.refHooked!==fr.ref){ F.refHooked=fr.ref; try{ fr.ref.addEventListener("reset",(ev)=>{ F.st.resets++;
-                if(!(F.anchor && F.st.anchorTracked) && ev && ev.transform){ const T=poseToRigid(ev.transform); rigSet(TFX.compose(rigGet(), T)); } }); }catch(_){ } }
-            // アンカー
-            if(fr && F.anchorReq){ F.anchorReq=false; (async()=>{ try{
-                let a=null;
-                if(TABAR.hitSource){ for(const r of fr.frame.getHitTestResults(TABAR.hitSource)){ const p=r.getPose(fr.ref); if(r.createAnchor && p && Math.abs(p.transform.position.y-TABAR.floorY)<0.15){ a=await r.createAnchor(); break; } } }   // 床の面に付けたアンカー
-                if(!a && fr.frame.createAnchor){ const vp=fr.frame.getViewerPose(fr.ref); if(vp){ const c=vp.transform.position; a=await fr.frame.createAnchor(new XRRigidTransform({x:c.x,y:TABAR.floorY,z:c.z},{x:0,y:0,z:0,w:1}), fr.ref); } }
-                if(a){ F.anchor=a; F.anchorBase=null; F.st.anchors=true; }
-            }catch(e){ console.warn("[ARずれ直し] アンカーを作れませんでした（この端末・ブラウザは未対応かもしれません）", e); } })(); }
-            if(fr && F.anchor){
-                let p=null; const tracked=fr.frame.trackedAnchors? fr.frame.trackedAnchors.has(F.anchor) : true;
-                if(tracked){ try{ p=fr.frame.getPose(F.anchor.anchorSpace, fr.ref); }catch(_){ } }
-                F.st.anchorTracked=!!p;
-                if(p){ const P=poseToRigid(p.transform);
-                    if(!F.anchorBase){ F.anchorBase=P; F.dUsed=TFX.I(); }
-                    else { const dTrue=TFX.delta(F.anchorBase,P), dNew=TFX.lerp(F.dUsed,dTrue,Math.min(1,dt*TF_CFG.anchorRate));
-                        rigSet(TFX.rigAfterAnchor(rigGet(), F.dUsed, dNew)); F.dUsed=dNew;
-                        F.st.anchorShift=Math.hypot(dTrue.x,dTrue.z); F.st.anchorMax=Math.max(F.st.anchorMax,F.st.anchorShift); } }
-            }
-            // 床マーカー
-            if(SET.on && TABAR.phase==="play" && F.det && now-F.lastDet>=TF_CFG.everyMs && !(TABAR.backend==="webxr" && !TABAR.tracking)){
-                F.lastDet=now; const ob=observe(fr); if(ob) accept(ob);
-            }
-            if(F.pend){ const q=Math.min(1, dt*TF_CFG.rate), s=TFX.markerStep(rigGet(), F.pend.P, F.pend.E, F.pend.yawRem, q);
-                rigSet(s.rig); F.pend.P=s.P; F.pend.yawRem=s.yawRem;
-                if(Math.hypot(F.pend.E.x-s.P.x, F.pend.E.z-s.P.z)<0.005 && Math.abs(s.yawRem)<0.002) F.pend=null; }
-            if(DBG) dbgShow(now);
-        }catch(e){ console.warn("[ARずれ直し]",e); }
-    },
-    cleanup(){ try{ if(F.anchor){ try{ F.anchor.delete(); }catch(_){ } } glRelease(); if(F.canvas){ F.canvas.width=F.canvas.height=0; F.canvas=null; } }catch(_){ } this.reset(); const d=document.getElementById("tfixDbg"); if(d) d.style.display="none"; },
-    stats(){ return Object.assign({ placed:F.placed, rig:rigGet(), set:Object.assign({},SET), pending:!!F.pend }, F.st); },
-};
-
-// ---- 確認用の表示（URL に ?tabardebug=1）----
-let dbgT=0;
-function dbgShow(now){ if(now-dbgT<250) return; dbgT=now; let d=document.getElementById("tfixDbg");
-    if(!d){ d=document.createElement("div"); d.id="tfixDbg"; d.style.cssText="position:fixed;left:6px;bottom:6px;z-index:100005;background:rgba(0,0,0,.6);color:#bff;font:11px/1.35 monospace;padding:4px 6px;border-radius:6px;pointer-events:none;white-space:pre"; document.body.appendChild(d); }
-    d.style.display=""; const r=rigGet(), s=F.st;
-    d.textContent=`方式 ${TABAR.backend}  追跡 ${TABAR.tracking?"○":"×"}  見失い ${s.lost}回  reset ${s.resets}回\n`+
-        `アンカー ${s.anchors?(s.anchorTracked?"追跡中":"見失い中"):"なし"}  ARCoreの修正 今${(s.anchorShift*100).toFixed(0)}cm 最大${(s.anchorMax*100).toFixed(0)}cm\n`+
-        `床マーカー ${SET.on?`${SET.cols}×${SET.rows}・${SET.sp}m`:"使わない"}  映像 ${s.camImg||"-"}  見えた ${s.seen} 補正 ${s.applied} 除外 ${s.rejected}\n`+
-        `最後の補正 ${s.last||"-"}  台 (${r.x.toFixed(2)}, ${r.z.toFixed(2)}) ${(r.yaw*180/Math.PI).toFixed(1)}°`; }
-
-// ---- 準備画面の設定（床マーカー）----
-let _floorPaint=null, _floorReco=null;   // 【追加】おすすめ設定との連動用（wire より前に宣言）
-function wire(){
-    const seg=document.getElementById("segTabarFloor"), c=document.getElementById("tfmCols"), r=document.getElementById("tfmRows"), sp=document.getElementById("tfmSp"), row=document.getElementById("tfmRow"), pdf=document.getElementById("tfmPdf");
-    if(!seg) return;
-    const paint=()=>{ seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on", (b.dataset.v==="on")===!!SET.on)); if(row) row.style.opacity=SET.on?"1":"0.45"; };
-    _floorPaint=paint;
-    seg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ SET.on=(b.dataset.v==="on"); setSave(); paint(); }));
-    const num=(el,key,min,max)=>{ if(!el) return; el.value=SET[key]; el.addEventListener("change",()=>{ let v=parseFloat(el.value); if(!(v>=min)) v=min; if(v>max) v=max; if(key!=="sp") v=Math.round(v); SET[key]=v; el.value=v; setSave(); }); };
-    num(c,"cols",1,10); num(r,"rows",1,10); num(sp,"sp",1,10);
-    if(pdf) pdf.href=TF_CFG.pdf;
-    paint();
-}
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",wire); else wire();
-// ---- 【追加】おすすめ設定との連動：オン＝トグル非表示・つかわない固定／オフ＝トグル表示（既定つかわない）----
-function floorSyncReco(){
-    const ro=(typeof recoOn!=="undefined")? !!recoOn : true;
-    if(_floorReco!==ro){ SET.on=false; _floorReco=ro; }   // おすすめの切替（と初回）では「つかわない」に戻す
-    if(ro) SET.on=false;                                   // おすすめオン：常につかわない
-    const opt=document.getElementById("tabarFloorOpt"); if(opt) opt.style.display = ro ? "none" : "";
-    if(_floorPaint) _floorPaint();
-}
-window.__tabarFloorSync=floorSyncReco;
-floorSyncReco();
-// ---- 警告の表示位置：画面下の HUD の高さを CSS 変数 --dhudH へ（HUD の帯が折り返しても警告と重ならない）----
+/* ---- タブレットAR：警告の表示位置。画面下の HUD の高さを CSS 変数 --dhudH へ（HUD の帯が折り返しても警告と重ならない）---- */
 (function hudHeight(){ const put=()=>{ const h=document.getElementById("dhud"); if(!h) return; const r=h.getBoundingClientRect(); document.body.style.setProperty("--dhudH", Math.max(0,Math.round(innerHeight-r.top))+"px"); };
     const h=document.getElementById("dhud"); if(h && window.ResizeObserver) new ResizeObserver(put).observe(h); addEventListener("resize",put); setInterval(()=>{ if(document.body.classList.contains("tabar")) put(); },1000); put(); })();
-window.TABAR_FIX_DEBUG={ stats:()=>window.__tabarFix.stats(), set:SET };
-})();
 </script>
 </body>
 </html>
