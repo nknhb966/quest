@@ -1274,7 +1274,7 @@ const TABAR = { on:false, backend:null, phase:"idle", heldKey:"adult" };
 let _loaded=null;        // 最後に読み込み（モデル生成）に使った設定 {sm:サイト倍率, wx/wz:広さ, rs:実寸になる短辺, cap:実寸まで, ds:恐竜の原寸比}
 let _userEditT=-1e9;     // メニューの設定をユーザーが操作した時刻（起動時の自動設定は従来どおりすぐ読み込む）   // backend: "webxr"(Android ARCore) | "camera"(カメラ映像＋センサー) / phase: idle|prep|scan|play
 const TABAR_CFG = {
-    buddyHold:     0.45,// 相棒の待機：行き先がこれ(m)以上ずれるまでは動かない（タブレットを少し動かしても止まったまま）
+    buddyHold:     0.30,// 相棒の待機：行き先がこれ(m)以上ずれるまでは動かない（タブレットを少し動かしても止まったまま）
     buddyArrive:   0.15,// 追いかけ中の相棒が行き先にこれ(m)以内まで近づいたら、また待機にもどる
     digNear:       1.2, // 掘れる距離：タブレット位置→ブロック外周の水平距離(m)。発掘ポイントに着いてから掘る
     dogFwd:        1.5, // 相棒の前方距離(m)。縦持ちタブレットの画面下端に見える距離
@@ -2235,6 +2235,10 @@ const DINO_FACE = {
     approachMul: 0.4,   // 前後移動の半径＝前後長×これ（気づく前Cを中心・前後対称）
     turnEase:  2.2,     // body向き・首の補間速度（大きいほど速い）
     spinStopEase: 2.5,  // 展示回転を止める/戻す補間速度
+    // 【追加】見上げ：プレイヤーの目線（タブレット・頭）が恐竜の首より高いとき
+    lookUpHeadDeg: 35,  // 頭を上げる上限（度）
+    lookUpBodyDeg: 15,  // 体の前側を起こす上限（度）。後ろ足のあたりを支点にする（飛ぶ種は起こさない）
+    lookUpBodyShare: 0.3, // 見上げる角度のうち体で受け持つ割合（残りは頭）
 };
 // 頭部Chunk（mirror前）をピボット(nx,ny,nz)基準のhead Groupにして g に付ける
 function attachHead(g, nx, ny, nz, headChunk){
@@ -3786,6 +3790,23 @@ function tickHatch(now, dt){
         }
     }
 }
+// 【追加】見上げ：体の前側を起こす。支点＝後ろ足のあたり（体の後ろから3割・床の高さ）＝前足が浮き、尻尾は少し下がる
+const _dbuX=new THREE.Vector3(1,0,0), _dbuV=new THREE.Vector3(), _dbuM=new THREE.Matrix4(), _dbuB=new THREE.Box3();
+function digDinoBodyUp(cont, m, want, dt){
+    const ud=cont.userData; let b=ud._bodyUp||0;
+    if(!(want>0) && b<1e-4){ if(b!==0){ ud._bodyUp=0; m.rotation.x=0; if(ud._bodyBase) m.position.copy(ud._bodyBase); } return; }
+    if(!ud._bodyBase){   // 初回：起こす前の位置と、支点（コンテナ座標）を覚える
+        ud._bodyBase=m.position.clone(); m.rotation.x=0; cont.updateMatrixWorld(true);
+        const inv=_dbuM.copy(cont.matrixWorld).invert(), box=new THREE.Box3();
+        m.traverse(o=>{ if(o.isMesh && o.geometry){ if(!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+            box.union(_dbuB.copy(o.geometry.boundingBox).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); } });
+        ud._bodyPivot = box.isEmpty() ? new THREE.Vector3() : new THREE.Vector3(0, box.min.y, box.min.z+(box.max.z-box.min.z)*0.3);   // 前＝+Z
+    }
+    b += ((want||0)-b)*Math.min(1, dt*DINO_FACE.turnEase); if(b<1e-4) b=0; ud._bodyUp=b;
+    const P=ud._bodyPivot;
+    m.rotation.x=-b;   // -＝前を上げる
+    m.position.copy(_dbuV.copy(ud._bodyBase).sub(P).applyAxisAngle(_dbuX, -b).add(P));
+}
 // 出てきた恐竜のアイドル動作（足踏み＝個体ごとにバラす／尻尾ふり／ゆっくり回転）
 const _adCam=new THREE.Vector3(),_adFwd=new THREE.Vector3(),_adAxis=new THREE.Vector3(),_adToP=new THREE.Vector3(),_adHp1=new THREE.Vector3(),_adHp2=new THREE.Vector3();   // animateDigDinos用スクラッチ
 function animateDigDinos(now, dt){
@@ -3846,6 +3867,10 @@ function animateDigDinos(now, dt){
                 const maxA=THREE.MathUtils.degToRad(maxDegM);
                 const dyH=Math.max(0.05, hp.y-camW.y);
                 let idealDxz=dyH/Math.tan(Math.max(0.08,maxA));   // 最大俯角で覗ける水平距離
+                if(camW.y>hp.y){   // 【追加】目線が恐竜より高い：見上げの上限（頭＋体＋俯角の基準）で見える距離より近づかない
+                    const upMax=THREE.MathUtils.degToRad((cont.userData.flying?0:DINO_FACE.lookUpBodyDeg)+DINO_FACE.lookUpHeadDeg+(DINO_FACE.pitchBias||18));
+                    idealDxz=(camW.y-hp.y)/Math.tan(Math.min(1.45, upMax));
+                }
                 if(longNeck){ idealDxz += 0.3*L; }
                 const headDxz=Math.hypot(camW.x-hp.x, camW.z-hp.z);   // 頭とプレイヤーの現在水平距離
                 const dx=camW.x-ox, dz=camW.z-oz; const dd=Math.hypot(dx,dz);
@@ -3866,6 +3891,7 @@ function animateDigDinos(now, dt){
         }
 
         // ── 首・頭：プレイヤーへ俯角追従（上限＝固定俯角。左右は振らない）VR/ARのみ ──
+        let bodyUp=0;
         if(m.userData.head){
             const pmul=m.userData.peekMul||1;
             const longNeck=!!m.userData.longNeck;
@@ -3880,11 +3906,16 @@ function animateDigDinos(now, dt){
                 if(longNeck){ const L=Math.max(0.6, cont.userData.bodyLen||2); dxz=Math.max(0.05, dxz-0.3*L); }   // 長首は後ろを見がち→手前(0.3体長)を狙う
                 const dy=hp.y-camW.y;
                 let want=Math.atan2(dy, Math.max(0.05,dxz)) + THREE.MathUtils.degToRad(DINO_FACE.pitchBias||18);
-                if(want<0) want=0;
-                peek=Math.min(want, maxPeek)*faceAmt;                       // 上限クランプ＋対面度で寄せる
+                if(want<0){   // 【追加】プレイヤーの目線が高い：見上げる（頭を上げる＋体の前側を少し起こす）。俯角と同じ基準なので境目で途切れない
+                    const up=-want, bMax=cont.userData.flying?0:THREE.MathUtils.degToRad(DINO_FACE.lookUpBodyDeg), hMax=THREE.MathUtils.degToRad(DINO_FACE.lookUpHeadDeg);
+                    bodyUp=Math.min(bMax, up*DINO_FACE.lookUpBodyShare);
+                    peek=-Math.min(hMax, up-bodyUp)*faceAmt; bodyUp*=faceAmt;   // 頭：-＝上
+                    want=0;
+                } else peek=Math.min(want, maxPeek)*faceAmt;                // 上限クランプ＋対面度で寄せる
             }
             m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
         }
+        digDinoBodyUp(cont, m, bodyUp, dt);   // 体の前側を起こす（見上げていない時は0へ戻る）
 
         // ── 既存アニメ（脚・尾・翼・上下）──
         if(cont.userData.flying){
