@@ -302,6 +302,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 #nuriScan[data-mode="done"] #nuriViews{ display:flex; }
 #nuriScan[data-mode="done"] #nuriDone, #nuriScan[data-mode="done"] #nuriAgain, #nuriScan[data-mode="error"] #nuriAgain{ display:block; }
 #nuriScan[data-mode="done"] #nuriBack{ display:none; }
+#nuriScan:not([data-mode="done"]) #nuriARView{ display:none !important; }   /* ヘッドセットの「ARで みる」は できた！画面だけ */
 </style>
 </head>
 <body>
@@ -1247,6 +1248,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <button id="nuriAR" type="button" style="display:none">📱 ARで かえす</button>
     <button id="nuriARBig" type="button" style="display:none">📱 ARで おおきく みる</button>
     <button id="nuriHatchHere" type="button" style="display:none">ここで かえす</button>
+    <button id="nuriARView" type="button" style="display:none">🥽 ARで みる</button>
     <button id="nuriAgain" type="button">もういちど よむ</button>
     <button id="nuriDone" type="button">できた！</button>
     <button id="nuriBack" type="button">もどる</button>
@@ -3785,7 +3787,7 @@ function tickHatch(now, dt){
             const _lw=0.54*_lblScale; const label=makeLabelSprite(nm, e.color, _lw, 0);   // 名称パネル（プレイヤー向きSprite）
             const _lh=_lw*96/256;   // ラベルの高さ
             label.position.set(cX, _tabarLow ? Math.max(baseY-0.1-_lh/2, _lh/2+0.02) : footY-0.1-_lh/2, cZ);   // 【変更】タブレットAR：恐竜の足元のすぐ下（床にもぐらない）／それ以外は従来
-            if(_tabarLow){ label.material.depthTest=false; label.renderOrder=450; }   // 【修正】タブレットAR：上から見下ろすと体の下に隠れて黒く見えるので、常に読めるように（暗幕500より奥）
+            if(_tabarLow){ label.renderOrder=450; }   // タブレットAR：深度テストは有効のまま、恐竜の手前（プレイヤー側）に出して隠れないように（暗幕500より奥）
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
         }
@@ -4004,7 +4006,7 @@ function excavate(t, byPlayer){
             if(model.userData.nameLabel) stage.remove(model.userData.nameLabel);
             const _an=(function(){ const r=(typeof mvArtifactRows==="function")?mvArtifactRows():[]; return (r[t.idx] && r[t.idx].name) ? r[t.idx].name : ("出土品 No."+String(t.idx+1).padStart(2,"0")); })();
             const _als=fieldScale(); const _alw=0.54*_als; const _alab=makeLabelSprite(_an, auraColor, _alw, 0); const _alh=_alw*96/256;
-            _alab.position.set(t.pos.x, popY()-0.1-_alh/2-_artDrop, t.pos.z); if(typeof TABAR!=="undefined" && TABAR.on){ _alab.material.depthTest=false; _alab.renderOrder=450; }   // 【修正】タブレットAR：見下ろした時にモデルの下へ隠れて黒く見えないように
+            _alab.position.set(t.pos.x, popY()-0.1-_alh/2-_artDrop, t.pos.z); if(typeof TABAR!=="undefined" && TABAR.on){ _alab.renderOrder=450; }   // タブレットAR：深度テストは有効のまま
             stage.add(_alab); model.userData.nameLabel=_alab;
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
@@ -6599,7 +6601,7 @@ controllers.forEach(c=>{
  * ・歩く処理はスマホと共通（lphWalkTick）。高さは今のまま（目の高さの見えない床の上を歩く）
  * ・コントローラー（手）をモデルの近くですばやく動かす＝なでる → 喜ぶ（跳ねる／くるっと回る／しっぽを振る・セリフ・鳴き声・♥）
  *   ゲームの相棒をVRでなでる時と同じ判定（手の速さ 0.6m/秒 以上）。つかんでいる手は数えない */
-const _liteTP=new THREE.Vector3(), _lvA=new THREE.Vector3(), _lvBox=new THREE.Box3();
+const _liteTP=new THREE.Vector3(), _lvA=new THREE.Vector3(), _lvBox=new THREE.Box3(), _lvR=new THREE.Vector3(), _lvQ=new THREE.Quaternion(), _lvH=new THREE.Vector3(), _lvHQ=new THREE.Quaternion(), _lvHN=new THREE.Vector3(), _lvC=new THREE.Vector3();
 const LVR={ t:0, say:null, sayUntil:0, sayTop:0.3, hearts:[], cool:0 };
 function liteVRHeld(){ return !LITE.phone && LITE.active && controllers.some(c=>c.userData && c.userData.liteHeld); }
 function liteVRResetHead(){
@@ -6611,13 +6613,13 @@ function liteVRWalkStart(){
     window.MV_ANIM=true;   // スマホと同じく「アニメ オン」＋「あるく」で始める
     LPH.walk=(LITE.target==="dino"||LITE.target==="dog") ? lphWalkNew() : null;
     LVR.t=performance.now(); LVR.cool=0; LVR.st={};
-    liteVRFloor();
+    liteVRHitStart(); liteVRFloor();
     if(LITE.ui) liteDrawButtons();
 }
 function liteVRWalkStop(){
     liteVRResetHead();
     LPH.walk=null; LPH.joy=null; LPH.faceTurn=null; LPH.popY=0;
-    LPH.floorFound=false; LPH.floorY=null; if(LPH.shadow) LPH.shadow.visible=false; LVR.st={};
+    LPH.floorFound=false; LPH.floorY=null; if(LPH.shadow) LPH.shadow.visible=false; LVR.st={}; liteVRHitStop();
     liteVRSayClear();
     for(const h of LVR.hearts){ scene.remove(h.spr); h.spr.material.dispose(); } LVR.hearts.length=0;
     controllers.forEach(c=>{ if(c.userData) c.userData._lvP=null; });
@@ -6627,8 +6629,9 @@ function liteVRSay(text, ms){   // セリフ：モデルの頭の上（スプラ
     liteVRSayClear(); if(!LITE.model || !LITE.group) return;
     const box=_lvBox.setFromObject(LITE.model), h=Math.max(0.05, box.max.y-box.min.y);
     const w=Math.max(0.22, Math.min(0.6, h*0.9));
-    const spr=makeLabelSprite(text, 0xffe6a6, w, 0); spr.material.depthTest=false; spr.renderOrder=3001;
-    LVR.sayTop=box.max.y-LITE.group.position.y+0.04+w*96/256/2;   // 体のいちばん上より少し上（跳ねる高さは入れない）
+    const spr=makeLabelSprite(text, 0xffe6a6, w, 0); spr.renderOrder=3001;   // 深度テスト有効（makeLabelSprite の既定）
+    LVR.sayTop=box.max.y-LITE.group.position.y+0.02+w*96/256/2;   // 体のいちばん上の高さ（跳ねる高さは入れない）
+    LVR.sayR=Math.max(box.max.x-box.min.x, box.max.z-box.min.z)/2; LVR.sayW=w*96/256*(spr.scale.x/spr.scale.y);   // 体の横の半径／セリフの横幅
     scene.add(spr); LVR.say=spr; LVR.sayUntil=performance.now()+(ms||2000);
 }
 function liteVRHearts(n){
@@ -6651,10 +6654,36 @@ function liteVRJoy(){   // スマホの lphJoy と同じ（画面の♥・吹き
     liteVRHearts(5);
 }
 function liteVRWalking(){ return !!(LPH.walk && !LPH.walk.off); }   // 「あるく」＝床の上（xz移動・y軸回転だけ）／「とまる」＝もとの動き方
-function liteVRFloor(){ const v=player.getWorldPosition(_lvA); LPH.floorFound=true; LPH.floorY=v.y; }   // 床＝local-floor の原点の高さ
+// 床：実際の床をヒットテストで測る（目の下 0.3〜2.4m の上向きの水平面のうち、いちばん低いもの）。測れない時は local-floor の原点の高さ
+//   local-floor は、境界（ガーディアン）の床が無い時などに「目の高さ−標準の身長」で決まることがあり、子どもや座った時に本当の床とずれるため
+function liteVRFloor(){
+    const fr=renderer.xr.getFrame && renderer.xr.getFrame(), ref=renderer.xr.getReferenceSpace();
+    if(fr && ref && LVR.hts && LVR.hts.length){
+        camera.getWorldPosition(_lvC);
+        for(const src of LVR.hts){ let rs=[]; try{ rs=fr.getHitTestResults(src); }catch(_){ continue; }
+            for(const r of rs){ const pose=r.getPose(ref); if(!pose) continue; const t=pose.transform, o=t.orientation;
+                _lvHN.set(0,1,0).applyQuaternion(_lvHQ.set(o.x,o.y,o.z,o.w)); if(_lvHN.y<0.9) continue;
+                _lvH.set(t.position.x,t.position.y,t.position.z).applyMatrix4(player.matrixWorld);
+                const below=_lvC.y-_lvH.y; if(below<0.3 || below>2.4) continue;
+                if(LVR.floorHit==null || _lvH.y<LVR.floorHit) LVR.floorHit=_lvH.y;   // 机などより床（低い面）を優先
+                break; } }
+    }
+    LPH.floorFound=true; LPH.floorY = (LVR.floorHit!=null) ? LVR.floorHit : player.getWorldPosition(_lvA).y;
+}
+function liteVRHitStart(){
+    LVR.hts=[]; LVR.floorHit=null;
+    const ses=renderer.xr.getSession(); if(!ses || !ses.requestHitTestSource || !window.XRRay) return;
+    ses.requestReferenceSpace("viewer").then(vs=>{
+        [[0,-0.6,-1],[0,-1.4,-1],[0,-1,-0.2]].forEach(d=>{   // 正面やや下・下・足もと
+            let ray=null; try{ ray=new XRRay({x:0,y:0,z:0,w:1},{x:d[0],y:d[1],z:d[2],w:0}); }catch(_){ }
+            ses.requestHitTestSource(ray?{space:vs, offsetRay:ray}:{space:vs}).then(src=>{ if(LITE.active && !LITE.phone) LVR.hts.push(src); else try{ src.cancel(); }catch(_){ } }).catch(()=>{});
+        });
+    }).catch(()=>{});
+}
+function liteVRHitStop(){ (LVR.hts||[]).forEach(h=>{ try{ h.cancel(); }catch(_){ } }); LVR.hts=[]; LVR.floorHit=null; }
 // なでる：手（コントローラー・ハンドトラッキングの指先と手のひら）が、モデルの近くを「すばやく・ある程度の長さ」動いた時だけ
-//   ・速さ 0.8m/秒 以上で外形＋3cm の中を動いた道のりが 0.25m たまったら（遅くなる・離れる状態が0.3秒続くと、ためた分を捨てる）
-const LVR_PET={ speed:0.8, path:0.25, pad:0.03, reset:300, cool:1500 };
+//   ・速さ 0.8m/秒 以上で外形＋3cm の中を動いた道のりが 0.10m たまったら（遅くなる・離れる状態が0.3秒続くと、ためた分を捨てる）
+const LVR_PET={ speed:0.8, path:0.10, pad:0.03, reset:300, cool:1500 };
 const LVR_JOINTS=["index-finger-tip","middle-finger-tip","middle-finger-metacarpal"];
 function liteVRPetPoints(out){   // [key, Object3D, つかんでいるか]
     controllers.forEach((c,i)=>{ const held=!!(c.userData && c.userData.liteHeld);
@@ -6688,7 +6717,11 @@ function liteVRTick(){
         if(S.acc>=LVR_PET.path){ for(const k in LVR.st) LVR.st[k].acc=0; liteVRJoy(); LVR.cool=now+LVR_PET.cool; break; }
     }
     // セリフ：頭の上についていく
-    if(LVR.say){ if(now>LVR.sayUntil || !LITE.group){ liteVRSayClear(); } else LVR.say.position.set(LITE.group.position.x, LITE.targetPos.y+LVR.sayTop, LITE.group.position.z); }
+    if(LVR.say){ if(now>LVR.sayUntil || !LITE.group){ liteVRSayClear(); }
+        else {   // モデルの右上（見ている向きの右）
+            const r=_lvR.set(1,0,0).applyQuaternion(camera.getWorldQuaternion(_lvQ)); r.y=0; if(r.lengthSq()<1e-6) r.set(1,0,0); r.normalize();
+            const off=LVR.sayR*0.7+LVR.sayW*0.5;
+            LVR.say.position.set(LITE.group.position.x+r.x*off, LITE.targetPos.y+LVR.sayTop, LITE.group.position.z+r.z*off); } }
     // ♥：ふわっと上がって消える
     for(let i=LVR.hearts.length-1;i>=0;i--){ const h=LVR.hearts[i], r=(now-h.t0)/1400;
         if(r<0){ h.spr.visible=false; continue; } h.spr.visible=true;
@@ -6877,7 +6910,7 @@ async function enterLiteAR(target, idx, quality, intrinsicScale, opts){   // opt
     let session;
     try{ session = await navigator.xr.requestSession("immersive-ar", _phone
             ? { optionalFeatures:["local-floor","dom-overlay","camera-access","hit-test"], domOverlay:{ root:document.getElementById("litePh") } }   // スマホ：画面パネル＋撮影用カメラ映像＋床さがし
-            : { optionalFeatures:["local-floor","bounded-floor","hand-tracking"] }); }
+            : { optionalFeatures:["local-floor","bounded-floor","hand-tracking","hit-test"] }); }   // ヘッドセット：hit-test＝「あるく」の床の高さを測る
     catch(e){ if(_phone) litePhoneShow(false); return false; }
     LITE.phone=_phone && !!session.domOverlayState;   // 画面パネルを重ねられない端末は従来の表示にする
     LITE.nuri = (LITE.phone && opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, pick:!!opts.pick } : null;
@@ -10453,6 +10486,35 @@ async function nuriStartScanIAR(){
     const ok=await enterLiteIAR("dino", 0, "small", 1, { nuri:true, egg:true, scan:true });   // 【変更】Liteと同じカメラ＋ジャイロ方式
     if(ok!==true) nuriStartScanCam();   // カメラが使えない等 → 通常の読み取り
 }
+// 【追加】読み取り中の音（ヘッドセット・スマホ・タブレット共通）：見ている範囲で読めているかを音で知らせる
+//   ③読めている（4つの角＋どの恐竜か分かった）＝「ピッ」（高め）。動かさずに待つ間は0.5秒ごとに小さく「ピッ」
+//   ②角の黒い四角が一部だけ＝「ポッ」（低め）。見える数が変わった時だけ
+//   ①見つからない状態が3秒続いたら「ブー」（低い）。その後も3秒おき
+//   ④読み取り完了＝「ピロリン」（上がる音）
+const NSND={ st:null, found:-1, tick:0, noneT:0, buzzT:0 };
+function nuriSndReset(){ NSND.st=null; NSND.found=-1; NSND.tick=0; NSND.noneT=performance.now(); NSND.buzzT=0; }
+function nuriSnd(state, found){
+    const now=performance.now();
+    try{
+        if(state==="ok"){
+            if(NSND.st!=="ok"){ beep(1320,0.07,0.35,"sine"); NSND.tick=now; }
+            else if(now-NSND.tick>=500){ beep(1320,0.04,0.15,"sine"); NSND.tick=now; }
+        } else if(state==="part"){
+            if(NSND.st!=="part" || found!==NSND.found) beep(520,0.06,0.3,"sine");
+        } else if(state==="none"){
+            if(NSND.st!=="none"){ NSND.noneT=now; NSND.buzzT=0; }
+            if(now-NSND.noneT>=3000 && (!NSND.buzzT || now-NSND.buzzT>=3000)){ beep(180,0.25,0.3,"square"); NSND.buzzT=now; }
+        } else if(state==="done"){
+            chord([523,659,784,1047],0.07,"triangle",0.4);
+        }
+    }catch(_){ }
+    NSND.st=state; NSND.found=(found==null?-1:found);
+}
+function nuriSndState(res, key){   // 読み取り結果 → 音の状態
+    if(key || (res && res.ok)) return ["ok", 4];
+    const f=(res && res.found) || 0;
+    return f>0 ? ["part", f] : ["none", 0];
+}
 async function nuriStartScanCam(){
     if(!nuriCanScan()){ return; }
     const o=$("nuriScan"); o.classList.add("open"); scMode("camera"); scMsg("じゅんびしているよ…","");
@@ -10462,7 +10524,7 @@ async function nuriStartScanCam(){
     catch(e){ console.warn("[ぬりえ]",e); scMode("error"); scMsg("カメラが つかえなかったよ","おうちの ひとに カメラを つかっていいか きいてみてね"); return; }
     const v=$("nuriVideo"); v.srcObject=SC.stream; try{ await v.play(); }catch(_){}
     SC.det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 });
-    SC.small=document.createElement("canvas"); SC.t0=performance.now(); SC.stable=0; SC.last=null;
+    SC.small=document.createElement("canvas"); SC.t0=performance.now(); SC.stable=0; SC.last=null; nuriSndReset();
     scMsg("ぬりえを わくに あわせてね","4つの かどの くろい しかくが うつるように してね");
     scTick();
 }
@@ -10479,6 +10541,7 @@ function scTick(){
     let res=null; try{ res=nuriMarkersToHomography(SC.det.detectImage(w,h,img.data), NURI.layout, s, NURI.reg.sheets.map(x=>x.id)); }catch(e){ res=null; }
     const el=(performance.now()-SC.t0)/1000;
     const key=res && res.sheetId!==undefined ? scSheetKey(res.sheetId) : null;
+    { const [st,f]=nuriSndState(res, key); nuriSnd(st, f); }   // 読み取り中の音
     if(key && !(NURI.maps[key] && NURI.maps[key].P)){                // 見つけた恐竜の対応表を、必要になった時だけ読む
         if(SC.loading!==key){ SC.loading=key; nuriLoadPix(key).then(()=>{ SC.loading=null; nuriDropPix(key); }).catch(e=>{ console.warn("[ぬりえ]",e); SC.loading=null; scMode("error"); scMsg("じゅんびが できなかったよ","もういちど ためしてね"); scStopCamera(); }); }
         const nm=sheetOf(key).name; scMsg(nm+"の ぬりえだね！","じゅんびしているよ…");
@@ -10486,7 +10549,7 @@ function scTick(){
         const moved = SC.last && SC.lastKey===key ? Math.max(...res.corners.map((p,i)=>Math.hypot(p[0]-SC.last[i][0],p[1]-SC.last[i][1]))) / Math.max(vw,vh) : 1;
         SC.stable = moved<0.015? SC.stable+1 : 1; SC.last=res.corners; SC.lastKey=key;
         scMsg("そのまま うごかないでね…","");
-        if(SC.stable>=2){ scCapture(res, s, key); return; }
+        if(SC.stable>=2){ nuriSnd("done"); scCapture(res, s, key); return; }
     }else{
         SC.stable=0; SC.last=null;
         if(lum<55) scMsg("ちょっと くらいみたい","もうすこし あかるい ばしょで とってみよう");
@@ -10606,7 +10669,7 @@ async function lphScanStart(){
     catch(e){ console.warn("[ぬりえAR]", e); lphNCard("じゅんびが できなかったよ","インターネットに つながっているか たしかめて、✕ で もどってね"); return; }
     if(!LPH.scan) return;
     LPH.scan.det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 });
-    LPH.scan.ready=true; LPH.scan.t0=performance.now();
+    LPH.scan.ready=true; LPH.scan.t0=performance.now(); nuriSndReset();
     lphNCard("ぬりえを わくに あわせてね","4つの かどの くろい しかくが うつるように してね");
 }
 function lphScanFrame(frame){
@@ -10623,6 +10686,7 @@ function lphScanFrame(frame){
     let res=null; try{ res=nuriMarkersToHomography(S.det.detectImage(w,h,img.data), NURI.layout, g.s, NURI.reg.sheets.map(x=>x.id)); }catch(e){ res=null; }
     const el=(now-S.t0)/1000;
     const key=res && res.sheetId!==undefined ? scSheetKey(res.sheetId) : null;
+    { const [st,f]=nuriSndState(res, key); nuriSnd(st, f); }   // 読み取り中の音（完了の音は「よめたよ！」の時に鳴る）
     if(key && !(NURI.maps[key] && NURI.maps[key].P)){   // 見つけた恐竜の対応表を読む
         if(S.loading!==key){ S.loading=key; nuriLoadPix(key).then(()=>{ if(LPH.scan) LPH.scan.loading=null; nuriDropPix(key); }).catch(e=>{ console.warn("[ぬりえAR]",e); if(LPH.scan) LPH.scan.loading=null; lphNCard("じゅんびが できなかったよ","もういちど うつしてね"); }); }
         lphNCard(sheetOf(key).name+"の ぬりえだね！","じゅんびしているよ…");
@@ -10716,6 +10780,17 @@ function nuriArButtons(){   // 卵で待っている時＝「ARで かえす」�
     ar.textContent = waiting ? "📱 ARで かえす" : "📱 ARで もういちど みる";
     if(big) big.style.display = (NURI_AR.ok && !waiting) ? "block" : "none";
     here.style.display = waiting ? "block" : "none";
+    const av=$("nuriARView");   // 【追加】ヘッドセット：卵が孵ったら、そのモデルの craftARt Lite を ARで みる
+    if(av) av.style.display = (typeof IS_HEADSET!=="undefined" && IS_HEADSET && PV && !PV.hatch && NURI_AR.key) ? "block" : "none";
+}
+async function nuriARView(){
+    const key=NURI_AR.key, i=dinoIdx(key); if(i<0 || typeof enterLiteAR!=="function") return;
+    if(typeof LITE!=="undefined" && LITE.active) return;
+    nuriPreviewStop();   // 3D表示を止めてから（重さの対策）
+    let ok=false; try{ ok=await enterLiteAR("dino", i, "small", 1); }catch(e){ console.warn("[ぬりえ] ARで みる", e); ok=false; }
+    const back=()=>{ const o=$("nuriScan"); if(o && o.classList.contains("open")){ nuriPreviewStart(key); scMode("done"); const s=sheetOf(key); scMsg("できた！ "+(s?s.name:""),"ゆびで うごかして いろんな むきから みてね"); nuriArButtons(); } };
+    if(!ok){ back(); scMsg("ARを はじめられなかったよ","もういちど ためしてね"); return; }
+    const ses=renderer.xr.getSession(); if(ses) ses.addEventListener("end", ()=>setTimeout(back, 300), { once:true });   // ARを終えたら「できた！」画面に戻る
 }
 function nuriHatchHere(){ if(PV && PV.hatch && PV.hatch.wait){ PV.hatch.wait=false; PV.hatch.t0=performance.now()-1300*NURI_HATCH_T; PV.hatch.last=performance.now(); } nuriArButtons(); }   // すぐ割れる
 async function nuriEnterAR(big){   // 【変更】どちらも卵から生まれる。big＝Liteと同じ大きさ（床・手前の端2m）／それ以外＝用紙と同じ大きさで床の0.5m先
@@ -10780,6 +10855,7 @@ function nuriWire(){
     if(again) again.addEventListener("click",()=>{ nuriPreviewStop(); scStopCamera(); NURI_AR.ok=false; nuriArButtons(); nuriStartScan(); });
     const nar=$("nuriAR"), nh=$("nuriHatchHere");
     if(nar) nar.addEventListener("click", ()=>nuriEnterAR(false));
+    { const av=$("nuriARView"); if(av) av.addEventListener("click", nuriARView); }   // ヘッドセット：ARで みる
     { const na=$("nuriAgainAR"); if(na) na.addEventListener("click", nuriAgainAR); }   // メイン画面の「ARで もういちど みる」
     { const nb=$("nuriARBig"); if(nb) nb.addEventListener("click", ()=>nuriEnterAR(true)); }
     if(nh) nh.addEventListener("click", nuriHatchHere);
