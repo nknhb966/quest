@@ -3785,10 +3785,37 @@ function tickHatch(now, dt){
             const _lw=0.54*_lblScale; const label=makeLabelSprite(nm, e.color, _lw, 0);   // 名称パネル（プレイヤー向きSprite）
             const _lh=_lw*96/256;   // ラベルの高さ
             label.position.set(cX, _tabarLow ? Math.max(baseY-0.1-_lh/2, _lh/2+0.02) : footY-0.1-_lh/2, cZ);   // 【変更】タブレットAR：恐竜の足元のすぐ下（床にもぐらない）／それ以外は従来
+            if(_tabarLow){ label.material.depthTest=false; label.renderOrder=450; }   // 【修正】タブレットAR：上から見下ろすと体の下に隠れて黒く見えるので、常に読めるように（暗幕500より奥）
             stage.add(label); m.userData.nameLabel=label;
             eggHatch.splice(i,1);
         }
     }
+}
+// 【追加】長首の視線：頭（首）の回転 x（＋＝下）を、顔（目）の前方がプレイヤーの目に向く値にする
+//   回すと目の位置も動くので、「今の目の位置から見た相手の俯角」と「今の視線の俯角」の差で3回だけ詰める（体の傾きも含めて計算）
+const _lnE=new THREE.Vector3(), _lnG=new THREE.Vector3(), _lnM=new THREE.Matrix4(), _lnB=new THREE.Box3();
+function longNeckGaze(head, camW){
+    const ud=head.userData, save=head.rotation.x;
+    head.updateWorldMatrix(true, false);
+    if(!ud._eye){   // 初回：首を中立にして、頭部（首＋顔）の外形から目のあたり＝いちばん前・上の少し内側を求める
+        head.rotation.x=0; head.updateMatrixWorld(true);
+        const inv=_lnM.copy(head.matrixWorld).invert(), box=new THREE.Box3();
+        head.traverse(o=>{ if(o.isMesh && o.geometry){ if(!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+            box.union(_lnB.copy(o.geometry.boundingBox).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); } });
+        const h=box.max.y-box.min.y, d=box.max.z-box.min.z;
+        ud._eye = box.isEmpty() ? new THREE.Vector3(0,0,0.1) : new THREE.Vector3(0, box.max.y-0.12*h, box.max.z-0.15*d);
+    }
+    let th=save;
+    for(let k=0;k<3;k++){
+        head.rotation.x=th; head.updateMatrixWorld(true);
+        const e=head.localToWorld(_lnE.copy(ud._eye));
+        const g=_lnG.set(0,0,1).transformDirection(head.matrixWorld);                 // 視線（顔の前方）
+        const gd=Math.atan2(-g.y, Math.hypot(g.x, g.z));                                // 視線の俯角（＋＝下）
+        const td=Math.atan2(e.y-camW.y, Math.max(0.05, Math.hypot(camW.x-e.x, camW.z-e.z)));   // 目→プレイヤーの俯角
+        th += (td-gd);
+    }
+    head.rotation.x=save; head.updateMatrixWorld(true);
+    return th;
 }
 // 【追加】見上げ：体の前側を起こす。支点＝後ろ足のあたり（体の後ろから3割・床の高さ）＝前足が浮き、尻尾は少し下がる
 const _dbuX=new THREE.Vector3(1,0,0), _dbuV=new THREE.Vector3(), _dbuM=new THREE.Matrix4(), _dbuB=new THREE.Box3();
@@ -3888,6 +3915,12 @@ function animateDigDinos(now, dt){
             const nx=cxNow+(goalX-cxNow)*k, nz=czNow+(goalZ-czNow)*k;
             cont.position.x=nx; cont.position.z=nz;
             cont.userData.homeX=nx; cont.userData.homeZ=nz;   // 回転中心も移動後Cに追従
+            // 【修正】名称パネルも恐竜について動く（寄ってきた体の下に残って隠れない）。タブレットARは体の手前（プレイヤー側）に出す
+            const lb=cont.userData.nameLabel;
+            if(lb){ let lx=nx, lz=nz;
+                if(typeof TABAR!=="undefined" && TABAR.on && camW){ const ddx=camW.x-nx, ddz=camW.z-nz, dl=Math.hypot(ddx,ddz);
+                    if(dl>1e-3){ const off=Math.min(dl*0.6, (cont.userData.bodyLen||0.5)*0.5+0.05); lx+=ddx/dl*off; lz+=ddz/dl*off; } }
+                lb.position.x=lx; lb.position.z=lz; }
         }
 
         // ── 首・頭：プレイヤーへ俯角追従（上限＝固定俯角。左右は振らない）VR/ARのみ ──
@@ -3899,11 +3932,13 @@ function animateDigDinos(now, dt){
             const maxDeg = longNeck ? 88 : (DINO_FACE.pitchDeg+(DINO_FACE.pitchBias||0))*pmul;
             const maxPeek = THREE.MathUtils.degToRad(maxDeg);
             let peek=0;
-            if(_isXR && camW && faceAmt>0.01){
+            if(_isXR && camW && faceAmt>0.01 && longNeck){   // 【修正】長首：首の付け根ではなく顔（目）からプレイヤーを見る（付け根から測ると、高い所にある顔がプレイヤーの上を見てしまう）
+                const th=longNeckGaze(m.userData.head, camW);
+                peek=Math.max(-THREE.MathUtils.degToRad(DINO_FACE.lookUpHeadDeg), Math.min(maxPeek, th))*faceAmt;   // 見上げは頭だけ（体は起こさない）
+            } else if(_isXR && camW && faceAmt>0.01){
                 const head=m.userData.head;
                 const hp=head.getWorldPosition(_adHp2);        // 首ピボットのワールド位置
                 let dxz=Math.hypot(camW.x-hp.x, camW.z-hp.z);
-                if(longNeck){ const L=Math.max(0.6, cont.userData.bodyLen||2); dxz=Math.max(0.05, dxz-0.3*L); }   // 長首は後ろを見がち→手前(0.3体長)を狙う
                 const dy=hp.y-camW.y;
                 let want=Math.atan2(dy, Math.max(0.05,dxz)) + THREE.MathUtils.degToRad(DINO_FACE.pitchBias||18);
                 if(want<0){   // 【追加】プレイヤーの目線が高い：見上げる（頭を上げる＋体の前側を少し起こす）。俯角と同じ基準なので境目で途切れない
@@ -3969,7 +4004,8 @@ function excavate(t, byPlayer){
             if(model.userData.nameLabel) stage.remove(model.userData.nameLabel);
             const _an=(function(){ const r=(typeof mvArtifactRows==="function")?mvArtifactRows():[]; return (r[t.idx] && r[t.idx].name) ? r[t.idx].name : ("出土品 No."+String(t.idx+1).padStart(2,"0")); })();
             const _als=fieldScale(); const _alw=0.54*_als; const _alab=makeLabelSprite(_an, auraColor, _alw, 0); const _alh=_alw*96/256;
-            _alab.position.set(t.pos.x, popY()-0.1-_alh/2-_artDrop, t.pos.z); stage.add(_alab); model.userData.nameLabel=_alab;
+            _alab.position.set(t.pos.x, popY()-0.1-_alh/2-_artDrop, t.pos.z); if(typeof TABAR!=="undefined" && TABAR.on){ _alab.material.depthTest=false; _alab.renderOrder=450; }   // 【修正】タブレットAR：見下ろした時にモデルの下へ隠れて黒く見えないように
+            stage.add(_alab); model.userData.nameLabel=_alab;
         }
         showInfoPanel(t.idx, t.pos, aura.color, ART_IMGS[t.idx]);
     }
@@ -6539,7 +6575,9 @@ function liteArTick(){
         LITE.targetPos.copy(LITE.group.position); LITE.targetQuat.copy(LITE.group.quaternion); LITE.placeFrames--;
     }
     if(LITE.opEnabled!==false) liteGesture();   // モデル操作可能時（右手レイがパネルに当たった時はliteHeldが立たない＝パネル優先）
-    LITE.group.position.lerp(LITE.targetPos, 0.2);
+    if(!LITE.phone) liteVRTick();   // 【追加】ヘッドセット：あるく・なでると喜ぶ（今の高さのまま）
+    if(!LITE.phone && LPH.popY){ _liteTP.copy(LITE.targetPos); _liteTP.y+=LPH.popY; LITE.group.position.lerp(_liteTP, 0.2); }   // 跳ねる高さ
+    else LITE.group.position.lerp(LITE.targetPos, 0.2);
     LITE.group.scale.lerp(LITE.targetScale, 0.2);
     LITE.group.quaternion.slerp(LITE.targetQuat, 0.2);
     if(typeof liteUpdateUI==="function") liteUpdateUI();   // ①③④パネル更新
@@ -6556,6 +6594,83 @@ controllers.forEach(c=>{
     });
     c.addEventListener("selectend",   ()=>{ if(LITE.active && c.userData){ c.userData.liteHeld=false; c.userData.litePickConsumed=false; } });
 });
+
+/* ---------- 【追加】ヘッドセットの craftARt Lite：あるく／なでると喜ぶ（スマホ・タブレットと同じ動き）----------
+ * ・歩く処理はスマホと共通（lphWalkTick）。高さは今のまま（目の高さの見えない床の上を歩く）
+ * ・コントローラー（手）をモデルの近くですばやく動かす＝なでる → 喜ぶ（跳ねる／くるっと回る／しっぽを振る・セリフ・鳴き声・♥）
+ *   ゲームの相棒をVRでなでる時と同じ判定（手の速さ 0.6m/秒 以上）。つかんでいる手は数えない */
+const _liteTP=new THREE.Vector3(), _lvA=new THREE.Vector3(), _lvBox=new THREE.Box3();
+const LVR={ t:0, say:null, sayUntil:0, sayTop:0.3, hearts:[], cool:0 };
+function liteVRHeld(){ return !LITE.phone && LITE.active && controllers.some(c=>c.userData && c.userData.liteHeld); }
+function liteVRResetHead(){
+    const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null;
+    if(hd){ hd.rotation.x=0; hd.rotation.y=0; }
+}
+function liteVRWalkStart(){
+    LPH.hatch=null; LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; LPH.gpModel=null; LPH.gKey="";
+    window.MV_ANIM=true;   // スマホと同じく「アニメ オン」＋「あるく」で始める
+    LPH.walk=(LITE.target==="dino"||LITE.target==="dog") ? lphWalkNew() : null;
+    LVR.t=performance.now(); LVR.cool=0;
+    if(LITE.ui) liteDrawButtons();
+}
+function liteVRWalkStop(){
+    liteVRResetHead();
+    LPH.walk=null; LPH.joy=null; LPH.faceTurn=null; LPH.popY=0;
+    liteVRSayClear();
+    for(const h of LVR.hearts){ scene.remove(h.spr); h.spr.material.dispose(); } LVR.hearts.length=0;
+    controllers.forEach(c=>{ if(c.userData) c.userData._lvP=null; });
+}
+function liteVRSayClear(){ if(LVR.say){ scene.remove(LVR.say); try{ LVR.say.material.map.dispose(); LVR.say.material.dispose(); }catch(_){ } LVR.say=null; } }
+function liteVRSay(text, ms){   // セリフ：モデルの頭の上（スプライト）
+    liteVRSayClear(); if(!LITE.model || !LITE.group) return;
+    const box=_lvBox.setFromObject(LITE.model), h=Math.max(0.05, box.max.y-box.min.y);
+    const w=Math.max(0.22, Math.min(0.6, h*0.9));
+    const spr=makeLabelSprite(text, 0xffe6a6, w, 0); spr.material.depthTest=false; spr.renderOrder=3001;
+    LVR.sayTop=box.max.y-LITE.group.position.y+0.04+w*96/256/2;   // 体のいちばん上より少し上（跳ねる高さは入れない）
+    scene.add(spr); LVR.say=spr; LVR.sayUntil=performance.now()+(ms||2000);
+}
+function liteVRHearts(n){
+    if(!LITE.model) return; const box=_lvBox.setFromObject(LITE.model), c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
+    for(let k=0;k<n;k++){
+        const spr=new THREE.Sprite(new THREE.SpriteMaterial({ map:heartTex, transparent:true, depthTest:false, depthWrite:false }));
+        const s=Math.max(0.04, Math.min(0.12, sz.y*0.18)); spr.scale.set(s,s,1); spr.renderOrder=3001; spr.visible=false;
+        spr.position.set(c.x+(Math.random()-0.5)*sz.x*0.6, box.max.y, c.z+(Math.random()-0.5)*sz.z*0.6); scene.add(spr);
+        LVR.hearts.push({ spr, t0:performance.now()+k*120, y0:box.max.y, rise:Math.max(0.12, sz.y*0.5) });
+    }
+}
+function liteVRJoy(){   // スマホの lphJoy と同じ（画面の♥・吹き出しの代わりに、立体の♥とセリフ）
+    if(LPH.joy || !LPH.walk || LPH.faceTurn || !LITE.model) return;
+    const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
+    const types=["hop","spin","wiggle"].filter(t=>t!==LPH.lastJoy), type=types[Math.floor(Math.random()*types.length)]; LPH.lastJoy=type;   // 続けて同じにしない
+    LPH.joy={ t0:performance.now(), dur:type==="spin"?1100:1300, type, yaw0:lphFaceCamYaw(), h:(window.MV_ANIM!==false)?Math.max(0.01, sz.y*0.15):0 };   // アニメ オフ＝動かない
+    liteVRSay(lphJoyLine(type), 2200);
+    try{ if(LITE.target==="dog" && typeof sfxBark==="function") sfxBark(); else sfxCry(); }catch(_){ }
+    try{ vibrate(60,0.5); }catch(_){ }
+    liteVRHearts(5);
+}
+function liteVRTick(){
+    const now=performance.now(), dt=Math.min(0.05, Math.max(0.001,(now-(LVR.t||now))/1000)); LVR.t=now;
+    if(LPH.walk) lphWalkTick();
+    // なでる：手（コントローラー）をモデルの近く（外形＋5cm）ですばやく動かした
+    const canJoy = !!(LPH.walk && !LPH.joy && !LPH.faceTurn && now>=LVR.cool && LITE.model && LITE.model.visible);
+    let box=null;
+    for(const c of controllers){
+        if(!c.userData) continue;
+        const src=c.userData.grip||c, p=src.getWorldPosition(_lvA);
+        const prev=c.userData._lvP; let sp=0;
+        if(prev){ sp=prev.distanceTo(p)/dt; prev.copy(p); } else c.userData._lvP=p.clone();
+        if(!canJoy || sp<0.6 || c.userData.liteHeld) continue;   // ゆっくり／つかんでいる手は数えない
+        if(!box){ box=_lvBox.setFromObject(LITE.model); box.expandByScalar(0.05); }
+        if(box.containsPoint(p)){ liteVRJoy(); LVR.cool=now+1500; break; }
+    }
+    // セリフ：頭の上についていく
+    if(LVR.say){ if(now>LVR.sayUntil || !LITE.group){ liteVRSayClear(); } else LVR.say.position.set(LITE.group.position.x, LITE.targetPos.y+LVR.sayTop, LITE.group.position.z); }
+    // ♥：ふわっと上がって消える
+    for(let i=LVR.hearts.length-1;i>=0;i--){ const h=LVR.hearts[i], r=(now-h.t0)/1400;
+        if(r<0){ h.spr.visible=false; continue; } h.spr.visible=true;
+        if(r>=1){ scene.remove(h.spr); h.spr.material.dispose(); LVR.hearts.splice(i,1); continue; }
+        h.spr.position.y=h.y0+h.rise*r; h.spr.material.opacity=1-r*r; }
+}
 // ①③④ パネル（カメラ固定HUD）。右手レイで①ボタンを操作
 const LITE_DENS=3200, LITE_FPX=42;   // canvas解像度(px/m・高解像度で鮮明)／全パネル共通の文字px（≒1.2倍・世界高0.013m）
 const LITE_UI=1.3;                    // 操作パネル群の寸法倍率（1.3倍）
@@ -6589,7 +6704,9 @@ function liteBuildUI(){
     if(LITE.isDino){   // 犬・恐竜のみ：アニメーションON/OFFボタンを「モデル操作」の次に追加
         const animY=opY-(bh+gap);
         const anb=liteMakePanel(bw,bh); anb.position.set(colL, animY, 0); anb.userData.kind="btn"; anb.userData.act="anim"; LITE.ui.add(anb); LITE.buttons.push(anb);
-        _lastBtnY=animY;
+        const walkY=animY-(bh+gap);   // 【追加】あるく／とまる（スマホ・タブレットと同じ動き）
+        const wkb=liteMakePanel(bw,bh); wkb.position.set(colL, walkY, 0); wkb.userData.kind="btn"; wkb.userData.act="walk"; LITE.ui.add(wkb); LITE.buttons.push(wkb);
+        _lastBtnY=walkY;
     }
     LITE._descTop = _lastBtnY - bh/2 - gap;   // 説明パネルの上辺基準（ボタン群の下）
     LITE._colL=colL; LITE._descW=bw;
@@ -6601,7 +6718,9 @@ function liteBuildUI(){
 function liteDrawButtons(){
     const st={reset:{t:"サイズ＋回転リセット",bg:"#333",fg:"#fff"},
               op:{t:LITE.opEnabled?"モデル操作可能":"モデル操作不可", bg:LITE.opEnabled?"#e0533a":"#f3d3cc", fg:LITE.opEnabled?"#fff":"#8a2a17"},
-              anim:{t:(window.MV_ANIM!==false)?"アニメーション オン":"アニメーション オフ", bg:(window.MV_ANIM!==false)?"#2f7d4f":"#dfeee5", fg:(window.MV_ANIM!==false)?"#fff":"#245a38"}};
+              anim:{t:(window.MV_ANIM!==false)?"アニメーション オン":"アニメーション オフ", bg:(window.MV_ANIM!==false)?"#2f7d4f":"#dfeee5", fg:(window.MV_ANIM!==false)?"#fff":"#245a38"},
+              walk:(window.MV_ANIM===false) ? {t:"とまる（アニメ オフ）", bg:"#4a4a4a", fg:"#b8b8b8"}   // アニメ オフ＝押せない
+                  : (LPH.walk && !LPH.walk.off) ? {t:"🚶 あるく", bg:"#b45309", fg:"#fff"} : {t:"🧍 とまる", bg:"#f6e3c4", fg:"#7a3d06"}};
     LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; if(!s) return; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,3,3,cw-6,ch-6,18); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });
 }
 function liteRebuildDesc(){   // 説明パネルを毎回破棄→新規生成（文字統一・伸縮なし・見切れなし）。説明ボタン廃止＝説明があれば表示
@@ -6627,7 +6746,8 @@ function liteDrawInfo(){
         ctx.fillStyle="#ffe6a6"; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(LITE.curName||"",14,ch/2);
         ctx.fillStyle="#8ff0ff"; ctx.textAlign="right"; ctx.fillText(pct+"%",cw-14,ch/2); });
 }
-function liteUpdateUI(){ if(!LITE.ui) return; const pct=Math.round((LITE.group.scale.x||1)*100); if(pct!==LITE._uiScale){ LITE._uiScale=pct; liteDrawInfo(); } }   // 倍率が変わった時だけ③再描画
+function liteUpdateUI(){ if(!LITE.ui) return; const pct=Math.round((LITE.group.scale.x||1)*100); if(pct!==LITE._uiScale){ LITE._uiScale=pct; liteDrawInfo(); }   // 倍率が変わった時だけ③再描画
+    const bk=(window.MV_ANIM!==false)+"|"+!!(LPH.walk && !LPH.walk.off); if(bk!==LITE._btnKey){ LITE._btnKey=bk; liteDrawButtons(); } }   // 【追加】あるく・アニメの状態が変わったらボタンを描き直す
 function litePickAny(){   // 右手レイで①ボタン・②セルを判定（可視のもののみ）。当たれば実行し true
     if(!LITE.active || !LITE.ui || !rightCtrl) return false;
     rightCtrl.getWorldPosition(_liteRO); _liteRD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_liteRQ)).normalize();
@@ -6637,8 +6757,16 @@ function litePickAny(){   // 右手レイで①ボタン・②セルを判定（
     const o=hit.object;
     if(o.userData.act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); try{ chord([784,523,392],0.05,"triangle",0.45); }catch(_){ } }
     else if(o.userData.act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); try{ beep(LITE.opEnabled?660:330,0.09,0.3,"square"); }catch(_){ } }
-    else if(o.userData.act==="anim"){ window.MV_ANIM=(window.MV_ANIM===false); liteDrawButtons(); try{ beep(window.MV_ANIM!==false?660:330,0.09,0.3,"square"); }catch(_){ } }   // アイドルアニメON/OFF
-    else if(o.userData.kind==="sel"){ const idx=o.userData.selIdx; if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } }
+    else if(o.userData.act==="anim"){
+        if(window.MV_ANIM!==false && LPH.walk && !LITE.phone){ LPH.joy=null; LPH.popY=0; LPH.faceTurn={ until:performance.now()+900, then:"animoff" }; try{ beep(330,0.09,0.3,"square"); }catch(_){ } return true; }   // 【追加】オフ：プレイヤーの方を向いてから標準姿勢に（スマホと同じ）
+        window.MV_ANIM=(window.MV_ANIM===false); liteDrawButtons(); try{ beep(window.MV_ANIM!==false?660:330,0.09,0.3,"square"); }catch(_){ } }   // アイドルアニメON/OFF
+    else if(o.userData.act==="walk"){   // 【追加】あるく／とまる（スマホ・タブレットと同じ）
+        if(window.MV_ANIM===false){ liteVRSay("「アニメーション オン」の ときに えらべるよ", 1800); try{ beep(220,0.08,0.3,"square"); }catch(_){ } return true; }
+        if(LPH.walk){ LPH.walk.off=!LPH.walk.off; LPH.walk.held=true;
+            if(LPH.walk.off){ LPH.joy=null; LPH.popY=0; LPH.faceTurn={ until:performance.now()+900, then:"stop" }; }   // とまる：プレイヤーの方をくるっと向いて止まる
+            liteVRSay(LPH.walk.off?"その ばに とまるよ":"あるきまわるよ", 1500); }
+        liteDrawButtons(); try{ beep(LPH.walk&&!LPH.walk.off?660:330,0.09,0.3,"square"); }catch(_){ } }
+    else if(o.userData.kind==="sel"){ const idx=o.userData.selIdx; if(idx!==LITE.curIdx){ liteVRResetHead(); LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; liteVRSayClear(); liteSwitchModel(idx); if(LPH.walk) LPH.walk.held=true; try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } }
     return true;
 }
 
@@ -6748,7 +6876,8 @@ async function enterLiteAR(target, idx, quality, intrinsicScale, opts){   // opt
     try{ await renderer.xr.setSession(session); }catch(e){ liteExitScene(); LITE.phone=false; return false; }
     LITE.active=true;
     if(LITE.phone) litePhoneStarted();
-    session.addEventListener("end", ()=>{ LITE.active=false; const wasPhone=LITE.phone; liteExitScene(); LITE.phone=false;
+    else liteVRWalkStart();   // 【追加】ヘッドセット：あるく（最初は「あるく」）
+    session.addEventListener("end", ()=>{ LITE.active=false; const wasPhone=LITE.phone; if(!wasPhone) liteVRWalkStop(); liteExitScene(); LITE.phone=false;
         const wasNuri=!!LITE.nuri; LITE.nuri=null;
         if(wasPhone){ try{ window.dispatchEvent(new CustomEvent("litephoneend", { detail:{ nuri:wasNuri } })); }catch(_){ } } }, { once:true });
     return true;
@@ -7162,7 +7291,7 @@ function lphWalkTick(){
             }
             wantX=-0.25;   // 顔を上げる
         }
-    } else if(LPH.g || LPH.tap || LITE.placeFrames>0 || !anim){ W.held=true; }   // さわっている間・置き直し中・アニメ オフは止まる
+    } else if(LPH.g || LPH.tap || LITE.placeFrames>0 || !anim || liteVRHeld()){ W.held=true; }   // さわっている間（ヘッドセット：つかんでいる間）・置き直し中・アニメ オフは止まる
     else {
         if(W.held){ W.held=false; W.home.copy(LITE.targetPos); W.yaw=lphYawOf(LITE.targetQuat); W.state="pause"; W.until=now+800; }   // その場所・その向きから
         if(!W.off){
