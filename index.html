@@ -1622,6 +1622,9 @@ function loadCol(){ try{ return JSON.parse(localStorage.getItem(COL_KEY)||"[]");
 function saveCol(a){ localStorage.setItem(COL_KEY, JSON.stringify(a)); }
 // ===== 発掘チャレンジ：3ターン合計ポイントTOP5（降順）=====
 const CHALLENGE_KEY = "echizen_challenge_top5_v1";
+// 【追加】TOP5（タイムアタック・発掘チャレンジ）のポイントの位置：右の記録日時と近すぎないよう、中央より少し左へ
+const TOP5_PT_X = 300;     // リザルト板（幅768）のポイントの中心x（もとは中央384）
+const TOP5_PT_PAD = 56;    // 記録一覧（メニュー）のポイント欄の右余白(px)＝中心を28px左へ
 function loadCh(){ try{ return JSON.parse(localStorage.getItem(CHALLENGE_KEY)||"[]"); }catch(e){ return []; } }
 function saveCh(a){ localStorage.setItem(CHALLENGE_KEY, JSON.stringify(a)); }
 function recordChallenge(total, detail){   // 3ターン合計を記録（TOP5・降順）。detail:{turns:[...],cards:[...],buddies:[...]}
@@ -4969,7 +4972,7 @@ const worldHud=(function(){
                 for(let i=0;i<5;i++){ const e=d.list[i], yy=590+i*68, hit=e&&e.id!==undefined&&e.id===GAME.lastTAId;   // 行間を広げる
                     ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
                     ctx.textAlign="left"; ctx.font="bold 30px sans-serif"; ctx.fillText((i+1)+".",120,yy);
-                    ctx.textAlign="center"; ctx.font="bold 34px sans-serif"; ctx.fillText(e?(e.score+" pt"):"----",384,yy);
+                    ctx.textAlign="center"; ctx.font="bold 34px sans-serif"; ctx.fillText(e?(e.score+" pt"):"----",TOP5_PT_X,yy);   // 【変更】右の日時と離すため少し左へ
                     ctx.textAlign="right"; ctx.font="bold 24px sans-serif"; ctx.fillText(e?((e.date||"")+(e.time?" "+e.time:"")):"",648,yy);
                 }
                 ctx.textAlign="center"; if(!GAME.desktop){ ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText("右トリガー2回でおわる",384,1180); }   // ページ1にも案内（1ページ目と位置/書式を統一）
@@ -5011,7 +5014,7 @@ const worldHud=(function(){
                     for(let i=0;i<5;i++){ const e=top[i], yy=y+112+i*58, hit=e&&e.id!==undefined&&e.id===GAME.lastChId;
                         ctx.fillStyle=hit?"#ffd34d":"rgba(226,216,255,.85)";
                         ctx.textAlign="left"; ctx.font="bold 28px sans-serif"; ctx.fillText((i+1)+".",120,yy);
-                        ctx.textAlign="center"; ctx.font="bold 32px sans-serif"; ctx.fillText(e?((e.total||0)+" pt"):"----",384,yy);
+                        ctx.textAlign="center"; ctx.font="bold 32px sans-serif"; ctx.fillText(e?((e.total||0)+" pt"):"----",TOP5_PT_X,yy);   // 【変更】右の日時と離すため少し左へ
                         ctx.textAlign="right"; ctx.font="bold 22px sans-serif"; ctx.fillText(e?((e.date||"")+(e.time?" "+e.time:"")):"",648,yy);
                     }
                 }
@@ -5689,7 +5692,7 @@ function openTAModal(){
     else{ el.innerHTML=list.slice(0,5).map((e,i)=>
         '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 6px;border-bottom:1px solid rgba(216,180,106,.2);">'
         +'<span style="font-weight:800;color:#f0d98a;width:28px;">'+(i+1)+'.</span>'
-        +'<span style="flex:1;text-align:center;font-weight:800;font-size:19px;">'+e.score+' pt</span>'
+        +'<span style="flex:1;text-align:center;font-weight:800;font-size:19px;padding-right:'+TOP5_PT_PAD+'px;">'+e.score+' pt</span>'
         +'<span style="font-size:12px;color:rgba(200,190,240,.75);text-align:right;">'+((e.date||"")+(e.time?" "+e.time:""))+'</span>'
         +'</div>').join(""); }
     // 発掘チャレンジ（3ターン合計）
@@ -5698,7 +5701,7 @@ function openTAModal(){
         else{ chel.innerHTML=chl.slice(0,5).map((e,i)=>
             '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 6px;border-bottom:1px solid rgba(255,205,234,.2);">'
             +'<span style="font-weight:800;color:#ffcdea;width:28px;">'+(i+1)+'.</span>'
-            +'<span style="flex:1;text-align:center;font-weight:800;font-size:19px;">'+(e.total!=null?e.total.toLocaleString():'--')+' pt</span>'
+            +'<span style="flex:1;text-align:center;font-weight:800;font-size:19px;padding-right:'+TOP5_PT_PAD+'px;">'+(e.total!=null?e.total.toLocaleString():'--')+' pt</span>'
             +'<span style="font-size:12px;color:rgba(200,190,240,.75);text-align:right;">'+((e.date||"")+(e.time?" "+e.time:""))+'</span>'
             +'</div>').join(""); } }
     document.getElementById("taModal").style.display="flex";
