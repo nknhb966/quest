@@ -1676,8 +1676,34 @@ function saveDex(){ /* 保存しない（リロードでリセットするため
 
 /* ===================================================== * Web Audio（合成SFX）— 既存アプリの手法を踏襲 * ===================================================== */
 const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-function unlockAudio(){ if(audioCtx.state==="suspended") audioCtx.resume(); }
-["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio));
+// 【修正】iPhone・iPad で音が鳴らない対策
+//  ・iOS は「タッチを離した時（touchend）」などでないと音を始められない → touchend / pointerup でも解除する
+//  ・状態が "suspended" 以外（"interrupted"：カメラ使用・着信・画面を戻った後など）でも再開する
+//  ・消音スイッチ（マナーモード）が入っていると Web Audio が消える → 再生用の音声セッションにする
+//    （iOS 17 以降は navigator.audioSession、それ以前は無音の <audio> を流し続けて切り替える）
+const IS_IOS_AUDIO = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+let _audioUnlocked=false, _silentEl=null;
+function _silentWavUrl(){   // 0.1秒の無音（8kHz・8bit）
+    const n=800, b=new ArrayBuffer(44+n), v=new DataView(b), w=(o,t)=>{ for(let i=0;i<t.length;i++) v.setUint8(o+i,t.charCodeAt(i)); };
+    w(0,"RIFF"); v.setUint32(4,36+n,true); w(8,"WAVE"); w(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,8000,true); v.setUint32(28,8000,true); v.setUint16(32,1,true); v.setUint16(34,8,true); w(36,"data"); v.setUint32(40,n,true);
+    for(let i=0;i<n;i++) v.setUint8(44+i,128);
+    return URL.createObjectURL(new Blob([b],{ type:"audio/wav" }));
+}
+function unlockAudio(){
+    try{ if(navigator.audioSession && navigator.audioSession.type!=="playback") navigator.audioSession.type="playback"; }catch(_){ }
+    if(audioCtx.state!=="running"){ try{ const p=audioCtx.resume(); if(p && p.catch) p.catch(()=>{}); }catch(_){ } }
+    if(IS_IOS_AUDIO){
+        try{ if(!_silentEl){ _silentEl=document.createElement("audio"); _silentEl.src=_silentWavUrl(); _silentEl.loop=true; _silentEl.setAttribute("playsinline",""); _silentEl.preload="auto"; }
+            if(_silentEl.paused){ const p=_silentEl.play(); if(p && p.catch) p.catch(()=>{}); } }catch(_){ }
+    }
+    if(!_audioUnlocked){   // 最初の1回：ごく短い無音を Web Audio で鳴らして確実に有効にする
+        try{ const b=audioCtx.createBuffer(1,1,22050), src=audioCtx.createBufferSource(); src.buffer=b; src.connect(audioCtx.destination); src.start(0); }catch(_){ }
+        if(audioCtx.state==="running") _audioUnlocked=true;
+    }
+}
+["click","touchstart","touchend","pointerup","keydown"].forEach(ev=>document.addEventListener(ev, unlockAudio, { capture:true, passive:true }));
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && audioCtx.state!=="running"){ try{ audioCtx.resume().catch(()=>{}); }catch(_){ } } });
 
 function beep(freq, dur=0.09, vol=0.3, type="sine"){
     if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）（暗転中）は音不要
@@ -6637,7 +6663,7 @@ function liteVRHearts(n){
     if(!LITE.model) return; const box=_lvBox.setFromObject(LITE.model), c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
     for(let k=0;k<n;k++){
         const spr=new THREE.Sprite(new THREE.SpriteMaterial({ map:heartTex, transparent:true, depthTest:false, depthWrite:false }));
-        const s=Math.max(0.04, Math.min(0.12, sz.y*0.18)); spr.scale.set(s,s,1); spr.renderOrder=3001; spr.visible=false;
+        const s=Math.max(0.003, Math.max(sz.x, sz.y, sz.z)*0.12); spr.scale.set(s,s,1); spr.renderOrder=3001; spr.visible=false;   // モデルの大きさに比例
         spr.position.set(c.x+(Math.random()-0.5)*sz.x*0.6, box.max.y, c.z+(Math.random()-0.5)*sz.z*0.6); scene.add(spr);
         LVR.hearts.push({ spr, t0:performance.now()+k*120, y0:box.max.y, rise:Math.max(0.12, sz.y*0.5) });
     }
@@ -6652,7 +6678,7 @@ function liteVRJoy(){   // スマホの lphJoy と同じ（画面の♥・吹き
     try{ vibrate(60,0.5); }catch(_){ }
     liteVRHearts(5);
 }
-function liteVRWalking(){ return !!(LPH.walk && !LPH.walk.off); }   // 「あるく」＝床の上（xz移動・y軸回転だけ）／「とまる」＝もとの動き方
+function liteVRWalking(){ return !!(LPH.walk && !LPH.walk.off && window.MV_ANIM!==false); }   // 「あるく」＝床の上（xz移動・y軸回転だけ）／「とまる」・アニメーション オフ＝もとの動き方
 // 床：実際の床をヒットテストで測る（目の下 0.3〜2.4m の上向きの水平面のうち、いちばん低いもの）。測れない時は local-floor の原点の高さ
 //   local-floor は、境界（ガーディアン）の床が無い時などに「目の高さ−標準の身長」で決まることがあり、子どもや座った時に本当の床とずれるため
 //   ・1回だけ低く出た点（測りまちがい）で床が下がりっぱなしにならないよう、直近3秒の点の「いちばん低いかたまり」（3cm以内に6点以上）を床とする
@@ -10483,9 +10509,10 @@ function nuriStartScan(){   // 【変更】ARが使えるAndroid：ボタンを�
 }
 async function nuriStartScanAR(){
     nuriPreviewStop(); scStopCamera(); NURI_AR.key=null; NURI_AR.fallback=false;
-    const ok=await enterLiteAR("dino", 0, "small", 1, { nuri:true, egg:true, scan:true });   // requestSession を最初に呼ぶ（タップ直後でないとARは始められない）
+    let ok=await enterLiteAR("dino", 0, "small", 1, { nuri:true, egg:true, scan:true });   // requestSession を最初に呼ぶ（タップ直後でないとARは始められない）
+    if(!ok){ await new Promise(r=>setTimeout(r, 500)); if(!(typeof LITE!=="undefined" && LITE.active)) ok=await enterLiteAR("dino", 0, "small", 1, { nuri:true, egg:true, scan:true }); }   // 【修正】前のARの終わり際などで一時的に始められない時は、もう一度だけ試す
     if(ok && !LITE.nuri){ const ses=renderer.xr.getSession(); NURI_AR.fallback=true; if(ses) ses.end().catch(()=>{}); return; }   // 画面パネルが出せない端末
-    if(!ok) nuriStartScanCam();   // ARに入れなかった → 通常のカメラで読み取り
+    if(!ok){ const st=$("nuriStatus"); if(st) st.textContent="ARを はじめられなかったよ。もういちど「ぬりえを よみこむ」を おしてね"; }   // 【修正】ARの使える端末では、通常のカメラ画面に切り替えない
 }
 async function nuriStartScanIAR(){
     nuriPreviewStop(); scStopCamera(); NURI_AR.key=null; NURI_AR.fallback=false;
@@ -10677,16 +10704,26 @@ async function lphScanStart(){
     if(!LPH.scan) return;
     LPH.scan.det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 });
     LPH.scan.ready=true; LPH.scan.t0=performance.now(); nuriSndReset();
+    { const ses=renderer.xr.getSession(), ef=ses && ses.enabledFeatures;   // カメラ映像の読み出しが許可されたか（分からない端末は null）
+      LPH.scan.camFeat = LITE.iar ? true : (ef ? ef.includes("camera-access") : null); LPH.scan.camT0=performance.now(); LPH.scan.gotCam=false; }
     lphNCard("ぬりえを わくに あわせてね","4つの かどの くろい しかくが うつるように してね");
 }
 function lphScanFrame(frame){
     const S=LPH.scan; if(!S || !S.ready || S.busy) return;
     const now=performance.now(); if(now<S.nextT) return; S.nextT=now+200;   // 通常の読み取りと同じ 0.2秒ごと
     const g=lphGrabCam(frame, 960);
-    if(!g){   // カメラ映像が使えない端末 → ARを終えて、通常のカメラで読み取る
-        if(now-S.camMissT>3000){ NURI_AR.fallback=true; S.ready=false; const ses=renderer.xr.getSession(); if(ses) ses.end().catch(()=>{}); }
+    if(!g){
+        // 【修正】まれにARでない画面（通常のカメラ）に切り替わっていた：ARを始めた直後や、位置を見失っている間は、
+        //   数秒カメラ映像が読めないことがある。映像の読み出しが許可されている時は切り替えずに待つ
+        if(S.gotCam) return;   // 一度でも読めていれば、一時的なもの → 待つ
+        const el=now-(S.camT0||now);
+        if(S.camFeat===false ? el>3000 : (S.camFeat===null && el>12000)){   // 許可されていない端末だけ、通常のカメラで読み取る
+            NURI_AR.fallback=true; S.ready=false; const ses=renderer.xr.getSession(); if(ses) ses.end().catch(()=>{}); return; }
+        if(el>12000) lphNCard("カメラが うまく つかえないみたい","✕ で もどって、もういちど ためしてね");
+        else if(el>2500) lphNCard("カメラを じゅんびしているよ…","すこし まってね");
         return;
     }
+    if(!S.gotCam){ S.gotCam=true; lphNCard("ぬりえを わくに あわせてね","4つの かどの くろい しかくが うつるように してね"); }
     S.camMissT=now;
     const img=g.img, w=g.W, h=g.H, vw=g.fullW, vh=g.fullH;
     let lum=0; for(let i=0;i<img.data.length;i+=64) lum+=img.data[i]*0.3+img.data[i+1]*0.59+img.data[i+2]*0.11; lum/=img.data.length/64;
