@@ -6673,6 +6673,9 @@ function liteVRJoy(){   // スマホの lphJoy と同じ（画面の♥・吹き
     const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
     const types=["hop","spin","wiggle"].filter(t=>t!==LPH.lastJoy), type=types[Math.floor(Math.random()*types.length)]; LPH.lastJoy=type;   // 続けて同じにしない
     LPH.joy={ t0:performance.now(), dur:type==="spin"?1100:1300, type, yaw0:lphFaceCamYaw(), h:(window.MV_ANIM!==false)?Math.max(0.01, sz.y*0.15):0 };   // アニメ オフ＝動かない
+    { const cp=camera.getWorldPosition(new THREE.Vector3()), c=LITE.targetPos, dx=c.x-cp.x, dz=c.z-cp.z, d=Math.hypot(dx,dz)||1e-3;
+      const need=LVR_JOY.base+Math.max(sz.x, sz.z)/2*LVR_JOY.mul;   // 大きさに応じた距離
+      if(d<need) LPH.joy.back={ from:c.clone(), to:new THREE.Vector3(cp.x+dx/d*need, c.y, cp.z+dz/d*need) }; }
     liteVRSay(lphJoyLine(type), 2200);
     try{ if(LITE.target==="dog" && typeof sfxBark==="function") sfxBark(); else sfxCry(); }catch(_){ }
     try{ vibrate(60,0.5); }catch(_){ }
@@ -6718,7 +6721,9 @@ function liteVRHitStart(){
 function liteVRHitStop(){ (LVR.hts||[]).forEach(h=>{ try{ h.cancel(); }catch(_){ } }); LVR.hts=[]; LVR.floorHit=null; LVR.fs=[]; LVR.ref=null; }
 // なでる：手（コントローラー・ハンドトラッキングの指先と手のひら）が、モデルの近くを「すばやく・ある程度の長さ」動いた時だけ
 //   ・速さ 0.5m/秒 以上で外形＋3cm の中を動いた道のりが 0.10m たまったら（遅くなる・離れる状態が0.3秒続くと、ためた分を捨てる）
-const LVR_PET={ speed:0.5, path:0.10, pad:0.03, reset:300, cool:1500 };   // 小さな子のゆっくりなでる動きでも反応するように 0.5m/秒
+const LVR_PET={ speed:0.5, path:0.10, pad:0.03, reset:300, cool:1500 };
+// 喜ぶ位置：プレイヤーから「0.25m＋体の横の半径×1.8」より近い時は、そこまで下がってから喜ぶ（ふつうの大きさなら、ほぼ動かない）
+const LVR_JOY={ base:0.25, mul:1.8, backFrac:0.45 };   // 小さな子のゆっくりなでる動きでも反応するように 0.5m/秒
 const LVR_JOINTS=["index-finger-tip","middle-finger-tip","middle-finger-metacarpal"];
 function liteVRPetPoints(out){   // [key, Object3D, つかんでいるか]
     controllers.forEach((c,i)=>{ const held=!!(c.userData && c.userData.liteHeld);
@@ -6737,6 +6742,11 @@ function liteVRTick(){
         liteVRFloor();
     }
     if(LPH.walk) lphWalkTick();
+    if(LPH.joy && LPH.joy.back){   // 喜びはじめに、大きさに応じた距離まで下がる
+        const J=LPH.joy, r=Math.min(1,(now-J.t0)/(J.dur*LVR_JOY.backFrac)), e=r*r*(3-2*r);
+        LITE.targetPos.x=J.back.from.x+(J.back.to.x-J.back.from.x)*e; LITE.targetPos.z=J.back.from.z+(J.back.to.z-J.back.from.z)*e;
+        if(r>=1 && !J.backDone){ J.backDone=true; if(LPH.walk) LPH.walk.held=true; }   // 下がった場所から歩き直す
+    }
     if(walking || LPH.faceTurn) lphGround();               // 足元を床に（跳ねる高さも含む）。「とまる」直後の向き直り中も床のまま
     else if(LPH.shadow) LPH.shadow.visible=false;          // 「とまる」：影は出さない（床から離れることもあるため）
     // なでる
@@ -6996,6 +7006,7 @@ const LPH_CFG = {
     walkHalfPaper: 0.10, walkSpeedPaper: 0.04,        // 用紙の上：秒速4cm
     walkRadiusBL: 1.2, walkSpeedBL: 0.16,
     pteraWalkMul: 2.5,       // 【追加】プテラノドンの「あるく」：歩き回る範囲と速さを他の恐竜の2.5倍（1回の移動にかかる時間は同じ）              // あるく範囲＝中心から体長×1.2（用紙の上でもはみ出してよい）／速さ＝体長×0.16 /秒
+    turnDegLook: 150,        // 【追加】「プレイヤーを見る」時に体を向ける速さ（度/秒）
     turnDeg: 60, turnDegJoy: 180, turnDegFace: 450,    // 方向転換の速さ（度/秒）：歩く・見る＝ゆっくり／喜ぶ時＝少し速く／「とまる」「アニメ オフ」でスマホを向く＝くるっと（約0.4秒）
     hatchT: 1.5,             // ぬりえから：卵の演出の長さ（ゲームの発掘演出 ×1.5）
     eggWaitMaxMs: 8000,      // 床が見つからない時、この時間で目安の床に卵を出す
@@ -7395,15 +7406,18 @@ function lphWalkTick(){
                     const step=spd*dt*Math.max(0, Math.cos(Math.min(left, Math.PI/2)));   // 向きがずれている間はゆっくり
                     if(d<=Math.max(step, 1e-4)){ LITE.targetPos.x=W.target.x; LITE.targetPos.z=W.target.z;
                         const r=Math.random();   // 着いたら：プレイヤーを見る／床を嗅ぐ／すぐ次へ
-                        if(r<0.4){ W.state="look"; W.until=now+2200+Math.random()*1200; }
+                        if(r<0.4){ W.state="look"; W.lookFaced=false; W.lookT0=now; W.until=now+60000; }   // 体がプレイヤーを向いてから 2.2〜3.4秒 見る
                         else if(r<0.75){ W.state="sniff"; W.until=now+2000+Math.random()*1000; }
                         else { W.state="pause"; W.until=now+300; }
                     } else { LITE.targetPos.x+=dx/d*step; LITE.targetPos.z+=dz/d*step; }
                 }
             } else if(W.state==="look"){
-                lphTurn(W, lphFaceCamYaw(), tr, dt);   // 体ごとプレイヤーの方へ（ゆっくり）
-                if(head){ head.getWorldPosition(_lphHk); camera.getWorldPosition(_lphHc); const dy=_lphHc.y-_lphHk.y, hz=Math.hypot(_lphHc.x-_lphHk.x,_lphHc.z-_lphHk.z)||1e-4; wantX=THREE.MathUtils.clamp(-Math.atan2(dy,hz),-0.5,0.45); }
-                if(now>=W.until){ W.state="pause"; W.until=now+200; }
+                // 【変更】体をプレイヤーの方へ向けながら、頭の左右・上下で目（顔）をプレイヤーに合わせる
+                //   （大きさ・回転・移動・リセットの後も、実際の頭の位置と向きから毎回計算する）
+                const left=lphTurn(W, lphFaceCamYaw(), LPH_CFG.turnDegLook, dt);
+                if(!W.lookFaced && (left<THREE.MathUtils.degToRad(10) || now-(W.lookT0||now)>3000)){ W.lookFaced=true; W.until=now+2200+Math.random()*1200; }
+                if(head){ const g=liteGaze(head, pv); wantX=g.x; wantY=g.y; }
+                if(W.lookFaced && now>=W.until){ W.state="pause"; W.until=now+200; }
             } else if(W.state==="sniff"){
                 wantX=THREE.MathUtils.degToRad(38)+Math.sin(now*0.0096)*0.075;   // 鼻先を下げて嗅ぐ（ゲームの相棒と同じ）
                 if(now>=W.until){ W.state="pause"; W.until=now+200; }
@@ -7411,6 +7425,23 @@ function lphWalkTick(){
         }
     }
     if(head){ if(anim){ W.hx+=(wantX-W.hx)*0.12; W.hy+=(wantY-W.hy)*0.12; } else { W.hx=0; W.hy=0; } head.rotation.x=W.hx; head.rotation.y=W.hy; }
+}
+// 【追加】頭（首）をプレイヤーの目に向ける角度：左右＝頭の付け根から見た向き、上下＝顔（目）から見た俯角（長首の計算と同じ）
+//   モデルの大きさ・回転・位置はすべて実際の行列から読むので、手で動かした後やリセット後もそのまま合う
+const _lgC=new THREE.Vector3(), _lgL=new THREE.Vector3();
+function liteGaze(head, pv){
+    const par=head.parent; if(!par) return { x:0, y:0 };
+    head.rotation.order="YXZ";   // 左右に向けてから、その向きで上下（首らしい回り方）
+    const cam=camera.getWorldPosition(_lgC);
+    par.updateWorldMatrix(true, false);
+    const loc=par.worldToLocal(_lgL.copy(cam)).sub(head.position);
+    const yaw=THREE.MathUtils.clamp(Math.atan2(loc.x, loc.z), -0.8, 0.8);   // 左右は ±約45°まで（残りは体を向けて合わせる）
+    const sy=head.rotation.y; head.rotation.y=yaw;
+    let pitch=longNeckGaze(head, cam);
+    head.rotation.y=sy; head.updateMatrixWorld(true);
+    const longNeck=!!(pv && pv.userData && pv.userData.longNeck);
+    pitch=THREE.MathUtils.clamp(pitch, -0.7, longNeck?1.3:0.7);   // ＋＝下
+    return { x:pitch, y:yaw };
 }
 // ---- 【追加】さわると喜ぶ（ゲームのなでなでの応用：鳴き声・ぴょんぴょん・しっぽ・♡） ----
 function lphJoyLine(type){   // ゲームの相棒と同じ語尾（恐竜＝鳴き声、フクイ〜＝福井弁、犬＝ワン）
