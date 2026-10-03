@@ -954,7 +954,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 <video id="tabarVideo" playsinline muted autoplay></video>
 <div id="tabarTouch"></div>
 <div id="tabarRadar" data-lvl="0" aria-hidden="true"><span class="ic">🔍</span><i></i><i></i><i></i><i></i><i></i></div>
-<div id="tabarDig">光っている土のブロックをタップして掘ろう！</div>
+<div id="tabarDig">ひかっている つちの ブロックを タッチして ほろう！</div>
 <div id="tabarWarn" role="alert"></div>
 <div id="tabarScan">
     <div class="tabar-card">
@@ -962,29 +962,29 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
         <p class="tabar-sub" id="tabarScanSub"></p>
     </div>
     <div class="tabar-actions">
-        <button id="tabarPlaceBtn" class="tabar-go" disabled>ここではじめる</button>
+        <button id="tabarPlaceBtn" class="tabar-go" disabled>ここで はじめる</button>
         <button id="tabarScanBack" class="tabar-back">もどる</button>
     </div>
 </div>
 <div id="tabarPrep">
     <div class="tabar-sheet" role="dialog" aria-modal="true" aria-label="タブレットARの準備">
-        <h2>📷 タブレットARであそぶ</h2>
+        <h2>📷 きょうりゅう たんけん</h2>
         <ul class="tabar-rules">
-            <li>🚶 歩いてさがそう。走らないでね</li>
-            <li>👀 画面だけでなく、まわりもよく見よう</li>
-            <li>🟦 水色の線の外には出ないでね</li>
-            <li>🤲 タブレットは両手で持とう。掘るときは片手で持って、もう片方の手で土をタップ</li>
+            <li>🚶 あるいて さがそう。はしらないでね</li>
+            <li>👀 がめんだけで なく、まわりも よく みよう</li>
+            <li>🟦 みずいろの せんの そとに でないでね</li>
+            <li>🤲 タブレットは りょうてで もとう。ほる ときは かたてで もって、もう かたほうの てで つちを タッチ</li>
         </ul>
         <div class="opt wide" id="tabarHeightOpt" style="display:none">
-            <div class="lbl">タブレットを持つ高さ（床から）</div>
+            <div class="lbl">タブレットを もつ たかさ（ゆかから）</div>
             <div class="seg" id="segTabarH">
-                <button data-v="infant">🧸 幼児 0.9m</button>
-                <button data-v="child">🧒 子ども 1.2m</button>
-                <button data-v="adult" class="on">🧑 大人 1.5m</button>
+                <button data-v="infant">🧸 ちいさい こ 0.9m</button>
+                <button data-v="child">🧒 こども 1.2m</button>
+                <button data-v="adult" class="on">🧑 おとな 1.5m</button>
             </div>
         </div>
         <p id="tabarPrepStatus" class="tabar-status"></p>
-        <button id="tabarStartBtn" class="tabar-go" disabled>カメラをはじめる</button>
+        <button id="tabarStartBtn" class="tabar-go" disabled>はじめる</button>
         <button id="tabarPrepBack" class="tabar-back">もどる</button>
     </div>
 </div>
@@ -1004,7 +1004,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
         <p id="tabarConfirmMsg" class="tabar-confirm-msg"></p>
         <button id="tabarConfirmYes" class="tabar-go">おわる</button>
         <button id="tabarConfirmNo" class="tabar-back">つづける</button>
-        <button id="tabarConfirmAlt" class="tabar-back" style="display:none">ここではじめる</button>
+        <button id="tabarConfirmAlt" class="tabar-back" style="display:none">ここで はじめる</button>
     </div>
 </div>
 <div id="toast"></div>
@@ -1078,6 +1078,9 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     #litePh.lph-fold #lphBottom{ display:none; }
     /* 【追加】はっくつ（かいはつちゅう） */
     #lphBtns button.dig{ background:linear-gradient(135deg,#a16207,#b45309); border-color:rgba(255,214,120,.7); }
+    #lphExplore{ display:block; width:100%; margin:0 0 8px; padding:13px 8px; border:none; border-radius:14px; font-weight:800; font-size:17px; letter-spacing:1px;
+        color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; pointer-events:auto; }
+    #lphExplore:active{ transform:translateY(2px); box-shadow:0 2px 0 #b8871c; }
     #lphDig{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(6,4,14,.55); pointer-events:auto; touch-action:pan-y; }
     #lphDig.on{ display:flex; }
     #lphDig .card{ width:min(440px,94vw); max-height:88vh; overflow-y:auto; box-sizing:border-box; display:flex; flex-direction:column; gap:8px; padding:16px;
@@ -1169,6 +1172,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <div id="lphBottom">
         <div id="lphDesc"></div>
         <div id="lphSel"></div>
+        <button type="button" id="lphExplore" style="display:none">🗺 この きょうりゅうと たんけんする</button>
         <div id="lphBtns">
             <button data-a="reset">🔄<span>リセット</span></button>
             <button data-a="lock" id="lphLockBtn">✋<span>うごかせる</span></button>
@@ -1189,19 +1193,19 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <!-- 【追加】はっくつ（かいはつちゅう）：設定してタブレットARの発掘へ -->
     <div id="lphDig">
         <div class="card" role="dialog" aria-modal="true" aria-label="はっくつ">
-            <h3>⛏ はっくつ <span class="dev">🚧 かいはつちゅう</span></h3>
+            <h3>🗺 たんけんの じゅんび <span class="dev">🚧 かいはつちゅう</span></h3>
             <p class="lead" id="lphDigLead"></p>
-            <div class="lbl">モード</div>
+            <div class="lbl">あそびかた</div>
             <div class="seg3" id="lphDigMode">
-                <button type="button" data-v="challenge">🏆<span>はっくつ<br>チャレンジ</span></button>
-                <button type="button" data-v="time">⏱<span>タイム<br>アタック</span></button>
-                <button type="button" data-v="collect">🗺<span>コレクション</span></button>
+                <button type="button" data-v="challenge">🏆<span>3かい<br>ちょうせん</span></button>
+                <button type="button" data-v="time">⏱<span>じかんまで<br>さがす</span></button>
+                <button type="button" data-v="collect">🗺<span>ぜんぶ<br>みつける</span></button>
             </div>
-            <div class="lbl">ワールドの ひろさ</div>
+            <div class="lbl">さがす ばしょの ひろさ</div>
             <div class="szrow"><span class="k">よこ</span><button type="button" data-k="wx" data-d="-1" aria-label="よこを せまく">－</button><b id="lphDigWx">5</b><span>m</span><button type="button" data-k="wx" data-d="1" aria-label="よこを ひろく">＋</button></div>
             <div class="szrow"><span class="k">おく</span><button type="button" data-k="wz" data-d="-1" aria-label="おくを せまく">－</button><b id="lphDigWz">5</b><span>m</span><button type="button" data-k="wz" data-d="1" aria-label="おくを ひろく">＋</button></div>
-            <p class="note">「はじめる」で この ARを おわって、タブレットARの じゅんびに すすむよ。<br>はっくつを おえたら、この がめんに もどれるよ。</p>
-            <button type="button" id="lphDigGo">⛏ はじめる</button>
+            <p class="note">「たんけんに いく」を おすと、たんけんの じゅんびに すすむよ。<br>おわったら、この がめんに もどれるよ。</p>
+            <button type="button" id="lphDigGo">🗺 たんけんに いく</button>
             <button type="button" id="lphDigBack">もどる</button>
         </div>
     </div>
@@ -4741,7 +4745,7 @@ function startGame(desktop){
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw(); updateTAButton();
     bubble.say(line("start"), 2600);
-    if(TABAR.on){ showCenterHint("歩いて発掘ポイントをさがそう\n光っている土のブロックをタップで発掘・相棒をタップでなでる", 4600); }
+    if(TABAR.on){ showCenterHint("あるいて はっくつ ポイントを さがそう\nひかっている つちの ブロックを タッチで ほる・あいぼうを タッチで なでる", 4600); }
     else if(IS_TOUCH && desktop){ showCenterHint("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     unlockAudio();
@@ -7063,7 +7067,7 @@ function litePhoneStarted(){
         else LPH.walk=lphWalkNew();
         litePhoneRefresh(); return;
     }
-    if(LITE.target==="dino" || LITE.target==="dog"){ LPH.walk=lphWalkNew(); litePhoneRefresh();
+    if(LITE.target==="dino" || LITE.target==="dog"){ LPH.walk=lphWalkNew(); litePhoneRefresh(); if(typeof lphExploreSay==="function") lphExploreSay(2500);
     }
     if(!LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); }   // 初回だけ操作方法を表示
 }
@@ -7078,6 +7082,8 @@ function litePhoneRefresh(){
     lph$("lphWalkBtn").style.display=LPH.walk?"":"none";   // 恐竜・犬：あるく／とまる（卵の間は出さない）
     sel.style.display=(LITE.nuri && !LITE.nuri.pick)?"none":"";   // ぬりえから：その恐竜だけ（切り替えなし）。メイン画面から：ぬりえの恐竜を選べる
     { const dg=lph$("lphDigBtn"); if(dg) dg.style.display=(LITE.target==="dino"||LITE.target==="dog")?"":"none"; }   // はっくつ：出土品のときは出さない
+    { const ex=lph$("lphExplore"), ok=(LITE.target==="dino"||LITE.target==="dog") && !(LPH.hatch && LPH.hatch.phase!=="done");   // 【追加】たんけんする（卵の間は出さない）
+      if(ex){ ex.style.display=ok?"":"none"; ex.textContent = LITE.target==="dog" ? "🗺 この いぬと たんけんする" : "🗺 この きょうりゅうと たんけんする"; } }
     const d=lph$("lphDesc"); d.textContent=LITE.curDesc||""; if(!hasDesc) d.classList.remove("on");
     lphPaintBtns(); LITE._phPct=-1; litePhoneTick();
 }
@@ -7148,7 +7154,7 @@ function lphHatchTick(){
     if(H.phase==="dino"){   // 跳ねて登場（上昇→頂点→着地）
         const r=Math.min((now-H.t2)/1000/(1.0*T),1), peak=H.height*0.35;
         LPH.popY = r<0.5 ? lerp(0,peak,r*2) : lerp(peak,0,(r-0.5)*2);
-        if(r>=1){ LPH.popY=0; H.phase="done"; LPH.walk=lphWalkNew(); litePhoneRefresh(); setTimeout(()=>{ if(LITE.active && LITE.phone && !LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); } }, 2500); }
+        if(r>=1){ LPH.popY=0; H.phase="done"; LPH.walk=lphWalkNew(); litePhoneRefresh(); if(typeof lphExploreSay==="function") lphExploreSay(3200); setTimeout(()=>{ if(LITE.active && LITE.phone && !LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); } }, 2500); }
     }
 }
 // ---- 【追加】ぬりえから（Android）：AR内のカメラ映像でぬりえを読み取る（通常の読み取りと同じ判定・処理） ----
@@ -8704,7 +8710,7 @@ function tabarOpenPrep(){
     if(document.body.classList.contains("loading") || document.body.classList.contains("preloading")) return;
     TABAR.phase="prep"; TABAR.support=null; TABAR.starting=false;
     tabarUI.prep.classList.add("open");
-    tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしています…");
+    tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしているよ…");
     tabarDetect().then(r=>{ TABAR.support=r; });
     const poll=()=>{ if(TABAR.phase!=="prep") return; tabarRefreshPrep(); if(tabarUI.startBtn.disabled && !tabarPrepStatus._final) setTimeout(poll, 200); };
     tabarPrepStatus._final=false; poll();
@@ -8712,13 +8718,13 @@ function tabarOpenPrep(){
 function tabarRefreshPrep(){
     if(TABAR.starting) return;
     const sup=TABAR.support;
-    if(!sup || !tabarReady()){ tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしています…"); return; }
+    if(!sup || !tabarReady()){ tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしているよ…"); return; }
     if(!sup.secure){ tabarPrepStatus._final=true; tabarPrepStatus("カメラARは https:// で開いたページでだけ使えます。\nURLを確認してください。", true); return; }
     if(!sup.webxr && !(sup.camera && sup.orient)){ tabarPrepStatus._final=true; tabarPrepStatus("この端末・ブラウザではカメラARを使えません。\nメニューの「ヘッドセットなしで試す」で遊べます。", true); return; }
     tabarUI.startBtn.disabled=false;
     document.getElementById("tabarHeightOpt").style.display = sup.webxr ? "none" : "";   // 高さを実測できない方式のときだけ選ぶ
-    tabarPrepStatus(sup.webxr ? "じゅんびができました（AR：床と位置をカメラで認識）"
-        : "じゅんびができました（AR：カメラ映像＋向きセンサー＋歩数）\n※"+tabarNoXRReason(sup).replace(/\n/g,""));
+    tabarPrepStatus(sup.webxr ? "じゅんび できたよ！"
+        : "じゅんび できたよ！（カメラと うごきの センサーで あそぶよ）\n※"+tabarNoXRReason(sup).replace(/\n/g,""));
 }
 function tabarClosePrep(){
     tabarUI.prep.classList.remove("open");
@@ -8729,7 +8735,7 @@ async function tabarStart(){
     if(TABAR.starting || TABAR.phase!=="prep" || !tabarReady()) return;
     const sup=TABAR.support||{};
     TABAR.starting=true; tabarUI.startBtn.disabled=true; unlockAudio();
-    tabarPrepStatus("カメラをじゅんびしています…");
+    tabarPrepStatus("カメラを じゅんびしているよ…");
     const errs=[];   // 方式ごとの失敗理由（どちらで止まったか分かるように全て表示）
     if(sup.webxr){
         const r=await tabarStartWebXR();   // requestSession はタップ直後に呼ぶ（ユーザー操作が必要）
@@ -9152,6 +9158,7 @@ function tabarEnterCommon(backend){
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
     tabarLock.reset();   // 床ロックの状態を消す
     tabarBuddyReset();   // 相棒の待機位置を消す
+    kidStart();          // 【追加】タブレットARの間は、画面のことばを幼児向け（ひらがな）に
 }
 function tabarReticle(){
     if(TABAR.reticle) return TABAR.reticle;
@@ -9168,8 +9175,8 @@ function tabarBeginScan(){
     tabarReticle().visible=false;
     tabarUI.placeBtn.disabled=true;
     tabarLock.scanReset();
-    tabarUI.scanMsg.textContent="あそぶ場所のまん中に立って、タブレットを床に向けてね";
-    tabarUI.scanSub.textContent="床をさがしています… ゆっくり左右に動かしてね";
+    tabarUI.scanMsg.textContent="あそぶ ばしょの まんなかに たって、タブレットを ゆかに むけてね";
+    tabarUI.scanSub.textContent="ゆかを さがしているよ… ゆっくり よこに うごかしてね";
     tabarUI.scan.classList.add("open");
 }
 function tabarFloorSample(y, x, z){
@@ -9182,7 +9189,7 @@ function tabarFloorSample(y, x, z){
 }
 function tabarFloorFound(){
     TABAR.floorOk=true; tabarUI.placeBtn.disabled=false;
-    tabarUI.scanSub.textContent="床が見つかりました！「ここではじめる」をタップしてね";
+    tabarUI.scanSub.textContent="ゆかが みつかったよ！「ここで はじめる」を おしてね";
     try{ chord([523,659],0.06,"triangle",0.35); }catch(_){}
 }
 function tabarScanTick(fr){
@@ -9215,7 +9222,7 @@ function tabarPlace(){
     if(TABAR.rescan){   // 置き直し：ゲームはスタンバイのまま、発掘ポイントだけ新しい範囲に
         TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
         regenerateCustomSpots();   // サイト表示の出土品位置は recenterFieldHere で追従
-        showCenterHint("ここを中心にフィールドを置き直しました", 2000);
+        showCenterHint("ここを まんなかに して、おきなおしたよ", 2000);
         return;
     }
     TABAR.walk.copy(player.position);
@@ -9238,7 +9245,7 @@ function tabarAskDone(v){ tabarUI.confirm.classList.remove("open"); const r=_tab
 function tabarConfirmExit(){
     // スタンバイ中だけ「ここではじめる」（置き直し）も選べる。誤操作を防ぐため、常設ボタンにせず「やめる」の中に置く
     const standby=(TABAR.phase==="play" && GAME.active && gamePhase()==="standby");
-    tabarAsk(standby ? "どうする？" : "おわりにする？", "", "おわる", "つづける", standby ? "📍 ここではじめる" : null).then(r=>{
+    tabarAsk(standby ? "どうする？" : "おわりにする？", "", "おわる", "つづける", standby ? "📍 ここで はじめる" : null).then(r=>{
         if(r===true) tabarExit();
         else if(r==="alt") tabarBeginRescan();
     });
@@ -9301,6 +9308,7 @@ function tabarCleanup(){
     TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
     document.body.classList.remove("tabar","tabar-xr","tabar-cam");
     TABAR.on=false; TABAR.backend=null;
+    kidStop();   // 【追加】ことばを元に戻す
     updateSiteVis(); updatePanelScale(); applyWorldParams();   // 相棒距離などを通常値へ
     menu.style.display="flex"; refreshDexHTML();
     if(TABAR.keepPrep){ TABAR.keepPrep=false; TABAR.phase="prep"; tabarUI.prep.classList.add("open"); return; }   // 開始に失敗：準備画面に戻って別方式を試す
@@ -9357,9 +9365,9 @@ function tabarSafety(dt, now){
         running = ts.length>=TABAR_CFG.runSteps;
     }
     let key="", msg="";
-    if(edge<0){ key="out"; msg="エリアの外に出ています\n水色の線の内側にもどろう"; }
-    else if(running){ key="run"; msg="走らないで、ゆっくり歩こうね"; }
-    else if(TABAR.backend==="webxr" && !TABAR.tracking){ key="track"; msg="まわりを映しながら\nタブレットをゆっくり動かしてね"; }
+    if(edge<0){ key="out"; msg="せんの そとに でているよ\nみずいろの せんの なかに もどろう"; }
+    else if(running){ key="run"; msg="はしらないで、ゆっくり あるこうね"; }
+    else if(TABAR.backend==="webxr" && !TABAR.tracking){ key="track"; msg="まわりを うつしながら\nタブレットを ゆっくり うごかしてね"; }
     // 【変更】「エリアのはしっこです」は表示しない（以前：edge<TABAR_CFG.edgeWarn で key="near"）
     if(key!==TABAR.warnKey){
         TABAR.warnKey=key; tabarUI.warn.textContent=msg; tabarUI.warn.className=key?("show "+key):"";
@@ -9445,9 +9453,16 @@ function ldigBuddyKey(){   // 表示中のモデル → 相棒のキー（恐竜
     if(LITE.target==="dog") return (typeof DOGS!=="undefined" && LITE.curIdx<DOGS.length && DOGS[LITE.curIdx]) ? DOGS[LITE.curIdx].key : "dog";
     return null;
 }
+// 【追加】モデルが出たところで「いっしょに さがそう！」と話す（恐竜＝きょうりゅう／いぬ＝しゅつどひん）
+function lphExploreSay(delay){
+    clearTimeout(LPH.exploreT);
+    LPH.exploreT=setTimeout(()=>{ if(!LITE.active || !LITE.phone || !(LITE.target==="dino"||LITE.target==="dog")) return;
+        if(LPH.hatch && LPH.hatch.phase!=="done") return;
+        lphSay(LITE.target==="dog" ? "いっしょに しゅつどひんを さがそう！" : "いっしょに きょうりゅうを さがそう！", 3500); }, delay||0);
+}
 function ldigOpen(){ if(!LITE.active || LDIG.on || !ldigBuddyKey()) return;   // 出土品は対象外
     const nm=(LITE.curName||"").replace(/^\S+\s*/,""), lead=lph$("lphDigLead");
-    if(lead) lead.innerHTML=(LITE.target==="dog" ? "「"+nm+"」と いっしょに しゅつどひんを ほりだそう！" : "「"+nm+"」と いっしょに きょうりゅうを ほりだそう！")+"<br>カメラの えいぞうに はっくつの ばしょを かさねて、あるいて さがすよ。";
+    if(lead) lead.innerHTML=(LITE.target==="dog" ? "「"+nm+"」と いっしょに しゅつどひんを さがそう！" : "「"+nm+"」と いっしょに きょうりゅうを さがそう！")+"<br>あるいて さがして、つちを ほって みつけるよ。";
     ldigPaint(); lph$("lphDig").classList.add("on"); }
 function ldigClose(){ const d=lph$("lphDig"); if(d) d.classList.remove("on"); }
 (function ldigWire(){
@@ -9457,6 +9472,7 @@ function ldigClose(){ const d=lph$("lphDig"); if(d) d.classList.remove("on"); }
     d.querySelectorAll(".szrow button").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.k; LDIG[k]=Math.max(LDIG.min, Math.min(LDIG.max, LDIG[k]+(+b.dataset.d))); ldigPaint(); try{ lphSnd(); }catch(_){ } }));
     document.getElementById("lphDigBack").addEventListener("click", ldigClose);
     document.getElementById("lphDigGo").addEventListener("click", ldigGo);
+    { const ex=document.getElementById("lphExplore"); if(ex) ex.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } ldigOpen(); }); }   // このきょうりゅうと たんけんする
 })();
 // ---- 「はじめる」：ARモデル画面の状態を覚えてから終える ----
 function ldigGo(){
@@ -9591,6 +9607,49 @@ async function ldigReturn(){
     ldigCardHide(); LDIG.on=false; LDIG.ret=null;
 }
 
+
+/* =====================================================
+ * 【追加】タブレットARの時だけ、画面のことばを幼児向け（ひらがな）にする
+ *  ・ぬりえと同じように、漢字をひらがなに直す（ゲーム内の文に出てくることばの読みを、事前に辞書にしてある）
+ *  ・3Dのパネル・セリフ（キャンバスに書く文字）＝ fillText／measureText を、タブレットAR中だけ置き換える（幅の計算もそろう）
+ *  ・画面の文字（HUD・ヒント・ボタンなど）＝ タブレットAR中だけ文字を見張って置き換え、終わったら元に戻す
+ *  ・メニューなど、タブレットAR以外の画面は変えない
+ * ===================================================== */
+const KID={ on:false, dict:{"確認": "かくにん", "発掘中": "はっくつちゅう", "使え": "つかえ", "全発掘": "ぜんはっくつ", "一斉完了": "いっせいかんりょう", "遺構": "いこう", "超激": "ちょうげき", "激": "げき", "しば犬": "しばいぬ", "聞く": "きく", "王者": "おうじゃ", "一撃": "いちげき", "出土品": "しゅつどひん", "一部": "いちぶ", "読み込め": "よみこめ", "通信環境": "つうしんかんきょう", "一回": "いっかい", "次に": "つぎに", "近く": "ちかく", "掘れる": "ほれる", "来い": "こい", "黄金": "おうごん", "秘宝": "ひほう", "黒柴": "くろしば", "相棒": "あいぼう", "最強": "さいきょう", "固定": "こてい", "選ぶ": "えらぶ", "一覧": "いちらん", "閉じる": "とじる", "開く": "ひらく", "恐竜図鑑": "きょうりゅうずかん", "発掘図鑑": "はっくつずかん", "調整中": "ちょうせいちゅう", "右": "みぎ", "回": "かい", "開始": "かいし", "戻る": "もどる", "発掘": "はっくつ", "挑戦": "ちょうせん", "か所": "かしょ", "掘り出そ": "ほりだそ", "制限時間": "せいげんじかん", "秒": "びょう", "本格的": "ほんかくてき", "狙っ": "ねらっ", "高得点": "こうとくてん", "目指そ": "めざそ", "最後": "さいご", "最高得点": "さいこうとくてん", "説明": "せつめい", "未発掘": "みはっくつ", "種": "しゅ", "準備中": "じゅんびちゅう", "原寸比": "げんすんひ", "約": "やく", "倍": "ばい", "実寸": "じっすん", "表示": "ひょうじ", "非表示": "ひひょうじ", "大き": "おおき", "恐竜": "きょうりゅう", "短辺": "たんぺん", "上限": "じょうげん", "未更新": "みこうしん", "更新": "こうしん", "反映": "はんえい", "発掘記録": "はっくつきろく", "消え": "きえ", "図鑑": "ずかん", "歩い": "あるい", "光っ": "ひかっ", "左": "ひだり", "移動": "いどう", "見回す": "みまわす", "獲得": "かくとく", "加わっ": "くわわっ", "結果": "けっか", "時間": "じかん", "残り": "のこり", "聞い": "きい", "合計": "ごうけい", "終了": "しゅうりょう", "今回": "こんかい", "計算": "けいさん", "完了": "かんりょう", "待ち": "まち", "再挑戦": "さいちょうせん", "道具": "どうぐ", "幅広": "はばひろ", "広く探せる": "ひろくさがせる", "掘り多め": "ほりおおめ", "狭い": "せまい", "掘り少なめ": "ほりすくなめ", "記録": "きろく", "削除": "さくじょ", "掘ろ": "ほろ", "近づく": "ちかづく", "光り": "ひかり", "発見": "はっけん", "発動": "はつどう", "会心": "かいしん", "確率": "かくりつ", "一気に": "いっきに", "見つかり": "みつかり", "見つけ": "みつけ", "もう少し": "もうすこし", "分かり": "わかり", "自信": "じしん", "回転": "かいてん", "操作可能": "そうさかのう", "操作不可": "そうさふか", "犬": "いぬ", "解除": "かいじょ", "もう一度発掘": "もういちどはっくつ", "基準": "きじゅん", "現在地": "げんざいち", "中央": "ちゅうおう", "向き": "むき", "前方": "ぜんぽう", "再配置": "さいはいち", "対応": "たいおう", "使っ": "つかっ", "端末": "たんまつ", "対応端末": "たいおうたんまつ", "開発者": "かいはつしゃ", "更新済み": "こうしんずみ", "開い": "ひらい", "試す": "ためす", "遊べ": "あそべ", "床": "ゆか", "位置": "いち", "認識": "にんしき", "映像": "えいぞう", "歩数": "ほすう", "画面": "がめん", "追跡": "ついせき", "見失い": "みうしない", "個": "こ", "見え": "みえ", "使用": "しよう", "作成": "さくせい", "失敗": "しっぱい", "補正": "ほせい", "最大": "さいだい", "許可": "きょか", "設定": "せってい", "もう一度": "もういちど", "試し": "ためし", "動き": "うごき", "再読み込み": "さいよみこみ", "選ん": "えらん", "届き": "とどき", "測る": "はかる", "方位": "ほうい", "無い": "ない", "方式": "ほうしき", "止まっ": "とまっ", "場所": "ばしょ", "まん中": "まんなか", "立っ": "たっ", "向け": "むけ", "左右": "さゆう", "動かし": "うごかし", "中心": "ちゅうしん", "置き直し": "おきなおし", "水色": "みずいろ", "線": "せん", "内側": "うちがわ", "走ら": "はしら", "歩こ": "あるこ", "映し": "うつし", "変更": "へんこう", "入室": "にゅうしつ", "読み込み中": "よみこみちゅう", "押し": "おし", "関連": "かんれん", "圧縮": "あっしゅく", "開け": "あけ", "越前国府発掘": "えちぜんこくふはっくつ", "隠す": "かくす", "常設": "じょうせつ", "右上": "みぎうえ", "各項目": "かくこうもく", "追加": "ついか", "既存": "きそん", "触れ": "ふれ", "区切り": "くぎり", "同じ見た目": "おなじみため", "区切り線": "くぎりせん", "見出し": "みだし", "色": "いろ", "準備": "じゅんび", "模様": "もよう", "復元": "ふくげん", "書き出し処理": "かきだししょり", "押せ": "おせ", "狭い時": "せまいとき", "並べる": "ならべる", "重なら": "かさなら", "以上": "いじょう", "途中": "とちゅう", "折り返さ": "おりかえさ", "探し": "さがし", "掘り当てよ": "ほりあてよ", "操作": "そうさ", "開発中": "かいはつちゅう", "未反映": "みはんえい", "対象": "たいしょう", "発掘道具": "はっくつどうぐ", "持ち替え": "もちかえ", "持ち替える": "もちかえる", "表示中": "ひょうじちゅう", "止まる": "とまる", "止まら": "とまら", "集め": "あつめ", "自動": "じどう", "発掘対象": "はっくつたいしょう", "選べ": "えらべ", "決め方": "きめかた", "固定型": "こていがた", "候補": "こうほ", "全て": "すべて", "遺跡": "いせき", "発掘場所": "はっくつばしょ", "横幅": "よこはば", "奥行き": "おくゆき", "得点": "とくてん", "仕組み": "しくみ", "残り秒": "のこりびょう", "速い順": "はやいじゅん", "越前国府": "えちぜんこくふ", "地面": "じめん", "埋まっ": "うまっ", "化石": "かせき", "掘り当てる発掘体験": "ほりあてるはっくつたいけん", "完成": "かんせい", "入室方法": "にゅうしつほうほう", "選び": "えらび", "入る": "はいる", "既定": "きてい", "合う入室": "あうにゅうしつ", "最適化": "さいてきか", "項目": "こうもく", "自分": "じぶん", "調整": "ちょうせい", "両方表示": "りょうほうひょうじ", "切り替える": "きりかえる", "関わら": "かかわら", "組み合わせ": "くみあわせ", "手動": "しゅどう", "変え": "かえ", "連続": "れんぞく", "腕試し": "うでだめし", "制限時間内": "せいげんじかんない", "速く発掘": "はやくはっくつ", "時間切れ": "じかんぎれ", "計測": "けいそく", "速い": "はやい", "応じ": "おうじ", "仲間": "なかま", "一緒": "いっしょ", "相棒犬": "あいぼうけん", "入り": "はいり", "範囲": "はんい", "広がり": "ひろがり", "決まり": "きまり", "進行": "しんこう", "流れ": "ながれ", "進み": "すすみ", "返し": "かえし", "撫で": "なで", "探す": "さがす", "反応": "はんのう", "近い": "ちかい", "振動": "しんどう", "音": "おと", "速く": "はやく", "金属探知": "きんぞくたんち", "現れ": "あらわれ", "見つける手助け": "みつけるてだすけ", "直後": "ちょくご", "最も近い": "もっともちかい", "最初": "さいしょ", "以外": "いがい", "歩き": "あるき", "振る": "ふる", "歩く": "あるく", "探知": "たんち", "掘る": "ほる", "強い場所": "つよいばしょ", "掘れる距離": "ほれるきょり", "整う": "ととのう", "脈打つ": "みゃくうつ", "削れ": "けずれ", "出土": "しゅつど", "光る": "ひかる", "視界": "しかい", "当たり": "あたり", "外れ": "はずれ", "着い": "つい", "判明": "はんめい", "撫でる": "なでる", "当てる確率": "あてるかくりつ", "上がり": "あがり", "頭上": "ずじょう", "一度": "いちど", "連れ": "つれ", "行っ": "いっ", "初期": "しょき", "向い": "むい", "素手": "すで", "照準": "しょうじゅん", "合わせ": "あわせ", "近づけ": "ちかづけ", "往復": "おうふく", "掘る回数": "ほるかいすう", "多い": "おおい", "少ない": "すくない", "常に持っ": "つねにもっ", "全て発掘": "すべてはっくつ", "一気に発掘": "いっきにはっくつ", "左手中指": "ひだりてなかゆび", "長押": "ながおし", "同じ番号": "おなじばんごう", "犬種": "けんしゅ", "掘っ": "ほっ", "同じ": "おなじ", "重複": "じゅうふく", "配点": "はいてん", "成績": "せいせき", "保存": "ほぞん", "片方": "かたほう", "日付": "ひづけ", "左手側": "ひだりてがわ", "常に表示": "つねにひょうじ", "大きく表示": "おおきくひょうじ", "右手中指": "みぎてなかゆび", "上下": "じょうげ", "距離": "きょり", "視点固定": "してんこてい", "画面左半分": "がめんひだりはんぶん", "右半分": "みぎはんぶん", "重ね": "かさね", "遊び": "あそび", "始め": "はじめ", "置き": "おき", "実際": "じっさい", "画面上": "がめんじょう", "強く": "つよく", "直接": "ちょくせつ", "掘り": "ほり", "活動範囲": "かつどうはんい", "近づい": "ちかづい", "走っ": "はしっ", "知らせ": "しらせ", "推定": "すいてい", "測れ": "はかれ", "準備画面": "じゅんびがめん", "幼児": "ようじ", "子ども": "こども", "大人": "おとな", "やり直し": "やりなおし", "置き直せ": "おきなおせ", "終わる": "おわる", "会場": "かいじょう", "非表示時": "ひひょうじじ", "横": "よこ", "奥行": "おくゆき", "指定": "してい", "確定": "かくてい", "以降": "いこう", "左手": "ひだりて", "矩形": "くけい", "番号": "ばんごう", "対象外": "たいしょうがい", "同じ並び": "おなじならび", "順位": "じゅんい", "回発掘": "かいはっくつ", "正面": "しょうめん", "掘り切る": "ほりきる", "評価": "ひょうか", "高評価": "こうひょうか", "未満": "みまん", "下位方向": "かいほうこう", "持っ": "もっ", "枚": "まい", "全部": "ぜんぶ", "関係": "かんけい", "体獲得": "たいかくとく", "増え": "ふえ", "超": "ちょう", "未獲得": "みかくとく", "秒数": "びょうすう", "点以上": "てんいじょう", "決め": "きめ", "抽選": "ちゅうせん", "最終": "さいしゅう", "掘る対象": "ほるたいしょう", "連動": "れんどう", "星": "ほし", "特技": "とくぎ", "違い": "ちがい", "良い": "よい", "上位": "じょうい", "埋め": "うめ", "度表示自体": "どひょうじじたい", "優先": "ゆうせん", "見る": "みる", "独立": "どくりつ", "各種": "かくしゅ", "分離": "ぶんり", "完全完了": "かんぜんかんりょう", "発掘対象切替": "はっくつたいしょうきりかえ", "起動": "きどう", "一本化": "いちほんか", "青い丸": "あおいまる", "吹き出し": "ふきだし", "文字": "もじ", "余白": "よはく", "段階": "だんかい", "本文": "ほんぶん", "多く": "おおく", "暖色": "だんしょく", "点灯": "てんとう", "同じ色": "おなじいろ", "警告": "けいこく", "画面下": "がめんした", "小さめ": "ちいさめ", "終了確認": "しゅうりょうかくにん", "手前": "てまえ", "出す": "だす", "開始直後": "かいしちょくご", "確保": "かくほ", "見よ": "みよ", "両手": "りょうて", "持と": "もと", "片手": "かたて", "持つ高": "もつたか", "名称": "めいしょう", "倍率": "ばいりつ", "録画中": "ろくがちゅう", "操作方法": "そうさほうほう", "少し下げる": "すこしさげる", "読み取り": "よみとり", "卵": "たまご", "孵化": "ふか", "大きく": "おおきく", "撮影": "さつえい", "変わら": "かわら", "終了後": "しゅうりょうご", "写真": "しゃしん", "動画": "どうが", "背景": "はいけい", "土": "つち", "長押し": "ながおし", "後で": "あとで"}, re:null, map:new Map(), obs:null, writing:false };
+(function(){
+    const keys=Object.keys(KID.dict).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+    KID.re=new RegExp(keys.join("|"),"g");
+    const P=(typeof CanvasRenderingContext2D!=="undefined") ? CanvasRenderingContext2D.prototype : null;
+    if(P){ for(const f of ["fillText","strokeText"]){ const o=P[f]; P[f]=function(t, ...a){ return o.call(this, KID.on ? kidText(t) : t, ...a); }; }
+        const mt=P.measureText; P.measureText=function(t){ return mt.call(this, KID.on ? kidText(t) : t); }; }
+})();
+function kidText(t){
+    if(typeof t!=="string" || !/[一-龥々]/.test(t)) return t;
+    return t.replace(/超激レア/g,"ちょうげきレア").replace(/激レア/g,"げきレア").replace(KID.re, m=>KID.dict[m]||m)
+        .replace(/かくとく/g,"ゲット").replace(/([ァ-ヴー])中/g,"$1ちゅう");   // 「獲得」は「ゲット」に。カタカナの後の「中」は「ちゅう」
+}
+const KID_SKIP="#menu, #litePh, #nuriScan, #mvModal, script, style, textarea";
+function kidNode(n){
+    if(!n || n.nodeType!==3) return;
+    const p=n.parentElement; if(!p || p.closest(KID_SKIP)) return;
+    const t=n.data; if(!/[一-龥々]/.test(t)) return;
+    const k=kidText(t); if(k===t) return;
+    KID.map.set(n, { orig:t, kid:k }); KID.writing=true; n.data=k; KID.writing=false;
+}
+function kidWalk(root){ if(!root) return; if(root.nodeType===3){ kidNode(root); return; } if(root.nodeType!==1) return; const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while((n=w.nextNode())) kidNode(n); }
+function kidStart(){
+    if(KID.on) return; KID.on=true; KID.map.clear();
+    kidWalk(document.body);
+    KID.obs=new MutationObserver(ms=>{ if(KID.writing) return; for(const m of ms){ if(m.type==="characterData") kidNode(m.target); else m.addedNodes.forEach(kidWalk); } });
+    KID.obs.observe(document.body, { subtree:true, childList:true, characterData:true });
+}
+function kidStop(){
+    if(!KID.on) return; KID.on=false;
+    if(KID.obs){ KID.obs.disconnect(); KID.obs=null; }
+    KID.map.forEach((v,n)=>{ if(n.data===v.kid) n.data=v.orig; });   // こちらで変えたままの文字だけ元に戻す
+    KID.map.clear();
+}
+
 /* ---------- タッチ：画面を直接タップ（土ブロック＝発掘／相棒＝なでる） ---------- */
 tabarUI.touch.addEventListener("pointerdown", e=>{ unlockAudio(); TABAR.pointers.set(e.pointerId, { x:e.clientX, y:e.clientY, t:performance.now() }); e.preventDefault(); });
 tabarUI.touch.addEventListener("pointerup", e=>{
@@ -9599,7 +9658,7 @@ tabarUI.touch.addEventListener("pointerup", e=>{
     if(Math.hypot(e.clientX-p.x, e.clientY-p.y)>28 || performance.now()-p.t>600) return;   // 子どもの指に合わせて、ずれ・長押しを広めに許容
     const hit=tapAt((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1);
     if(!hit && gamePhase()==="play" && GAME.targets.some(t=>t.discovered) && performance.now()-TABAR.tapHintT>3000){
-        TABAR.tapHintT=performance.now(); showToast("土のブロックのそばまで歩いて、光ったらタップしよう", 2600);
+        TABAR.tapHintT=performance.now(); showToast("つちの ブロックの そばまで あるいて、ひかったら タッチしよう", 2600);
     }
 });
 tabarUI.touch.addEventListener("pointercancel", e=>{ TABAR.pointers.delete(e.pointerId); });
