@@ -4603,6 +4603,7 @@ document.getElementById("scoring").addEventListener("click", e=>{ if(e.target.id
 
 function startGame(desktop){
     buddyListOpen=false;   // 再入室時は相棒一覧を必ず閉じた状態から
+    tabarBuddyReset();     // 相棒の待機位置（ゆれ止め）を消す（全モード）
     GAME.challenge = (chosenMode==="challenge");                         // 発掘チャレンジ（3ターン）
     if(GAME.challenge){ const ut=(typeof TIME_LIMIT!=="undefined" && TIME_LIMIT>=60)?TIME_LIMIT:90; GAME.ch={turn:1, scores:[], buddies:[], cards:[], userTime:ut}; if(typeof resetUnlocked==="function") resetUnlocked(); chApplyTurn(1); }   // userTimeはスライダー値（chApplyTurnでTIME_LIMITが30化される前に確定）
     GAME.active=true; GAME.desktop=desktop; GAME.mode=(GAME.challenge?"time":chosenMode); GAME.tool=chosenTool; GAME.starUsed=false; GAME.complete=false; GAME.reviewing=false;
@@ -6894,6 +6895,7 @@ function lphHatchTick(){
 // 【追加】ぬりえの恐竜を選び直した：その恐竜を、目の前で卵からかえす
 function lphNuriRepick(idx){
     liteSwitchModel(idx);
+    try{ if(LITE.model && DINOS[idx] && window.__dinoPaintApply) window.__dinoPaintApply(DINOS[idx].key, LITE.model.userData.model||LITE.model); }catch(_){ }   // 模様を確実に
     LPH.walk=null; LPH.gpModel=null; LPH.gKey=""; LPH.popY=0; LPH.joy=null; LPH.faceTurn=null;
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
     if(LITE.model) LITE.model.visible=false;
@@ -8117,7 +8119,7 @@ function handleVRDig(){
     }
 }
 
-/* タブレットAR：相棒の行き先のゆれ止め
+/* 相棒の行き先のゆれ止め（タブレットAR・VR・AR・ヘッドセットなし 共通）
  * ・行き先＝「タブレットの水平前方」（床に向けて傾けても振れない tabarForwardH）の少し先。
  * ・少し動かしただけでは行き先を変えない。buddyHold 以上ずれたら追いかけ、着いたらまた待つ。
  * ・発見ブロック横・急行先の「横」の向きは、その場所に向かい始めた時の向きで固定する。 */
@@ -8176,7 +8178,7 @@ function updateDog(dt, now){
     if(dog.userData.rushTo){
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        if(TABAR.on){ tabarBuddySide("r"+dog.userData.rushTo.x.toFixed(2)+","+dog.userData.rushTo.z.toFixed(2), side); _tbBuddy.has=false; }   // タブレットAR：横の向きを固定
+        { tabarBuddySide("r"+dog.userData.rushTo.x.toFixed(2)+","+dog.userData.rushTo.z.toFixed(2), side); _tbBuddy.has=false; }   // 横の向きを固定（全モード）
         goal=_udGoal.set(dog.userData.rushTo.x, 0, dog.userData.rushTo.z).addScaledVector(side, 0.65);   // 発掘場所の横に近づく
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.3){ dog.userData.rushTo=null; }   // 横に到着したら解除→その場で発掘セリフを言って留まる
@@ -8192,11 +8194,11 @@ function updateDog(dt, now){
         if(dog.userData.hintActive){ dog.userData.hintActive=false; dog.userData.hintWaitUntil=0; dog.userData.hintPos=null; }
         const q=camQuat();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        if(TABAR.on){ tabarBuddySide("f"+focus.pos.x.toFixed(2)+","+focus.pos.z.toFixed(2), side); _tbBuddy.has=false; }   // タブレットAR：横の向きを固定
+        { tabarBuddySide("f"+focus.pos.x.toFixed(2)+","+focus.pos.z.toFixed(2), side); _tbBuddy.has=false; }   // 横の向きを固定（全モード）
         goal=_udGoal.set(focus.pos.x, 0, focus.pos.z).addScaledVector(side, 0.65);   // ブロック横に近づく
     } else if(dog.userData.hintActive && dog.userData.hintPos){
         dog.userData.atBlock=false;
-        if(TABAR.on) _tbBuddy.has=false;   // ヒント地点から戻る時は、その時の前方へ
+        _tbBuddy.has=false;   // ヒント地点から戻る時は、その時の前方へ
         goal=_udGoal.copy(dog.userData.hintPos); goal.y=0;
         const d2=Math.hypot(goal.x-dog.position.x, goal.z-dog.position.z);
         if(d2<0.8){   // ヒント地点に到着 → 少し待つ
@@ -8211,14 +8213,14 @@ function updateDog(dt, now){
         const q=camQuat();
         const fwd =_udF.set(0,0,-1).applyQuaternion(q); fwd.y=0; fwd.normalize();
         const side=_udS.set(1,0,0).applyQuaternion(q); side.y=0; side.normalize();
-        if(TABAR.on){ tabarForwardH(fwd); side.set(-fwd.z, 0, fwd.x); }   // タブレットAR：床に向けて傾けても振れない水平前方
+        { tabarForwardH(fwd); side.set(-fwd.z, 0, fwd.x); }   // 下を向いても振れない水平前方（全モード）
         { const _b=(typeof activeBody==="function")?activeBody():null;
           const r=(_b&&_b.userData&&_b.userData.sizeRatio!=null)?_b.userData.sizeRatio:1;
           // サイズ段階（停止中：SIZE_DIST_ON=trueで有効）：0.9倍以下は10cm近づく／1.1倍以上は10cm離れる
           const off = SIZE_DIST_ON ? ((r>=1.1)?0.10:(r<=0.9?-0.10:0)) : 0;
           const _fwdDist=(DOG_FWD+off)*distF;   // 目線が低いほど近づく（1.5m以上=現状／1.0m以下=半分）
           goal=_udGoal.copy(playerPos).addScaledVector(fwd,_fwdDist).addScaledVector(side,DOG_SIDE); goal.y=0; }
-        if(TABAR.on) goal=tabarBuddyHold(goal, dog.position);   // タブレットAR：少しのずれでは動かない
+        goal=tabarBuddyHold(goal, dog.position);   // 少しのずれでは動かない（全モード）
     }
     }   // end if(!rushing)
 
@@ -8252,7 +8254,7 @@ function updateDog(dt, now){
     }
     const moved = Math.hypot(dog.position.x-prevX, dog.position.z-prevZ);
     let moving = moved > 0.004, walkAmt = moving?1:0;
-    if(TABAR.on){   // タブレットAR：速さで判定（歩き出し0.18m/s・止まる0.06m/s）し、歩く動きは0.2秒ほどかけて出し入れ
+    {   // 全モード：速さで判定（歩き出し0.18m/s・止まる0.06m/s）し、歩く動きは0.2秒ほどかけて出し入れ
         const ud=dog.userData, spd=moved/Math.max(dt,1e-3);
         if(ud._tbMov){ if(spd<0.06) ud._tbMov=false; } else if(spd>0.18) ud._tbMov=true;
         moving=!!ud._tbMov;
@@ -9247,10 +9249,10 @@ function ldigCard(mode, msg){
             "#ldigCard h3{margin:0;color:#ffd86a;letter-spacing:2px}#ldigCard .dev{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:99px;background:#f7c948;color:#3a2600;font-size:11px;letter-spacing:0;vertical-align:3px}"+
             "#ldigCard p{margin:0;font-size:14px;line-height:1.7;color:#d8ccff;white-space:pre-line}"+
             "#ldigBackAR{padding:15px 0;border:none;border-radius:11px;font-weight:800;font-size:17px;font-family:inherit;color:#fff;background:linear-gradient(135deg,#0e7490,#1d4ed8);cursor:pointer}"+
-            "#ldigBackAR:disabled{opacity:.4}#ldigToMenu{padding:11px 0;border:1px solid rgba(180,140,255,.35);border-radius:11px;background:rgba(18,12,40,.6);color:#c9bcff;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer}";
+            "#ldigBackAR:disabled,#ldigToMenu:disabled{opacity:.4}#ldigToMenu{padding:11px 0;border:1px solid rgba(180,140,255,.35);border-radius:11px;background:rgba(18,12,40,.6);color:#c9bcff;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer}";
         document.head.appendChild(st);
         document.getElementById("ldigBackAR").addEventListener("click", ldigReturn);
-        document.getElementById("ldigToMenu").addEventListener("click", ()=>{ ldigCardHide(); LDIG.on=false; LDIG.ret=null; try{ if(window.__nuriFromMenuClear) window.__nuriFromMenuClear(); }catch(_){ } });
+        document.getElementById("ldigToMenu").addEventListener("click", ()=>{ ldigCardHide(); LDIG.on=false; LDIG.ret=null; try{ if(window.__nuriAfterDigMenu) window.__nuriAfterDigMenu(); }catch(_){ } });
     }
     const back=document.getElementById("ldigBackAR"), menuB=document.getElementById("ldigToMenu");
     back.style.display = (mode==="back") ? "" : "none"; menuB.style.display = (mode==="back") ? "" : "none";
@@ -9261,14 +9263,17 @@ function ldigCard(mode, msg){
 function ldigCardHide(){ const c=document.getElementById("ldigCard"); if(c) c.classList.remove("on"); clearTimeout(LDIG.waitT); }
 function ldigBusy(){ const b=document.body.classList; return b.contains("loading") || b.contains("preloading"); }
 function ldigWaitReady(){   // メイン画面の設定でモデルを作り直している間は押せない
-    const back=document.getElementById("ldigBackAR"); if(!back) return;
+    const back=document.getElementById("ldigBackAR"), menuB=document.getElementById("ldigToMenu"); if(!back) return;
     clearTimeout(LDIG.waitT);
     const busy=ldigBusy(); back.disabled=busy; back.textContent = busy ? "じゅんびしています…" : "📱 ARの モデルに もどる";
+    if(menuB) menuB.disabled=busy;   // モデルの作り直しが終わってからメニューへ
     if(busy) LDIG.waitT=setTimeout(ldigWaitReady, 250);
 }
 // ---- ARモデル画面を終えた後：設定を当てて、タブレットARの準備画面へ ----
 function ldigAfterLiteEnd(){
     window.__mvPreviewPause=false;
+    try{ if(window.__nuriHideScan) window.__nuriHideScan(); }catch(_){ }   // 「できた！」画面が開いていたら隠す（準備画面より前面にあるため）
+    { const mm=document.getElementById("mvModal"); if(mm && mm.style.display && mm.style.display!=="none") mm.style.display="none"; }
     ldigSnapshot(); ldigApply();
     ldigCard("wait", "はっくつの じゅんびを しているよ…");
     let clear=0; const t0=performance.now();
@@ -10212,6 +10217,7 @@ async function nuriAgainAR(){
     if(typeof LITE!=="undefined" && LITE.active) return;
     const btn=$("nuriAgainAR"); if(btn) btn.disabled=true;
     NURI_AR.key=key; NURI_AR.fromMenu=true;
+    try{ nuriRefreshHolders(key); }catch(_){ }   // ARの恐竜（作成済みなら）に模様を貼り直す
     const opts={ nuri:true, egg:true, small:true, pick:true };   // できた！画面の「ARで もういちど みる」と同じ（卵から・用紙と同じ大きさ）＋AR画面で恐竜を選べる
     const _iar=(!NURI_AR.cap && typeof iarWanted==="function" && iarWanted());
     let ok=false;
@@ -10221,6 +10227,10 @@ async function nuriAgainAR(){
     NURI_AR.hatched=true;
 }
 window.__nuriFromMenuClear=()=>{ NURI_AR.fromMenu=false; };
+// 【修正】はっくつ：ARモデル画面を終えた時、「できた！」画面（ぬりえ）が開いたままだと、プレビューが止まった黒い画面が
+//   タブレットARの準備画面やメニューの上に残る（恐竜が表示されない）。はっくつ中は隠し、「メニューへ」では閉じてメニューを更新する
+window.__nuriHideScan=()=>{ const o=$("nuriScan"); if(o && o.classList.contains("open")){ nuriPreviewStop(); o.classList.remove("open"); return true; } return false; };
+window.__nuriAfterDigMenu=()=>{ NURI_AR.fromMenu=false; const o=$("nuriScan"); if(o && o.classList.contains("open")) scClose(); else nuriMenuRefresh(); };
 function nuriCanScan(){
     try{ if(typeof renderer!=="undefined" && renderer.xr && renderer.xr.isPresenting) return false; }catch(_){}
     try{ if(typeof TABAR!=="undefined" && (TABAR.on || TABAR.phase!=="idle")) return false; }catch(_){}
