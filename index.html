@@ -558,7 +558,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">3ターン合計ポイント</div>
     <div id="chModalList"></div>
     <div style="text-align:center; font-size:20px; font-weight:800; color:#f0d98a; margin:16px 0 4px;">🏅 タイムアタック TOP5</div>
-    <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">スコア（発掘＋残り秒×30）</div>
+    <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">スコア（発掘＋残り秒）</div>
     <div id="taModalList"></div>
     <div style="text-align:center; font-size:20px; font-weight:800; color:#8ff0ff; margin:16px 0 4px;">⏳ じっくりコレクション TOP5</div>
     <div style="text-align:center; font-size:12px; color:rgba(200,190,240,.7); margin-bottom:8px;">クリアタイム（速い順・0.1秒）</div>
@@ -603,12 +603,12 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
       <section>
         <h3>🗺 3つのモード</h3>
         <p><b>🏆 発掘チャレンジ</b>（既定）：3ターン連続の腕試し。くわしくは下の項目へ。</p>
-        <p><b>タイムアタック</b>：制限時間内にできるだけ速く発掘。<b>8種コンプリート</b>か<b>時間切れ</b>で終了、スコア＝<b>発掘ポイント＋残り秒×30</b>。<b>スコアのTOP5</b>が残ります。</p>
+        <p><b>タイムアタック</b>：制限時間内にできるだけ速く発掘。<b>8種コンプリート</b>か<b>時間切れ</b>で終了、スコア＝<b>発掘ポイント＋残り時間のボーナス</b>。<b>スコアのTOP5</b>が残ります。</p>
         <p><b>じっくりコレクション</b>：自分のペースで8種を発掘。<b>クリアまでの時間</b>を計測し、速いほどレアなカード。<b>タイムのTOP5</b>が残ります。</p>
       </section>
       <section>
         <h3>🏆 発掘チャレンジ（3ターン）</h3>
-        <p><b>3つのターン</b>を連続で挑戦します。各ターンのスコア（＝発掘ポイント＋残り秒×30）に応じて<b>恐竜が相棒として仲間</b>になり、次のターンから一緒に発掘できます。</p>
+        <p><b>3つのターン</b>を連続で挑戦します。各ターンのスコア（＝発掘ポイント＋残り時間のボーナス）に応じて<b>恐竜が相棒として仲間</b>になり、次のターンから一緒に発掘できます。</p>
         <p><b>1ターン目</b>はやさしめ（近くの5か所・プレイは相棒犬）。<b>得点に応じてプチレア／ノーマルの相棒</b>が手に入ります。<b>2・3ターン目</b>は範囲が広がり、<b>高得点ほどレアな相棒</b>が手に入ります。3ターンの<b>合計スコア</b>で最後の獲得カードが決まり、<b>チャレンジのTOP5</b>に記録されます。</p>
         <p class="k">ターンの進行：PC/スマホは<b>「このターンをおわる／おわる」</b>ボタン／VR・ARは<b>右トリガー2回</b>。</p>
       </section>
@@ -691,7 +691,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
       <section>
         <h3>💯 得点（スコア）</h3>
         <p><b>タイムアタック・発掘チャレンジ</b>：1回発掘するごとに <b>110＋（7−発掘スポット番号）×40</b> ポイント（番号0＝390pt、番号7＝110pt。レアなスポットほど高得点）。スポットは<b>正面ほど出やすく</b>、狙って選ぶことはできません。</p>
-        <p>合計スコア＝<b>発掘ポイントの合計＋残り秒×30</b>。</p>
+        <p>合計スコア＝<b>発掘ポイントの合計＋残り時間のボーナス</b>。</p>
         <p><b>じっくりコレクション</b>：スコアはなく、<b>全8種を掘り切るまでのタイム</b>で評価します（速いほど高評価）。</p>
       </section>
       <section>
@@ -708,7 +708,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
       </section>
       <section>
         <h3>🏆 発掘チャレンジ（3ターン）</h3>
-        <p>各ターンのスコア式は同じ（発掘pt＋残り秒×30）。制限時間は<b>1ターン目30秒／2ターン目60秒／3ターン目は設定した秒数</b>。</p>
+        <p>各ターンのスコア式は同じ（発掘pt＋残り時間のボーナス）。制限時間は<b>1ターン目30秒／2ターン目60秒／3ターン目は設定した秒数</b>。</p>
         <p><b>1・2ターン目</b>：そのターンのスコアで<b>相棒を1体獲得</b>し、それが獲得カードになります。1ターン目は<b>1200点以上でプチレア／未満でノーマル</b>の未獲得から。2ターン目はスコアで中心レア度（<b>≥2400超激／≥1800激／≥1320レア／≥840プチ／他ノーマル</b>）を決め、<b>中心60%・隣±20%</b>で抽選して未獲得から選びます。</p>
         <p><b>3ターン目（最終）</b>：<b>3ターン合計スコア</b>で最終カードのレア度（<b>≥6000超激／≥3600激／≥1800レア／≥600プチ／他ノーマル</b>）を中心60%±20%で抽選（<b>重複あり</b>）。合計スコアは<b>チャレンジTOP5</b>に記録されます。</p>
         <p class="k">相棒・カードは掘る対象に連動（出土品→犬種／恐竜→恐竜）。設定は自動です。</p>
@@ -1181,7 +1181,6 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
             <button data-a="desc" id="lphDescBtn">📖<span>せつめい</span></button>
             <button data-a="shot" class="cap">📷<span>しゃしん</span></button>
             <button data-a="rec" class="cap lph-recbtn">🎥<span>どうが</span></button>
-            <button data-a="dig" id="lphDigBtn" class="dig">⛏<span>はっくつ🚧</span></button>
             <button data-a="fold">▼<span>しまう</span></button>
         </div>
     </div>
@@ -4961,7 +4960,7 @@ const worldHud=(function(){
                 if(d.calc){ const lx=100, rx=680; let y=300; const rowH=44; ctx.font="bold 30px sans-serif";
                     const row=(label,val,col)=>{ ctx.fillStyle=col||"rgba(226,216,255,.9)"; ctx.textAlign="left"; ctx.fillText(label,lx,y); ctx.textAlign="right"; ctx.fillText(val,rx,y); y+=rowH; };
                     row("発掘ポイント","+"+d.calc.digPts);
-                    row("時間ボーナス（残り"+d.calc.secs+"秒×30）","+"+d.calc.timeBonus);
+                    row("時間ボーナス（残り"+d.calc.secs+"秒）","+"+d.calc.timeBonus);
                     if(d.calc.askPenalty>0) row("相棒に聞いた（"+d.calc.asks+"回×−10）","−"+d.calc.askPenalty,"rgba(255,190,190,.9)");
                     ctx.strokeStyle="rgba(216,180,106,.5)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(lx,y-18); ctx.lineTo(rx,y-18); ctx.stroke();   // 時間ボーナスと合計のちょうど中間
                     ctx.fillStyle="#ffe066"; ctx.font="bold 34px sans-serif"; ctx.textAlign="left"; ctx.fillText("合計",lx,y+8); ctx.textAlign="right"; ctx.fillText(d.score+" pt",rx,y+8);
@@ -4988,7 +4987,7 @@ const worldHud=(function(){
             const bigNum=(num,cy)=>{ const t=String(num); ctx.textAlign="left"; ctx.font="bold 96px sans-serif"; const nw=ctx.measureText(t).width; ctx.font="bold 48px sans-serif"; const uw=ctx.measureText(" pt").width; const sx=384-(nw+uw)/2; ctx.fillStyle="#fff"; ctx.font="bold 96px sans-serif"; ctx.fillText(t,sx,cy); ctx.font="bold 48px sans-serif"; ctx.fillText(" pt",sx+nw,cy+12); ctx.textAlign="center"; };
             const calcBlock=(digPts,secs,timeBonus,score,y0)=>{ const lx=100,rx=680; let y=y0; const rowH=44; ctx.font="bold 30px sans-serif";
                 const row=(label,val)=>{ ctx.fillStyle="rgba(226,216,255,.9)"; ctx.textAlign="left"; ctx.fillText(label,lx,y); ctx.textAlign="right"; ctx.fillText(val,rx,y); y+=rowH; };
-                row("発掘ポイント","+"+(digPts||0)); row("時間ボーナス（残り"+(secs||0)+"秒×30）","+"+(timeBonus||0));
+                row("発掘ポイント","+"+(digPts||0)); row("時間ボーナス（残り"+(secs||0)+"秒）","+"+(timeBonus||0));
                 ctx.strokeStyle="rgba(216,180,106,.5)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(lx,y-18); ctx.lineTo(rx,y-18); ctx.stroke();   // 時間ボーナスと合計のちょうど中間
                 ctx.fillStyle="#ffe066"; ctx.font="bold 34px sans-serif"; ctx.textAlign="left"; ctx.fillText("合計",lx,y+8); ctx.textAlign="right"; ctx.fillText(score+" pt",rx,y+8); ctx.textAlign="center"; return y+8; };
             if(c.chFinal){
@@ -6676,10 +6675,7 @@ function liteVRJoy(){   // スマホの lphJoy と同じ（画面の♥・吹き
     if(LPH.joy || !LPH.walk || LPH.faceTurn || !LITE.model || window.MV_ANIM===false) return;   // アニメ オフの時は何も起きない
     const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
     const types=["hop","spin","wiggle"].filter(t=>t!==LPH.lastJoy), type=types[Math.floor(Math.random()*types.length)]; LPH.lastJoy=type;   // 続けて同じにしない
-    LPH.joy={ t0:performance.now(), dur:type==="spin"?1100:1300, type, yaw0:lphFaceCamYaw(), h:(window.MV_ANIM!==false)?Math.max(0.01, sz.y*0.15):0 };   // アニメ オフ＝動かない
-    { const cp=camera.getWorldPosition(new THREE.Vector3()), c=LITE.targetPos, dx=c.x-cp.x, dz=c.z-cp.z, d=Math.hypot(dx,dz)||1e-3;
-      const need=LVR_JOY.base+Math.max(sz.x, sz.z)/2*LVR_JOY.mul;   // 大きさに応じた距離
-      if(d<need) LPH.joy.back={ from:c.clone(), to:new THREE.Vector3(cp.x+dx/d*need, c.y, cp.z+dz/d*need) }; }
+    LPH.joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*LPH_CFG.joySlow, type, yaw0:lphFaceCamYaw(), h:(window.MV_ANIM!==false)?Math.max(0.01, sz.y*0.15):0 };   // アニメ オフ＝動かない
     liteVRSay(lphJoyLine(type), 2200);
     try{ if(LITE.target==="dog" && typeof sfxBark==="function") sfxBark(); else sfxCry(); }catch(_){ }
     try{ vibrate(60,0.5); }catch(_){ }
@@ -6726,8 +6722,7 @@ function liteVRHitStop(){ (LVR.hts||[]).forEach(h=>{ try{ h.cancel(); }catch(_){
 // なでる：手（コントローラー・ハンドトラッキングの指先と手のひら）が、モデルの近くを「すばやく・ある程度の長さ」動いた時だけ
 //   ・速さ 0.5m/秒 以上で外形＋3cm の中を動いた道のりが 0.10m たまったら（遅くなる・離れる状態が0.3秒続くと、ためた分を捨てる）
 const LVR_PET={ speed:0.5, path:0.10, pad:0.03, reset:300, cool:1500 };
-// 喜ぶ位置：プレイヤーから「0.25m＋体の横の半径×1.8」より近い時は、そこまで下がってから喜ぶ（ふつうの大きさなら、ほぼ動かない）
-const LVR_JOY={ base:0.25, mul:1.8, backFrac:0.45 };   // 小さな子のゆっくりなでる動きでも反応するように 0.5m/秒
+   // 小さな子のゆっくりなでる動きでも反応するように 0.5m/秒
 const LVR_JOINTS=["index-finger-tip","middle-finger-tip","middle-finger-metacarpal"];
 function liteVRPetPoints(out){   // [key, Object3D, つかんでいるか]
     controllers.forEach((c,i)=>{ const held=!!(c.userData && c.userData.liteHeld);
@@ -6746,11 +6741,6 @@ function liteVRTick(){
         liteVRFloor();
     }
     if(LPH.walk) lphWalkTick();
-    if(LPH.joy && LPH.joy.back){   // 喜びはじめに、大きさに応じた距離まで下がる
-        const J=LPH.joy, r=Math.min(1,(now-J.t0)/(J.dur*LVR_JOY.backFrac)), e=r*r*(3-2*r);
-        LITE.targetPos.x=J.back.from.x+(J.back.to.x-J.back.from.x)*e; LITE.targetPos.z=J.back.from.z+(J.back.to.z-J.back.from.z)*e;
-        if(r>=1 && !J.backDone){ J.backDone=true; if(LPH.walk) LPH.walk.held=true; }   // 下がった場所から歩き直す
-    }
     if(walking || LPH.faceTurn) lphGround();               // 足元を床に（跳ねる高さも含む）。「とまる」直後の向き直り中も床のまま
     else if(LPH.shadow) LPH.shadow.visible=false;          // 「とまる」：影は出さない（床から離れることもあるため）
     // なでる
@@ -7011,6 +7001,7 @@ const LPH_CFG = {
     walkRadiusBL: 1.2, walkSpeedBL: 0.16,
     pteraWalkMul: 2.5,       // 【追加】プテラノドンの「あるく」：歩き回る範囲と速さを他の恐竜の2.5倍（1回の移動にかかる時間は同じ）              // あるく範囲＝中心から体長×1.2（用紙の上でもはみ出してよい）／速さ＝体長×0.16 /秒
     turnDegLook: 150,        // 【追加】「プレイヤーを見る」時に体を向ける速さ（度/秒）
+    joySlow: 1.5,            // 【追加】喜ぶ動きの長さの倍率（大きいほどゆっくり。跳ねる・回る・ふりふりの速さも合わせて遅くする）
     turnDeg: 60, turnDegJoy: 180, turnDegFace: 450,    // 方向転換の速さ（度/秒）：歩く・見る＝ゆっくり／喜ぶ時＝少し速く／「とまる」「アニメ オフ」でスマホを向く＝くるっと（約0.4秒）
     hatchT: 1.5,             // ぬりえから：卵の演出の長さ（ゲームの発掘演出 ×1.5）
     eggWaitMaxMs: 8000,      // 床が見つからない時、この時間で目安の床に卵を出す
@@ -7389,12 +7380,12 @@ function lphWalkTick(){
                 const e=(1-Math.cos(Math.PI*r))/2; W.yaw=J.yaw0+Math.PI*2*e; LITE.targetQuat.setFromAxisAngle(_lphUp, W.yaw);
                 LPH.popY=J.h*0.35*Math.sin(Math.PI*r);
             } else if(J.type==="wiggle"){   // しっぽを大きく振って、体をふりふり
-                W.yaw=J.yaw0+Math.sin(now*0.025)*0.28*(1-r); LITE.targetQuat.setFromAxisAngle(_lphUp, W.yaw);
-                if(tail) tail.rotation.y=Math.sin(now*0.04)*0.8;
+                W.yaw=J.yaw0+Math.sin(now*0.025/LPH_CFG.joySlow)*0.28*(1-r); LITE.targetQuat.setFromAxisAngle(_lphUp, W.yaw);
+                if(tail) tail.rotation.y=Math.sin(now*0.04/LPH_CFG.joySlow)*0.8;
             } else {   // ぴょん、ぴょん
-                lphTurn(W, lphFaceCamYaw(), LPH_CFG.turnDegJoy, dt);
+                lphTurn(W, lphFaceCamYaw(), LPH_CFG.turnDegJoy/LPH_CFG.joySlow, dt);
                 LPH.popY=J.h*Math.abs(Math.sin(Math.PI*2*r))*(1-0.35*r);
-                if(tail) tail.rotation.y=Math.sin(now*0.03)*0.65;
+                if(tail) tail.rotation.y=Math.sin(now*0.03/LPH_CFG.joySlow)*0.65;
             }
             wantX=-0.25;   // 顔を上げる
         }
@@ -7482,7 +7473,7 @@ function lphJoy(x, y){
     if(window.MV_ANIM===false) return;   // 【変更】アニメ オフの時は、なでても何も起きない
     const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
     const types=["hop","spin","wiggle"].filter(t=>t!==LPH.lastJoy), type=types[Math.floor(Math.random()*types.length)]; LPH.lastJoy=type;   // 続けて同じにしない
-    LPH.joy={ t0:performance.now(), dur:type==="spin"?1100:1300, type, yaw0:lphFaceCamYaw(), h:(window.MV_ANIM!==false)?Math.max(0.01, sz.y*0.15):0 };   // アニメ オフ＝動かない
+    LPH.joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*LPH_CFG.joySlow, type, yaw0:lphFaceCamYaw(), h:(window.MV_ANIM!==false)?Math.max(0.01, sz.y*0.15):0 };   // アニメ オフ＝動かない
     lphSay(lphJoyLine(type), 2200);
     try{ if(LITE.target==="dog" && typeof sfxBark==="function") sfxBark(); else sfxCry(); }catch(_){ }
     try{ vibrate(60,0.5); }catch(_){ }
