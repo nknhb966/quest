@@ -784,11 +784,12 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <h3>🖍 ぬりえで じぶんの きょうりゅう</h3>
         <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。</p>
         <p>ぬった色によって、その恐竜の<b>ステータスとスペシャル</b>も変わります（色とステータスの関係は「📊 得点・カードの仕組み」へ）。模様とステータスは、<b>相棒にしたとき・相棒えらびのカード・獲得カード</b>に入ります（図鑑のカードは元のまま）。</p>
-        <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます。「もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
+        <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
       </section>
       <section>
         <h3>🔍 モデルを みよう</h3>
         <p>「モデルを えらぶ」で<b>しゅつどひん・いぬ・きょうりゅう</b>を選び、<b>「🔍 モデルを みる」</b>で3Dモデルを回して見たり、<b>「📱 ARで みる」</b>で目の前に置いて見たりできます。ぬりえをした恐竜は、その模様で表示されます。</p>
+        <p class="k">「📱 ARで みる」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「この きょうりゅうと たんけんする」では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。</p>
       </section>
       <section>
         <h3>⚙️ 設定（おすすめ設定オフのとき）</h3>
@@ -976,6 +977,7 @@ html.card-event body > *:not(#tcEvent):not(#tcRank):not(script):not(style){ disp
     #mvARBtn{ display:none; padding:9px 16px; border:none; border-radius:22px; cursor:pointer;
         font-weight:800; color:#fff; background:linear-gradient(135deg,#7c3aed,#1d4ed8);
         box-shadow:0 4px 16px rgba(80,60,200,.5); }
+    #mvARBtn:disabled{ opacity:.4; cursor:default; box-shadow:none; filter:grayscale(.7); }   /* 【追加】おすすめ設定オフ：ARが使えない端末では押せない灰色 */
     #mvViewer{ width:100%; flex:1 1 auto; min-height:52vh; height:60vh; max-height:74vh;
         background:radial-gradient(ellipse at 50% 40%, #1a1436 0%, #0a0716 70%);
         border-radius:12px; --poster-color:transparent; }
@@ -1372,6 +1374,8 @@ html.card-event body > *:not(#tcEvent):not(#tcRank):not(script):not(style){ disp
             <div class="lbl">さがす ばしょの ひろさ</div>
             <div class="szrow"><span class="k">よこ</span><button type="button" data-k="wx" data-d="-1" aria-label="よこを せまく">－</button><b id="lphDigWx">5</b><span>m</span><button type="button" data-k="wx" data-d="1" aria-label="よこを ひろく">＋</button></div>
             <div class="szrow"><span class="k">おく</span><button type="button" data-k="wz" data-d="-1" aria-label="おくを せまく">－</button><b id="lphDigWz">5</b><span>m</span><button type="button" data-k="wz" data-d="1" aria-label="おくを ひろく">＋</button></div>
+            <div class="lbl" id="lphDigSrcLbl" style="display:none">はっくつする きょうりゅう</div>
+            <div class="seg3" id="lphDigSrc" style="display:none"></div>
             <p class="note">「たんけんに いく」を おすと、たんけんの じゅんびに すすむよ。<br>おわったら、この がめんに もどれるよ。</p>
             <button type="button" id="lphDigGo">🗺 たんけんに いく</button>
             <button type="button" id="lphDigBack">もどる</button>
@@ -5506,7 +5510,7 @@ function ensureBody(key){
         VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
         if(!isDog) VOX_VARY=true;   // 恐竜の相棒も発掘モデルと同様に目のハイライト＋肌の微陰影を付ける
         let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; VOX_VARY=pvv; }
-        try{ if(window.__dinoPaintApply) window.__dinoPaintApply(key, body); }catch(_){ }   // 【追加】相棒にもぬりえの模様を反映
+        try{ if(window.__dinoPaintApply && !(window.__nuriPlainKey && window.__nuriPlainKey()===key)) window.__dinoPaintApply(key, body); }catch(_){ }   // 【追加】相棒にもぬりえの模様を反映（ぬりえなしで たんけん中は貼らない）
         scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
         body.updateMatrixWorld(true);
         { const bb=new THREE.Box3().setFromObject(body);  // 全相棒とも足を接地(y=0)＝相棒プテラノドンも他と同じ高さ
@@ -5526,7 +5530,7 @@ function preloadCompanionBody(key, smooth){   // プリロード用：指定ボ�
     const pv=VOX_CUR, ps=dinoSmooth, pvv=VOX_VARY; VOX_CUR=smooth?VOX/6:VOX; dinoSmooth=smooth;
     if(!isDog) VOX_VARY=true;   // 恐竜の相棒も発掘モデルと同様に目のハイライト＋肌の微陰影を付ける
     let body; try{ body=def.builder(); } finally { VOX_CUR=pv; dinoSmooth=ps; VOX_VARY=pvv; }
-    try{ if(window.__dinoPaintApply) window.__dinoPaintApply(key, body); }catch(_){ }   // 【追加】相棒にもぬりえの模様を反映
+    try{ if(window.__dinoPaintApply && !(window.__nuriPlainKey && window.__nuriPlainKey()===key)) window.__dinoPaintApply(key, body); }catch(_){ }   // 【追加】相棒にもぬりえの模様を反映（ぬりえなしで たんけん中は貼らない）
     scaleBuddyIfDino(key, body);                     // 恐竜の相棒は3/5サイズ（犬より小さくなってもよい）
     body.updateMatrixWorld(true);
     { const bb=new THREE.Box3().setFromObject(body); if(isFinite(bb.min.y)) body.position.y-=bb.min.y; body.userData.basePosY=body.position.y; }   // 全相棒とも足を接地（相棒プテラノドンも他と同じ高さ）
@@ -6176,6 +6180,14 @@ function cloneCont(src){
     c.position.set(0,0,0); c.rotation.set(0,0,0); c.scale.set(1,1,1);   // 出現時の向き/位置/スケール補正を消して既定姿勢に（ホログラムは正面から）
     return c;
 }
+// 【追加】発掘モデルの複製（模様なしの元の形）：たんけん中は発掘モデルに模様を貼るので、カードの撮影・相棒・モデル表示ではこちらを使う
+//   （ホログラムは発掘した恐竜と同じ模様にするため cloneCont のまま）
+function cloneContBase(src){
+    const c=cloneCont(src);
+    try{ const a=[], b=[]; src.traverse(o=>{ if(o.isMesh) a.push(o); }); c.traverse(o=>{ if(o.isMesh) b.push(o); });
+        for(let i=0;i<Math.min(a.length,b.length);i++){ const og=NURI_ORIG.get(a[i]); if(og){ b[i].geometry=og; const om=NURI_ORIGMAT.get(a[i]); if(om) b[i].material=om; } } }catch(_){ }
+    return c;
+}
 function buildHologram(idx){
     closeHologram();
     const g=new THREE.Group();
@@ -6571,7 +6583,7 @@ function tickHatch(now, dt){
             stage.remove(e.egg); sfxDig();
             const dn=DINOS[e.idx], mul=dinoSizeOf(e.idx);
             let m=dinoDigModels[e.idx];
-            if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; }
+            if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; try{ digPaintNewModel(e.idx, m); }catch(_){ } }   // 【追加】たんけん中は発掘する恐竜の模様
             m.visible=true;
             m.scale.setScalar(dinoCurScale()/(m.userData.builtScale||1));   // スケール確定（実寸モードは実寸倍率で補正）
             // 前後長（ローカル+Z＝鼻先方向）を回転前に測る
@@ -7620,6 +7632,7 @@ const worldHud=(function(){
     cardMesh.renderOrder=705; cardMesh.position.set(1.24,0,0.02); cardMesh.visible=false; mesh.add(cardMesh);   // 獲得カード（暗幕より手前）
     function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
         ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+    let expOn=false;   // 【追加】たんけんのリザルト（1ページだけ）を表示中
     function bg(bottomY){ ctx.clearRect(0,0,768,1240);
         const h=(bottomY? Math.max(80, bottomY-24) : 1192);   // bottomY指定時はそこまでの短い板（上辺=24は固定）
         ctx.fillStyle="rgba(10,7,26,0.90)"; rr(24,24,720,h,40); ctx.fill();
@@ -7649,11 +7662,44 @@ const worldHud=(function(){
                 lines.forEach((ln,i)=>ctx.fillText(ln,384,sy+i*lh)); }
             tex.needsUpdate=true; mesh.visible=true;
         },
-        drawResults(score, found, list, calc){ resData={score, found, list, calc}; resPage=(typeof cardShown!=="undefined"&&!cardShown)?1:0; this.renderResultPage(); },
+        drawResults(score, found, list, calc){ expOn=false; resData={score, found, list, calc}; resPage=(typeof cardShown!=="undefined"&&!cardShown)?1:0; this.renderResultPage(); },
         drawCollectResult(time, list, card){   // コレクションのリザルト（クリアタイム／TOP5／カード）
-            colData={time, list, card}; colPage=(typeof cardShown!=="undefined"&&!cardShown)?1:0; this.renderCollectPage();
+            expOn=false; colData={time, list, card}; colPage=(typeof cardShown!=="undefined"&&!cardShown)?1:0; this.renderCollectPage();
         },
-        toggleCollectPage(){ if(typeof holo!=="undefined"&&holo) return colPage; if(!colData||(typeof cardShown!=="undefined"&&!cardShown)) return colPage; colPage=colPage?0:1; this.renderCollectPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return colPage; },
+        // 【追加】たんけん（ARモデル画面の「この きょうりゅうと たんけんする」）のリザルト：ポイント・タイムだけの1ページ（カード・相棒・TOP5は出さない）
+        //   o.kind："time"（じかんまで さがす）／"collect"（ぜんぶ みつける）／"ch"（3かい ちょうせん。chFinal＝3回目）
+        drawExplore(o){
+            expOn=true; resData=null; colData=null; resPage=0; colPage=0;
+            if(window.__resultBuddy) window.__resultBuddy.clear();
+            const vr=!GAME.desktop, rowsN=(o.kind==="ch" && o.chFinal)? 3 : 0;
+            const bottom = o.kind==="collect" ? (vr? 300 : 250) : (o.kind==="ch" && o.chFinal) ? (vr? 640 : 600) : (vr? 352 : 312);
+            bg(bottom); ctx.textAlign="center"; ctx.textBaseline="middle";
+            const bigNum=(num, unit, cy, col)=>{ const t=String(num); ctx.textAlign="left"; ctx.font="bold 96px sans-serif"; const nw=ctx.measureText(t).width; ctx.font="bold 48px sans-serif"; const uw=ctx.measureText(unit).width;
+                const sx=384-(nw+uw)/2; ctx.fillStyle=col||"#fff"; ctx.font="bold 96px sans-serif"; ctx.fillText(t,sx,cy); ctx.font="bold 48px sans-serif"; ctx.fillText(unit,sx+nw,cy+12); ctx.textAlign="center"; };
+            const lx=100, rx=680;
+            const row=(label,val,y)=>{ ctx.fillStyle="rgba(226,216,255,.9)"; ctx.font="bold 30px sans-serif"; ctx.textAlign="left"; ctx.fillText(label,lx,y); ctx.textAlign="right"; ctx.fillText(val,rx,y); ctx.textAlign="center"; };
+            const calc=(y)=>{ row("発掘ポイント","+"+(o.digPts||0),y); row("時間ボーナス（残り"+(o.secs||0)+"秒）","+"+(o.timeBonus||0),y+44);
+                ctx.strokeStyle="rgba(216,180,106,.5)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(lx,y+70); ctx.lineTo(rx,y+70); ctx.stroke();
+                ctx.fillStyle="#ffe066"; ctx.font="bold 34px sans-serif"; ctx.textAlign="left"; ctx.fillText("合計",lx,y+96); ctx.textAlign="right"; ctx.fillText((o.score||0)+" pt",rx,y+96); ctx.textAlign="center"; return y+96; };
+            let advY, adv="右トリガー2回でおわる";
+            if(o.kind==="collect"){
+                ctx.fillStyle="#f0d98a"; ctx.font="bold 40px sans-serif"; ctx.fillText("コレクション結果",384,78);
+                bigNum((+o.time||0).toFixed(1)," 秒",168,"#8ff0ff"); advY=262;
+            } else if(o.kind==="ch" && o.chFinal){
+                ctx.fillStyle="#ffcdea"; ctx.font="bold 40px sans-serif"; ctx.fillText("発掘チャレンジ終了！",384,78);
+                bigNum(o.chTotal||0," pt",168);
+                let y=252; for(let i=0;i<rowsN;i++){ row((i+1)+"ターン目",((o.chScores||[])[i]||0)+" pt",y); y+=42; }
+                ctx.fillStyle="rgba(200,190,240,.75)"; ctx.font="bold 24px sans-serif"; ctx.fillText("― 3ターン目の計算 ―",384,y+14);
+                advY=calc(y+52)+52;
+            } else {
+                ctx.fillStyle="#8ff0ff"; ctx.font="bold 44px sans-serif"; ctx.fillText(o.kind==="ch"? (o.chTurn+"ターン目 完了！") : "タイムアタック結果",384,78);
+                advY=calc(150)+52; if(o.kind==="ch") adv="右トリガー2回でこのターンをおわる";
+            }
+            if(vr){ ctx.textAlign="center"; ctx.fillStyle="rgba(226,216,255,.85)"; ctx.font="24px sans-serif"; ctx.fillText(adv,384,advY); }
+            tex.needsUpdate=true; mesh.visible=true;
+        },
+        exploreOn(){ return expOn; },
+        toggleCollectPage(){ if(expOn) return colPage; if(typeof holo!=="undefined"&&holo) return colPage; if(!colData||(typeof cardShown!=="undefined"&&!cardShown)) return colPage; colPage=colPage?0:1; this.renderCollectPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return colPage; },
         collectPage(){ return colPage; },
         renderCollectPage(){
             if(!colData) return; const d=colData;
@@ -7705,7 +7751,7 @@ const worldHud=(function(){
             }
             tex.needsUpdate=true; mesh.visible=true;
         },
-        toggleResultsPage(){ if(typeof holo!=="undefined"&&holo) return resPage; if(typeof cardShown!=="undefined"&&!cardShown) return resPage; resPage=resPage?0:1; this.renderResultPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return resPage; },
+        toggleResultsPage(){ if(expOn) return resPage; if(typeof holo!=="undefined"&&holo) return resPage; if(typeof cardShown!=="undefined"&&!cardShown) return resPage; resPage=resPage?0:1; this.renderResultPage(); if(typeof updateResultBtn==="function") updateResultBtn(); return resPage; },
         resultPage(){ return resPage; },
         renderResultPage(){
             if(!resData) return; const d=resData;
@@ -7853,7 +7899,7 @@ const resultBuddy=(function(){
         } else {   // 恐竜：プリロード済みキャッシュからクローン（無ければその場生成）
             const src=(typeof dinoDigModels!=="undefined"&&dinoDigModels[i]) ? dinoDigModels[i]
                      : ((typeof _dinoCacheS!=="undefined"&&_dinoCacheS[i]) ? _dinoCacheS[i] : null);
-            if(src && typeof cloneCont==="function"){ try{ m=cloneCont(src); }catch(e){ m=null; } }
+            if(src && typeof cloneContBase==="function"){ try{ m=cloneContBase(src); }catch(e){ m=null; } }
             if(!m){ const dn=(typeof DINOS!=="undefined")?DINOS[i]:null; if(dn){ const ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
                 try{ if(typeof dinoSmooth!=="undefined") dinoSmooth=true; m=makeDigDino(dn); }catch(e){ m=null; }
                 finally{ if(typeof dinoSmooth!=="undefined") dinoSmooth=ps; } } }
@@ -8192,6 +8238,7 @@ function chSetupTurn1Field(){   // プレイヤー中心2×2m内に最も近い3
 // ターン結果の付与（taFinishから）：ターン得点を記録し相棒を1体獲得
 function chOnTurnFinish(score){
     GAME.ch.scores.push(score);
+    if(ldigPlaying()){ GAME.ch.lastBuddyName=null; GAME.ch.buddyNew=false; return; }   // 【追加】たんけん：相棒は固定（加わらない・獲得しない）
     const idx = chPickBuddyIdx(score, GAME.ch.turn);
     let buddyKey=null, buddyName=null;
     const _bset=(typeof curTarget!=="undefined"&&curTarget!=="dino"&&typeof DOGS!=="undefined")?DOGS:DINOS;
@@ -8238,6 +8285,14 @@ function chTaFinishResults(score, calc){   // チャレンジ：ターン結果�
     TA.state="results"; TA.lockUntil=performance.now()+1500; if(typeof sfxTimeUp==="function") sfxTimeUp();
     chOnTurnFinish(score);
     const turn=GAME.ch.turn, total=GAME.ch.scores.reduce((a,b)=>a+b,0);
+    if(ldigPlaying()){   // 【追加】たんけん：ポイントだけ（カード・相棒・TOP5・記録なし）
+        GAME.lastCard=null;
+        worldHud.drawExplore({ kind:"ch", score, digPts:calc.digPts, secs:calc.secs, timeBonus:calc.timeBonus, chTurn:turn, chScores:GAME.ch.scores.slice(), chTotal:total, chFinal:(turn>=3) });
+        if(typeof updateWorldHud==="function") updateWorldHud();
+        if(typeof updateResultBtn==="function") updateResultBtn();
+        updateGoal(); updateTAButton();
+        return;
+    }
     let card, cardTarget;
     if(turn>=3){   // 最終：今回の獲得カード＝合計ポイントを chCenterRarityT3 に通した中心レア度＋中心60%・隣±20%。掘る対象のカード（恐竜は重複可）
         const rar=chWeightedRarity(chCenterRarityT3(total));
@@ -8265,6 +8320,17 @@ function taFinish(){
     const score=Math.max(0, digPts + timeBonus);
     GAME.score=score; TA.lastScore=score;
     if(GAME.challenge){ chTaFinishResults(score, {digPts, secs, timeBonus, found:dexFoundCount()}); return; }   // チャレンジは専用リザルト（ターン得点＋相棒獲得）
+    if(ldigPlaying()){   // 【追加】たんけん：ポイントだけ（カード・相棒・TOP5・記録・しば犬のレベルアップなし）
+        clearTargets(); if(typeof clearStarPoint==="function") clearStarPoint();
+        TA.state="results"; TA.lockUntil=performance.now()+1500; sfxTimeUp();
+        const found=dexFoundCount(); GAME.lastCard=null; GAME.buddyNew=false; GAME.dogLvMsg="";
+        worldHud.drawExplore({ kind:"time", score, digPts, secs, timeBonus });
+        if(typeof updateWorldHud==="function") updateWorldHud();
+        if(typeof updateResultBtn==="function") updateResultBtn();
+        bubble.say(found>=8 ? line("done") : line("again"), 4000, true); GAME.dogHappyUntil = performance.now()+4000;
+        updateGoal(); updateTAButton();
+        return;
+    }
     if(score>0 && !GAME.challenge) recordTimeAttack(score);   // チャレンジ中は個別ターンをTA記録に残さない（合計のみ後で記録）
     clearTargets(); if(typeof clearStarPoint==="function") clearStarPoint();
     TA.state="results";
@@ -8305,6 +8371,15 @@ function enterStandby(){   // ①スタンバイへ（④→①は内容保持�
 function collectionFinish(){   // ④コレクションのクリア（全8種）
     const sec = GAME.playStart ? (performance.now()-GAME.playStart)/1000 : 0;
     GAME.lastColTime = roundTime1(sec);
+    if(ldigPlaying()){   // 【追加】たんけん：タイムだけ（カード・相棒・TOP5・記録・しば犬のレベルアップなし）
+        if(typeof clearStarPoint==="function") clearStarPoint();
+        GAME.complete=true; GAME.lastCard=null; GAME.buddyNew=false; GAME.dogLvMsg="";
+        worldHud.drawExplore({ kind:"collect", time:GAME.lastColTime });
+        if(typeof updateWorldHud==="function") updateWorldHud();
+        if(typeof updateResultBtn==="function") updateResultBtn();
+        updateGoal(); updateTAButton();
+        return;
+    }
     recordCollection(sec);
     if(typeof clearStarPoint==="function") clearStarPoint();
     GAME.complete=true;
@@ -8383,6 +8458,7 @@ function updateResultBtn(){
     const inCol = GAME.desktop && GAME.mode!=="time" && GAME.complete;
     const inResults = inTA || inCol;
     const b=document.getElementById("taCardBtn"); if(!b) return;
+    if(ldigPlaying()){ b.style.display="none"; return; }   // 【追加】たんけん：1ページだけ（切替なし）
     if(GAME.challenge){   // チャレンジ：3ターン目（最終）のみ「全体のスコア／獲得カード」の切替を表示。1・2ターン目は1ページ、追加フェーズは非表示
         if(GAME.desktop && TA.state==="results" && GAME.ch && GAME.ch.turn>=3 && !GAME.ch.extra){
             b.style.display=""; b.textContent = (worldHud.resultPage()===0) ? "スコア" : "獲得カード";
@@ -9169,6 +9245,25 @@ function _liteDinoBuild(idx){
         try{ if(window.__dinoPaintApply) window.__dinoPaintApply(DINOS[idx].key, _liteDino[idx].userData.model||_liteDino[idx]); }catch(_){ } }   // craftARt Lite：ぬりえを適用
     return _liteDino[idx];
 }
+// 【追加】「ARで みる」（きょうりゅう）：ぬった恐竜でも「ぬりえなし」を選べる → 模様を貼らないモデル（ぬっていない恐竜は通常のモデルと同じ）
+const _liteDinoP=[];
+function _liteDinoPlainBuild(idx){
+    const key=DINOS[idx] && DINOS[idx].key;
+    if(!(key && window.__dinoHasPaint && window.__dinoHasPaint(key))) return _liteDinoBuild(idx);
+    if(_liteDinoP[idx]) return _liteDinoP[idx];
+    const pv=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
+    try{ dinoSmooth=true; _liteDinoP[idx]=makeDigDino(DINOS[idx]); }finally{ try{ dinoSmooth=pv; }catch(_){ } }
+    if(_liteDinoP[idx]) _liteDinoP[idx].visible=false;
+    return _liteDinoP[idx];
+}
+// 【追加】「ARで みる」から入った時の恐竜の選び方（mvPick）：じぶんで ぬった恐竜（ぬりえ）＋ ぬりえなしの8体。selPlain＝ぬりえなしを選んでいる
+function liteSetPick(target, opts){ LITE.mvPick = target==="dino" && !!(opts && opts.mvPick); LITE.selPlain = LITE.mvPick && !!(opts && opts.plain); }
+function liteDinoPainted(idx){ const k=DINOS[idx] && DINOS[idx].key; return !!(k && window.__dinoHasPaint && window.__dinoHasPaint(k)); }
+function liteDinoName(idx, plain){   // 表示名：ぬりえ＝「🖍 ティラノサウルス（ぬりえ）」
+    const lab=(DINOS[idx]&&DINOS[idx].label)||"";
+    if(LITE.mvPick && !plain && liteDinoPainted(idx)) return "🖍 "+lab.replace(/^\S+\s*/,"")+"（ぬりえ）";
+    return lab;
+}
 function _liteDogBuild(idx){
     if(_liteDog[idx]) return _liteDog[idx];
     if(typeof DOGS==="undefined") return null;
@@ -9193,7 +9288,7 @@ function _litePurgeArtExcept(q){   // 現在の画質以外の出土品キャッ
     for(const k in _liteArt){ if(k.indexOf(q+"_")!==0){ try{ const m=_liteArt[k]; if(m && m.parent) m.parent.remove(m); _liteDispose(m); }catch(_){ } delete _liteArt[k]; } }
 }
 async function litePrewarmAll(target, quality){
-    if(target==="dino"){ for(let i=0;i<(DINOS?DINOS.length:8);i++) _liteDinoBuild(i); return; }
+    if(target==="dino"){ for(let i=0;i<(DINOS?DINOS.length:8);i++){ _liteDinoBuild(i); if(LITE.mvPick) _liteDinoPlainBuild(i); } return; }   // 【追加】「ARで みる」：ぬりえなしのモデルも先に
     if(target==="dog"){ for(let i=0;i<((typeof DOGS!=="undefined"?DOGS.length:8)+1);i++) _liteDogBuild(i); return; }
     _litePurgeArtExcept(quality);   // 画質切替時：旧画質のモデル/テクスチャをGPUごと破棄（メモリ増加を防止）
     const n=mvArtifactRows().length + (window.MV_SHOW_SITE?mvSiteRows().length:0);
@@ -9236,7 +9331,7 @@ function dinoDeformOn(){   // スマホ・タブレット（ヘッドセット�
     return (typeof _coarsePtr!=="undefined" && _coarsePtr) || (typeof litePhoneWanted==="function" && litePhoneWanted()) || (typeof iarWanted==="function" && iarWanted());
 }
 function liteBuildModel(target, idx, quality){   // キャッシュから取得（プリロード済み前提）
-    if(target==="dino") return _liteDinoBuild(idx);
+    if(target==="dino") return (LITE.mvPick && LITE.selPlain) ? _liteDinoPlainBuild(idx) : _liteDinoBuild(idx);   // 【追加】ぬりえなしを選んだ時は模様なし
     if(target==="dog") return _liteDogBuild(idx);
     return _liteArt[quality+"_"+idx] || null;
 }
@@ -9648,7 +9743,7 @@ function litePickAny(){   // 右手レイで①ボタン・②セルを判定（
             if(LPH.walk.off){ LPH.joy=null; LPH.popY=0; LPH.faceTurn={ until:performance.now()+900, then:"stop" }; }   // とまる：プレイヤーの方をくるっと向いて止まる
             liteVRSay(LPH.walk.off?"その ばに とまるよ":"あるきまわるよ", 1500); }
         liteDrawButtons(); try{ beep(LPH.walk&&!LPH.walk.off?660:330,0.09,0.3,"square"); }catch(_){ } }
-    else if(o.userData.kind==="sel"){ const idx=o.userData.selIdx; if(idx!==LITE.curIdx){ liteVRResetHead(); LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; liteVRSayClear(); liteSwitchModel(idx); if(LPH.walk) LPH.walk.held=true; try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } }
+    else if(o.userData.kind==="sel"){ const idx=o.userData.selIdx, pl=o.userData.selPlain; if(!liteSelIsCur(idx, pl)){ liteVRResetHead(); LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; liteVRSayClear(); liteSelPick(idx, pl); if(LPH.walk) LPH.walk.held=true; try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } }
     return true;
 }
 
@@ -9658,10 +9753,19 @@ function liteSelList(){   // 現在の対象のモデル一覧 [{idx,name}]
         const ks=(window.__nuriPaintedKeys ? window.__nuriPaintedKeys() : []);
         return ks.map(k=>{ const i=DINOS.findIndex(d=>d.key===k); return { idx:i, name:(DINOS[i]&&DINOS[i].label)||k }; }).filter(it=>it.idx>=0).sort((a,b)=>a.idx-b.idx);
     }
+    if(LITE.target==="dino" && LITE.mvPick){   // 【追加】「ARで みる」：じぶんで ぬった恐竜（ぬりえ）→ ぬりえなしの8体
+        const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>{ if(liteDinoPainted(i)) a.push({idx:i, plain:false, name:liteDinoName(i,false)}); });
+        (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, plain:true, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
     if(LITE.target==="dino"){ const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
     if(LITE.target==="dog"){ const a=[]; const N=(typeof DOGS!=="undefined"?DOGS.length:8); for(let i=0;i<N;i++) a.push({idx:i, name:((typeof DOGS!=="undefined"&&DOGS[i])?DOGS[i].label:("犬"+(i+1)))}); a.push({idx:N, name:SHIBA_LABEL}); return a; }   // 犬種＋末尾しば犬
     const arts=mvArtifactRows(), sites=mvSiteRows(), a=[]; arts.forEach((r,i)=>a.push({idx:i, name:r.name||("出土品"+(i+1))}));
     if(window.MV_SHOW_SITE) sites.forEach((r,j)=>a.push({idx:arts.length+j, name:r.name||"遺構"})); return a;
+}
+function liteSelIsCur(idx, plain){ return idx===LITE.curIdx && (!LITE.mvPick || !!plain===!!LITE.selPlain); }   // 【追加】ぬりえ／ぬりえなし も見る
+function liteSelPick(idx, plain){   // 【追加】えらび直す（変わった時だけ true）
+    if(liteSelIsCur(idx, plain)) return false;
+    if(LITE.mvPick) LITE.selPlain=!!plain;
+    liteSwitchModel(idx); return true;
 }
 function liteBuildSelectInto(cx, top, A4W){
     // 旧②セルはLITE.uiのdisposeで一緒に破棄済み。ここでは新規生成のみ。
@@ -9669,13 +9773,13 @@ function liteBuildSelectInto(cx, top, A4W){
     const list=liteSelList(); const cols=3, gx=A4W/cols, cw=gx*0.90, ch=cw, gy=ch+0.006*LITE_UI;   // 正方セル・3列（余白込み0.90）
     const yTop=top-ch/2;
     list.forEach((it,i)=>{ const r=Math.floor(i/cols), c=i%cols;
-        const cell=liteMakePanel(cw,ch); cell.position.set(cx + (c-(cols-1)/2)*gx, yTop - r*gy, 0); cell.userData.selIdx=it.idx; cell.userData.name=it.name; cell.userData.kind="sel"; LITE.ui.add(cell); LITE.selPanels.push(cell); });
+        const cell=liteMakePanel(cw,ch); cell.position.set(cx + (c-(cols-1)/2)*gx, yTop - r*gy, 0); cell.userData.selIdx=it.idx; cell.userData.selPlain=!!it.plain; cell.userData.name=it.name; cell.userData.kind="sel"; LITE.ui.add(cell); LITE.selPanels.push(cell); });
     liteDrawSelect();
 }
 function liteBuildSelect(){ /* ①②統合のため liteBuildUI 内で構築（後方互換の空関数） */ }
 function _liteWrap(ctx, text, maxW){ const out=[]; let line=""; for(const ch of (text||"")){ const t=line+ch; if(ctx.measureText(t).width>maxW && line){ out.push(line); line=ch; } else line=t; } if(line) out.push(line); return out; }
 function liteDrawSelect(){
-    LITE.selPanels.forEach(cell=>{ const on=(cell.userData.selIdx===LITE.curIdx);
+    LITE.selPanels.forEach(cell=>{ const on=liteSelIsCur(cell.userData.selIdx, cell.userData.selPlain);
         _liteText(cell,(ctx,cw,ch)=>{ ctx.fillStyle=on?"#1d4ed8":"rgba(20,26,44,.92)"; _liteRound(ctx,3,3,cw-6,ch-6,14); ctx.fill(); ctx.strokeStyle=on?"#8ff0ff":"rgba(150,170,210,.5)"; ctx.lineWidth=3; ctx.stroke();
             ctx.fillStyle="#eaf2ff"; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
             const lines=_liteWrap(ctx, cell.userData.name||"", cw*0.82); const lh=LITE_FPX*1.2; let y=ch/2-(lines.length-1)*lh/2;
@@ -9692,7 +9796,7 @@ async function liteSwitchModel(idx){
     const _phNear=(LITE.phone && LITE.target==="dino" && typeof litePhoneNearBefore==="function") ? litePhoneNearBefore() : null;   // 【追加】スマホ：切替前の手前の端の距離
     LITE.curIdx=idx;
     // 名称・説明を更新
-    if(LITE.target==="dino"){ LITE.curName=(DINOS[idx]&&DINOS[idx].label)||""; LITE.curDesc=""; }
+    if(LITE.target==="dino"){ LITE.curName=liteDinoName(idx, LITE.selPlain); LITE.curDesc=""; }
     else if(LITE.target==="dog"){ LITE.curName=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||SHIBA_LABEL; LITE.curDesc=""; }   // 犬：犬種名（出土品名にフォールバックさせない）
     const m=liteBuildModel(LITE.target, idx, LITE.quality);   // キャッシュから同期取得（固まらない）
     while(LITE.group.children.length){ const ch=LITE.group.children[0]; LITE.group.remove(ch); ch.visible=false; }   // 旧モデルはキャッシュのため破棄せず外すだけ
@@ -9723,7 +9827,7 @@ function _liteSelectPickOld(){   // 旧
     rightCtrl.getWorldPosition(_liteRO); _liteRD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_liteRQ)).normalize();
     _liteRay.set(_liteRO,_liteRD);
     const hit=_liteRay.intersectObjects(LITE.selPanels,false)[0]; if(!hit) return false;
-    const idx=hit.object.userData.selIdx; if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } }
+    const idx=hit.object.userData.selIdx; if(liteSelPick(idx, hit.object.userData.selPlain)){ try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } }
     return true;
 }
 
@@ -9742,11 +9846,12 @@ async function enterLiteAR(target, idx, quality, intrinsicScale, opts){   // opt
     LITE.paperScale = (LITE.nuri && opts && opts.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;   // 用紙と同じ大きさ（「ARで もういちど みる」）。用紙モードはAR内でぬりえを読めた時
     if(LITE.nuri) LITE.nuri.small=!!(opts && opts.small);   // 【追加】ぬりえから：（AR内で読み取り→）卵→孵化→左右に歩く
     if(_phone && !LITE.phone) litePhoneShow(false);
+    liteSetPick(target, opts);   // 【追加】「ARで みる」：ぬりえ／ぬりえなし を選べる
     try{ await litePrewarmAll(target, quality); }catch(_){ }   // 入室時に選択画質で全モデル先読み（完了まで開始しない＝切替時に固まらない）
     const model = liteBuildModel(target, idx, quality);   // キャッシュから同期取得
     // 名称・説明（CSV由来）を設定：出土品/遺構＝CSV、恐竜＝DINOSラベル
     let nm="", ds="";
-    if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; ds=""; }
+    if(target==="dino"){ nm=liteDinoName(idx, LITE.selPlain); ds=""; }
     else if(target==="dog"){ nm=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||SHIBA_LABEL; ds=""; }
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
     LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino"||target==="dog");   // 恐竜・犬フラグ（説明パネル非表示に使用）
@@ -9855,7 +9960,7 @@ function litePhoneStarted(){
 function litePhoneRefresh(){
     lph$("lphName").textContent=LITE.curName||"";
     const sel=lph$("lphSel"); sel.innerHTML="";
-    (typeof liteSelList==="function"?liteSelList():[]).forEach(it=>{ const b=document.createElement("button"); b.textContent=it.name; b.dataset.idx=it.idx; if(it.idx===LITE.curIdx) b.classList.add("on"); sel.appendChild(b); });
+    (typeof liteSelList==="function"?liteSelList():[]).forEach(it=>{ const b=document.createElement("button"); b.textContent=it.name; b.dataset.idx=it.idx; if(it.plain) b.dataset.plain="1"; if(liteSelIsCur(it.idx, it.plain)) b.classList.add("on"); sel.appendChild(b); });
     const on=sel.querySelector("button.on"); if(on) try{ on.scrollIntoView({block:"nearest", inline:"center"}); }catch(_){ }
     const hasDesc=!LITE.isDino && !!LITE.curDesc;
     lph$("lphDescBtn").style.display=hasDesc?"":"none";
@@ -10029,10 +10134,11 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, hold:(_drop||IAR_CFG.holdHeight),
         save:{ pPos:player.position.clone(), pQ:player.quaternion.clone(), pS:player.scale.clone(), cPos:camera.position.clone(), cQ:camera.quaternion.clone() } };   // リグとカメラは入る前の状態を保存
     // 3) モデル（Androidと同じ準備）
+    liteSetPick(target, opts);   // 【追加】「ARで みる」：ぬりえ／ぬりえなし を選べる
     try{ await litePrewarmAll(target, quality); }catch(_){ }
     const model=liteBuildModel(target, idx, quality);
     let nm="", ds="";
-    if(target==="dino"){ nm=(DINOS[idx]&&DINOS[idx].label)||""; }
+    if(target==="dino"){ nm=liteDinoName(idx, LITE.selPlain); }
     else if(target==="dog"){ nm=(typeof DOGS!=="undefined"&&DOGS[idx]&&DOGS[idx].label)||SHIBA_LABEL; }
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
     LITE.curName=nm; LITE.curDesc=ds; LITE.showInfo=true; LITE.opEnabled=true; LITE.isDino=(target==="dino"||target==="dog");
@@ -10473,7 +10579,7 @@ function lphWire(){
             if(LPH.hatch && LPH.hatch.phase!=="done") return;
             if(idx!==LITE.curIdx){ lphNuriRepick(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } }
             return; }
-        if(idx!==LITE.curIdx){ liteSwitchModel(idx); try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } });
+        if(liteSelPick(idx, b.dataset.plain==="1")){ try{ if(typeof sfxSelect==="function") sfxSelect(); }catch(_){ } } });
     lph$("lphExit").addEventListener("click", ()=>{ if(LITE.iar){ iarEnd(); return; } const s=renderer.xr.getSession(); if(s) s.end().catch(()=>{}); });
     lph$("lphHelpBtn").addEventListener("click", ()=>lph$("lphHelp").classList.add("on"));
     lph$("lphHelpOk").addEventListener("click", ()=>lph$("lphHelp").classList.remove("on"));
@@ -12249,8 +12355,31 @@ function tabarTick(dt, now){
  *   （ARの開始にはタップが必要なため、ボタンを1回押してもらう）
  * ・メイン画面の設定とは連動しない（はっくつで選んだ値はこの画面だけで覚える）
  * ===================================================== */
-const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, ret:null, snap:null, waitT:0, prepTitle:null };
+const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, ret:null, snap:null, waitT:0, prepTitle:null,
+    play:false,            // 【追加】たんけんの設定でゲーム中（リザルトはポイント・タイムだけ／相棒は固定）
+    srcNuri:"sample",      // 【追加】発掘する恐竜の模様：ぬりえから入った時（既定＝見本）。ページを開いている間は覚える
+    srcMv:"plain" };       // 【追加】同：「ARで みる」（きょうりゅう）から入った時（既定＝ぬりえなし）
+function ldigPlaying(){ return !!LDIG.play; }
+// 【追加】発掘する恐竜の模様の選び方：ぬりえから入った時＝見本／じぶんで ぬった、「ARで みる」（きょうりゅう）＝ぬりえなし／見本／じぶんで ぬった
+function ldigSrcKind(){ if(LITE.target!=="dino") return null; if(LITE.nuri) return "nuri"; if(LITE.mvPick) return "mv"; return null; }
+function ldigOwnCount(){ try{ return (window.__nuriPaintedKeys ? window.__nuriPaintedKeys() : []).length; }catch(_){ return 0; } }
+function ldigSrcOpts(kind){
+    if(kind==="nuri") return [["sample","🎨","みほん"],["own","🖍","じぶんで<br>ぬった"]];
+    if(kind==="mv"){ const a=[["plain","🦕","ぬりえ<br>なし"],["sample","🎨","みほん"]]; if(ldigOwnCount()) a.push(["own","🖍","じぶんで<br>ぬった"]); return a; }
+    return [];
+}
+function ldigSrcCur(){
+    const k=ldigSrcKind(); if(!k) return "plain";
+    const v=(k==="nuri")? LDIG.srcNuri : LDIG.srcMv;
+    return ldigSrcOpts(k).some(o=>o[0]===v) ? v : ldigSrcOpts(k)[0][0];   // じぶんで ぬった恐竜がない時は既定へ
+}
 function ldigPaint(){
+    { const box=lph$("lphDigSrc"), lb=lph$("lphDigSrcLbl"), k=ldigSrcKind(), opts=ldigSrcOpts(k), cur=ldigSrcCur();
+      if(box && lb){ lb.style.display=box.style.display=opts.length? "" : "none";
+        box.style.gridTemplateColumns="repeat("+Math.max(1,opts.length)+",1fr)";
+        if(box.dataset.k!==k+"|"+opts.length){ box.dataset.k=k+"|"+opts.length; box.innerHTML="";
+            opts.forEach(o=>{ const b=document.createElement("button"); b.type="button"; b.dataset.v=o[0]; b.innerHTML=o[1]+"<span>"+o[2]+"</span>"; box.appendChild(b); }); }
+        box.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.v===cur)); } }
     document.querySelectorAll("#lphDigMode button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.mode));
     const wx=lph$("lphDigWx"), wz=lph$("lphDigWz"); if(wx) wx.textContent=LDIG.wx; if(wz) wz.textContent=LDIG.wz;
     document.querySelectorAll("#lphDig .szrow button").forEach(b=>{ const v=LDIG[b.dataset.k]+(+b.dataset.d); b.disabled=(v<LDIG.min || v>LDIG.max); });
@@ -12277,6 +12406,8 @@ function ldigClose(){ const d=lph$("lphDig"); if(d) d.classList.remove("on"); }
     d.addEventListener("click", e=>e.stopPropagation());
     d.querySelectorAll("#lphDigMode button").forEach(b=>b.addEventListener("click",()=>{ LDIG.mode=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));
     d.querySelectorAll(".szrow button").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.k; LDIG[k]=Math.max(LDIG.min, Math.min(LDIG.max, LDIG[k]+(+b.dataset.d))); ldigPaint(); try{ lphSnd(); }catch(_){ } }));
+    { const sb=document.getElementById("lphDigSrc"); if(sb) sb.addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;   // 【追加】発掘する恐竜の模様
+        if(ldigSrcKind()==="nuri") LDIG.srcNuri=b.dataset.v; else LDIG.srcMv=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }); }
     document.getElementById("lphDigBack").addEventListener("click", ldigClose);
     document.getElementById("lphDigGo").addEventListener("click", ldigGo);
     { const ex=document.getElementById("lphExplore"); if(ex) ex.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } ldigOpen(); }); }   // このきょうりゅうと たんけんする
@@ -12285,8 +12416,11 @@ function ldigClose(){ const d=lph$("lphDig"); if(d) d.classList.remove("on"); }
 function ldigGo(){
     if(!LITE.active || LDIG.on) return;
     LDIG.ret={ target:LITE.target, idx:LITE.curIdx, quality:LITE.quality, intrinsic:LITE.intrinsic||1,
-        opts: LITE.nuri ? { nuri:true, egg:false, small:!!LITE.nuri.small, pick:!!LITE.nuri.pick } : undefined, iar:!!LITE.iar,   // 戻る時は卵からではなく、そのまま表示
-        buddy:ldigBuddyKey(), dig:(LITE.target==="dog") ? "artifact" : "dino" };   // 表示中のモデル＝相棒。いぬ＝出土品を掘る／恐竜＝恐竜を掘る
+        opts: LITE.nuri ? { nuri:true, egg:false, small:!!LITE.nuri.small, pick:!!LITE.nuri.pick }
+            : LITE.mvPick ? { mvPick:true, plain:!!LITE.selPlain } : undefined, iar:!!LITE.iar,   // 戻る時は卵からではなく、そのまま表示（「ARで みる」：選んでいた ぬりえ／ぬりえなし のまま）
+        buddy:ldigBuddyKey(), dig:(LITE.target==="dog") ? "artifact" : "dino",   // 表示中のモデル＝相棒。いぬ＝出土品を掘る／恐竜＝恐竜を掘る
+        digSrc:(LITE.target==="dino") ? ldigSrcCur() : "plain",                  // 【追加】発掘する恐竜の模様（plain／sample／own）
+        buddyPlain:!!(LITE.target==="dino" && LITE.mvPick && LITE.selPlain) };   // 【追加】「ARで みる」で ぬりえなしを選んでいた＝相棒も ぬりえなし
     LDIG.on=true; LDIG.leaving=true; window.__liteDigLeaving=true;   // ARモデル画面の終了後の画面（モデル表示・ぬりえ）を開かせない
     ldigClose();
     if(LITE.iar){ iarEnd(); return; }   // iPhone・iPad：その場で終わる（litephoneend）
@@ -12306,6 +12440,7 @@ function ldigSnapshot(){
 function ldigApply(){
     const r=LDIG.ret||{}, dig=(r.dig==="artifact") ? "artifact" : "dino";
     BUDDY_LOCK = (r.buddy && COMPANIONS[r.buddy]) ? r.buddy : null;   // 表示していたモデルを最後まで相棒に（相棒えらびは出さない）
+    LDIG.play=true;   // 【追加】リザルトはポイント・タイムだけ（相棒・カードは手に入らない）
     recoOn=true; segSelect("segReco","on");
     chosenMode=LDIG.mode; segSelect("segMode", LDIG.mode);
     segSelect("segDig", dig);
@@ -12329,6 +12464,9 @@ function ldigSetVars(v){
 }
 function ldigRestore(){
     BUDDY_LOCK=null;   // 相棒の固定をやめる
+    LDIG.play=false;
+    try{ digPaintClear(); }catch(e){ console.warn("[たんけん] 模様を戻せませんでした", e); }   // 【追加】発掘する恐竜の模様をはがす（メイン画面の設定でモデルを作り直す前に）
+    try{ if(window.__nuriPlainOff) window.__nuriPlainOff(); }catch(_){ }                       // 【追加】相棒の ぬりえ を戻す
     const S=LDIG.snap; if(!S) return; LDIG.snap=null;
     try{
         ldigSetVars(S.v);
@@ -12385,10 +12523,93 @@ function ldigAfterLiteEnd(){
     const step=()=>{
         if(!LDIG.on) return;
         clear = ldigBusy() ? 0 : clear+1;
-        if(clear>=3 || performance.now()-t0>20000){ ldigCardHide(); ldigOpenPrep(); return; }   // 読み込みが落ち着いたら（念のため20秒で先へ）
+        if(clear>=3 || performance.now()-t0>20000){   // 読み込みが落ち着いたら（念のため20秒で先へ）
+            ldigPrepDig().then(()=>{ if(!LDIG.on) return; ldigCardHide(); ldigOpenPrep(); });   // 【追加】発掘する恐竜の模様・図鑑のカード・相棒の ぬりえなし を用意してから
+            return; }
         LDIG.waitT=setTimeout(step, 200);
     };
     LDIG.waitT=setTimeout(step, 300);
+}
+// 【追加】たんけんの準備：発掘する恐竜に模様を貼る（見本／じぶんで ぬった）→ 図鑑のカード → 相棒を ぬりえなしに
+async function ldigPrepDig(){
+    const r=LDIG.ret||{};
+    if(r.dig==="dino" && (r.digSrc==="sample" || r.digSrc==="own")){
+        try{ await digPaintStart(r.digSrc, (t)=>{ if(LDIG.on) ldigCard("wait", t); }); }
+        catch(e){ console.warn("[たんけん] 発掘する恐竜の模様を用意できませんでした", e); try{ digPaintClear(); }catch(_){ } }
+    }
+    if(r.buddyPlain && r.buddy){ try{ window.__nuriPlainOn(r.buddy); }catch(e){ console.warn("[たんけん] 相棒", e); } }
+}
+/* ---- 【追加】発掘する恐竜の模様（たんけん中だけ）----
+ *   ・見本＝cardDebug=2 の見本と同じ設定（EV_SAMPLES）で、この端末で塗る。作った模様は端末に保存（2回目からはすぐ）
+ *   ・じぶんで ぬった＝ぬりえの模様（ぬっていない種類は見本）
+ *   ・発掘モデル（dinoDigModels）にだけ貼り、終わったらはがす。図鑑・ホログラムのカードも同じ模様にする（gcRef） */
+const DIGP={ on:false, src:{}, smp:{}, mem:{}, roots:[], gen:0 };
+window.__digCardSrc=(key)=> DIGP.on ? (DIGP.src[key]||null) : null;
+window.__digSamplePaint=(key)=> DIGP.smp[key]||null;
+function digSlicer(){ let t=performance.now(); return async()=>{ if(performance.now()-t>12){ await new Promise(r=>setTimeout(r,0)); t=performance.now(); } }; }
+async function digSampleLoad(key){   // 見本の模様（覚えている → 端末に保存 → その場で塗る）
+    const S=(typeof EV_SAMPLES!=="undefined")? EV_SAMPLES.find(x=>x.key===key) : null; if(!S) return null;
+    await nuriLoadRegistry(); const D=await nuriLoadFaces(key), T=D.info.cellsPerSide, len=D.F.face_part.length*T*T*4;
+    const sig=evSampleSig(S)+"|"+D.info.keysSha1;
+    const m=DIGP.mem[key]; if(m && m.sig===sig) return m;
+    try{ const r=await ldbReq("cards","readonly",st=>st.get("smp|"+key));
+        if(r && r.sig===sig && r.rgba){ const rgba=await nuriUnzip(r.rgba, r.z); if(rgba && rgba.length===len){ const p={ sig, rgba, cs:r.cs, keysSha1:D.info.keysSha1 }; DIGP.mem[key]=p; return p; } } }catch(_){ }
+    const out=await window.NURI_EVENT.samplePaint(key, evCrayon(S));
+    if(!out || !out.paintedFaces || !out.rgba || out.rgba.length!==len) return null;
+    const p={ sig, rgba:out.rgba, cs:out.cs, keysSha1:out.keysSha1 }; DIGP.mem[key]=p;
+    try{ const zz=await nuriZip(out.rgba, true); ldbReq("cards","readwrite",st=>{ st.put({ sig, z:zz.z, rgba:zz.d, cs:out.cs, t:Date.now() }, "smp|"+key); return null; }); }catch(_){ }
+    return p;
+}
+async function digPaintModel(key, cont, p, pause){   // 発掘モデル1体に模様を貼る（元の形は NURI_ORIG に残る）。貼れたら { root, st }（はがす時に使う）
+    if(!cont || !p || !p.rgba) return null;
+    const D=NURI.maps[key] || await nuriLoadFaces(key), root=cont.userData.model||cont;
+    const st= pause ? await nuriBuildStoreAsync(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH, pause)
+                    : nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH);
+    if(!st || !st.ok){ console.warn("[たんけん] この恐竜モデルには模様を貼れませんでした", key); return null; }
+    const r=nuriApplyStore(root, st); if(!r.ok){ nuriDisposeStore(st); return null; }
+    return { root, st };
+}
+function digUnpaint(o){ if(!o) return; try{ nuriApplyStore(o.root, null); }catch(_){ } try{ nuriDisposeStore(o.st); }catch(_){ } }
+function digPaintOf(key){ const w=DIGP.src[key]; return w==="own" ? NURI.paint[key] : w==="smp" ? DIGP.smp[key] : null; }
+function digPaintNewModel(idx, cont){ if(!DIGP.on || !DINOS[idx]) return; const k=DINOS[idx].key, p=digPaintOf(k), gen=DIGP.gen;
+    if(p) digPaintModel(k, cont, p, null).then(o=>{ if(!o) return; if(gen===DIGP.gen && DIGP.on) DIGP.roots.push(o); else digUnpaint(o); }).catch(()=>{}); }   // 孵化で新しく作ったモデル
+function digDexRedraw(){
+    try{ gcTexSync(); }catch(_){ }   // ホログラム・VR のカード
+    try{ if(typeof dexPanel!=="undefined" && dexPanel && dexPanel.draw) dexPanel.draw(); }catch(_){ }
+}
+async function digPaintStart(src, say){
+    digPaintClear();
+    const gen=++DIGP.gen, keys=(typeof DINOS!=="undefined"? DINOS : []).map(d=>d.key), want={};
+    for(const k of keys) want[k]=(src==="own" && NURI.paint[k] && NURI.maps[k]) ? "own" : "smp";   // じぶんで ぬった：ぬっていない種類は見本
+    const need=keys.filter(k=>want[k]==="smp");
+    for(let i=0;i<need.length;i++){
+        if(say) say("みほんの もようを じゅんびしているよ（"+(i+1)+"/"+need.length+"）");
+        await new Promise(r=>setTimeout(r,30));   // 案内を先に出す
+        let p=null; try{ p=await digSampleLoad(need[i]); }catch(e){ console.warn("[たんけん] 見本の模様", need[i], e); }
+        if(gen!==DIGP.gen) return;
+        if(p) DIGP.smp[need[i]]=p; else want[need[i]]=null;   // 作れなかった種類は ぬりえなし
+    }
+    try{ nuriDropPix(); }catch(_){ }   // 用紙の画素リストは手放す
+    if(say) say("きょうりゅうに もようを ぬっているよ…");
+    const pause=digSlicer();
+    for(let i=0;i<keys.length;i++){ const k=keys[i]; if(!want[k]) continue;
+        const cont=(typeof dinoDigModels!=="undefined" && dinoDigModels)? dinoDigModels[i] : null;
+        const p= want[k]==="own" ? NURI.paint[k] : DIGP.smp[k];
+        let o=null; try{ o=await digPaintModel(k, cont, p, pause); }catch(e){ console.warn("[たんけん] 模様", k, e); }
+        if(gen!==DIGP.gen){ digUnpaint(o); return; }   // 途中でやめた（はがし済みの分のあとに貼った1体もはがす）
+        if(o) DIGP.roots.push(o); }
+    DIGP.src=want; DIGP.on=true;
+    if(say) say("ずかんの カードを じゅんびしているよ…");
+    const G=gameCards(), lab=cardLabel();
+    if(G) for(const k of keys){ if(!want[k]) continue; try{ await G.ensure("dino", k, lab, false); }catch(e){ console.warn("[たんけん] 図鑑のカード", k, e); } if(gen!==DIGP.gen) return; }
+    try{ if(typeof tcDisposeRenderer==="function") tcDisposeRenderer(); }catch(_){ }   // 撮影用の WebGL は返す
+    digDexRedraw();
+}
+function digPaintClear(){
+    DIGP.gen++;
+    for(const o of DIGP.roots) digUnpaint(o);
+    const was=DIGP.on; DIGP.roots=[]; DIGP.on=false; DIGP.src={}; DIGP.smp={};   // 見本の模様は DIGP.mem に覚えておく（次の たんけん ですぐ使う）
+    if(was) digDexRedraw();
 }
 function ldigOpenPrep(){
     const h=document.querySelector("#tabarPrep h2");
@@ -12594,7 +12815,9 @@ addEventListener("resize",()=>{
             ue.style.display=(window.MV_SHOW_URL && info && info.url)?"block":"none"; }   // 非表示だが後で表示できる準備
     }
 
-    function curIdx(){ return parseInt(sel.value,10)||0; }
+    // 【変更】「ARで みる」（きょうりゅう）：じぶんで ぬった恐竜（値＝100＋番号）と、ぬりえなしの8体（値＝番号）を選べる
+    function curIdx(){ return (parseInt(sel.value,10)||0)%100; }
+    function curPlain(){ return !!window.__mvLiteMode && curDigTarget()==="dino" && (parseInt(sel.value,10)||0)<100; }   // ぬりえなしを選んでいる
 
     // GLTFExporter は必要時に動的import（失敗してもゲーム本体には影響しない）
     async function getExporter(){
@@ -12613,7 +12836,7 @@ addEventListener("resize",()=>{
     }
 
     // 既存データから対象の THREE.Object3D を取得（無ければ生成／無ければ null）
-    function getObject(target, idx){
+    function getObject(target, idx, plain){   // plain：ぬっていても模様を貼らない（「ARで みる」の ぬりえなし）
         if(target==="dino"){
             const cache = (typeof _dinoCacheS!=="undefined"?_dinoCacheS:null);
             let m = cache && cache[idx];
@@ -12622,8 +12845,8 @@ addEventListener("resize",()=>{
                 try{ dinoSmooth = true; m = makeDigDino(DINOS[idx]); }
                 finally{ try{ dinoSmooth = prev; }catch(_){ } }
             }
-            if(m && DINOS[idx] && window.__dinoHasPaint && window.__dinoHasPaint(DINOS[idx].key)){   // craftARt Go：ぬりえを適用（ゲームのモデルは元の模様のまま）
-                try{ const pm=(cache && cache[idx]===m && typeof cloneCont==="function") ? cloneCont(m) : m;
+            if(m && !plain && DINOS[idx] && window.__dinoHasPaint && window.__dinoHasPaint(DINOS[idx].key)){   // craftARt Go：ぬりえを適用（ゲームのモデルは元の模様のまま）
+                try{ const pm=(cache && cache[idx]===m && typeof cloneContBase==="function") ? cloneContBase(m) : m;
                     window.__dinoPaintApply(DINOS[idx].key, pm.userData.model||pm); m=pm; }catch(e){ console.warn("[ぬりえ] モデルを みる", e); } }
             if(m){ const pv=m.userData.model||m;   // 標準姿勢へ（アニメの脚/尾/翼/首を中立に戻す）
                 if(pv&&pv.userData){ if(pv.userData.head)pv.userData.head.rotation.set(0,0,0); if(pv.userData.tail)pv.userData.tail.rotation.set(0,0,0); (pv.userData.wings||[]).forEach(w=>w&&w.rotation.set(0,0,0)); (pv.userData.legs||[]).forEach(p=>p&&p.rotation.set(0,0,0)); }
@@ -12654,6 +12877,11 @@ addEventListener("resize",()=>{
         const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8)
                 : isDog ? ((typeof DOGS!=="undefined" ? DOGS.length : 8)+1) : artCount();   // 出土品/恐竜=8点、犬=8犬種＋しば犬
         curList = []; sel.innerHTML = "";
+        if(isDino && window.__mvLiteMode && typeof DINOS!=="undefined"){   // 【追加】「ARで みる」：先に じぶんで ぬった恐竜（🖍 ○○（ぬりえ））
+            for(let i=0;i<n;i++){ const d=DINOS[i]; if(!(d && window.__dinoHasPaint && window.__dinoHasPaint(d.key))) continue;
+                const opt=document.createElement("option"); opt.value=String(100+i); opt.textContent="🖍 "+String(d.label||"").replace(/^\S+\s*/,"")+"（ぬりえ）";
+                sel.appendChild(opt); curList.push(100+i); }
+        }
         for(let i=0;i<n;i++){
             const opt=document.createElement("option");
             opt.value=String(i);
@@ -12866,7 +13094,7 @@ addEventListener("resize",()=>{
         }
 
         // 恐竜：既存の生成モデルをGLB化（色はテクスチャ焼き込み）。サイズは fit(補正) or raw(等倍)
-        const obj = getObject(target, idx);
+        const obj = getObject(target, idx, curPlain());
         if(!obj){ setNote("モデルを じゅんびちゅうです。すこし まってから もういちど ためしてね。"); viewer.removeAttribute("src"); updateAR(); return; }
         const _freshVoxel = (target==="dog");   // 犬は毎回新規生成（非キャッシュ）＝使い終わりに破棄。恐竜はキャッシュのため破棄しない
         const _disposeVox=(o)=>{ if(!o||!o.traverse) return; try{ o.traverse(x=>{ if(x.geometry) x.geometry.dispose(); if(x.material){ const ms=Array.isArray(x.material)?x.material:[x.material]; ms.forEach(m=>{ if(m){ if(m.map) m.map.dispose(); m.dispose(); } }); } }); }catch(_){ } };
@@ -12908,7 +13136,8 @@ addEventListener("resize",()=>{
 
     function updateAR(){
         const ok = !!(viewer && viewer.canActivateAR && viewer.getAttribute("src"));
-        if(arBtn) arBtn.style.display = ok ? "inline-block" : "none";
+        const always = !!window.__mvLiteMode && (typeof recoOn!=="undefined") && !recoOn;   // 【追加】おすすめ設定オフ：「ARで みる」から開いた時は、どの端末でも出す（使えない時は押せない灰色）
+        if(arBtn){ arBtn.style.display = (ok || always) ? "inline-block" : "none"; arBtn.disabled = !ok; }
     }
 
     async function openModal(){
@@ -12918,7 +13147,8 @@ addEventListener("resize",()=>{
         buildOptions();
         updateToggles();
         modal.style.display="flex";
-        if(curList.length){ sel.value="0"; showModel(0); }
+        updateAR();
+        if(curList.length){ sel.selectedIndex=0; showModel(curIdx()); }
         else { setNote("モデルの いちらんを よみこめませんでした。インターネットに つながって いるか たしかめてね。"); }
     }
     function closeModal(){
@@ -12939,7 +13169,8 @@ addEventListener("resize",()=>{
             const tgt=curDigTarget(), i=curIdx();
             const intrinsic = (tgt==="dino") ? 1 : (tgt==="dog" ? ((typeof DOGS!=="undefined"&&DOGS[i]?DOGS[i].realH:38)/100) : 1);   // 恐竜=Lite側で固定の100%（liteDinoK）／犬=realH(cm)→m／出土品=原寸
             const useIar=!navigator.xr && typeof iarWanted==="function" && iarWanted();   // iPhone（WebXRなし）：タップ直後に許可を求めるので、ここでは待たない
-            const ok = useIar ? (await enterLiteIAR(tgt, i, artQuality, intrinsic))===true : await enterLiteAR(tgt, i, artQuality, intrinsic);   // 【追加】iPhone：カメラ＋ジャイロ方式
+            const lo = (tgt==="dino") ? { mvPick:true, plain:curPlain() } : undefined;   // 【追加】恐竜：ぬりえ／ぬりえなし を選べる
+            const ok = useIar ? (await enterLiteIAR(tgt, i, artQuality, intrinsic, lo))===true : await enterLiteAR(tgt, i, artQuality, intrinsic, lo);   // 【追加】iPhone：カメラ＋ジャイロ方式
             if(ok){ modal.style.display="none"; window.__mvPreviewPause=false; }   // 入室成功でモーダルを閉じる
             else { setNote("ARを はじめられませんでした。ARが つかえる きかいで ためしてね。"); }
             return;
@@ -12976,7 +13207,7 @@ addEventListener("resize",()=>{
             _dinoTrexHCache={};
             try{ await loadCsvRows(); }catch(_){ }
             buildOptions(); updateToggles();
-            if(curList.length){ sel.value="0"; showModel(0); } else { setNote("モデルの いちらんを よみこめませんでした。インターネットに つながって いるか たしかめてね。"); }
+            if(curList.length){ sel.selectedIndex=0; showModel(curIdx()); } else { setNote("モデルの いちらんを よみこめませんでした。インターネットに つながって いるか たしかめてね。"); }
         };
         setTimeout(fill, 100);
     })();
@@ -12993,7 +13224,7 @@ addEventListener("resize",()=>{
     window.MV_VIEW_KIND = window.MV_VIEW_KIND || "artifact"; mvKindPaint();
     if(kindSeg) kindSeg.addEventListener("click",(e)=>{ const b=e.target.closest("button"); if(!b||!b.dataset.t) return;
         window.MV_VIEW_KIND=b.dataset.t; mvKindPaint();
-        if(modal.style.display!=="none"){ buildOptions(); updateToggles(); if(curList.length){ sel.value="0"; showModel(0); } }
+        if(modal.style.display!=="none"){ buildOptions(); updateToggles(); if(curList.length){ sel.selectedIndex=0; showModel(curIdx()); } }
     });
     // ボタンは #menu 内にあるため、タイトルメニュー表示中だけ自然に表示される（プレイ中は #menu が非表示）
     // 初回オープンの重さ軽減：起動後（プリロード完了後）にGLTFExporter/焼き込みを一度だけ空回し（JITウォームアップ）
@@ -13427,7 +13658,7 @@ function nuriStatsFor(key){
 function nuriApplyStats(key){
     const c=(typeof COMPANIONS!=="undefined")? COMPANIONS[key] : null, def=(YEAR_CONFIG.companions||{})[key];
     if(!c || !def || !def.special) return;
-    const r=nuriStatsFor(key);
+    const r=(NURI.plainKey===key)? null : nuriStatsFor(key);   // 【追加】ぬりえなしの相棒で たんけん中は、元の値
     const f= r? r.final : { power:def.power, discovery:def.discovery, smarts:def.smarts, discP:def.special.discP, discN:def.special.discN, digN:def.special.digN };
     c.power=f.power; c.discovery=f.discovery; c.smarts=f.smarts;
     c.special=Object.assign({}, def.special, { discP:f.discP, digP:100-f.discP, discN:f.discN, digN:f.digN });   // 元の設定（YEAR_CONFIG）は書き換えない
@@ -13487,6 +13718,11 @@ window.__dinoHasPaint = function(key){ return !!(NURI.paint[key] && NURI.maps[ke
 // カードのスコア用：ステータスの計算に実際に使った「色ごとの画素数」（整数）を返す。ぬり絵の値を使っていない時は null（＝ぬり絵なしの値）
 window.__dinoPaintStat = function(key){ if(!nuriStatsFor(key)) return null; const cs=NURI.cstat[key]; return { total:cs.total|0, counts:cs.counts.map(k=>k|0) }; };
 window.__dinoPaintApply = function(key, root){ if(!root || !NURI.paint[key] || !NURI.maps[key]) return; try{ nuriApply(key, root); }catch(e){ console.warn("[ぬりえ]",e); } };
+window.__nuriPlainKey = ()=>NURI.plainKey||null;   // 【追加】ぬりえなしで たんけんしている相棒（その恐竜は相棒の模様・ステータスを使わない）
+// 【追加】ぬりえなしの相棒で たんけん：ぬっていても、相棒は元の姿・元の値にする（終わったら戻す）
+window.__nuriPlainOn = function(key){ NURI.plainKey=key; nuriApplyStats(key);
+    try{ const c=COMPANIONS[key]; if(c){ if(c.bodyS) nuriApplyStore(c.bodyS, null); if(c.bodyB) nuriApplyStore(c.bodyB, null); } }catch(e){ console.warn("[ぬりえ]", e); } };
+window.__nuriPlainOff = function(){ const k=NURI.plainKey; if(!k) return; NURI.plainKey=null; nuriApplyStats(k); try{ nuriRefreshHolders(k); }catch(_){ } };
 
 // ---- 画面：メニュー ----
 const $=(id)=>document.getElementById(id);
@@ -13506,6 +13742,7 @@ function nuriMenuRefresh(){
     nuriAgainRefresh(painted, nm);
 }
 // 【追加】メイン画面の「ARで もういちど みる」：ARが使える端末（Android の AR／iPhone・iPad のカメラ方式）だけ表示
+//   【変更】ぬりえが1つもない時は、どの端末でも出さない。おすすめ設定オフの時は、どの端末でも出す（ARが使えない端末では押せない灰色）
 // ・恐竜は AR画面の下で選ぶ（ぬりえがある恐竜だけ）。最初は、いちばん最近 読み込んだ ぬりえの恐竜
 function nuriPaintedKeys(){ return Object.keys(NURI.paint).filter(k=>NURI.paint[k] && dinoIdx(k)>=0); }
 function nuriPaintDate(k){ try{ const t=localStorage.getItem(storeKey(k))||""; const m=/"date":(\d+)/.exec(t.slice(0,400)); return m?+m[1]:0; }catch(_){ return 0; } }
@@ -13515,10 +13752,11 @@ window.__nuriSetArKey=(k)=>{ if(k) NURI_AR.key=k; };
 function nuriAgainRefresh(painted, nm){
     const box=$("nuriAgainBox"), btn=$("nuriAgainAR"), note=$("nuriAgainNote"); if(!box||!btn) return;
     const can=!!NURI_AR.cap || (typeof iarWanted==="function" && iarWanted());
-    box.style.display = can ? "" : "none"; if(!can) return;
-    const n=nuriPaintedKeys().length;
-    btn.disabled=!n;
-    if(note) note.textContent = n ? "" : "ぬりえを よみこむと みられるよ";
+    const n=nuriPaintedKeys().length, reco=(typeof recoOn==="undefined") || recoOn;
+    const show = n>0 && (can || !reco);
+    box.style.display = show ? "" : "none"; if(!show) return;
+    btn.disabled=!can;
+    if(note) note.textContent = "";
 }
 async function nuriAgainAR(){
     const key=nuriLatestKey(), i=dinoIdx(key); if(!key || i<0) return;
@@ -14066,8 +14304,8 @@ window.NURI_EVENT={
     async withPaint(key, p, keysSha1, fn){
         await nuriLoadRegistry(); const D=await nuriLoadFaces(key), T=D.info.cellsPerSide;
         if(keysSha1!==D.info.keysSha1 || !p || !p.rgba || p.rgba.length!==D.F.face_part.length*T*T*4) throw new Error("ぬりえの表が更新されたため、このカードは作り直せません");
-        const op=NURI.paint[key], oc=NURI.cstat[key], os=NURI.store[key];
-        delete NURI.store[key];
+        const op=NURI.paint[key], oc=NURI.cstat[key], os=NURI.store[key], pk=NURI.plainKey;
+        delete NURI.store[key]; NURI.plainKey=null;   // （ぬりえなしの相棒で たんけん中でも、この模様の値で計算する）
         NURI.paint[key]={ rgba:p.rgba, cs:p.cs };
         if(nuriCsOk(p.cs)) NURI.cstat[key]=p.cs; else delete NURI.cstat[key];
         nuriApplyStats(key);
@@ -14077,6 +14315,7 @@ window.NURI_EVENT={
             if(op) NURI.paint[key]=op; else delete NURI.paint[key];
             if(oc) NURI.cstat[key]=oc; else delete NURI.cstat[key];
             if(os) NURI.store[key]=os; else delete NURI.store[key];
+            NURI.plainKey=pk;
             nuriApplyStats(key);
             if(ts && ts!==os) nuriDisposeStore(ts);   // カード撮影用に作った模様は捨てる（ゲームの恐竜には貼っていない）
         }
@@ -14364,7 +14603,7 @@ function tcBuildModel(kind, key, plain){
         const i=DINOS.findIndex(d=>d.key===key); if(i<0) throw new Error("no dino "+key);
         const src=(typeof _dinoCacheS!=="undefined")? _dinoCacheS[i] : null;   // 入室前に作った発掘モデル（模様なし・同じ作り方）
         let cont;
-        if(src){ cont=cloneCont(src); cont.visible=true; }   // 写すだけ（作り直さない。形・材質は共有＝撮影で形は変えない）
+        if(src){ cont=cloneContBase(src); cont.visible=true; }   // 写すだけ（作り直さない。形・材質は共有＝撮影で形は変えない）
         else { const ps=dinoSmooth; try{ dinoSmooth=true; cont=makeDigDino(DINOS[i]); } finally { dinoSmooth=ps; } }   // まだ無い時（イベント用カードなど）は作る
         const m=cont.userData.model||cont;
         if(!plain) try{ if(window.__dinoPaintApply) window.__dinoPaintApply(key, m); }catch(e){ console.warn("[カード] ぬりえ", e); }   // ぬりえ済み＝その模様のまま（plain＝模様なし）
@@ -16999,8 +17238,18 @@ function gcPainted(kind, key){   // ぬりえ（模様・ステータス）が�
     try{ return !!((window.__dinoHasPaint && window.__dinoHasPaint(key)) || (window.__dinoPaintStat && window.__dinoPaintStat(key))); }catch(_){ return false; }
 }
 function gcRef(kind, key, paint){   // 実際に使うカードの種類（ぬっていなければ、ぬり絵ありを頼まれても、ぬり絵なしの1枚）
+    if(!paint && kind==="dino"){   // 【追加】たんけん中の図鑑・ホログラム＝発掘する恐竜と同じ模様（じぶんで ぬった＝ぬり絵あり／見本＝見本の模様）
+        const ds=window.__digCardSrc ? window.__digCardSrc(key) : null;
+        if(ds==="own") paint=true;
+        else if(ds==="smp") return { id:kind+":"+key+"@smp", plain:false, smp:true };
+    }
     const p=!!paint && gcPainted(kind, key);
     return { id:kind+":"+key+(p? "@paint" : ""), plain:!p };
+}
+function gcWithPaint(R, key, fn){   // 【追加】見本の模様のカード：その模様を一時的に「いまの模様」にして作る（ゲームの恐竜には貼らない）
+    if(R && R.smp){ const p=window.__digSamplePaint ? window.__digSamplePaint(key) : null;
+        if(p && window.NURI_EVENT) return window.NURI_EVENT.withPaint(key, { rgba:p.rgba, cs:p.cs }, p.keysSha1, fn); }
+    return fn();
 }
 function gcCk(kind, key, label, paint){ return gcRef(kind, key, paint).id+"|"+label; }
 function gcVer(id){ return GC.ver[id]|0; }
@@ -17025,17 +17274,22 @@ async function gcMake(kind, key, label, paint){
     for(let n=0; n<3; n++){
         const R=gcRef(kind, key, paint), ck=R.id+"|"+label, v=gcVer(R.id), c=GC.card[ck];
         if(c && c.ver===v) return c;
-        const S=gcSigs(kind, key, label, R);
-        if(c && c.sig===S.card){ c.ver=v; return c; }   // 作り直しを頼まれたが中身は同じ（模様もステータスも変わっていない）
-        let blob=await gcDbGet("card|"+ck, S.card);   // 端末に保存したカード（前回の起動で作ったもの）
-        if(!blob){
-            const art=await gcArt(kind, key, R, S.art);
-            const d=S.d; d.player=label;   // 左上の名称
-            const cv=await tcCardCanvas(d, art, GC_SCALE);
-            blob=await new Promise(r=>cv.toBlob(r, "image/jpeg", GC_JPEG)); cv.width=cv.height=0;   // キャンバスのメモリはすぐ返す
-            if(!blob) throw new Error("カード画像を書き出せません "+ck);
-            gcDbPut("card|"+ck, S.card, blob);
-        }
+        const made=await gcWithPaint(R, key, async()=>{   // 見本の模様のカード（たんけん）は、その模様を一時的に当てて作る
+            const S=gcSigs(kind, key, label, R);
+            if(c && c.sig===S.card) return { S, same:true };   // 作り直しを頼まれたが中身は同じ（模様もステータスも変わっていない）
+            let blob=await gcDbGet("card|"+ck, S.card);   // 端末に保存したカード（前回の起動で作ったもの）
+            if(!blob){
+                const art=await gcArt(kind, key, R, S.art);
+                const d=S.d; d.player=label;   // 左上の名称
+                const cv=await tcCardCanvas(d, art, GC_SCALE);
+                blob=await new Promise(r=>cv.toBlob(r, "image/jpeg", GC_JPEG)); cv.width=cv.height=0;   // キャンバスのメモリはすぐ返す
+                if(!blob) throw new Error("カード画像を書き出せません "+ck);
+                gcDbPut("card|"+ck, S.card, blob);
+            }
+            return { S, blob };
+        });
+        const S=made.S; if(made.same){ c.ver=v; return c; }
+        const blob=made.blob;
         if(gcVer(R.id)!==v || gcRef(kind, key, paint).id!==R.id) continue;   // 作っている間にぬりえが変わった → 作り直す
         const url=URL.createObjectURL(blob);
         const img=GC.wait[ck] || new Image(); delete GC.wait[ck];   // 待っていた空の画像に入れる（読み込み完了で、待っていた画面が描き直す）
