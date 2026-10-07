@@ -54,6 +54,17 @@
         -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
         filter:drop-shadow(0 0 20px rgba(210,170,90,0.45));
     }
+    /* 【追加】おすすめ設定の切り替え（右上・小さく）。もとの「おすすめ設定」の枠は出さない */
+    #optReco{ display:none !important; }
+    #recoMini{ position:absolute; top:max(10px, env(safe-area-inset-top)); right:max(12px, env(safe-area-inset-right)); z-index:3; display:flex; align-items:center; gap:2px;
+        padding:3px; border-radius:99px; background:rgba(20,14,44,.78); border:1px solid rgba(180,140,255,.45); box-shadow:0 2px 10px rgba(0,0,0,.35); }
+    #recoMini .lb{ padding:0 5px 0 8px; font-size:11px; font-weight:800; color:#b9aee0; letter-spacing:1px; }
+    #recoMini button{ border:none; border-radius:99px; padding:5px 10px; background:transparent; color:#c9bcff; font-size:11px; font-weight:800; cursor:pointer; font-family:inherit; }
+    #recoMini button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
+    @media (max-width:700px){ .menu-inner{ padding-top:30px; } }   /* 右上の切り替えと、上の文字が重ならないように */
+    /* 【追加】「VR・ARで はっくつ」の見出し（「モデルを みよう」と同じ見た目） */
+    .digSectionTitle{ width:100%; box-sizing:border-box; padding-top:14px; margin:0 0 9px; border-top:1px solid rgba(180,140,255,.28);
+        font:800 13px sans-serif; color:#c3b3f2; letter-spacing:1.5px; opacity:.95; text-align:left; }
     .subtitle{ margin:8px 0 22px; color:rgba(214,200,255,.78); font-size:clamp(13px,2.2vw,17px); letter-spacing:1px; text-align:center; }
 
     #vrbtnwrap{ width:100%; margin-bottom:14px; display:flex; flex-direction:column; gap:12px; }   /* VR・AR入室ボタンの間に余白（非表示のボタンは詰める） */
@@ -271,6 +282,13 @@
 #nuriAgainNote{ font-size:12px; color:#b9aee0; text-align:center; }
 #nuriAgainNote:empty{ display:none; }
 #nuriSection .nuriRow{ display:flex; gap:8px; flex-wrap:wrap; }
+#nuriSample summary{ cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; }
+#nuriSampleList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
+#nuriSampleList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
+#nuriSampleList button.all{ grid-column:1/-1; color:#ffd86a; border-color:rgba(255,216,106,.55); }
+#nuriSampleList button:disabled{ opacity:.4; cursor:default; }
+#nuriSampleNote{ margin-top:6px; font-size:13px; color:#c3b3f2; text-align:center; }
+#nuriSampleNote:empty{ display:none; }
 #nuriPrint summary{ cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; }
 #nuriPrintList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
 #nuriPrintList a,#nuriResetList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; text-decoration:none; font-size:14px; cursor:pointer; }
@@ -421,11 +439,19 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
 
 <!-- ═══ タイトル / メニュー ═══ -->
 <div id="menu">
+  <!-- 【追加】おすすめ設定の切り替え（右上・小さく）。押すと下の「おすすめ設定」（非表示）を切り替える -->
+  <div id="recoMini" role="group" aria-label="おすすめ設定">
+    <span class="lb">おすすめ</span>
+    <button type="button" data-v="on" class="on">オン</button>
+    <button type="button" data-v="off">オフ</button>
+  </div>
   <div class="menu-inner">
     <p class="kicker">ECHIZEN KOKUFU · EXCAVATION</p>
     <h1 class="title">越前国府発掘クエスト</h1>
     <p class="subtitle">歩いて探して、出土品や恐竜を掘り当てよう</p>
 
+    <!-- 【追加】VR・ARで発掘（「モデルを みよう」「ぬりえで じぶんの きょうりゅう」と同じ見出し） -->
+    <div class="digSectionTitle">⛏ VR・ARで はっくつ</div>
     <p id="loadingNote"><i></i>データを読み込み中…</p>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
@@ -643,6 +669,8 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <div id="nuriAgainNote"></div>
       </div>
       <details id="nuriPrint"><summary>📄 ぬりえを いんさつ</summary><div id="nuriPrintList"></div></details>
+      <!-- 【追加】おすすめ設定オフ：みほんの もようを、じぶんで ぬった きょうりゅうとして とりこむ（新しく／うわがき） -->
+      <details id="nuriSample" style="display:none"><summary>🎨 みほんから とりこむ</summary><div id="nuriSampleList"></div><div id="nuriSampleNote"></div></details>
       <div id="nuriStatus"></div>
       <div id="nuriResetList"></div>
       <button id="nuriResetAll" type="button" style="display:none">↩ ぜんぶ もとに もどす</button>
@@ -784,6 +812,7 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <h3>🖍 ぬりえで じぶんの きょうりゅう</h3>
         <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。</p>
         <p>ぬった色によって、その恐竜の<b>ステータスとスペシャル</b>も変わります（色とステータスの関係は「📊 得点・カードの仕組み」へ）。模様とステータスは、<b>相棒にしたとき・相棒えらびのカード・獲得カード</b>に入ります（図鑑のカードは元のまま）。</p>
+        <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。</p>
         <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
       </section>
       <section>
@@ -6553,7 +6582,7 @@ function preloadEverything(done){
         }
         if(job.companion){ try{ if(typeof preloadCompanionBody==="function") preloadCompanionBody(job.companion, job.smooth); }catch(_){}; j++; _preloadTimer=setTimeout(step,25); return; }
         const prev=dinoSmooth; dinoSmooth=job.smooth;   // B=ボクセル / S=なめらか（サイズは常に実寸）
-        try{ const m=makeDigDino(DINOS[job.idx]); m.visible=false; stage.add(m); job.cache[job.idx]=m; }catch(_){}
+        try{ const m=makeDigDino(DINOS[job.idx]); m.visible=false; stage.add(m); job.cache[job.idx]=m; if(typeof digPaintNewModel==="function") digPaintNewModel(job.idx, m); }catch(_){}   // 【修正】たんけん中に作り直したモデルにも模様
         dinoSmooth=prev;
         j++;
         _preloadTimer=setTimeout(step, 25);   // 1体ずつ間隔をあけて（フリーズ防止）
@@ -6583,7 +6612,8 @@ function tickHatch(now, dt){
             stage.remove(e.egg); sfxDig();
             const dn=DINOS[e.idx], mul=dinoSizeOf(e.idx);
             let m=dinoDigModels[e.idx];
-            if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; try{ digPaintNewModel(e.idx, m); }catch(_){ } }   // 【追加】たんけん中は発掘する恐竜の模様
+            if(!m){ m=makeDigDino(dn); stage.add(m); dinoDigModels[e.idx]=m; }
+            try{ if(typeof digEnsure==="function") digEnsure(e.idx, m, true); }catch(_){ }   // 【修正】たんけん中は発掘する恐竜の模様（まだ貼れていなければ、ここで貼る）
             m.visible=true;
             m.scale.setScalar(dinoCurScale()/(m.userData.builtScale||1));   // スケール確定（実寸モードは実寸倍率で補正）
             // 前後長（ローカル+Z＝鼻先方向）を回転前に測る
@@ -7311,6 +7341,14 @@ document.querySelectorAll("#segReco button").forEach(b=>b.onclick=()=>{ document
         updateEntryButtons();   // おすすめ切替で入室ボタンの表示も更新（オフ＝両方表示）
     });
 });
+(function recoMiniWire(){   // 【追加】右上の小さな切り替え → 「おすすめ設定」のボタンを押したのと同じ
+    const box=document.getElementById("recoMini"), seg=document.getElementById("segReco"); if(!box || !seg) return;
+    const paint=()=>{ box.querySelectorAll("button").forEach(b=>b.classList.toggle("on", (b.dataset.v==="on")===!!recoOn)); };
+    box.addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
+        const t=seg.querySelector('button[data-v="'+b.dataset.v+'"]'); if(t && (b.dataset.v==="on")!==!!recoOn) t.click(); paint(); });
+    try{ new MutationObserver(paint).observe(seg, { subtree:true, attributes:true, attributeFilter:["class"] }); }catch(_){ }   // ほかの所で切り替わった時（はっくつ など）も合わせる
+    paint();
+})();
 document.querySelectorAll("#segStar button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segStar button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); starEnabled=(b.dataset.v==="on"); });
 document.querySelectorAll("#segToolSwap button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segToolSwap button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); toolSwapAllowed=(b.dataset.v==="on"); });
 document.querySelectorAll("#segHoloFreeze button").forEach(b=>b.onclick=()=>{ document.querySelectorAll("#segHoloFreeze button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); holoFreezeTime=(b.dataset.v==="on"); });
@@ -12523,7 +12561,7 @@ function ldigAfterLiteEnd(){
     const step=()=>{
         if(!LDIG.on) return;
         clear = ldigBusy() ? 0 : clear+1;
-        if(clear>=3 || performance.now()-t0>20000){   // 読み込みが落ち着いたら（念のため20秒で先へ）
+        if(clear>=3 || performance.now()-t0>90000){   // 読み込みが落ち着いたら（念のため90秒で先へ。【修正】スマホはモデルの作り直しに20秒以上かかることがある）
             ldigPrepDig().then(()=>{ if(!LDIG.on) return; ldigCardHide(); ldigOpenPrep(); });   // 【追加】発掘する恐竜の模様・図鑑のカード・相棒の ぬりえなし を用意してから
             return; }
         LDIG.waitT=setTimeout(step, 200);
@@ -12543,7 +12581,7 @@ async function ldigPrepDig(){
  *   ・見本＝cardDebug=2 の見本と同じ設定（EV_SAMPLES）で、この端末で塗る。作った模様は端末に保存（2回目からはすぐ）
  *   ・じぶんで ぬった＝ぬりえの模様（ぬっていない種類は見本）
  *   ・発掘モデル（dinoDigModels）にだけ貼り、終わったらはがす。図鑑・ホログラムのカードも同じ模様にする（gcRef） */
-const DIGP={ on:false, src:{}, smp:{}, mem:{}, roots:[], gen:0 };
+const DIGP={ on:false, src:{}, smp:{}, mem:{}, roots:[], gen:0, done:new WeakMap(), busy:new WeakSet() };   // done：貼った発掘モデル（cont → {root,st}）／busy：貼っている途中
 window.__digCardSrc=(key)=> DIGP.on ? (DIGP.src[key]||null) : null;
 window.__digSamplePaint=(key)=> DIGP.smp[key]||null;
 function digSlicer(){ let t=performance.now(); return async()=>{ if(performance.now()-t>12){ await new Promise(r=>setTimeout(r,0)); t=performance.now(); } }; }
@@ -12566,13 +12604,35 @@ async function digPaintModel(key, cont, p, pause){   // 発掘モデル1体に�
     const st= pause ? await nuriBuildStoreAsync(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH, pause)
                     : nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH);
     if(!st || !st.ok){ console.warn("[たんけん] この恐竜モデルには模様を貼れませんでした", key); return null; }
+    if(DIGP.done.has(cont)){ nuriDisposeStore(st); return null; }   // 作っている間に、ほかの所で貼り終えた
     const r=nuriApplyStore(root, st); if(!r.ok){ nuriDisposeStore(st); return null; }
     return { root, st };
 }
 function digUnpaint(o){ if(!o) return; try{ nuriApplyStore(o.root, null); }catch(_){ } try{ nuriDisposeStore(o.st); }catch(_){ } }
 function digPaintOf(key){ const w=DIGP.src[key]; return w==="own" ? NURI.paint[key] : w==="smp" ? DIGP.smp[key] : null; }
-function digPaintNewModel(idx, cont){ if(!DIGP.on || !DINOS[idx]) return; const k=DINOS[idx].key, p=digPaintOf(k), gen=DIGP.gen;
-    if(p) digPaintModel(k, cont, p, null).then(o=>{ if(!o) return; if(gen===DIGP.gen && DIGP.on) DIGP.roots.push(o); else digUnpaint(o); }).catch(()=>{}); }   // 孵化で新しく作ったモデル
+// 【修正】発掘モデル1体に、まだ貼っていなければ貼る（たんけん中だけ）
+//   sync＝その場で貼る（恐竜が出てくる時。まだ貼れていない時の最後の手段）／それ以外は少しずつ貼る（モデルを作り直した時など）
+function digEnsure(idx, cont, sync){
+    if(!DIGP.on || !cont || !DINOS[idx] || DIGP.done.has(cont)) return;
+    const k=DINOS[idx].key, p=digPaintOf(k); if(!p || !NURI.maps[k]) return;
+    if(sync){
+        // 少しずつ貼っている途中でも、今すぐ貼る（途中の方は、終わった時に貼らずに捨てる＝digPaintModel）
+        try{ const D=NURI.maps[k], root=cont.userData.model||cont;
+            const st=nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH);
+            if(!st || !st.ok){ console.warn("[たんけん] この恐竜モデルには模様を貼れませんでした", k); return; }
+            if(!nuriApplyStore(root, st).ok){ nuriDisposeStore(st); return; }
+            const o={ root, st }; DIGP.done.set(cont, o); DIGP.roots.push(o); }catch(e){ console.warn("[たんけん] 模様", k, e); }
+        return;
+    }
+    if(DIGP.busy.has(cont)) return;
+    DIGP.busy.add(cont); const gen=DIGP.gen;
+    digPaintModel(k, cont, p, digSlicer()).then(o=>{ DIGP.busy.delete(cont); if(!o) return;
+        if(gen!==DIGP.gen || !DIGP.on || DIGP.done.has(cont)){ digUnpaint(o); return; }   // やめた／その間にその場で貼った
+        DIGP.done.set(cont, o); DIGP.roots.push(o); }).catch(()=>{ DIGP.busy.delete(cont); });
+}
+function digPaintNewModel(idx, cont){ digEnsure(idx, cont, false); }   // 新しく作った発掘モデル（作り直し・孵化）
+function digEnsureAll(){ if(!DIGP.on || typeof dinoDigModels==="undefined" || !dinoDigModels) return; dinoDigModels.forEach((m,i)=>{ if(m) digEnsure(i, m, false); }); }
+setInterval(()=>{ try{ digEnsureAll(); }catch(_){ } }, 1000);   // たんけん中：作り直されたモデルにも貼る（念のため）
 function digDexRedraw(){
     try{ gcTexSync(); }catch(_){ }   // ホログラム・VR のカード
     try{ if(typeof dexPanel!=="undefined" && dexPanel && dexPanel.draw) dexPanel.draw(); }catch(_){ }
@@ -12590,15 +12650,23 @@ async function digPaintStart(src, say){
         if(p) DIGP.smp[need[i]]=p; else want[need[i]]=null;   // 作れなかった種類は ぬりえなし
     }
     try{ nuriDropPix(); }catch(_){ }   // 用紙の画素リストは手放す
+    for(const k of keys) if(want[k] && !NURI.maps[k]){ try{ await nuriLoadFaces(k); }catch(_){ want[k]=null; } }   // 貼るための表
+    if(gen!==DIGP.gen) return;
+    DIGP.src=want; DIGP.on=true;   // 【修正】先に「たんけん中」にする（このあと作り直されたモデルにも貼れるように）
     if(say) say("きょうりゅうに もようを ぬっているよ…");
+    { const t0=performance.now();   // 【修正】発掘モデルの作り直しが終わるのを待つ（まだ無いモデルには貼れないため。最大60秒）
+      while(gen===DIGP.gen && (ldigBusy() || (typeof dinoDigModels!=="undefined" && dinoDigModels && keys.some((k,i)=>want[k] && !dinoDigModels[i]))) && performance.now()-t0<60000) await new Promise(r=>setTimeout(r,200)); }
+    if(gen!==DIGP.gen) return;
     const pause=digSlicer();
     for(let i=0;i<keys.length;i++){ const k=keys[i]; if(!want[k]) continue;
         const cont=(typeof dinoDigModels!=="undefined" && dinoDigModels)? dinoDigModels[i] : null;
+        if(!cont || DIGP.done.has(cont) || DIGP.busy.has(cont)) continue;
         const p= want[k]==="own" ? NURI.paint[k] : DIGP.smp[k];
+        DIGP.busy.add(cont);
         let o=null; try{ o=await digPaintModel(k, cont, p, pause); }catch(e){ console.warn("[たんけん] 模様", k, e); }
+        DIGP.busy.delete(cont);
         if(gen!==DIGP.gen){ digUnpaint(o); return; }   // 途中でやめた（はがし済みの分のあとに貼った1体もはがす）
-        if(o) DIGP.roots.push(o); }
-    DIGP.src=want; DIGP.on=true;
+        if(o){ if(DIGP.done.has(cont)) digUnpaint(o); else { DIGP.done.set(cont, o); DIGP.roots.push(o); } } }
     if(say) say("ずかんの カードを じゅんびしているよ…");
     const G=gameCards(), lab=cardLabel();
     if(G) for(const k of keys){ if(!want[k]) continue; try{ await G.ensure("dino", k, lab, false); }catch(e){ console.warn("[たんけん] 図鑑のカード", k, e); } if(gen!==DIGP.gen) return; }
@@ -12608,7 +12676,7 @@ async function digPaintStart(src, say){
 function digPaintClear(){
     DIGP.gen++;
     for(const o of DIGP.roots) digUnpaint(o);
-    const was=DIGP.on; DIGP.roots=[]; DIGP.on=false; DIGP.src={}; DIGP.smp={};   // 見本の模様は DIGP.mem に覚えておく（次の たんけん ですぐ使う）
+    const was=DIGP.on; DIGP.roots=[]; DIGP.on=false; DIGP.src={}; DIGP.smp={}; DIGP.done=new WeakMap(); DIGP.busy=new WeakSet();   // 見本の模様は DIGP.mem に覚えておく（次の たんけん ですぐ使う）
     if(was) digDexRedraw();
 }
 function ldigOpenPrep(){
@@ -13737,6 +13805,11 @@ function nuriMenuRefresh(){
     if(NURI_DBG && rl && rl.parentNode){ let dl=$("nuriDbgList"); if(!dl){ dl=document.createElement("div"); dl.id="nuriDbgList"; rl.parentNode.insertBefore(dl, rl.nextSibling); }   // 開発用（?nuriDebug=1）
         dl.innerHTML=""; for(const k of painted){ const b=document.createElement("button"); b.type="button"; b.textContent="🔍 No."+nuriSheetNo(k)+" "+nm(k)+"の けっか"; b.addEventListener("click",()=>nuriDebugShow(k)); dl.appendChild(b); } }
     if(pr) pr.style.display = reco? "none" : "";
+    { const sp=$("nuriSample"), sl=$("nuriSampleList");   // 【追加】みほんから とりこむ（おすすめ設定オフだけ）
+      if(sp) sp.style.display = reco? "none" : "";
+      if(sl && NURI.reg && !sl.childElementCount){
+          for(const sh of NURI.reg.sheets){ if(dinoIdx(sh.key)<0) continue; const b=document.createElement("button"); b.type="button"; b.textContent=sh.name; b.addEventListener("click",()=>nuriImportSample([sh.key])); sl.appendChild(b); }
+          const a=document.createElement("button"); a.type="button"; a.className="all"; a.textContent="🎨 ぜんぶの きょうりゅう"; a.addEventListener("click",()=>nuriImportSample(NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0))); sl.appendChild(a); } }
     if(pl && NURI.reg && !pl.childElementCount){ for(const s of NURI.reg.sheets){ const a=document.createElement("a"); a.href=NURI_CFG.dir+s.svg; a.target="_blank"; a.rel="noopener"; a.textContent=s.name; pl.appendChild(a); } }
     if(sb && !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ sb.style.display="none"; if(st) st.textContent="この きかいでは カメラが つかえません"; }
     nuriAgainRefresh(painted, nm);
@@ -14193,6 +14266,32 @@ function nuriPreviewStop(){
     PV.model.traverse(o=>{ if(o.isMesh && o.geometry){ const og=NURI_ORIG.get(o); if(og){ og.dispose(); NURI_ORIG.delete(o); NURI_ORIGMAT.delete(o); } else o.geometry.dispose(); } });   // 確認用に作った元の形だけ破棄（模様の形・材質・画像は恐竜ごとの共有なので残す／_voxMat も共有）
     try{ PV.r.dispose(); PV.r.forceContextLoss(); }catch(_){}
     PV.cv.remove(); PV=null;
+}
+// 【追加】みほんから とりこむ：cardDebug=2 の見本と同じ模様を、じぶんで ぬった きょうりゅうにする（ぬってあれば うわがき）
+async function nuriImportSample(keys){
+    if(NURI.sampleBusy || !keys || !keys.length) return;
+    const nm=(k)=>{ const s=sheetOf(k); return s? s.name : k; }, over=keys.filter(k=>NURI.paint[k]);
+    const msg = keys.length>1
+        ? "みほんの もようを、ぜんぶの きょうりゅうに とりこみますか？"+(over.length? "\n（"+over.map(nm).join("・")+" の ぬりえは、みほんで うわがきされます）" : "")
+        : (over.length? nm(keys[0])+" の ぬりえを、みほんの もようで うわがきしますか？" : nm(keys[0])+" に、みほんの もようを とりこみますか？");
+    if(!confirm(msg)) return;
+    const list=$("nuriSampleList"), note=$("nuriSampleNote"), btns=list? [...list.querySelectorAll("button")] : [];
+    NURI.sampleBusy=true; btns.forEach(b=>b.disabled=true);
+    let ok=0;
+    for(let i=0;i<keys.length;i++){ const k=keys[i];
+        if(note) note.textContent="みほんを とりこんでいるよ…"+(keys.length>1? "（"+(i+1)+"/"+keys.length+"）" : "");
+        await new Promise(r=>setTimeout(r,30));   // 案内を先に出す
+        try{ const p=await digSampleLoad(k); if(!p) throw new Error("見本の模様を作れませんでした");
+            const D=await nuriLoadFaces(k);
+            nuriSetPaint(k, { rgba:p.rgba, cs:p.cs });
+            await nuriSave(k, p.rgba, D.info, p.cs);
+            ok++;
+        }catch(e){ console.warn("[ぬりえ] みほんから とりこめませんでした", k, e); }
+    }
+    try{ nuriDropPix(); }catch(_){ }   // 用紙の画素リストは手放す
+    NURI.sampleBusy=false; btns.forEach(b=>b.disabled=false);
+    if(note) note.textContent = ok===keys.length ? "みほんを とりこんだよ！" : ok ? "とりこめなかった きょうりゅうが あるよ" : "とりこめなかったよ。もういちど ためしてね";
+    nuriMenuRefresh();
 }
 function nuriReset(key){
     const s=sheetOf(key); if(!confirm("ぬった もようを けして、もとの "+(s?s.name:key)+"に もどしますか？")) return;
