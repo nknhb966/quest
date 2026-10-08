@@ -6215,7 +6215,7 @@ function cloneCont(src){
 function cloneContBase(src){
     const c=cloneCont(src);
     try{ const a=[], b=[]; src.traverse(o=>{ if(o.isMesh) a.push(o); }); c.traverse(o=>{ if(o.isMesh) b.push(o); });
-        for(let i=0;i<Math.min(a.length,b.length);i++){ const og=NURI_ORIG.get(a[i]); if(og){ b[i].geometry=og; const om=NURI_ORIGMAT.get(a[i]); if(om) b[i].material=om; } } }catch(_){ }
+        const G=window.NURI_GAME; if(G) for(let i=0;i<Math.min(a.length,b.length);i++){ const og=G.orig.get(a[i]); if(og){ b[i].geometry=og; const om=G.origMat.get(a[i]); if(om) b[i].material=om; } } }catch(_){ }
     return c;
 }
 function buildHologram(idx){
@@ -12581,54 +12581,51 @@ async function ldigPrepDig(){
 /* ---- 【追加】発掘する恐竜の模様（たんけん中だけ）----
  *   ・見本＝cardDebug=2 の見本と同じ設定（EV_SAMPLES）で、この端末で塗る。作った模様は端末に保存（2回目からはすぐ）
  *   ・じぶんで ぬった＝ぬりえの模様（ぬっていない種類は見本）
- *   ・発掘モデル（dinoDigModels）にだけ貼り、終わったらはがす。図鑑・ホログラムのカードも同じ模様にする（gcRef） */
+ *   ・発掘モデル（dinoDigModels）にだけ貼り、終わったらはがす。図鑑・ホログラムのカードも同じ模様にする（gcRef）
+ *   【修正】ぬりえ（NURI…）とイベントカード（EV_SAMPLES・evCrayon…）は、それぞれ別の囲みの中にあり、ここからは直接見えない
+ *     → 窓口 window.NURI_GAME（NG）・window.EV_GAME（EG）から使う */
+function NG(){ const g=window.NURI_GAME; if(!g) throw new Error("ぬりえの じゅんびが まだです"); return g; }
+function EG(){ return window.EV_GAME||null; }
 const DIGP={ on:false, src:{}, smp:{}, mem:{}, roots:[], gen:0, done:new WeakMap(), busy:new WeakSet() };   // done：貼った発掘モデル（cont → {root,st}）／busy：貼っている途中
 window.__digCardSrc=(key)=> DIGP.on ? (DIGP.src[key]||null) : null;
 window.__digSamplePaint=(key)=> DIGP.smp[key]||null;
 function digSlicer(){ let t=performance.now(); return async()=>{ if(performance.now()-t>12){ await new Promise(r=>setTimeout(r,0)); t=performance.now(); } }; }
 async function digSampleLoad(key){   // 見本の模様（覚えている → 端末に保存 → その場で塗る）
-    const S=(typeof EV_SAMPLES!=="undefined")? EV_SAMPLES.find(x=>x.key===key) : null; if(!S) return null;
-    await nuriLoadRegistry(); const D=await nuriLoadFaces(key), T=D.info.cellsPerSide, len=D.F.face_part.length*T*T*4;
-    const sig=evSampleSig(S)+"|"+D.info.keysSha1;
+    const S=(EG() && EG().samples)? EG().samples.find(x=>x.key===key) : null; if(!S) return null;
+    await NG().loadRegistry(); const D=await NG().loadFaces(key), T=D.info.cellsPerSide, len=D.F.face_part.length*T*T*4;
+    const sig=EG().sig(S)+"|"+D.info.keysSha1;
     const m=DIGP.mem[key]; if(m && m.sig===sig) return m;
-    try{   // 【追加】あらかじめ計算した見本（coloring/samples/）：今の見本の設定・表と同じ時だけ使う（塗る処理がいらない＝すぐ・確実）
-        if(!DIGP.ship) DIGP.ship=nuriFetch("samples/samples.json","json").catch(e=>{ DIGP.ship=null; throw e; });
-        const J=await DIGP.ship, e=J && J.samples && J.samples[key];
-        if(e && e.sig===evSampleSig(S) && e.keysSha1===D.info.keysSha1 && e.bytes===len){
-            const rgba=new Uint8Array(await nuriFetch(e.file, "bin", e.bytes));
-            const p={ sig, rgba, cs:e.cs, keysSha1:D.info.keysSha1 }; DIGP.mem[key]=p; return p; }
-    }catch(e){ console.warn("[見本] 用意した見本を読めませんでした（その場で塗ります）", key, e); }
     try{ const r=await ldbReq("cards","readonly",st=>st.get("smp|"+key));
-        if(r && r.sig===sig && r.rgba){ const rgba=await nuriUnzip(r.rgba, r.z); if(rgba && rgba.length===len){ const p={ sig, rgba, cs:r.cs, keysSha1:D.info.keysSha1 }; DIGP.mem[key]=p; return p; } } }catch(_){ }
-    const out=await window.NURI_EVENT.samplePaint(key, evCrayon(S));
+        if(r && r.sig===sig && r.rgba){ const rgba=await NG().unzip(r.rgba, r.z); if(rgba && rgba.length===len){ const p={ sig, rgba, cs:r.cs, keysSha1:D.info.keysSha1 }; DIGP.mem[key]=p; return p; } } }catch(_){ }
+    const out=await window.NURI_EVENT.samplePaint(key, EG().crayon(S));
     if(!out || !out.paintedFaces || !out.rgba || out.rgba.length!==len) return null;
     const p={ sig, rgba:out.rgba, cs:out.cs, keysSha1:out.keysSha1 }; DIGP.mem[key]=p;
-    try{ const zz=await nuriZip(out.rgba, true); ldbReq("cards","readwrite",st=>{ st.put({ sig, z:zz.z, rgba:zz.d, cs:out.cs, t:Date.now() }, "smp|"+key); return null; }); }catch(_){ }
+    try{ const zz=await NG().zip(out.rgba, true); ldbReq("cards","readwrite",st=>{ st.put({ sig, z:zz.z, rgba:zz.d, cs:out.cs, t:Date.now() }, "smp|"+key); return null; }); }catch(_){ }
     return p;
 }
 async function digPaintModel(key, cont, p, pause){   // 発掘モデル1体に模様を貼る（元の形は NURI_ORIG に残る）。貼れたら { root, st }（はがす時に使う）
     if(!cont || !p || !p.rgba) return null;
-    const D=NURI.maps[key] || await nuriLoadFaces(key), root=cont.userData.model||cont;
-    const st= pause ? await nuriBuildStoreAsync(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH, pause)
-                    : nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH);
+    const D=NG().st.maps[key] || await NG().loadFaces(key), root=cont.userData.model||cont;
+    const st= pause ? await NG().buildStoreAsync(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V, pause)
+                    : NG().buildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V);
     if(!st || !st.ok){ console.warn("[たんけん] この恐竜モデルには模様を貼れませんでした", key); return null; }
-    if(DIGP.done.has(cont)){ nuriDisposeStore(st); return null; }   // 作っている間に、ほかの所で貼り終えた
-    const r=nuriApplyStore(root, st); if(!r.ok){ nuriDisposeStore(st); return null; }
+    if(DIGP.done.has(cont)){ NG().disposeStore(st); return null; }   // 作っている間に、ほかの所で貼り終えた
+    const r=NG().applyStore(root, st); if(!r.ok){ NG().disposeStore(st); return null; }
     return { root, st };
 }
-function digUnpaint(o){ if(!o) return; try{ nuriApplyStore(o.root, null); }catch(_){ } try{ nuriDisposeStore(o.st); }catch(_){ } }
-function digPaintOf(key){ const w=DIGP.src[key]; return w==="own" ? NURI.paint[key] : w==="smp" ? DIGP.smp[key] : null; }
+function digUnpaint(o){ if(!o) return; try{ NG().applyStore(o.root, null); }catch(_){ } try{ NG().disposeStore(o.st); }catch(_){ } }
+function digPaintOf(key){ const w=DIGP.src[key]; return w==="own" ? NG().st.paint[key] : w==="smp" ? DIGP.smp[key] : null; }
 // 【修正】発掘モデル1体に、まだ貼っていなければ貼る（たんけん中だけ）
 //   sync＝その場で貼る（恐竜が出てくる時。まだ貼れていない時の最後の手段）／それ以外は少しずつ貼る（モデルを作り直した時など）
 function digEnsure(idx, cont, sync){
     if(!DIGP.on || !cont || !DINOS[idx] || DIGP.done.has(cont)) return;
-    const k=DINOS[idx].key, p=digPaintOf(k); if(!p || !NURI.maps[k]) return;
+    const k=DINOS[idx].key, p=digPaintOf(k); if(!p || !NG().st.maps[k]) return;
     if(sync){
         // 少しずつ貼っている途中でも、今すぐ貼る（途中の方は、終わった時に貼らずに捨てる＝digPaintModel）
-        try{ const D=NURI.maps[k], root=cont.userData.model||cont;
-            const st=nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH);
+        try{ const D=NG().st.maps[k], root=cont.userData.model||cont;
+            const st=NG().buildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V);
             if(!st || !st.ok){ console.warn("[たんけん] この恐竜モデルには模様を貼れませんでした", k); return; }
-            if(!nuriApplyStore(root, st).ok){ nuriDisposeStore(st); return; }
+            if(!NG().applyStore(root, st).ok){ NG().disposeStore(st); return; }
             const o={ root, st }; DIGP.done.set(cont, o); DIGP.roots.push(o); }catch(e){ console.warn("[たんけん] 模様", k, e); }
         return;
     }
@@ -12642,13 +12639,13 @@ function digPaintNewModel(idx, cont){ digEnsure(idx, cont, false); }   // 新し
 function digEnsureAll(){ if(!DIGP.on || typeof dinoDigModels==="undefined" || !dinoDigModels) return; dinoDigModels.forEach((m,i)=>{ if(m) digEnsure(i, m, false); }); }
 setInterval(()=>{ try{ digEnsureAll(); }catch(_){ } }, 1000);   // たんけん中：作り直されたモデルにも貼る（念のため）
 function digDexRedraw(){
-    try{ gcTexSync(); }catch(_){ }   // ホログラム・VR のカード
+    try{ EG().texSync(); }catch(_){ }   // ホログラム・VR のカード
     try{ if(typeof dexPanel!=="undefined" && dexPanel && dexPanel.draw) dexPanel.draw(); }catch(_){ }
 }
 async function digPaintStart(src, say){
     digPaintClear();
     const gen=++DIGP.gen, keys=(typeof DINOS!=="undefined"? DINOS : []).map(d=>d.key), want={};
-    for(const k of keys) want[k]=(src==="own" && NURI.paint[k] && NURI.maps[k]) ? "own" : "smp";   // じぶんで ぬった：ぬっていない種類は見本
+    for(const k of keys) want[k]=(src==="own" && NG().st.paint[k] && NG().st.maps[k]) ? "own" : "smp";   // じぶんで ぬった：ぬっていない種類は見本
     const need=keys.filter(k=>want[k]==="smp");
     for(let i=0;i<need.length;i++){
         if(say) say("みほんの もようを じゅんびしているよ（"+(i+1)+"/"+need.length+"）");
@@ -12657,8 +12654,8 @@ async function digPaintStart(src, say){
         if(gen!==DIGP.gen) return;
         if(p) DIGP.smp[need[i]]=p; else want[need[i]]=null;   // 作れなかった種類は ぬりえなし
     }
-    try{ nuriDropPix(); }catch(_){ }   // 用紙の画素リストは手放す
-    for(const k of keys) if(want[k] && !NURI.maps[k]){ try{ await nuriLoadFaces(k); }catch(_){ want[k]=null; } }   // 貼るための表
+    try{ NG().dropPix(); }catch(_){ }   // 用紙の画素リストは手放す
+    for(const k of keys) if(want[k] && !NG().st.maps[k]){ try{ await NG().loadFaces(k); }catch(_){ want[k]=null; } }   // 貼るための表
     if(gen!==DIGP.gen) return;
     DIGP.src=want; DIGP.on=true;   // 【修正】先に「たんけん中」にする（このあと作り直されたモデルにも貼れるように）
     if(say) say("きょうりゅうに もようを ぬっているよ…");
@@ -12669,7 +12666,7 @@ async function digPaintStart(src, say){
     for(let i=0;i<keys.length;i++){ const k=keys[i]; if(!want[k]) continue;
         const cont=(typeof dinoDigModels!=="undefined" && dinoDigModels)? dinoDigModels[i] : null;
         if(!cont || DIGP.done.has(cont) || DIGP.busy.has(cont)) continue;
-        const p= want[k]==="own" ? NURI.paint[k] : DIGP.smp[k];
+        const p= want[k]==="own" ? NG().st.paint[k] : DIGP.smp[k];
         DIGP.busy.add(cont);
         let o=null; try{ o=await digPaintModel(k, cont, p, pause); }catch(e){ console.warn("[たんけん] 模様", k, e); }
         DIGP.busy.delete(cont);
@@ -12678,7 +12675,7 @@ async function digPaintStart(src, say){
     if(say) say("ずかんの カードを じゅんびしているよ…");
     const G=gameCards(), lab=cardLabel();
     if(G) for(const k of keys){ if(!want[k]) continue; try{ await G.ensure("dino", k, lab, false); }catch(e){ console.warn("[たんけん] 図鑑のカード", k, e); } if(gen!==DIGP.gen) return; }
-    try{ if(typeof tcDisposeRenderer==="function") tcDisposeRenderer(); }catch(_){ }   // 撮影用の WebGL は返す
+    try{ if(EG()) EG().disposeRenderer(); }catch(_){ }   // 撮影用の WebGL は返す
     digDexRedraw();
 }
 function digPaintClear(){
@@ -14292,7 +14289,7 @@ function nuriSamplePreload(){
     NSMP.p=(async()=>{
         const t0=performance.now();   // 起動の準備（モデル・カード）と ぬりえの復元が終わってから
         while(!(typeof PRELOAD_DONE!=="undefined" && PRELOAD_DONE) && performance.now()-t0<120000) await new Promise(r=>setTimeout(r,500));
-        try{ if(typeof tcWaitPaint==="function") await tcWaitPaint(); }catch(_){ }
+        try{ if(window.EV_GAME) await window.EV_GAME.waitPaint(); }catch(_){ }   // ぬりえの復元を待つ
         await nuriLoadRegistry();
         const keys=NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0), bad=[];
         for(const k of keys){
@@ -14428,6 +14425,10 @@ window.NURI_DEBUG={ state:NURI, info:()=>NURI.lastInfo, params:(key)=>nuriStatsF
 /* ---- イベント用カード作成（?cardDebug=2）から使う窓口 ----
  * 本体のぬりえ保存（恐竜ごとに1つ）には書き込まない。カードごとの模様は呼び出し側が持つ
  * withPaint：その模様を一時的に「いまの模様」にして fn を実行し、終わったら必ず元に戻す（カードの撮影・ステータス計算用） */
+// 【追加】ゲーム側（たんけんの模様・みほんから とりこむ・模様なしの複製）から使う窓口（この囲みの外からは中の名前が見えないため）
+window.NURI_GAME={ st:NURI, loadRegistry:nuriLoadRegistry, loadFaces:nuriLoadFaces, unzip:nuriUnzip, zip:nuriZip,
+    buildStore:nuriBuildStore, buildStoreAsync:nuriBuildStoreAsync, applyStore:nuriApplyStore, disposeStore:nuriDisposeStore,
+    dropPix:nuriDropPix, V:V_SMOOTH, orig:NURI_ORIG, origMat:NURI_ORIGMAT };
 window.NURI_EVENT={
     async prepare(){ await Promise.all([nuriLoadLib(), nuriLoadRegistry()]); await nuriLoadFaces(NURI.reg.sheets[0].key); },
     detector(){ return new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 }); },
@@ -15587,8 +15588,7 @@ const EV_GONE_TICKS=3;
  *   大きさは用紙の画素（5px＝1mm）。angle：塗る向き（度）／edgeGap：線の手前のすき間の多さ（0〜1・ふつう0.38）／over：はみ出しの最大
  *   seed：はみ出し・すき間・星の位置の出方（同じ値なら毎回同じ絵）
  *   ここを書き換えた見本（前の版の見本3枚も）は、開いた時・「すべて作り直す」の時に、今の設定で塗り直す（evSampleSig）
- *   ゲーム側（たんけん・「みほんから とりこむ」）は、あらかじめ計算した coloring/samples/ を使う。ここを書き換えると sig が合わなくなり、
- *   その端末で塗って作る（作り直すと速く確実：samples/ を作り直す） */
+ *   ゲーム側（たんけん・「みほんから とりこむ」）も、ここの設定で同じように塗って作る（window.EV_GAME。作った模様は端末に保存） */
 const EV_SAMPLES=[
     { key:"trex", seed:31, angle:30,          // 見本1：元の色に近い緑で塗って、おなかの横に太陽
       parts:{ head:"#4f8a3a", body:"#4f8a3a", tail:"#4f8a3a", leg:"#2f5a2a", arm:"#4f8a3a" },
@@ -15622,6 +15622,8 @@ const EV_SAMPLES=[
 ];
 // 見本の設定の目印（設定を書き換えると変わる）。保存してある見本の目印と違えば、前の版の見本＝塗り直す
 function evSampleSig(S){ if(!S) return ""; const t=JSON.stringify(S); let h=0x811c9dc5; for(let i=0;i<t.length;i++){ h^=t.charCodeAt(i); h=Math.imul(h,16777619); } return S.key+":"+(h>>>0).toString(36); }
+// 【追加】ゲーム側（たんけん・みほんから とりこむ）から、見本の設定と塗り方を使う窓口（cardDebug=2 と同じ作り方）
+window.EV_GAME={ samples:EV_SAMPLES, sig:evSampleSig, crayon:evCrayon, waitPaint:()=>tcWaitPaint(), texSync:()=>gcTexSync(), disposeRenderer:()=>tcDisposeRenderer() };
 function evSampleOld(r){ return !!(r && r.sample && (!EV_SAMPLES[r.sample-1] || r.sig!==evSampleSig(EV_SAMPLES[r.sample-1]))); }   // 前の版の見本（見本3枚の時のもの・設定を変えた見本）
 const EV_CSS=`
 #tcEvent [hidden]{ display:none !important; }
