@@ -290,6 +290,9 @@
 #nuriAgainNote:empty{ display:none; }
 #nuriSection .nuriRow{ display:flex; gap:8px; flex-wrap:wrap; }
 #nuriSample summary{ cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; }
+#nuriSampleList button .ic{ margin-right:5px; }
+#nuriSampleList button.own{ color:#8ff0ff; border-color:rgba(143,240,255,.6); background:rgba(14,40,60,.75); }   /* じぶんで よみこんだ ぬりえ */
+#nuriSampleList button.smp{ color:#ffd86a; border-color:rgba(255,216,106,.6); background:rgba(60,44,8,.6); }    /* みほんを とりこんだ */
 #nuriSample.wait summary{ opacity:.45; filter:grayscale(.6); cursor:default; }
 #nuriSampleList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
 #nuriSampleList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
@@ -308,6 +311,7 @@
 /* 「モデル表示」準備ゲート：プリロード・模様の復元・model-viewer・書き出し処理がそろうまで押せない（既存の preloading と同じ見た目） */
 body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointer-events:none; }
 #nuriStatus{ font-size:13px; color:#c3b3f2; min-height:1em; text-align:center; }
+#nuriStatus:empty{ display:none; }   /* 【追加】何もない時は場所を取らない（区切りの中のすき間を ふつうに） */
 #nuriScan{ position:fixed; inset:0; z-index:100010; display:none; background:#000; color:#fff; font-family:inherit; }
 #nuriScan.open{ display:block; }
 #nuriVideo{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#000; }
@@ -659,8 +663,8 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
     <!-- ここから独立パート：発掘モデルを見る（区切り線＋見出しで上の各種ボタンと分離） -->
     <div id="mvSection">
       <div class="mvSectionTitle">🔍 モデルを みよう</div>
-      <button id="mvOpenBtn">🔍 モデルを みる</button>
-      <button id="mvArOpenBtn">📱 ARで みる</button>
+      <button id="mvOpenBtn">🔍 かんたんAR</button>
+      <button id="mvArOpenBtn">📱 ARで あそぶ</button>
       <!-- モデル選択（＝発掘する対象/モードに相当）。他と同じ .opt 枠＋ .seg -->
       <div class="opt wide" id="optMvKind" style="margin-top:12px;">
         <div class="lbl">モデルを えらぶ</div>
@@ -827,12 +831,12 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。</p>
         <p>ぬった色によって、その恐竜の<b>ステータスとスペシャル</b>も変わります（色とステータスの関係は「📊 得点・カードの仕組み」へ）。模様とステータスは、<b>相棒にしたとき・相棒えらびのカード・獲得カード</b>に入ります（図鑑のカードは元のまま）。</p>
         <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。メイン画面の並びは、ヘッドセットでは「VR・ARで ほんかくはっくつ → ぬりえ → モデルを みよう」、それ以外（スマホ・タブレット・PC）では「ぬりえ → モデルを みよう → VR・ARで ほんかくはっくつ」です。</p>
-        <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「📄 ぬりえを いんさつ」の「ぜんぶの きょうりゅう」で8まいを まとめて印刷できます。「↩ もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
+        <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「📄 ぬりえを いんさつ」の「ぜんぶの きょうりゅう」で8まいを まとめて開けます（印刷はブラウザの印刷から）。「🎨 みほんから とりこむ」の恐竜は、⬆＝ぬりえなし、🔄＝ぬりえあり（水色＝ぬりえを よみこみずみ／黄色＝みほんを とりこみずみ）です。「↩ もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
       </section>
       <section>
         <h3>🔍 モデルを みよう</h3>
-        <p>「モデルを えらぶ」で<b>しゅつどひん・いぬ・きょうりゅう</b>を選び、<b>「🔍 モデルを みる」</b>で3Dモデルを回して見たり、<b>「📱 ARで みる」</b>で目の前に置いて見たりできます。ぬりえをした恐竜は、その模様で表示されます。</p>
-        <p class="k">「📱 ARで みる」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「🗺 たんけん」（うごかせるの左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
+        <p>「モデルを えらぶ」で<b>しゅつどひん・いぬ・きょうりゅう</b>を選び、<b>「🔍 かんたんAR」</b>で3Dモデルを回して見たり、<b>「📱 ARで あそぶ」</b>で目の前に置いて見たりできます。ぬりえをした恐竜は、その模様で表示されます。</p>
+        <p class="k">「📱 ARで あそぶ」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「🗺 たんけん」（うごかせるの左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
       </section>
       <section>
         <h3>⚙️ 設定（おすすめ設定オフのとき）</h3>
@@ -13695,8 +13699,8 @@ function nuriUnB64(b){ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;
 async function nuriZip(u8, on){ if(!on || typeof CompressionStream==="undefined") return {z:0,d:u8}; try{ return {z:1,d:new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer())}; }catch(_){ return {z:0,d:u8}; } }
 async function nuriUnzip(u8, z){ if(!z) return u8; return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer()); }
 const storeKey=(key)=> NURI_CFG.storePrefix+key+"_"+NURI_CFG.storeVer;
-async function nuriSave(key, rgba, info, cs){ try{ const zz=await nuriZip(rgba, true);
-    const rec={v:4, key, keysSha1:info.keysSha1, date:Date.now(), z:zz.z, rgba:nuriB64(zz.d)}; if(cs) rec.cs=cs;   // cs＝色の面積（ぬり絵パラメータ）
+async function nuriSave(key, rgba, info, cs, src){ try{ const zz=await nuriZip(rgba, true);   // src："sample"＝みほんから とりこんだ（なし＝ぬりえを よみこんだ）
+    const rec={v:4, key, keysSha1:info.keysSha1, date:Date.now(), src:src||"scan", z:zz.z, rgba:nuriB64(zz.d)}; if(cs) rec.cs=cs;   // cs＝色の面積（ぬり絵パラメータ）
     localStorage.setItem(storeKey(key), JSON.stringify(rec)); return true; }
     catch(e){ console.warn("[ぬりえ] 保存できませんでした", e); return false; } }
 async function nuriLoadSaved(key){ try{ const j=JSON.parse(localStorage.getItem(storeKey(key))||"null"); if(!j||!j.rgba) return null;
@@ -13818,7 +13822,7 @@ window.__nuriPlainOff = function(){ const k=NURI.plainKey; if(!k) return; NURI.p
 // 【追加】ぬりえありの表示に使う短い名前（恐竜の順）
 const NURI_SHORT={ trex:"ティラノ", fukuiraptor:"ラプトル", fukuititan:"ティタン", fukuisaurus:"フクイサ", brachi:"ブラキオ", stego:"ステゴ", tri:"トリケラ", ptera:"プテラ" };
 function nuriShort(k){ if(NURI_SHORT[k]) return NURI_SHORT[k]; const s=sheetOf(k); return s? s.name : k; }
-// 【追加】ぬりえを いんさつ：ぜんぶの きょうりゅう＝8まいを1つのページにまとめて、印刷画面を開く（A4よこ・1まい1ページ）
+// 【追加】ぬりえを いんさつ：ぜんぶの きょうりゅう＝8まいを1つのページにまとめて開く（A4よこ・1まい1ページ）。【変更】1体ずつと同じく、印刷はブラウザの印刷から
 function nuriPrintAll(){
     if(!NURI.reg) return;
     const w=window.open("", "_blank"); if(!w){ alert("あたらしい がめんを ひらけませんでした。ポップアップを ゆるして、もういちど おしてね"); return; }
@@ -13832,9 +13836,6 @@ function nuriPrintAll(){
         +'@media screen{ body{ background:#888; } .pg{ margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
         +'</style></head><body>'
         +list.map(s=>'<div class="pg"><img src="'+esc(base+s.svg)+'" alt="'+esc(s.name)+'"></div>').join("")
-        +'<script>(function(){ var im=[].slice.call(document.images), n=im.length, done=false;'
-        +' function go(){ if(done) return; done=true; setTimeout(function(){ window.focus(); window.print(); }, 300); }'
-        +' function one(){ if(--n<=0) go(); } im.forEach(function(i){ if(i.complete) one(); else { i.onload=one; i.onerror=one; } }); setTimeout(go, 15000); })();<\/script>'
         +'</body></html>');
     w.document.close();
 }
@@ -13844,7 +13845,7 @@ function nuriMenuRefresh(){
     const painted=Object.keys(NURI.paint).filter(k=>NURI.paint[k]).sort((a,b)=>dinoIdx(a)-dinoIdx(b));   // 恐竜の順（1〜8）
     const nm=(k)=>{ const s=sheetOf(k); return s? s.name : k; };
     const reco=(typeof recoOn!=="undefined") && recoOn;                        // おすすめ設定オン：印刷と「恐竜ごとに戻す」は出さない
-    if(st) st.textContent = painted.length? "ぬりえあり： "+painted.map(nuriShort).join("・") : "";   // 【変更】みほんから とりこんだ時もあるので「ぬりえあり」＋省略形
+    if(st) st.textContent = "";   // 【変更】ぬりえありの表示はやめる（みほんから とりこむ の印で分かる）
     if(rb) rb.style.display = painted.length? "" : "none";   // 【変更】もとに もどす（折りたたみ）：ぬってある恐竜の名前だけ＋さいごに ぜんぶ（おすすめ設定オンは ぜんぶ だけ）
     if(rl){ rl.innerHTML="";
         if(!reco) for(const k of painted){ const b=document.createElement("button"); b.type="button"; b.textContent=nm(k); b.addEventListener("click",()=>nuriReset(k)); rl.appendChild(b); }
@@ -13856,8 +13857,13 @@ function nuriMenuRefresh(){
       if(sp) sp.style.display = reco? "none" : "";
       nuriSamplePaintUI();
       if(sl && NURI.reg && !sl.childElementCount){
-          for(const sh of NURI.reg.sheets){ if(dinoIdx(sh.key)<0) continue; const b=document.createElement("button"); b.type="button"; b.textContent=sh.name; b.addEventListener("click",()=>nuriImportSample([sh.key])); sl.appendChild(b); }
-          const a=document.createElement("button"); a.type="button"; a.className="all"; a.textContent="🎨 ぜんぶの きょうりゅう"; a.addEventListener("click",()=>nuriImportSample(NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0))); sl.appendChild(a); } }
+          for(const sh of NURI.reg.sheets){ if(dinoIdx(sh.key)<0) continue; const b=document.createElement("button"); b.type="button"; b.dataset.key=sh.key; b.addEventListener("click",()=>nuriImportSample([sh.key])); sl.appendChild(b); }
+          const a=document.createElement("button"); a.type="button"; a.className="all"; a.textContent="🎨 ぜんぶの きょうりゅう"; a.addEventListener("click",()=>nuriImportSample(NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0))); sl.appendChild(a); }
+      // 【追加】恐竜の名前の頭に印：⬆＝ぬりえなし（新しく とりこむ）／🔄＝ぬりえあり（うわがき）。色：じぶんで よみこんだ＝水色／みほんを とりこんだ＝黄色
+      if(sl) sl.querySelectorAll("button[data-key]").forEach(b=>{ const k=b.dataset.key, sh=sheetOf(k), has=!!NURI.paint[k], src=has? nuriPaintSrc(k) : "";
+          b.classList.toggle("own", has && src!=="sample"); b.classList.toggle("smp", has && src==="sample");
+          b.innerHTML='<span class="ic">'+(has? "🔄" : "⬆")+'</span>'+(sh? sh.name : k);
+          b.title = !has ? "ぬりえなし：みほんを とりこむ" : src==="sample" ? "みほんを とりこみずみ：みほんで うわがき" : "ぬりえを よみこみずみ：みほんで うわがき"; }); }
     if(pl && NURI.reg && !pl.childElementCount){ for(const s of NURI.reg.sheets){ const a=document.createElement("a"); a.href=NURI_CFG.dir+s.svg; a.target="_blank"; a.rel="noopener"; a.textContent=s.name; pl.appendChild(a); }
         const all=document.createElement("button"); all.type="button"; all.className="all"; all.textContent="📄 ぜんぶの きょうりゅう"; all.addEventListener("click",nuriPrintAll); pl.appendChild(all); }   // 【追加】8まいを まとめて いんさつ
     if(sb && !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ sb.style.display="none"; if(st) st.textContent="この きかいでは カメラが つかえません"; }
@@ -13867,6 +13873,7 @@ function nuriMenuRefresh(){
 //   【変更】ぬりえが1つもない時は、どの端末でも出さない。おすすめ設定オフの時は、どの端末でも出す（ARが使えない端末では押せない灰色）
 // ・恐竜は AR画面の下で選ぶ（ぬりえがある恐竜だけ）。最初は、いちばん最近 読み込んだ ぬりえの恐竜
 function nuriPaintedKeys(){ return Object.keys(NURI.paint).filter(k=>NURI.paint[k] && dinoIdx(k)>=0); }
+function nuriPaintSrc(k){ try{ const t=localStorage.getItem(storeKey(k))||""; const m=/"src":"(\w+)"/.exec(t.slice(0,400)); return m? m[1] : "scan"; }catch(_){ return "scan"; } }   // 【追加】みほんから とりこんだ ぬりえか
 function nuriPaintDate(k){ try{ const t=localStorage.getItem(storeKey(k))||""; const m=/"date":(\d+)/.exec(t.slice(0,400)); return m?+m[1]:0; }catch(_){ return 0; } }
 function nuriLatestKey(){ let best=null, bd=-1; for(const k of nuriPaintedKeys()){ const d=nuriPaintDate(k); if(d>bd){ bd=d; best=k; } } return best; }
 window.__nuriPaintedKeys=nuriPaintedKeys;
@@ -14370,7 +14377,7 @@ async function nuriImportSample(keys){
             const D=await nuriLoadFaces(k);
             if(D.info.keysSha1!==p.keysSha1) throw new Error("ぬりえの表が かわりました");
             nuriSetPaint(k, { rgba:new Uint8Array(p.rgba), cs:p.cs ? JSON.parse(JSON.stringify(p.cs)) : null });   // 見本の模様の写し（見本の方は たんけん でも使うので分ける）
-            if(!(await nuriSave(k, p.rgba, D.info, p.cs))) throw new Error("ほぞんできませんでした（ようりょうが いっぱいかも）");
+            if(!(await nuriSave(k, p.rgba, D.info, p.cs, "sample"))) throw new Error("ほぞんできませんでした（ようりょうが いっぱいかも）");
             ok++;
         }catch(e){ console.warn("[ぬりえ] みほんから とりこめませんでした", k, e); err=(e && e.message)||String(e); }
     }
