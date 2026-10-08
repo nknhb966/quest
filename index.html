@@ -12118,6 +12118,7 @@ function tabarEnterCommon(backend){
     scene.background=null; scene.fog=null; renderer.setClearColor(0x000000, 0);   // 背景＝現実（カメラ映像）
     inAR=true; updateSiteVis(); updatePanelScale();
     player.position.set(0,0,0); player.rotation.set(0,0,0); camera.quaternion.identity();
+    TABAR.savedVis={ ctl:controllers.map(c=>[c.visible, c.userData.grip? c.userData.grip.visible : null, c.userData.line? c.userData.line.visible : null]), hands:hands.map(h=>h.visible) };   // 【修正】入る前の表示状態を覚える（終わった時に戻す）
     controllers.forEach(c=>{ c.visible=false; if(c.userData.grip) c.userData.grip.visible=false; });   // 画面タップの入力元にレーザー等を出さない
     hands.forEach(h=>{ h.visible=false; });
     TABAR.walk.set(0,0,0); TABAR.step.times.length=0; TABAR.step.up=false; TABAR.spd=0; TABAR.prevOk=false; TABAR.runT=0;
@@ -12268,8 +12269,11 @@ function tabarCleanup(){
     if(TABAR.backend==="camera"){ if(sv.dpr) renderer.setPixelRatio(sv.dpr); renderer.setSize(innerWidth, innerHeight); }   // WebXR は three.js が終了時に元の大きさへ戻す（二重に作り直さない）
     else if(renderer.domElement.clientWidth!==innerWidth || renderer.domElement.clientHeight!==innerHeight) renderer.setSize(innerWidth, innerHeight);
     try{ renderer.xr.setReferenceSpaceType("local-floor"); }catch(_){}
-    controllers.forEach(c=>{ c.visible=true; if(c.userData.grip) c.userData.grip.visible=true; if(c.userData.line) c.userData.line.visible=true; });
-    hands.forEach(h=>{ h.visible=true; });
+    { const V=TABAR.savedVis; TABAR.savedVis=null;   // 【修正】入る前の表示状態に戻す（無条件に表示すると、画面操作で発掘する時にコントローラーのレーザーが足元から見えてしまうため）
+      controllers.forEach((c,i)=>{ const v=V && V.ctl[i]; c.visible= v? v[0] : false;
+          if(c.userData.grip) c.userData.grip.visible= (v && v[1]!=null)? v[1] : false;
+          if(c.userData.line) c.userData.line.visible= (v && v[2]!=null)? v[2] : true; });   // レーザー自体は既定で表示（コントローラーがつながった時に見える）
+      hands.forEach((h,i)=>{ h.visible= (V && V.hands[i]!=null)? V.hands[i] : false; }); }
     tabarUI.scan.classList.remove("open"); tabarAskDone(false); tabarUI.prep.classList.remove("open");
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
     TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
