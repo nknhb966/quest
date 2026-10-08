@@ -283,6 +283,7 @@
 #nuriAgainNote:empty{ display:none; }
 #nuriSection .nuriRow{ display:flex; gap:8px; flex-wrap:wrap; }
 #nuriSample summary{ cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; }
+#nuriSample.wait summary{ opacity:.45; filter:grayscale(.6); cursor:default; }
 #nuriSampleList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
 #nuriSampleList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
 #nuriSampleList button.all{ grid-column:1/-1; color:#ffd86a; border-color:rgba(255,216,106,.55); }
@@ -818,7 +819,7 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
       <section>
         <h3>🔍 モデルを みよう</h3>
         <p>「モデルを えらぶ」で<b>しゅつどひん・いぬ・きょうりゅう</b>を選び、<b>「🔍 モデルを みる」</b>で3Dモデルを回して見たり、<b>「📱 ARで みる」</b>で目の前に置いて見たりできます。ぬりえをした恐竜は、その模様で表示されます。</p>
-        <p class="k">「📱 ARで みる」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「この きょうりゅうと たんけんする」では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。</p>
+        <p class="k">「📱 ARで みる」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「🗺 たんけん」（リセットの左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
       </section>
       <section>
         <h3>⚙️ 設定（おすすめ設定オフのとき）</h3>
@@ -1278,9 +1279,9 @@ html.card-event body > *:not(#tcEvent):not(#tcRank):not(script):not(style){ disp
     #litePh.lph-fold #lphBottom{ display:none; }
     /* 【追加】はっくつ（かいはつちゅう） */
     #lphBtns button.dig{ background:linear-gradient(135deg,#a16207,#b45309); border-color:rgba(255,214,120,.7); }
-    #lphExplore{ display:block; width:100%; margin:0 0 8px; padding:13px 8px; border:none; border-radius:14px; font-weight:800; font-size:17px; letter-spacing:1px;
-        color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; pointer-events:auto; }
-    #lphExplore:active{ transform:translateY(2px); box-shadow:0 2px 0 #b8871c; }
+    body.ldig-play #dexReset, body.ldig-play #dReset, body.ldig-play #dRecords{ display:none !important; }   /* 【追加】たんけん中は 図鑑をリセット・リセット・記録 を出さない（図鑑ボタンは残す） */
+    #lphBtns #lphExplore{ color:#3a2600; background:#f7c948; border-color:#ffe39a; }   /* 【変更】ほかのボタンと同じ大きさ（黄色で目立たせる） */
+    #lphBtns #lphExplore span{ color:#3a2600; }
     #lphDig{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(6,4,14,.55); pointer-events:auto; touch-action:pan-y; }
     #lphDig.on{ display:flex; }
     #lphDig .card{ width:min(440px,94vw); max-height:88vh; overflow-y:auto; box-sizing:border-box; display:flex; flex-direction:column; gap:8px; padding:16px;
@@ -1372,8 +1373,8 @@ html.card-event body > *:not(#tcEvent):not(#tcRank):not(script):not(style){ disp
     <div id="lphBottom">
         <div id="lphDesc"></div>
         <div id="lphSel"></div>
-        <button type="button" id="lphExplore" style="display:none">🗺 この きょうりゅうと たんけんする</button>
         <div id="lphBtns">
+            <button type="button" id="lphExplore" style="display:none">🗺<span>たんけん</span></button>   <!-- 【変更】「この きょうりゅう（いぬ）と たんけんする」→「たんけん」（リセットの手前・同じ行） -->
             <button data-a="reset">🔄<span>リセット</span></button>
             <button data-a="lock" id="lphLockBtn">✋<span>うごかせる</span></button>
             <button data-a="anim" id="lphAnimBtn">🎞<span>アニメ</span></button>
@@ -10007,7 +10008,7 @@ function litePhoneRefresh(){
     sel.style.display=(LITE.nuri && !LITE.nuri.pick)?"none":"";   // ぬりえから：その恐竜だけ（切り替えなし）。メイン画面から：ぬりえの恐竜を選べる
     { const dg=lph$("lphDigBtn"); if(dg) dg.style.display=(LITE.target==="dino"||LITE.target==="dog")?"":"none"; }   // はっくつ：出土品のときは出さない
     { const ex=lph$("lphExplore"), ok=(LITE.target==="dino"||LITE.target==="dog") && !(LPH.hatch && LPH.hatch.phase!=="done");   // 【追加】たんけんする（卵の間は出さない）
-      if(ex){ ex.style.display=ok?"":"none"; ex.textContent = LITE.target==="dog" ? "🗺 この いぬと たんけんする" : "🗺 この きょうりゅうと たんけんする"; } }
+      if(ex){ ex.style.display=ok?"":"none"; ex.setAttribute("aria-label", LITE.target==="dog" ? "この いぬと たんけんする" : "この きょうりゅうと たんけんする"); } }
     const d=lph$("lphDesc"); d.textContent=LITE.curDesc||""; if(!hasDesc) d.classList.remove("on");
     lphPaintBtns(); LITE._phPct=-1; litePhoneTick();
 }
@@ -12478,7 +12479,7 @@ function ldigSnapshot(){
 function ldigApply(){
     const r=LDIG.ret||{}, dig=(r.dig==="artifact") ? "artifact" : "dino";
     BUDDY_LOCK = (r.buddy && COMPANIONS[r.buddy]) ? r.buddy : null;   // 表示していたモデルを最後まで相棒に（相棒えらびは出さない）
-    LDIG.play=true;   // 【追加】リザルトはポイント・タイムだけ（相棒・カードは手に入らない）
+    LDIG.play=true; document.body.classList.add("ldig-play");   // 【追加】リザルトはポイント・タイムだけ（相棒・カードは手に入らない）／リセット・記録は出さない
     recoOn=true; segSelect("segReco","on");
     chosenMode=LDIG.mode; segSelect("segMode", LDIG.mode);
     segSelect("segDig", dig);
@@ -12502,7 +12503,7 @@ function ldigSetVars(v){
 }
 function ldigRestore(){
     BUDDY_LOCK=null;   // 相棒の固定をやめる
-    LDIG.play=false;
+    LDIG.play=false; document.body.classList.remove("ldig-play");
     try{ digPaintClear(); }catch(e){ console.warn("[たんけん] 模様を戻せませんでした", e); }   // 【追加】発掘する恐竜の模様をはがす（メイン画面の設定でモデルを作り直す前に）
     try{ if(window.__nuriPlainOff) window.__nuriPlainOff(); }catch(_){ }                       // 【追加】相棒の ぬりえ を戻す
     const S=LDIG.snap; if(!S) return; LDIG.snap=null;
@@ -12590,6 +12591,13 @@ async function digSampleLoad(key){   // 見本の模様（覚えている → �
     await nuriLoadRegistry(); const D=await nuriLoadFaces(key), T=D.info.cellsPerSide, len=D.F.face_part.length*T*T*4;
     const sig=evSampleSig(S)+"|"+D.info.keysSha1;
     const m=DIGP.mem[key]; if(m && m.sig===sig) return m;
+    try{   // 【追加】あらかじめ計算した見本（coloring/samples/）：今の見本の設定・表と同じ時だけ使う（塗る処理がいらない＝すぐ・確実）
+        if(!DIGP.ship) DIGP.ship=nuriFetch("samples/samples.json","json").catch(e=>{ DIGP.ship=null; throw e; });
+        const J=await DIGP.ship, e=J && J.samples && J.samples[key];
+        if(e && e.sig===evSampleSig(S) && e.keysSha1===D.info.keysSha1 && e.bytes===len){
+            const rgba=new Uint8Array(await nuriFetch(e.file, "bin", e.bytes));
+            const p={ sig, rgba, cs:e.cs, keysSha1:D.info.keysSha1 }; DIGP.mem[key]=p; return p; }
+    }catch(e){ console.warn("[見本] 用意した見本を読めませんでした（その場で塗ります）", key, e); }
     try{ const r=await ldbReq("cards","readonly",st=>st.get("smp|"+key));
         if(r && r.sig===sig && r.rgba){ const rgba=await nuriUnzip(r.rgba, r.z); if(rgba && rgba.length===len){ const p={ sig, rgba, cs:r.cs, keysSha1:D.info.keysSha1 }; DIGP.mem[key]=p; return p; } } }catch(_){ }
     const out=await window.NURI_EVENT.samplePaint(key, evCrayon(S));
@@ -13807,6 +13815,7 @@ function nuriMenuRefresh(){
     if(pr) pr.style.display = reco? "none" : "";
     { const sp=$("nuriSample"), sl=$("nuriSampleList");   // 【追加】みほんから とりこむ（おすすめ設定オフだけ）
       if(sp) sp.style.display = reco? "none" : "";
+      nuriSamplePaintUI();
       if(sl && NURI.reg && !sl.childElementCount){
           for(const sh of NURI.reg.sheets){ if(dinoIdx(sh.key)<0) continue; const b=document.createElement("button"); b.type="button"; b.textContent=sh.name; b.addEventListener("click",()=>nuriImportSample([sh.key])); sl.appendChild(b); }
           const a=document.createElement("button"); a.type="button"; a.className="all"; a.textContent="🎨 ぜんぶの きょうりゅう"; a.addEventListener("click",()=>nuriImportSample(NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0))); sl.appendChild(a); } }
@@ -14267,9 +14276,45 @@ function nuriPreviewStop(){
     try{ PV.r.dispose(); PV.r.forceContextLoss(); }catch(_){}
     PV.cv.remove(); PV=null;
 }
+// 【追加】みほんの用意（プリロード）：起動の準備が終わったら、8体の見本の模様と表を読んでおく。終わるまで「みほんから とりこむ」は押せない
+var NSMP={ state:"wait", err:"", p:null };   // var：この行より前に メニューを描いても止まらないように   // wait（用意する前）→ load（用意中）→ ready／error
+function nuriSamplePaintUI(){
+    const sp=$("nuriSample"), sm=sp && sp.querySelector("summary"), note=$("nuriSampleNote"); if(!sp || !sm || !NSMP) return;
+    const ready=NSMP.state==="ready";
+    sp.classList.toggle("wait", !ready && NSMP.state!=="error");
+    sm.textContent = ready ? "🎨 みほんから とりこむ" : NSMP.state==="error" ? "🎨 みほんから とりこむ（もういちど よみこむ）" : "🎨 みほんから とりこむ（じゅんびちゅう…）";
+    if(!ready && sp.open) sp.open=false;
+    if(note && NSMP.state==="error") note.textContent="みほんを よみこめなかったよ（"+NSMP.err+"）";
+}
+function nuriSamplePreload(){
+    if(NSMP.p) return NSMP.p;
+    NSMP.state="load"; NSMP.err=""; nuriSamplePaintUI();
+    NSMP.p=(async()=>{
+        const t0=performance.now();   // 起動の準備（モデル・カード）と ぬりえの復元が終わってから
+        while(!(typeof PRELOAD_DONE!=="undefined" && PRELOAD_DONE) && performance.now()-t0<120000) await new Promise(r=>setTimeout(r,500));
+        try{ if(typeof tcWaitPaint==="function") await tcWaitPaint(); }catch(_){ }
+        await nuriLoadRegistry();
+        const keys=NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0), bad=[];
+        for(const k of keys){
+            try{ await nuriLoadFaces(k); const p=await digSampleLoad(k); if(!p) throw new Error("見本の模様がありません"); }
+            catch(e){ console.warn("[見本] 用意できませんでした", k, e); bad.push((sheetOf(k)||{}).name||k); NSMP.err=(e && e.message)||String(e); }
+        }
+        try{ nuriDropPix(); }catch(_){ }
+        if(bad.length===keys.length) throw new Error(NSMP.err||"見本がありません");
+        if(bad.length) NSMP.err=bad.join("・")+" は よみこめませんでした";
+        NSMP.state="ready";
+    })().catch(e=>{ NSMP.state="error"; NSMP.err=(e && e.message)||String(e); NSMP.p=null; })
+       .finally(()=>{ nuriSamplePaintUI(); });
+    return NSMP.p;
+}
+if(!CARD_EVENT_MODE) setTimeout(()=>{ try{ nuriSamplePreload(); }catch(e){ console.warn("[見本]", e); } }, 0);
+document.addEventListener("click", e=>{   // 用意ができていない時は開かない（読めなかった時は、押すと読み直す）
+    const sm=e.target && e.target.closest && e.target.closest("#nuriSample > summary"); if(!sm || NSMP.state==="ready") return;
+    e.preventDefault(); if(NSMP.state==="error"){ const n=$("nuriSampleNote"); if(n) n.textContent=""; nuriSamplePreload(); } }, true);
 // 【追加】みほんから とりこむ：cardDebug=2 の見本と同じ模様を、じぶんで ぬった きょうりゅうにする（ぬってあれば うわがき）
 async function nuriImportSample(keys){
     if(NURI.sampleBusy || !keys || !keys.length) return;
+    if(NSMP.state!=="ready"){ nuriSamplePreload(); return; }   // 用意が終わるまでは とりこまない
     const nm=(k)=>{ const s=sheetOf(k); return s? s.name : k; }, over=keys.filter(k=>NURI.paint[k]);
     const msg = keys.length>1
         ? "みほんの もようを、ぜんぶの きょうりゅうに とりこみますか？"+(over.length? "\n（"+over.map(nm).join("・")+" の ぬりえは、みほんで うわがきされます）" : "")
@@ -14277,20 +14322,21 @@ async function nuriImportSample(keys){
     if(!confirm(msg)) return;
     const list=$("nuriSampleList"), note=$("nuriSampleNote"), btns=list? [...list.querySelectorAll("button")] : [];
     NURI.sampleBusy=true; btns.forEach(b=>b.disabled=true);
-    let ok=0;
+    let ok=0, err="";
     for(let i=0;i<keys.length;i++){ const k=keys[i];
         if(note) note.textContent="みほんを とりこんでいるよ…"+(keys.length>1? "（"+(i+1)+"/"+keys.length+"）" : "");
         await new Promise(r=>setTimeout(r,30));   // 案内を先に出す
         try{ const p=await digSampleLoad(k); if(!p) throw new Error("見本の模様を作れませんでした");
             const D=await nuriLoadFaces(k);
-            nuriSetPaint(k, { rgba:p.rgba, cs:p.cs });
-            await nuriSave(k, p.rgba, D.info, p.cs);
+            if(D.info.keysSha1!==p.keysSha1) throw new Error("ぬりえの表が かわりました");
+            nuriSetPaint(k, { rgba:new Uint8Array(p.rgba), cs:p.cs ? JSON.parse(JSON.stringify(p.cs)) : null });   // 見本の模様の写し（見本の方は たんけん でも使うので分ける）
+            if(!(await nuriSave(k, p.rgba, D.info, p.cs))) throw new Error("ほぞんできませんでした（ようりょうが いっぱいかも）");
             ok++;
-        }catch(e){ console.warn("[ぬりえ] みほんから とりこめませんでした", k, e); }
+        }catch(e){ console.warn("[ぬりえ] みほんから とりこめませんでした", k, e); err=(e && e.message)||String(e); }
     }
     try{ nuriDropPix(); }catch(_){ }   // 用紙の画素リストは手放す
     NURI.sampleBusy=false; btns.forEach(b=>b.disabled=false);
-    if(note) note.textContent = ok===keys.length ? "みほんを とりこんだよ！" : ok ? "とりこめなかった きょうりゅうが あるよ" : "とりこめなかったよ。もういちど ためしてね";
+    if(note) note.textContent = ok===keys.length ? "みほんを とりこんだよ！" : (ok ? "とりこめなかった きょうりゅうが あるよ" : "とりこめなかったよ")+"（"+err+"）";
     nuriMenuRefresh();
 }
 function nuriReset(key){
@@ -15540,7 +15586,9 @@ const EV_GONE_TICKS=3;
  *     { part, type:"stripe"|"zigzag"|"dots", color, size, gap, dir }   しま・ギザギザ・水玉（dir：しまの向き。なし＝横／"v"＝たて／"d"＝ななめ）
  *   大きさは用紙の画素（5px＝1mm）。angle：塗る向き（度）／edgeGap：線の手前のすき間の多さ（0〜1・ふつう0.38）／over：はみ出しの最大
  *   seed：はみ出し・すき間・星の位置の出方（同じ値なら毎回同じ絵）
- *   ここを書き換えた見本（前の版の見本3枚も）は、開いた時・「すべて作り直す」の時に、今の設定で塗り直す（evSampleSig） */
+ *   ここを書き換えた見本（前の版の見本3枚も）は、開いた時・「すべて作り直す」の時に、今の設定で塗り直す（evSampleSig）
+ *   ゲーム側（たんけん・「みほんから とりこむ」）は、あらかじめ計算した coloring/samples/ を使う。ここを書き換えると sig が合わなくなり、
+ *   その端末で塗って作る（作り直すと速く確実：samples/ を作り直す） */
 const EV_SAMPLES=[
     { key:"trex", seed:31, angle:30,          // 見本1：元の色に近い緑で塗って、おなかの横に太陽
       parts:{ head:"#4f8a3a", body:"#4f8a3a", tail:"#4f8a3a", leg:"#2f5a2a", arm:"#4f8a3a" },
