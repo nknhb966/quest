@@ -62,7 +62,14 @@
     #recoMini button{ border:none; border-radius:99px; padding:5px 10px; background:transparent; color:#c9bcff; font-size:11px; font-weight:800; cursor:pointer; font-family:inherit; }
     #recoMini button.on{ background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; }
     @media (max-width:700px){ .menu-inner{ padding-top:30px; } }   /* 右上の切り替えと、上の文字が重ならないように */
-    /* 【追加】「VR・ARで はっくつ」の見出し（「モデルを みよう」と同じ見た目） */
+    /* 【追加】メイン画面の並び（ヘッドセット以外＝スマホ・タブレット・PC）：ぬりえ → モデルを みよう → VR・ARで ほんかくはっくつ → あそび方の行
+       ヘッドセット（body.hs-menu）：VR・ARで ほんかくはっくつ → ぬりえ → モデルを みよう → あそび方の行 */
+    .menu-inner > *{ order:0; }
+    .menu-inner > #nuriSection{ order:1; } .menu-inner > #mvSection{ order:2; } .menu-inner > #digSection{ order:3; } .menu-inner > #menuHelpRow{ order:4; }
+    body.hs-menu .menu-inner > #digSection{ order:1; } body.hs-menu .menu-inner > #nuriSection{ order:2; } body.hs-menu .menu-inner > #mvSection{ order:3; }
+    #digSection{ width:100%; margin-top:16px; display:flex; flex-direction:column; align-items:center; }
+    #menuHelpRow{ margin-top:16px; }
+    /* 【追加】「VR・ARで ほんかくはっくつ」の見出し（「モデルを みよう」と同じ見た目） */
     .digSectionTitle{ width:100%; box-sizing:border-box; padding-top:14px; margin:0 0 9px; border-top:1px solid rgba(180,140,255,.28);
         font:800 13px sans-serif; color:#c3b3f2; letter-spacing:1.5px; opacity:.95; text-align:left; }
     .subtitle{ margin:8px 0 22px; color:rgba(214,200,255,.78); font-size:clamp(13px,2.2vw,17px); letter-spacing:1px; text-align:center; }
@@ -451,9 +458,10 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
     <h1 class="title">越前国府発掘クエスト</h1>
     <p class="subtitle">歩いて探して、出土品や恐竜を掘り当てよう</p>
 
-    <!-- 【追加】VR・ARで発掘（「モデルを みよう」「ぬりえで じぶんの きょうりゅう」と同じ見出し） -->
-    <div class="digSectionTitle">⛏ VR・ARで はっくつ</div>
     <p id="loadingNote"><i></i>データを読み込み中…</p>
+    <!-- 【追加】VR・ARで ほんかくはっくつ（入室ボタン・まとめて更新・設定）。並び順は端末で変わる（下の .menu-inner の order） -->
+    <div id="digSection">
+    <div class="digSectionTitle">⛏ VR・ARで ほんかくはっくつ</div>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
     <button class="desktop-btn" id="startTabletAR" style="display:none">📷 タブレットARであそぶ（カメラ）<span class="devBadge">🚧 開発中</span></button>
@@ -637,8 +645,9 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <div id="wsPendNote" class="pendNote"></div>
       </div>
     </div>
+    </div><!-- /#digSection -->
 
-    <div class="row">
+    <div class="row" id="menuHelpRow">
       <button class="ghost" id="openHelp">❓ あそび方</button>
       <button class="ghost" id="openScoring">📊 得点・カードの仕組み</button>
       <button class="ghost" id="openRecords">🏅 記録</button>
@@ -813,13 +822,13 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <h3>🖍 ぬりえで じぶんの きょうりゅう</h3>
         <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。</p>
         <p>ぬった色によって、その恐竜の<b>ステータスとスペシャル</b>も変わります（色とステータスの関係は「📊 得点・カードの仕組み」へ）。模様とステータスは、<b>相棒にしたとき・相棒えらびのカード・獲得カード</b>に入ります（図鑑のカードは元のまま）。</p>
-        <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。</p>
+        <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。メイン画面の並びは、ヘッドセットでは「VR・ARで ほんかくはっくつ → ぬりえ → モデルを みよう」、それ以外（スマホ・タブレット・PC）では「ぬりえ → モデルを みよう → VR・ARで ほんかくはっくつ」です。</p>
         <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
       </section>
       <section>
         <h3>🔍 モデルを みよう</h3>
         <p>「モデルを えらぶ」で<b>しゅつどひん・いぬ・きょうりゅう</b>を選び、<b>「🔍 モデルを みる」</b>で3Dモデルを回して見たり、<b>「📱 ARで みる」</b>で目の前に置いて見たりできます。ぬりえをした恐竜は、その模様で表示されます。</p>
-        <p class="k">「📱 ARで みる」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「🗺 たんけん」（リセットの左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
+        <p class="k">「📱 ARで みる」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「🗺 たんけん」（うごかせるの左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
       </section>
       <section>
         <h3>⚙️ 設定（おすすめ設定オフのとき）</h3>
@@ -1374,14 +1383,14 @@ html.card-event body > *:not(#tcEvent):not(#tcRank):not(script):not(style){ disp
         <div id="lphDesc"></div>
         <div id="lphSel"></div>
         <div id="lphBtns">
-            <button type="button" id="lphExplore" style="display:none">🗺<span>たんけん</span></button>   <!-- 【変更】「この きょうりゅう（いぬ）と たんけんする」→「たんけん」（リセットの手前・同じ行） -->
-            <button data-a="reset">🔄<span>リセット</span></button>
+            <button type="button" id="lphExplore" style="display:none">🗺<span>たんけん</span></button>   <!-- 【変更】「この きょうりゅう（いぬ）と たんけんする」→「たんけん」（うごかせるの手前・同じ行） -->
             <button data-a="lock" id="lphLockBtn">✋<span>うごかせる</span></button>
             <button data-a="anim" id="lphAnimBtn">🎞<span>アニメ</span></button>
             <button data-a="walk" id="lphWalkBtn" style="display:none">🚶<span>あるく</span></button>
             <button data-a="desc" id="lphDescBtn">📖<span>せつめい</span></button>
             <button data-a="shot" class="cap">📷<span>しゃしん</span></button>
             <button data-a="rec" class="cap lph-recbtn">🎥<span>どうが</span></button>
+            <button data-a="reset">🔄<span>リセット</span></button>   <!-- 【変更】どうが と しまう の間 -->
             <button data-a="fold">▼<span>しまう</span></button>
         </div>
     </div>
@@ -7173,12 +7182,14 @@ document.querySelectorAll("#segTool button").forEach(b=>b.onclick=()=>{ document
 let recoOn=true;   // おすすめ設定（既定オン）
 // ===== デバイス判定（immersive-vr の対応のみでヘッドセット扱い） =====
 let IS_HEADSET=false;   // 既定はスマホ/PC扱い（検出完了までの初期値）
+function menuOrderSync(){ document.body.classList.toggle("hs-menu", !!IS_HEADSET); }   // 【追加】メイン画面の並び：ヘッドセット＝VR・ARで ほんかくはっくつ を先頭に
 let headsetDetected=false;   // 検出完了フラグ。完了までは自動サイズを適用しない（ヘッドセットの既定を壊さないため）
 function updateEntryButtons(){   // 入室ボタン＋発掘モデル表示ボタンの表示制御。おすすめオン時のみデバイスで振り分け、オフなら両方表示
     const wrap=document.getElementById("vrbtnwrap");
     const dtop=document.getElementById("startDesktop");
     const mvB=document.getElementById("mvOpenBtn");
     const mvAr=document.getElementById("mvArOpenBtn");
+    menuOrderSync();   // 【追加】端末で並びを変える（ヘッドセットの判定のあとにも呼ばれる）
     if(recoOn){
         if(IS_HEADSET){ if(wrap) wrap.style.display=""; if(dtop) dtop.style.display="none"; if(mvB) mvB.style.display="none"; if(mvAr) mvAr.style.display=""; }   // ヘッドセット：VR/ARで入室＋発掘モデル表示AR
         else { if(wrap) wrap.style.display="none"; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display="none";   // 【変更】おすすめオン：「モデルを みる」は出さない
@@ -9710,11 +9721,10 @@ function liteBuildUI(){
     // A3レイアウト：左A4=①、右A4=②。A4縦=幅0.21×高0.297（×LITE_UI倍）。
     const A4W=0.21*LITE_UI, A4H=0.297*LITE_UI, top=A4H/2;   // A4上辺
     const colL=-A4W/2, colR=A4W/2;   // ①中心 / ②中心
-    // ① 縦：名称倍率 → リセット → モデル操作 → 説明
+    // ① 縦：名称倍率 → モデル操作 →（アニメ → あるく）→ リセット → 説明
     const bw=A4W*0.94, bh=0.05*LITE_UI, gap=0.008*LITE_UI;
     const info=liteMakePanel(bw,bh); info.position.set(colL, top-bh/2, 0); info.userData.kind="info"; LITE.ui.add(info); LITE.infoPanel=info;
-    const resetY=top-bh/2-(bh+gap), opY=resetY-(bh+gap);
-    const rb=liteMakePanel(bw,bh); rb.position.set(colL, resetY, 0); rb.userData.kind="btn"; rb.userData.act="reset"; LITE.ui.add(rb); LITE.buttons.push(rb);
+    const opY=top-bh/2-(bh+gap);   // 【変更】リセットは いちばん下（スマホ・タブレットと同じ考え：どうが／しまう の間）
     const ob=liteMakePanel(bw,bh); ob.position.set(colL, opY, 0); ob.userData.kind="btn"; ob.userData.act="op"; LITE.ui.add(ob); LITE.buttons.push(ob);
     let _lastBtnY=opY;
     if(LITE.isDino){   // 犬・恐竜のみ：アニメーションON/OFFボタンを「モデル操作」の次に追加
@@ -9724,6 +9734,9 @@ function liteBuildUI(){
         const wkb=liteMakePanel(bw,bh); wkb.position.set(colL, walkY, 0); wkb.userData.kind="btn"; wkb.userData.act="walk"; LITE.ui.add(wkb); LITE.buttons.push(wkb);
         _lastBtnY=walkY;
     }
+    { const resetY=_lastBtnY-(bh+gap);
+      const rb=liteMakePanel(bw,bh); rb.position.set(colL, resetY, 0); rb.userData.kind="btn"; rb.userData.act="reset"; LITE.ui.add(rb); LITE.buttons.push(rb);
+      _lastBtnY=resetY; }
     LITE._descTop = _lastBtnY - bh/2 - gap;   // 説明パネルの上辺基準（ボタン群の下）
     LITE._colL=colL; LITE._descW=bw;
     LITE.descPanel=null;
