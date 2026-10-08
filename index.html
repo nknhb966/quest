@@ -94,9 +94,7 @@
     }
     .desktop-btn:hover{ background:rgba(40,26,80,.8); color:#fff; }
     /* 【追加】開発中の機能（タブレットAR）：点線の枠・うすい色＋「開発中」の札 */
-    #startTabletAR{ border-style:dashed; border-color:rgba(255,200,90,.55); color:#bba98a; background:rgba(40,30,14,.45); }
-    #startTabletAR .devBadge{ display:inline-block; margin-left:8px; padding:2px 8px; border-radius:99px; background:#f7c948; color:#3a2600; font-size:12px; font-weight:800; letter-spacing:0; vertical-align:1px; }
-
+        
     .cardgrid{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
     .opt{ background:rgba(12,9,32,.62); border:1px solid rgba(180,140,255,.24); border-radius:12px; padding:12px 14px; }
     .opt .lbl{ font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:9px; }
@@ -471,7 +469,6 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
     <div class="digSectionTitle">⛏ VR・ARで ほんかくはっくつ</div>
     <div id="vrbtnwrap"></div>
     <button class="desktop-btn" id="startDesktop">📱 画面操作で発掘する</button>
-    <button class="desktop-btn" id="startTabletAR" style="display:none">📱 ARで発掘する<span class="devBadge">🚧 開発中</span></button>
     <div id="loadBar" style="display:none">
       <div class="lbText"><b>未反映の変更があります</b><span id="loadBarItems"></span></div>
       <button type="button" id="loadBarBtn" class="applyBtn">🔄 まとめて更新</button>
@@ -851,8 +848,8 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <p class="k">VR/AR：左スティックで歩く／右スティックでスナップ回転。右手中指グリップ＋右スティック上下＝サイトの高さ／左右＝相棒との距離。<br>PC：WASD＋マウス（クリックで視点固定）<br>スマホ：画面左半分でスティック／右半分をなぞって見回す</p>
       </section>
       <section>
-        <h3>📷 タブレットAR</h3>
-        <p>タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。タイトルの<b>「ARで発掘する」</b>から始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
+        <h3>🗺 たんけん（ARで あそぶ）</h3>
+        <p>スマホ・タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。<b>「📱 ARで あそぶ」</b>のAR画面で<b>「🗺 たんけん」</b>を押して始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「幼児 0.9m／子ども 1.2m／大人 1.5m」を選びます）。スタンバイ中は「やめる」→「ここではじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
       </section>
@@ -1095,8 +1092,7 @@ html.card-event body > *:not(#tcEvent):not(#tcRank):not(script):not(style){ disp
     body.tabar-cam > canvas{ position:fixed; inset:0; z-index:1; }          /* 透明な3D描画をカメラ映像の上に重ねる */
     body.tabar-xr{ background:transparent !important; }                      /* WebXR：カメラ映像はXR側が描画。DOMは上に重なるUIだけ */
     body.tabar-xr > canvas{ visibility:hidden; }
-    body.loading #startTabletAR, body.preloading #startTabletAR{ opacity:.45; pointer-events:none; filter:grayscale(.4); }
-
+    
     #tabarTouch{ position:fixed; inset:0; z-index:12; display:none; touch-action:none; -webkit-user-select:none; user-select:none; }
     body.tabar.playing #tabarTouch{ display:block; }
 
@@ -7203,8 +7199,6 @@ function updateEntryButtons(){   // 入室ボタン＋発掘モデル表示ボ�
         else { if(wrap) wrap.style.display="none"; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display="none";   // 【変更】おすすめオン：「モデルを みる」は出さない
                if(mvAr) mvAr.style.display = ((typeof litePhoneWanted==="function" && litePhoneWanted()) || (typeof iarWanted==="function" && iarWanted())) ? "" : "none"; }   // スマホ/PC：ヘッドセットなしで入室＋発掘モデル表示（【変更】Androidはモデル表示ARも表示）
     } else { if(wrap) wrap.style.display=""; if(dtop) dtop.style.display=""; if(mvB) mvB.style.display=""; if(mvAr) mvAr.style.display=""; }                        // おすすめオフ：入室・発掘モデル表示とも両方表示
-    const tab=document.getElementById("startTabletAR");
-    if(tab) tab.style.display = recoOn ? "none" : "";   // 【変更】タブレットAR（開発中）：おすすめオフの時だけ
     const sec=document.getElementById("mvSection");   // ボタンが1つもない時は「モデルを みよう」の区切りごと出さない
     if(sec) sec.style.display = ((mvB && mvB.style.display!=="none") || (mvAr && mvAr.style.display!=="none")) ? "" : "none";
 }
@@ -12787,7 +12781,7 @@ tabarUI.touch.addEventListener("pointercancel", e=>{ TABAR.pointers.delete(e.poi
 document.body.addEventListener("beforexrselect", e=>{ if(TABAR.on) e.preventDefault(); });   // 画面のタッチはDOM側で処理（XRのselectは使わない）
 
 /* ---------- ボタン ---------- */
-document.getElementById("startTabletAR").onclick=()=> tabarOpenPrep();
+// 【削除】メイン画面の「ARで発掘する（開発中）」は廃止。準備画面（tabarOpenPrep）以下は「ARで あそぶ」→ AR画面 →「🗺 たんけん」で使う
 document.querySelectorAll("#segTabarH button").forEach(btn=>{ btn.onclick=()=>{
     TABAR.heldKey=btn.dataset.v;
     document.querySelectorAll("#segTabarH button").forEach(x=>x.classList.toggle("on", x===btn));
@@ -12810,7 +12804,7 @@ const wsAskUI={ box:document.getElementById("wsAsk"), msg:document.getElementByI
     enter:document.getElementById("wsAskEnter"), skip:document.getElementById("wsAskSkip"), cancel:document.getElementById("wsAskCancel") };
 document.addEventListener("click", e=>{   // 入室ボタンより先に受け取る（キャプチャ）
     if(_wsBypass || !pendingItems().length) return;
-    const t=e.target && e.target.closest && e.target.closest("#vrbtnwrap button, #vrbtnwrap a, #startDesktop, #startTabletAR");
+    const t=e.target && e.target.closest && e.target.closest("#vrbtnwrap button, #vrbtnwrap a, #startDesktop");
     if(!t || t.disabled) return;
     e.preventDefault(); e.stopImmediatePropagation();
     wsOpenAsk(t);
@@ -14386,16 +14380,17 @@ async function nuriImportSample(keys){
     if(note) note.textContent = ok===keys.length ? "" : (ok ? "とりこめなかった きょうりゅうが あるよ" : "とりこめなかったよ")+"（"+err+"）";   // 【変更】うまく とりこめた時は何も出さない（印の色で分かる）
     nuriMenuRefresh();
 }
+function nuriSampleNoteClear(){ const n=$("nuriSampleNote"); if(n && (!NSMP || NSMP.state==="ready")) n.textContent=""; }   // 【追加】もとに もどした時は、みほんに関する メッセージを消す
 function nuriReset(key){
     const s=sheetOf(key); if(!confirm("ぬった もようを けして、もとの "+(s?s.name:key)+"に もどしますか？")) return;
-    nuriClearSaved(key); nuriSetPaint(key, null); nuriMenuRefresh();
+    nuriClearSaved(key); nuriSetPaint(key, null); nuriSampleNoteClear(); nuriMenuRefresh();
 }
 function nuriResetAll(){
     const keys=Object.keys(NURI.paint).filter(k=>NURI.paint[k]); if(!keys.length) return;
     if(!confirm("ぬった もようを ぜんぶ けして、もとの きょうりゅうに もどしますか？")) return;
     for(const k of keys){ nuriClearSaved(k); nuriSetPaint(k, null); }
     if(NURI.reg) for(const s of NURI.reg.sheets) nuriClearSaved(s.key);                        // 読み込めなかった古い保存も消す
-    nuriMenuRefresh();
+    nuriSampleNoteClear(); nuriMenuRefresh();
 }
 // ---- 配線 ----
 function nuriWire(){
