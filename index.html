@@ -470,8 +470,8 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
     <div id="digSection">
     <div class="digSectionTitle">⛏ VR・ARで ほんかくはっくつ</div>
     <div id="vrbtnwrap"></div>
-    <button class="desktop-btn" id="startDesktop">🖥 ヘッドセットなしで試す（PC・スマホ操作）</button>
-    <button class="desktop-btn" id="startTabletAR" style="display:none">📷 タブレットARであそぶ（カメラ）<span class="devBadge">🚧 開発中</span></button>
+    <button class="desktop-btn" id="startDesktop">📱 画面操作で発掘する</button>
+    <button class="desktop-btn" id="startTabletAR" style="display:none">📱 ARで発掘する<span class="devBadge">🚧 開発中</span></button>
     <div id="loadBar" style="display:none">
       <div class="lbText"><b>未反映の変更があります</b><span id="loadBarItems"></span></div>
       <button type="button" id="loadBarBtn" class="applyBtn">🔄 まとめて更新</button>
@@ -755,7 +755,7 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
       </section>
       <section>
         <h3>🕹 入室とおすすめ設定</h3>
-        <p>タイトルで入室方法を選びます。<b>VR・ARで入る</b>（ヘッドセット）か、<b>ヘッドセットなしで試す</b>（PC・スマホ）です。</p>
+        <p>タイトルで入室方法を選びます。<b>VR・ARで入る</b>（ヘッドセット）か、<b>画面操作で発掘する</b>（PC・スマホ）です。</p>
         <p>ページを開くと、まず<b>データの読み込み</b>（モデルやカードの準備）をします。「データを読み込み中…」と出ている間は、ボタンが<b>うすい色</b>になっていて押せません。読み込みが終わると、ボタンの色がこくなって押せるようになります。設定を変えて読み込み直すときも同じです。</p>
         <p><b>おすすめ設定オン</b>（既定）では各トグルを自動で固定し、<b>使っている端末に合う入室ボタンだけ</b>を表示します。スマホ・PCのときは広さも自動で最適化（サイト表示＝<b>3倍</b>／サイト非表示＝<b>30×30m</b>）。<b>おすすめ設定オフ</b>にすると、すべての項目を自分で調整でき、入室ボタンも両方表示されます。<b>モードや発掘対象を切り替えると、オン・オフに関わらず、その組み合わせのおすすめ値が自動でセット</b>されます（オフのときはそこから手動で変えられます）。</p>
       </section>
@@ -852,7 +852,7 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
       </section>
       <section>
         <h3>📷 タブレットAR</h3>
-        <p>タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。タイトルの<b>「タブレットARであそぶ」</b>から始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
+        <p>タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。タイトルの<b>「ARで発掘する」</b>から始め、あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここではじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「幼児 0.9m／子ども 1.2m／大人 1.5m」を選びます）。スタンバイ中は「やめる」→「ここではじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
       </section>
@@ -11693,7 +11693,7 @@ function tabarRefreshPrep(){
     const sup=TABAR.support;
     if(!sup || !tabarReady()){ tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしているよ…"); return; }
     if(!sup.secure){ tabarPrepStatus._final=true; tabarPrepStatus("カメラARは https:// で開いたページでだけ使えます。\nURLを確認してください。", true); return; }
-    if(!sup.webxr && !(sup.camera && sup.orient)){ tabarPrepStatus._final=true; tabarPrepStatus("この端末・ブラウザではカメラARを使えません。\nメニューの「ヘッドセットなしで試す」で遊べます。", true); return; }
+    if(!sup.webxr && !(sup.camera && sup.orient)){ tabarPrepStatus._final=true; tabarPrepStatus("この端末・ブラウザではカメラARを使えません。\nメニューの「画面操作で発掘する」で遊べます。", true); return; }
     tabarUI.startBtn.disabled=false;
     document.getElementById("tabarHeightOpt").style.display = sup.webxr ? "none" : "";   // 高さを実測できない方式のときだけ選ぶ
     tabarPrepStatus(sup.webxr ? "じゅんび できたよ！"
@@ -14383,7 +14383,7 @@ async function nuriImportSample(keys){
     }
     try{ nuriDropPix(); }catch(_){ }   // 用紙の画素リストは手放す
     NURI.sampleBusy=false; btns.forEach(b=>b.disabled=false);
-    if(note) note.textContent = ok===keys.length ? "みほんを とりこんだよ！" : (ok ? "とりこめなかった きょうりゅうが あるよ" : "とりこめなかったよ")+"（"+err+"）";
+    if(note) note.textContent = ok===keys.length ? "" : (ok ? "とりこめなかった きょうりゅうが あるよ" : "とりこめなかったよ")+"（"+err+"）";   // 【変更】うまく とりこめた時は何も出さない（印の色で分かる）
     nuriMenuRefresh();
 }
 function nuriReset(key){
