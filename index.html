@@ -10041,7 +10041,7 @@ function lphGrabCam(frame, maxLong){   // カメラ映像だけを読み出す�
 const IAR_CFG = {
     holdHeight: 1.1,      // カメラ＋ジャイロ：スマホを持つ高さ(m)＝床はこの下
     fovLongDeg: 67,       // カメラの視野（長辺）の初期値。ぬりえを読むと、ジャイロの向きと用紙から実際の値を求めて端末に覚える
-    diagDist: 0.25,       // 「ARで もういちど みる」で用紙の高さが分からない時：スマホから恐竜（足もとの中心）までの距離(m)
+    diagDist: 0.35,       // 「ARで もういちど みる」で用紙の高さが分からない時：スマホから恐竜（足もとの中心）までの距離(m)
     diagMinDeg: 20,       // 　その向き：スマホが見ている向きの下向きの角度を、この範囲におさめる（度）
     diagMaxDeg: 60,
 };
@@ -10065,7 +10065,7 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     LITE.phone=true; LITE.nuri = (opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, small:!!opts.small, pick:!!opts.pick } : null;
     LITE.paperScale = (LITE.nuri && LITE.nuri.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;
     const _drop=(opts && opts.nuri && opts.small) ? iarPaperDropLoad() : 0;   // 「ARで もういちど みる」：さっきの用紙の高さを台にする（Androidで机が床として見つかるのと同じ見え方）
-    const _diag=!!(opts && opts.nuri && opts.small && !_drop);                  // 用紙の高さが分からない時：スマホから斜め前 0.25m に出す（litePhonePlaceFront）
+    const _diag=!!(opts && opts.nuri && opts.small && !_drop);                  // 用紙の高さが分からない時：スマホから斜め前 0.35m に出す（litePhonePlaceFront）
     LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, diag:_diag,
         hold:(_drop || (_diag ? IAR_CFG.diagDist*Math.sin(THREE.MathUtils.degToRad(IAR_CFG.diagMinDeg)) : IAR_CFG.holdHeight)),
         save:{ pPos:player.position.clone(), pQ:player.quaternion.clone(), pS:player.scale.clone(), cPos:camera.position.clone(), cQ:camera.quaternion.clone() } };   // リグとカメラは入る前の状態を保存
@@ -10442,7 +10442,7 @@ function litePhonePlaceFront(){   // スマホに正対・足元は床。恐竜�
     if(LPH.paper){ litePhonePlacePaper(); return; }
     if(LITE.nuri && LITE.nuri.small){   // 「ARで もういちど みる」：用紙と同じ大きさで、床の0.5m先（恐竜の中心）
         let dist=LPH_CFG.smallDist;
-        if(LITE.iar && LITE.iar.diag){   // iPhone で用紙の高さが分からない時：スマホが見ている向き（下向き20〜60°）の0.25m先＝そこを床にする
+        if(LITE.iar && LITE.iar.diag){   // iPhone で用紙の高さが分からない時：スマホが見ている向き（下向き20〜60°）の0.35m先＝そこを床にする
             const q=camera.getWorldQuaternion(new THREE.Quaternion()), fy=new THREE.Vector3(0,0,-1).applyQuaternion(q).y;
             const a=THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(-fy,-1,1)), THREE.MathUtils.degToRad(IAR_CFG.diagMinDeg), THREE.MathUtils.degToRad(IAR_CFG.diagMaxDeg));
             LITE.iar.hold=IAR_CFG.diagDist*Math.sin(a); camera.position.y=LITE.iar.hold; camera.updateMatrixWorld(true);
