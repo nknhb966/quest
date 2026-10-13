@@ -403,18 +403,20 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
                  calc(var(--u)*1.5) calc(var(--u)*1.5) 0 #3b1d02, calc(var(--u)*-1.5) calc(var(--u)*1.5) 0 #3b1d02,
                  calc(var(--u)*1.5) calc(var(--u)*-1.5) 0 #3b1d02, calc(var(--u)*-1.5) calc(var(--u)*-1.5) 0 #3b1d02,
                  0 0 calc(var(--u)*10) rgba(255,190,60,.75); }
-/* 基本情報（分類・食性・時代・地域） */
-.tcard .tc-info{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*580); height:calc(var(--u)*26); margin:0;
-    display:flex; flex-wrap:nowrap; align-items:center; justify-content:center; column-gap:calc(var(--u)*14); row-gap:0;
-    font-size:calc(var(--u)*15); font-weight:700; color:#cdbf94; line-height:1.15; letter-spacing:calc(var(--u)*.5); }
-.tcard .tc-info > div{ display:flex; white-space:nowrap; }
-.tcard .tc-info dt, .tcard .tc-info dd{ margin:0; }
-.tcard .tc-info dt::after{ content:":\00a0"; }   /* 半角のコロン＋空白（4つを1行に収める） */
+/* ふりがな（文字の半分の大きさで漢字の真上。並べ方は tcRubyFill） */
+.tcard .tc-rb{ position:relative; display:inline-block; }
+.tcard .tc-rt{ position:absolute; left:0; right:0; bottom:calc(100% + var(--u)*1); display:flex; justify-content:center;
+    font-size:50%; line-height:1; letter-spacing:0; white-space:nowrap; }
+/* 基本情報（分類・大きさ・時代・地域）＝ふりがな付き。文字の中心 600（ふりがなは画像のわくの宝石にかからない高さ） */
+.tcard .tc-info{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*592.5); height:calc(var(--u)*15); margin:0;
+    display:flex; flex-wrap:nowrap; align-items:center; justify-content:center; column-gap:calc(var(--u)*14);
+    font-size:calc(var(--u)*15); font-weight:700; color:#cdbf94; line-height:1; letter-spacing:calc(var(--u)*.5); }
+.tcard .tc-info > div{ white-space:nowrap; }
 .tcard .tc-rule{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); height:calc(var(--u)*3); background:#554727; }
-.tcard .tc-rule.r1{ top:calc(var(--u)*607); } .tcard .tc-rule.r2{ top:calc(var(--u)*697); }
+.tcard .tc-rule.r1{ top:calc(var(--u)*610); } .tcard .tc-rule.r2{ top:calc(var(--u)*697); }
 /* ステータス（ちから・はっけん・かしこさ）＝★☆の5段階 */
-.tcard .tc-stats{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*613); margin:0; padding:0; list-style:none;
-    display:grid; grid-template-columns:calc(var(--u)*156) auto; justify-content:center; grid-auto-rows:calc(var(--u)*26.5); align-items:center; }
+.tcard .tc-stats{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*615); margin:0; padding:0; list-style:none;
+    display:grid; grid-template-columns:calc(var(--u)*156) auto; justify-content:center; grid-auto-rows:calc(var(--u)*26); align-items:center; }
 .tcard .tc-stats li{ display:contents; }
 .tcard .tc-sl{ font-size:calc(var(--u)*21); font-weight:800; letter-spacing:calc(var(--u)*1); line-height:1; white-space:nowrap; }
 .tcard .tc-stars{ font-size:calc(var(--u)*24); line-height:1; letter-spacing:calc(var(--u)*.5); white-space:nowrap; color:#fdf3d5; }
@@ -423,18 +425,15 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
     display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .tcard .tc-special .tc-fit{ display:inline-block; white-space:nowrap; font-size:calc(var(--u)*21); font-weight:800; color:#ffd86a; letter-spacing:calc(var(--u)*.5); line-height:1; transform-origin:center; }
 /* 特徴 */
-.tcard .tc-feature{ position:absolute; left:calc(var(--u)*30); right:calc(var(--u)*30); top:calc(var(--u)*741); height:calc(var(--u)*30); margin:0;
-    display:flex; align-items:center; justify-content:center; text-align:center;
-    font-size:calc(var(--u)*14.5); font-weight:700; color:#cdbf94; line-height:1.2; letter-spacing:calc(var(--u)*.5); }
-.tcard .tc-feature dd{ display:inline; margin:0; }
-.tcard .tc-feature > div{ display:block; }
-.tcard .tc-feature{ flex-direction:column; }
-.tcard .tc-feature .tc-feature2{ display:block; min-height:1.2em; }
+.tcard .tc-feature{ position:absolute; left:calc(var(--u)*30); right:calc(var(--u)*30); top:calc(var(--u)*752.75); margin:0; text-align:center;   /* 文字の中心 760 */
+    font-size:calc(var(--u)*14.5); font-weight:700; color:#cdbf94; line-height:1; letter-spacing:calc(var(--u)*.5); white-space:nowrap; }
+.tcard .tc-feature dd{ display:block; margin:0; height:1em; }
+.tcard .tc-feature .tc-feature2{ margin-top:calc(var(--u)*10.5); }   /* 2行目の文字の中心＝1行目の 25 下 */
 /* 犬の形：分類〜地域の行がないので、その1行分（27）上に詰めて、特徴を2行にする */
 .tcard[data-layout="dog"] .tc-stats{ top:calc(var(--u)*586); }
 .tcard[data-layout="dog"] .tc-rule.r2{ top:calc(var(--u)*670); }
 .tcard[data-layout="dog"] .tc-special{ top:calc(var(--u)*677); }
-.tcard[data-layout="dog"] .tc-feature{ top:calc(var(--u)*714); height:calc(var(--u)*57); line-height:1.3; }
+.tcard[data-layout="dog"] .tc-feature{ top:calc(var(--u)*727.75); }   /* ふりがな付きの2行（文字の中心 735・760） */
 </style>
 </head>
 <body>
@@ -551,13 +550,13 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <div class="opt wide" id="optBuddyMode">
         <div class="lbl">相棒の決め方</div>
         <div class="seg" id="segBuddyMode">
-          <button data-v="dogonly" class="on">🐶 しば犬のみ</button>
+          <button data-v="dogonly" class="on">🐶 しばいぬのみ</button>
           <button data-v="pick">🎯 えらぶ</button>
           <button data-v="random">🎁 ランダム</button>
         </div>
       </div>
       <div class="opt wide" id="optDogLevel">
-        <div class="lbl">しば犬のレベル</div>
+        <div class="lbl">しばいぬのレベル</div>
         <div class="seg" id="segDogLevel">
           <button data-v="fixed" class="on">🔒 固定型</button>
           <button data-v="levelup">📈 アップ型</button>
@@ -764,9 +763,9 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>🏆 発掘チャレンジ（3ターン）</h3>
         <p><b>3つのターン</b>を連続で挑戦します。各ターンのスコア（＝発掘ポイント＋残り時間のボーナス）に応じて<b>相棒が1体仲間</b>になり（出土品の発掘→犬種／恐竜の発掘→恐竜）、次のターンから一緒に発掘できます。</p>
-        <p><b>1ターン目（ROUND 1・30秒）</b>はやさしめ（近くの<b>5か所</b>が最初から見えている・相棒は<b>しば犬</b>・スターブロックなし。恐竜のときは<b>プチレアとノーマルの5種</b>）。<b>得点に応じてプチレア／ノーマルの相棒</b>が手に入ります。<b>2ターン目（ROUND 2・60秒）</b>と<b>3ターン目（FINAL ROUND）</b>は全8か所を歩いて探し、<b>スターブロック</b>も出ます。<b>高得点ほどレアな相棒</b>が手に入ります。3ターン目の制限時間は<b>おすすめ設定オンで90秒</b>（オフでは設定した秒数）。出ている発掘ポイントを<b>全部掘るか、時間切れ</b>でそのターンは終わりです。</p>
-        <p>2・3ターン目のスタンバイでは、<b>しば犬と、それまでに仲間になった相棒</b>から選べます。</p>
-        <p>3ターンの<b>合計スコア</b>で最後の獲得カードが決まり、<b>チャレンジのTOP5</b>に記録されます（最後の獲得カードでは相棒は増えません）。最後のリザルトのあとは、カードを閉じてフィールドや図鑑をゆっくり見られます。もう一度進むと、最初（1ターン目）に戻ります（仲間になった相棒も、しば犬だけに戻ります）。</p>
+        <p><b>1ターン目（ROUND 1・30秒）</b>はやさしめ（近くの<b>5か所</b>が最初から見えている・相棒は<b>しばいぬ</b>・スターブロックなし。恐竜のときは<b>プチレアとノーマルの5種</b>）。<b>得点に応じてプチレア／ノーマルの相棒</b>が手に入ります。<b>2ターン目（ROUND 2・60秒）</b>と<b>3ターン目（FINAL ROUND）</b>は全8か所を歩いて探し、<b>スターブロック</b>も出ます。<b>高得点ほどレアな相棒</b>が手に入ります。3ターン目の制限時間は<b>おすすめ設定オンで90秒</b>（オフでは設定した秒数）。出ている発掘ポイントを<b>全部掘るか、時間切れ</b>でそのターンは終わりです。</p>
+        <p>2・3ターン目のスタンバイでは、<b>しばいぬと、それまでに仲間になった相棒</b>から選べます。</p>
+        <p>3ターンの<b>合計スコア</b>で最後の獲得カードが決まり、<b>チャレンジのTOP5</b>に記録されます（最後の獲得カードでは相棒は増えません）。最後のリザルトのあとは、カードを閉じてフィールドや図鑑をゆっくり見られます。もう一度進むと、最初（1ターン目）に戻ります（仲間になった相棒も、しばいぬだけに戻ります）。</p>
         <p class="k">ターンの進行：PC/スマホは<b>「このターンをおわる」→（3ターン目）「おわる」→「スタンバイに戻る」</b>ボタン／VR・ARは<b>右トリガー2回</b>。3ターン目のリザルトは「スコア／獲得カード」の2ページです。</p>
       </section>
       <section>
@@ -789,7 +788,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>🐶 相棒（聞く・なでる）</h3>
         <p>相棒は視界の前を歩きます。<b>「聞く」でヒント</b>をくれます（当たり/外れは着いてから判明）。<b>撫でるほど当てる確率が上がり</b>、頭上のキラキラで今の確率が分かります。確率の上がり方は相棒の<b>「かしこさ」</b>で変わり、時間がたつと少しずつ下がります。一度ポイントまで連れて行ってもらうと確率は初期に戻るので、また撫でましょう。撫でられるのは相棒が<b>こちらを向いているとき</b>だけ。発掘中は聞く・撫でができません。</p>
-        <p>相棒は<b>しば犬</b>と、発掘する対象に合わせた8種（出土品→犬種／恐竜→恐竜）です。スタンバイで相棒を選ぶと、その相棒の<b>カード</b>が表示されます（ぬりえをした恐竜は、ぬりえの模様のカード）。</p>
+        <p>相棒は<b>しばいぬ</b>と、発掘する対象に合わせた8種（出土品→犬種／恐竜→恐竜）です。スタンバイで相棒を選ぶと、その相棒の<b>カード</b>が表示されます（ぬりえをした恐竜は、ぬりえの模様のカード）。</p>
         <p class="k">聞く … VR：<b>右トリガー2回</b>または<b>Aボタン</b>（素手なら2回つまむ）／PC：Qキー・スマホ：「聞く」ボタン<br>撫でる … スマホ：相棒をタップ／PC：照準を合わせて左クリック／VR：手を近づけて<b>往復（撫でる）</b></p>
       </section>
       <section>
@@ -840,9 +839,9 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>⚙️ 設定（おすすめ設定オフのとき）</h3>
         <p class="k"><b>発掘する対象</b>：出土品／恐竜。<b>出土品の説明パネル</b>：出土品の説明パネルを出すか。<b>発掘道具の持ち替え</b>：幅広ブラシと細ピックを持ち替えるか。<b>図鑑カード表示中の時間</b>：止まる／止まらない。<b>恐竜の原寸比・恐竜が実寸になるフィールド短辺</b>：恐竜を出す大きさ。</p>
         <p class="k"><b>モード</b>・<b>制限時間</b>（60〜180秒）。<b>獲得カードの表示</b>：カード表示／カード非表示。<b>カードのレア度</b>：レア度あり／なし。</p>
-        <p class="k"><b>相棒の決め方</b>：しば犬のみ（相棒はしば犬だけ）／えらぶ（スタンバイで選ぶ）／ランダム（スタンバイで「カードをひく」）。<b>しば犬のレベル</b>（しば犬のみのとき）：固定型＝ステータスは2・2・2のまま／アップ型＝1・1・1から始まり、成績で上がる。<b>相棒の候補</b>：獲得した相棒（しば犬＋仲間になった相棒）／全ての相棒。</p>
+        <p class="k"><b>相棒の決め方</b>：しばいぬのみ（相棒はしばいぬだけ）／えらぶ（スタンバイで選ぶ）／ランダム（スタンバイで「カードをひく」）。<b>しばいぬのレベル</b>（しばいぬのみのとき）：固定型＝ステータスは2・2・2のまま／アップ型＝1・1・1から始まり、成績で上がる。<b>相棒の候補</b>：獲得した相棒（しばいぬ＋仲間になった相棒）／全ての相棒。</p>
         <p class="k"><b>スターブロック</b>：スターあり／なし。<b>サイトモデル</b>（遺跡3D）：表示／非表示と大きさ。<b>発掘場所</b>：ランダム／固定。<b>ワールドの広さ</b>（サイト非表示のとき）。広さや大きさを変えたときは、上に出る<b>「🔄 まとめて更新」</b>で読み込み直します。</p>
-        <p class="k">発掘チャレンジでは、多くの設定が自動で決まります（獲得カード表示・レア度あり・相棒はえらぶ／獲得した相棒・しば犬は固定型・スターあり）。おすすめ設定オンでは発掘する対象と広さだけ、オフではさらに<b>3ターン目の制限時間・発掘道具の持ち替え・サイトモデル・恐竜の原寸比・実寸になるフィールド短辺</b>を変えられます。</p>
+        <p class="k">発掘チャレンジでは、多くの設定が自動で決まります（獲得カード表示・レア度あり・相棒はえらぶ／獲得した相棒・しばいぬは固定型・スターあり）。おすすめ設定オンでは発掘する対象と広さだけ、オフではさらに<b>3ターン目の制限時間・発掘道具の持ち替え・サイトモデル・恐竜の原寸比・実寸になるフィールド短辺</b>を変えられます。</p>
       </section>
       <section>
         <h3>🎮 操作・移動</h3>
@@ -857,7 +856,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>🛠 会場セットアップ（サイト非表示時）</h3>
         <p>メニューでサイトを<b>「非表示」</b>にすると、ワールドの広さ（横X・奥行Z）を指定できます（スマホ・PC＋おすすめオンは<b>30×30m</b>）。会場の中央に立って向きを合わせ、<b>左手中指グリップ＋Ｙ長押し</b>で、その位置を中央・前方(-Z)として基準を確定します。以降のリセットでは発掘ポイントだけが再配置されます。</p>
-        <p class="k">左手Ｙ長押し（グリップなし）：リセット（相棒をしば犬に戻し、発掘ポイントを再配置してスタンバイへ）。左手Ｘ長押し：フィールドの矩形オーラ＋発掘ポイントのヒントを表示。</p>
+        <p class="k">左手Ｙ長押し（グリップなし）：リセット（相棒をしばいぬに戻し、発掘ポイントを再配置してスタンバイへ）。左手Ｘ長押し：フィールドの矩形オーラ＋発掘ポイントのヒントを表示。</p>
       </section>
     </div>
   </div>
@@ -871,9 +870,9 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
     <div class="helpscroll">
       <section>
         <h3>🧩 カード・相棒・レア度の対応</h3>
-        <p>カードと相棒は、図鑑と同じ<b>No.01〜No.08の番号</b>で対応します。<b>出土品</b>を掘ると同じ番号の<b>犬種</b>が、<b>恐竜</b>を掘ると同じ番号の<b>恐竜</b>が相棒になります。<b>しば犬</b>は最初から仲間です（獲得カードには出ませんが、相棒えらびでカードを見られます）。</p>
+        <p>カードと相棒は、図鑑と同じ<b>No.01〜No.08の番号</b>で対応します。<b>出土品</b>を掘ると同じ番号の<b>犬種</b>が、<b>恐竜</b>を掘ると同じ番号の<b>恐竜</b>が相棒になります。<b>しばいぬ</b>は最初から仲間です（獲得カードには出ませんが、相棒えらびでカードを見られます）。</p>
         <p>レア度は番号ごとに固定です：<b>No.01＝超激レア／No.02＝激レア／No.03＝レア／No.04・05＝プチレア／No.06・07・08＝ノーマル</b>（出土品・犬種・恐竜とも同じ並び）。順位は 超激レア＞激レア＞レア＞プチレア＞ノーマル。</p>
-        <p class="k">恐竜：No.01 ティラノサウルス／02 フクイラプトル／03 フクイティタン／04 フクイサウルス／05 ブラキオサウルス／06 ステゴサウルス／07 トリケラトプス／08 プテラノドン。犬種：No.01 ゴールデン・レトリバー／02 ラブラドール／03 ビーグル／04 ダックスフント／05 パピヨン／06 黒柴／07 チワワ／08 ブルドッグ。</p>
+        <p class="k">恐竜：No.01 ティラノサウルス／02 フクイラプトル／03 フクイティタン／04 フクイサウルス／05 ブラキオサウルス／06 ステゴサウルス／07 トリケラトプス／08 プテラノドン。犬種：No.01 ゴールデン・レトリバー／02 ラブラドール／03 ビーグル／04 ダックスフント／05 パピヨン／06 くろしば／07 チワワ／08 ブルドッグ。</p>
       </section>
       <section>
         <h3>💯 得点（スコア）</h3>
@@ -898,26 +897,26 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <p>各ターンのスコア式は同じ（発掘pt＋残り時間のボーナス）。制限時間は<b>1ターン目30秒／2ターン目60秒／3ターン目はおすすめ設定オンで90秒</b>（オフでは設定した秒数）。</p>
         <p><b>各ターン</b>：そのターンのスコアで<b>相棒を1体獲得</b>します（まだ持っていない相棒から。リザルトにはスコアと相棒が出ます）。1ターン目は<b>1200点以上でプチレア／未満でノーマル</b>（そのレア度が全部そろっていたら、もう一方から）。2ターン目はスコアで中心レア度（<b>≥2400超激／≥1800激／≥1320レア／≥840プチ／他ノーマル</b>）、3ターン目は（<b>≥6000超激／≥3600激／≥1800レア／≥600プチ／他ノーマル</b>）を決め、<b>中心60%・隣±20%</b>（いちばん上・下のときは中心80%）で抽選します。抽選したレア度の相棒を全部持っていたら、近いレア度から選びます。</p>
         <p><b>最後の獲得カード</b>：<b>3ターン合計スコア</b>で、3ターン目と同じ境目（≥6000超激／≥3600激／≥1800レア／≥600プチ／他ノーマル）の中心レア度を決め、中心60%・隣±20%で抽選します（<b>持っているカードも出ます</b>。このカードでは相棒は増えません）。合計スコアは<b>チャレンジTOP5</b>に記録されます。</p>
-        <p class="k">相棒・カードは掘る対象に連動（出土品→犬種／恐竜→恐竜）。設定は自動で、いつも<b>レア度あり</b>です。仲間になった相棒は、チャレンジを最初からやり直すと、しば犬だけに戻ります。</p>
+        <p class="k">相棒・カードは掘る対象に連動（出土品→犬種／恐竜→恐竜）。設定は自動で、いつも<b>レア度あり</b>です。仲間になった相棒は、チャレンジを最初からやり直すと、しばいぬだけに戻ります。</p>
       </section>
       <section>
         <h3>🔁 レア度あり／なしの違い</h3>
         <p><b>あり</b>：成績（スコア・タイム）が良いほど上位レア度が出やすく、<b>持っていないカードを上位から埋めていきます</b>。全部そろった後は、レア度どおりに同じカードも出ます。</p>
         <p><b>なし</b>：成績に関係なく、その回に掘った対象から<b>ランダム</b>（同じカードが出ることもあります。レア度表示自体は出ます）。</p>
         <p class="k">おすすめ設定（タイムアタック・じっくりコレクション）：出土品＝<b>レア度なし</b>／恐竜＝<b>レア度あり</b>。発掘チャレンジはいつも<b>レア度あり</b>。</p>
-        <p class="k">「持っているカード」は、仲間になった相棒のことです。入室し直すか、リセットすると、しば犬だけに戻ります。</p>
+        <p class="k">「持っているカード」は、仲間になった相棒のことです。入室し直すか、リセットすると、しばいぬだけに戻ります。</p>
       </section>
       <section>
-        <h3>🃏 カードの見方（恐竜・犬種・しば犬）</h3>
+        <h3>🃏 カードの見方（恐竜・犬種・しばいぬ）</h3>
         <p><b>左上</b>：発掘している対象（<b>恐竜発掘カード</b>／<b>遺跡発掘カード</b>）。<b>右上の数字</b>：カードのスコア。<b>右上の六角形</b>：恐竜＝頭の骨／犬＝肉球。画像の下に<b>名前</b>。</p>
-        <p>恐竜は<b>分類・食性・時代・地域</b>も書いてあります（しば犬も、恐竜を発掘する時のカードは恐竜と同じ形）。その下に<b>ちから・はっけん・かしこさ</b>（★1〜5）、<b>スペシャル</b>、<b>特徴</b>。</p>
+        <p>恐竜は<b>分類・全長・時代・地域</b>も書いてあります（プテラノドンは全長のかわりに<b>翼開長</b>＝つばさを広げた長さ。しばいぬも、恐竜を発掘する時のカードは恐竜と同じ形で、<b>背の高さ</b>）。その下に<b>ちから・はっけん・かしこさ</b>（★1〜5）、<b>スペシャル</b>、<b>特徴</b>。</p>
         <p class="k">恐竜のカードは2種類：<b>相棒えらび・獲得カード</b>＝ぬりえの模様とステータスが入ったカード／<b>図鑑</b>＝ぬりえをしていない元のカード（ぬっていない恐竜は同じカード）。出土品のカードは、決まった絵柄のカードです（ぬりえ・ステータスはありません）。</p>
       </section>
       <section>
         <h3>💪 ステータスとスペシャル</h3>
         <p><b>ちから</b>：1回で掘り進む量（高いほど少ない回数で掘れる）。<b>はっけん</b>：発掘ポイントを見つけられる距離（高いほど遠くから見つかる）。<b>かしこさ</b>：撫でたときに「聞く」の当たる確率が上がる量（高いほど上がりやすい）。</p>
-        <p><b>スペシャル</b>：スターブロックを掘ると発動します。しば犬の「ここほれワンワン」は、まだ見つかっていない発掘ポイントを<b>2〜5か所発見</b>。ほかの相棒は、<b>「発見」</b>（見つかっていない所を発見）か<b>「発掘」</b>（見つかっていない所を優先して、まとめて掘り出す）のどちらかが起こります。どちらが起こりやすいか・何か所かは相棒ごとに決まっていて（毎回±1・1〜6か所。残りが少ないときは残りの数まで）、恐竜はぬりえでも変わります。</p>
-        <p class="k">しば犬のステータスは、しば犬のレベルが「固定型」なら2・2・2、「アップ型」なら1・1・1から上がっていきます。発掘チャレンジとおすすめ設定では固定型です。</p>
+        <p><b>スペシャル</b>：スターブロックを掘ると発動します。しばいぬの「ここほれワンワン」は、まだ見つかっていない発掘ポイントを<b>2〜5か所発見</b>。ほかの相棒は、<b>「発見」</b>（見つかっていない所を発見）か<b>「発掘」</b>（見つかっていない所を優先して、まとめて掘り出す）のどちらかが起こります。どちらが起こりやすいか・何か所かは相棒ごとに決まっていて（毎回±1・1〜6か所。残りが少ないときは残りの数まで）、恐竜はぬりえでも変わります。</p>
+        <p class="k">しばいぬのステータスは、しばいぬのレベルが「固定型」なら2・2・2、「アップ型」なら1・1・1から上がっていきます。発掘チャレンジとおすすめ設定では固定型です。</p>
       </section>
       <section>
         <h3>🖍 ぬりえとステータス（恐竜）</h3>
@@ -937,8 +936,8 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <p>「スターあり」のとき、フィールドに星のついた金色のブロックが1つ出ます（おすすめ設定ではスターあり）。発掘チャレンジでは<b>1ターン目は出ず、2・3ターン目は必ず出ます</b>。ほかの発掘ポイントから2m以上はなれた場所に出て、最初から見えています。掘ると相棒の<b>スペシャル（特技）</b>が発動します。1回のプレイで1回だけです（スター自体に得点はありません）。</p>
       </section>
       <section>
-        <h3>🐾 しば犬のレベルアップ</h3>
-        <p>相棒の決め方が<b>「しば犬のみ」</b>、しば犬のレベルが<b>「アップ型」</b>のとき、クリア時のレア度（タイムアタック＝スコア／じっくりコレクション＝クリアタイム）が<b>レア以上</b>だと、しば犬のステータス（ちから／はっけん／かしこさ）のどれかがランダムに<b>＋1</b>（上限5）されます。発掘チャレンジでは上がりません。入室し直すか、リセットすると1・1・1に戻ります。</p>
+        <h3>🐾 しばいぬのレベルアップ</h3>
+        <p>相棒の決め方が<b>「しばいぬのみ」</b>、しばいぬのレベルが<b>「アップ型」</b>のとき、クリア時のレア度（タイムアタック＝スコア／じっくりコレクション＝クリアタイム）が<b>レア以上</b>だと、しばいぬのステータス（ちから／はっけん／かしこさ）のどれかがランダムに<b>＋1</b>（上限5）されます。発掘チャレンジでは上がりません。入室し直すか、リセットすると1・1・1に戻ります。</p>
       </section>
     </div>
   </div>
@@ -4057,7 +4056,7 @@ const YEAR_CONFIG = {
     artImgCodes: ["40100","40200","40300","40400","40500","40600","40700","40800"], // 出土品説明パネル画像のコード（→ assetBase+code+assetSuffix+".png"）
     artRarity:   ["超激レア","激レア","レア","プチレア","プチレア","ノーマル","ノーマル","ノーマル"], // 出土品8種のレア度（index別）
     artColors:   [0xffd34d,0x6fe3a5,0x7cc4ff,0xff9ad5,0xffa45c,0xb99cff,0x7ff0e0,0xf5f0a0], // 出土品8種のオーラ/パネル色
-    cardDirArt:  "card_artifact/",     // 出土品カード画像フォルダ（index.htmlと同階層）。恐竜・犬種・しば犬のカードはプログラムで作る（画像ファイルなし）
+    cardDirArt:  "card_artifact/",     // 出土品カード画像フォルダ（index.htmlと同階層）。恐竜・犬種・しばいぬのカードはプログラムで作る（画像ファイルなし）
 
     // ---- 恐竜セット（年度で恐竜が変わる場合はここを差し替え。build は key に対応する build_<key> 関数を使用）----
     // key=内部キー / label=表示名 / cry=鳴き声 / realH=実寸の高さ(m・ホログラムの高さ比に使用)
@@ -4079,8 +4078,8 @@ const YEAR_CONFIG = {
     // ★恐竜8種の値は「ぬり絵をしていない時（もとにもどした時）」の値（一般的なぬり絵の結果を目安に調整した固定値）。
     //   ぬり絵をした時は paintBase（下）＋ぬり絵補正 で決まる。digP＝100−discP。
     companions: {
-        dog:         { label:"🐕 しば犬",       fullName:"しば犬",           realH:38, rarity:"ノーマル", power:2, discovery:2, smarts:2, special:{name:"ここほれワンワン", discP:100, discN:5, digN:0} },
-        trex:        { label:"🦖 ティラノ",      fullName:"ティラノサウルス", rarity:"超激レア", power:5, discovery:4, smarts:3, special:{name:"王者の一撃",     discP:60, discN:3, digN:3} },   // No.1（王者）
+        dog:         { label:"🐕 しばいぬ",     fullName:"しばいぬ",         realH:38, rarity:"ノーマル", power:2, discovery:2, smarts:2, special:{name:"ここほれワンワン", discP:100, discN:5, digN:0} },
+        trex:        { label:"🦖 ティラノ",      fullName:"ティラノサウルス", rarity:"超激レア", power:5, discovery:4, smarts:3, special:{name:"おうじゃのいちげき", discP:60, discN:3, digN:3} },   // No.1（王者）
         fukuiraptor: { label:"🦖 フクイラプトル", fullName:"フクイラプトル",   rarity:"激レア",   power:4, discovery:4, smarts:2, special:{name:"ハンティング",   discP:30, discN:4, digN:5} },   // No.2
         fukuititan:  { label:"🦕 フクイティタン", fullName:"フクイティタン",   rarity:"レア",     power:5, discovery:4, smarts:1, special:{name:"ビッグボディ",   discP:50, discN:5, digN:4} },   // No.3
         fukuisaurus: { label:"🦕 フクイサウルス", fullName:"フクイサウルス",   rarity:"プチレア", power:4, discovery:3, smarts:3, special:{name:"クイックサーチ", discP:30, discN:4, digN:4} },   // No.4
@@ -4105,31 +4104,50 @@ const YEAR_CONFIG = {
     },
 
     // ---- トレーディングカード（HTML版）の説明項目 ----
-    // group=分類 / diet=食性 / era=時代 / region=地域 / feature=特徴（犬は feature2＝特徴の2行目も）
+    // group=分類 / size=大きさ（数字・単位m）/ diet=食性（カードには出さない）/ era=時代 / region=地域 / feature=特徴（犬は feature2＝特徴の2行目も）
+    //   size の項目名はカードで「全長」（プテラノドン＝「翼開長」、しばいぬ＝「背の高さ」）。「約12m」のように出る（1m未満は「約40cm」）
     // ★空文字 "" のままなら、カードには「未設定」と表示される。あとから文字を入れるだけで反映される。
-    //   名称・ちから・はっけん・かしこさ・スペシャルは、上の companions（恐竜・しば犬）と DOG_BREEDS（犬種）の値をそのまま使う（ここには書かない）。
+    // ★ふりがなは {漢字|よみ} と書く（例：{肉食|にくしょく}）。カードでは漢字の上に小さく出る。漢字は小学校で習うものまで
+    //   名称・ちから・はっけん・かしこさ・スペシャルは、上の companions（恐竜・しばいぬ）と DOG_BREEDS（犬種）の値をそのまま使う（ここには書かない）。
     cardInfo: {
         // 恐竜（No.1〜8）
-        trex:        { group:"獣脚類", diet:"肉食",   era:"白亜紀後期", region:"北アメリカ", feature:"とても大きな頭と強いアゴをもつ、肉を食べるきょうりゅう。" },              // ティラノサウルス
-        fukuiraptor: { group:"獣脚類", diet:"肉食",   era:"白亜紀前期", region:"福井県",     feature:"ふくいけんで見つかった。大きな手とするどいツメをもつ。" },   // フクイラプトル
-        fukuititan:  { group:"竜脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"ふくいけんで見つかった、首としっぽが長い大きなきょうりゅう。" },                 // フクイティタン
-        fukuisaurus: { group:"鳥脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"ふくいけんで見つかった。くちばしのような口で草を食べた。" },         // フクイサウルス
-        brachi:      { group:"竜脚類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"とても長い首で、高い木のはっぱを食べた大きなきょうりゅう。" },         // ブラキオサウルス
-        stego:       { group:"剣竜類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"せなかにならぶ大きないたと、しっぽのトゲがめじるし。" },                 // ステゴサウルス
-        tri:         { group:"角竜類", diet:"植物食", era:"白亜紀後期", region:"北アメリカ", feature:"3本の角と、大きなフリルがめじるしのきょうりゅう。" },              // トリケラトプス
-        ptera:       { group:"翼竜類", diet:"魚食",   era:"白亜紀後期", region:"北アメリカ", feature:"大きなつばさで空をとぶ、よくりゅう（きょうりゅうではない）。" },  // プテラノドン
-        // しば犬・犬種（No.1〜8）… 分類・食性・時代・地域は表示しない。特徴は2行（feature＝1行目、feature2＝2行目）
-        // しば犬だけは、恐竜を発掘する時（恐竜発掘カード）は dino の内容で、恐竜と同じ形（分類・食性・時代・地域＋特徴1行）のカードにする
-        dog:         { feature:"日本生まれの中くらいの犬。元気で、ようじんぶかい。", feature2:"かいぬしにとてもなつき、いろいろなところでくらせる。",   // しば犬
-                       dino:{ group:"あいぼう", diet:"なんでも", era:"－", region:"－", feature:"たよれるあいぼうのしば犬。" } },
-        golden:      { feature:"体が大きく、がっしりした犬。", feature2:"人なつっこくてかしこく、言うことをよく聞く。" },                        // ゴールデン・レトリバー
-        labrador:    { feature:"体が大きく、力の強い犬。", feature2:"はながよく、ものをさがしてもって来るのがとくい。" },                            // ラブラドール
-        beagle:      { feature:"中くらいの大きさで、はながとてもよい犬。", feature2:"小さなにおいもたどって、えものをさがすのがとくい。" },                  // ビーグル
-        dachshund:   { feature:"体が長くて、足がみじかい犬。", feature2:"ひくい体で、せまいところや土の中をさがすのがとくい。" },          // ダックスフント
-        toypoodle:   { feature:"小さな体に、大きな耳と長い毛がめじるしの犬。", feature2:"元気でかしこく、言われたことをおぼえるのがとくい。" },                     // パピヨン
-        shiba:       { feature:"しば犬のなかまで、黒い毛がめじるし。", feature2:"じょうぶで元気な体をもち、まわりによく気をつける。" },                       // 黒柴
-        chihuahua:   { feature:"せかいでも、とくに小さな犬。", feature2:"小さな体ですばやくうごき、元気で人によくなつく。" },                              // チワワ
-        bulldog:     { feature:"中くらいの大きさで、ぺちゃっとした顔がめじるし。", feature2:"がっしりした体で、ねばり強いせいかく。" }              // ブルドッグ
+        trex:        { group:"{獣脚類|じゅうきゃくるい}", size:12,   diet:"{肉食|にくしょく}",       era:"{白亜紀後期|はくあきこうき}", region:"{北|きた}アメリカ",
+                       feature:"{大|おお}きな{頭|あたま}と{強|つよ}いあごをもつ、{肉食|にくしょく}きょうりゅうの{王|おう}さま。" },               // ティラノサウルス
+        fukuiraptor: { group:"{獣脚類|じゅうきゃくるい}", size:4.2,  diet:"{肉食|にくしょく}",       era:"{白亜紀前期|はくあきぜんき}", region:"{福井県|ふくいけん}",
+                       feature:"{福井県|ふくいけん}で{見|み}つかった。{大|おお}きな{手|て}とするどいつめをもつ。" },                             // フクイラプトル
+        fukuititan:  { group:"{竜脚類|りゅうきゃくるい}", size:10,   diet:"{植物食|しょくぶつしょく}", era:"{白亜紀前期|はくあきぜんき}", region:"{福井県|ふくいけん}",
+                       feature:"{福井県|ふくいけん}で{見|み}つかった、{首|くび}としっぽが{長|なが}いきょうりゅう。" },                         // フクイティタン
+        fukuisaurus: { group:"{鳥脚類|ちょうきゃくるい}", size:4.7,  diet:"{植物食|しょくぶつしょく}", era:"{白亜紀前期|はくあきぜんき}", region:"{福井県|ふくいけん}",
+                       feature:"{福井県|ふくいけん}で{見|み}つかった。くちばしのような{口|くち}で{草|くさ}を{食|た}べた。" },                     // フクイサウルス
+        brachi:      { group:"{竜脚類|りゅうきゃくるい}", size:25,   diet:"{植物食|しょくぶつしょく}", era:"ジュラ{紀後期|きこうき}",       region:"{北|きた}アメリカ",
+                       feature:"{長|なが}い{首|くび}で、{高|たか}い{木|き}の{葉|は}を{食|た}べた{大|おお}きなきょうりゅう。" },                   // ブラキオサウルス
+        stego:       { group:"{剣竜類|けんりゅうるい}", size:7,      diet:"{植物食|しょくぶつしょく}", era:"ジュラ{紀後期|きこうき}",       region:"{北|きた}アメリカ",
+                       feature:"{背中|せなか}にならぶ{大|おお}きな{板|いた}と、しっぽのとげが{目印|めじるし}。" },                               // ステゴサウルス
+        tri:         { group:"{角竜類|つのりゅうるい}", size:9,      diet:"{植物食|しょくぶつしょく}", era:"{白亜紀後期|はくあきこうき}", region:"{北|きた}アメリカ",
+                       feature:"3{本|ぼん}の{角|つの}と、{大|おお}きなフリルが{目印|めじるし}のきょうりゅう。" },                                 // トリケラトプス
+        ptera:       { group:"{翼竜類|よくりゅうるい}", size:7,      diet:"{魚食|ぎょしょく}",         era:"{白亜紀後期|はくあきこうき}", region:"{北|きた}アメリカ",
+                       feature:"{大|おお}きなつばさで{空|そら}を{飛|と}ぶ、よくりゅう（きょうりゅうではない）。" },                              // プテラノドン
+        // しばいぬ・犬種（No.1〜8）… 分類・大きさ・時代・地域は表示しない。特徴は2行（feature＝1行目、feature2＝2行目）
+        // しばいぬだけは、恐竜を発掘する時（恐竜発掘カード）は dino の内容で、恐竜と同じ形（分類・大きさ・時代・地域＋特徴1行）のカードにする
+        dog:         { feature:"{日本|にほん}{生|う}まれの{中|ちゅう}くらいの{犬|いぬ}。{元気|げんき}で{用心|ようじん}ぶかい。",
+                       feature2:"{飼|か}い{主|ぬし}によくなつき、いろいろな{場所|ばしょ}でくらせる。",                                            // しばいぬ
+                       dino:{ group:"あいぼう", size:0.4, diet:"なんでも", era:"－", region:"－", feature:"いっしょに{化石|かせき}をさがす、たよれる{相棒|あいぼう}。" } },
+        golden:      { feature:"{体|からだ}が{大|おお}きく、がっしりした{犬|いぬ}。",
+                       feature2:"{人|ひと}なつっこくてかしこく、{言|い}うことをよく{聞|き}く。" },                                              // ゴールデン・レトリバー
+        labrador:    { feature:"{体|からだ}が{大|おお}きく、{力|ちから}の{強|つよ}い{犬|いぬ}。",
+                       feature2:"{鼻|はな}がよく、ものを{探|さが}して{持|も}ってくるのが{得意|とくい}。" },                                       // ラブラドール
+        beagle:      { feature:"{中|ちゅう}くらいの{大|おお}きさで、{鼻|はな}がとてもよい{犬|いぬ}。",
+                       feature2:"{小|ちい}さなにおいもたどって、えものを{探|さが}すのが{得意|とくい}。" },                                       // ビーグル
+        dachshund:   { feature:"{体|からだ}が{長|なが}くて、{足|あし}が{短|みじか}い{犬|いぬ}。",
+                       feature2:"{低|ひく}い{体|からだ}で、せまい{所|ところ}や{土|つち}の{中|なか}を{探|さが}すのが{得意|とくい}。" },              // ダックスフント
+        toypoodle:   { feature:"{小|ちい}さな{体|からだ}に、{大|おお}きな{耳|みみ}と{長|なが}い{毛|け}が{目印|めじるし}の{犬|いぬ}。",
+                       feature2:"{元気|げんき}でかしこく、{教|おし}えたことを{覚|おぼ}えるのが{得意|とくい}。" },                                // パピヨン
+        shiba:       { feature:"しばいぬのなかまで、{黒|くろ}い{毛|け}が{目印|めじるし}。",
+                       feature2:"じょうぶで{元気|げんき}な{体|からだ}をもち、まわりによく{気|き}をつける。" },                                    // くろしば
+        chihuahua:   { feature:"{世界|せかい}でも、{特|とく}に{小|ちい}さな{犬|いぬ}。",
+                       feature2:"{小|ちい}さな{体|からだ}ですばやく{動|うご}き、{元気|げんき}で{人|ひと}によくなつく。" },                         // チワワ
+        bulldog:     { feature:"{中|ちゅう}くらいの{大|おお}きさで、ぺちゃっとした{顔|かお}が{目印|めじるし}。",
+                       feature2:"がっしりした{体|からだ}で、ねばり{強|づよ}い{性格|せいかく}。" }                                                 // ブルドッグ
     },
 
     // ---- ② 挙動チューニング（年度で変えなくてもよいが、ここで調整可能）----
@@ -4165,7 +4183,7 @@ const HEAT_WARM     = 0.40;              // 中央リング：橙
 const PET_REACH     = 6.0;               // 相棒をなでられる距離（m）※定位置(DOG_FWD)より必ず大きく
 const DOG_Y         = 0;                 // 犬の接地高さ補正（実際の床付近を歩く）
 let   DOG_FWD       = 3.4;               // 犬の定位置：前方オフセット（m）※VR/ARで調整可
-let   SHIBA_MAXDIM = 0;                  // しば犬の最大寸法（相棒の表示サイズ比の基準）
+let   SHIBA_MAXDIM = 0;                  // しばいぬの最大寸法（相棒の表示サイズ比の基準）
 // VR/AR：右中指グリップ＋右スティックで調整するパラメータ
 const WORLD_H_SPEED = 1.0;               // ワールド高さ調整の速さ（m/秒）
 const WORLD_BASE_Y = -1.5;               // VR/ARでのワールド高さ基準（最も低い位置）
@@ -4199,7 +4217,7 @@ const MV_CFG = {
 };
 const ART_IMGS   = YEAR_CONFIG.artImgCodes.map(n=>YEAR_CONFIG.assetBase+n+YEAR_CONFIG.assetSuffix+".png");   // 出土品説明パネル画像URL
 // ===== カード画像（1:1.5）=====
-// 恐竜・犬種・しば犬のカード＝プログラムで作る（TCARD.game。入室前のプリロードで全部作っておく）
+// 恐竜・犬種・しばいぬのカード＝プログラムで作る（TCARD.game。入室前のプリロードで全部作っておく）
 // 出土品のカード＝画像ファイル（card_artifact/cardNN.png）
 const CARD_DIR_ART  = YEAR_CONFIG.cardDirArt;    // 出土品用カード画像フォルダ
 const CARD_LABEL = { dino:"恐竜発掘カード", artifact:"遺跡発掘カード" };   // 作るカードの左上の名称（そのときの発掘対象で決める）
@@ -4210,7 +4228,7 @@ function cardRef(target, idx){            // target:"dino"/"dog"/"artifact"・id
     if(target==="dog"){  const d=(typeof DOGS!=="undefined")?  DOGS[idx|0]  : null; return d? { kind:"dog",  key:d.key } : null; }
     return null;
 }
-function companionCardRef(key){           // 相棒キー → 作るカード（しば犬・犬種＝dog／恐竜＝dino）
+function companionCardRef(key){           // 相棒キー → 作るカード（しばいぬ・犬種＝dog／恐竜＝dino）
     if(key==="dog" || (typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key])) return { kind:"dog", key };
     return { kind:"dino", key };
 }
@@ -4218,7 +4236,7 @@ function gameCards(){ return (window.TCARD && window.TCARD.game) || null; }
 const _EMPTY_CARD_IMG=new Image();        // 作るカードの仕組みがまだ無いとき（呼び出し側は naturalWidth=0 なので描かない）
 // カード画像/テクスチャのキャッシュ（獲得カード・図鑑で共用）。出土品の画像ファイルだけここで持つ（作るカードは TCARD.game が持つ）
 const _cardImgCache={}, _cardTexCache={};
-// paint：恐竜の「ぬり絵あり」のカードにする（相棒えらび・リザルトの獲得カード）。省略＝ぬり絵なし（図鑑・ホログラム）。犬種・しば犬・出土品は関係なし
+// paint：恐竜の「ぬり絵あり」のカードにする（相棒えらび・リザルトの獲得カード）。省略＝ぬり絵なし（図鑑・ホログラム）。犬種・しばいぬ・出土品は関係なし
 function cardImage(target, idx, onload, paint){
     const r=cardRef(target, idx);
     if(r){ const G=gameCards(); return G? G.image(r.kind, r.key, cardLabel(), onload, !!paint) : _EMPTY_CARD_IMG; }
@@ -4310,7 +4328,7 @@ function setDigTarget(target){
     dinoSmooth = (target==="dino");   // 恐竜は常になめらか
     dexData = (curTarget==="dino") ? dexDino : dexArt;
     chosenDigTarget = target;   // dino / artifact
-    // 発掘対象が変わると相棒プールも変わる（恐竜↔犬種）。現在の相棒が新セットに無ければしば犬へ戻す
+    // 発掘対象が変わると相棒プールも変わる（恐竜↔犬種）。現在の相棒が新セットに無ければしばいぬへ戻す
     if(typeof curBuddyKeys==="function" && typeof companionKind!=="undefined" && curBuddyKeys().indexOf(companionKind)<0){
         if(typeof setCompanion==="function") setCompanion("dog"); else companionKind="dog";
     }
@@ -4778,7 +4796,7 @@ const EYE=0x141414, WHTE=0xefe3c2;
 //   ボクセルは閉じた形で、面はすべて外向き（VOX_F）なので、外から見た見た目はほぼ同じ（確認済み：部品の継ぎ目で1画素の線が変わる程度・穴なし）。
 //   違いは、VRで大きな恐竜の体の中に入ったとき：両面＝体の内側が見える／片面＝体が透けて外が見える
 // VOX_GREEDY：true＝同じ向き・同じ色で隣り合う面を1枚の長方形にまとめる（三角形が減る＝軽い・形と色は同じ）／false＝1粒ずつの面（前の作り方）
-//   恐竜は約1/4、犬・しば犬は約1/100の三角形になる。ぬりえ（面ごとの色）も、まとめた形から1粒ずつに戻して前と同じ色を付ける
+//   恐竜は約1/4、犬・しばいぬは約1/100の三角形になる。ぬりえ（面ごとの色）も、まとめた形から1粒ずつに戻して前と同じ色を付ける
 const VOX_SINGLE_SIDE = false;
 const VOX_GREEDY      = true;
 const _voxMat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.9, metalness:0.0, side:(VOX_SINGLE_SIDE? THREE.FrontSide : THREE.DoubleSide)});
@@ -5431,12 +5449,12 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
 // 犬種データ（レア度/ステータス/実寸cm/スペシャル）。realHは犬種セット内の相対比（cm）
 // ステータスは「得意がはっきり」型：各犬に5を1つ・P+S+B合計は超激11/激〜プチ10/ノーマル9（恐竜と同じ範囲）。discP/digPは30〜70%、discN/digNは最大5
 const DOG_BREEDS = [
-    { key:"golden",    label:"🦮 ゴールデン・レトリバー",   fullName:"ゴールデン・レトリバー",     cry:"ワン！",   realH:56, rarity:"超激レア", power:5, discovery:3, smarts:3, special:{name:"黄金の秘宝", discP:30, discN:3, digN:5} },
+    { key:"golden",    label:"🦮 ゴールデン・レトリバー",   fullName:"ゴールデン・レトリバー",     cry:"ワン！",   realH:56, rarity:"超激レア", power:5, discovery:3, smarts:3, special:{name:"オーゴンサーチ", discP:30, discN:3, digN:5} },
     { key:"labrador",  label:"🦮 ラブラドール", fullName:"ラブラドール", cry:"ワン！",   realH:58, rarity:"激レア",   power:3, discovery:5, smarts:2, special:{name:"インサイト", discP:50, discN:4, digN:4} },
     { key:"beagle",    label:"🐕 ビーグル",                 fullName:"ビーグル",                 cry:"わおーん", realH:38, rarity:"レア",     power:2, discovery:5, smarts:3, special:{name:"ハンティング", discP:70, discN:5, digN:2} },
     { key:"dachshund", label:"🐕 ダックスフント",           fullName:"ダックスフント",           cry:"きゃん",   realH:14, rarity:"プチレア", power:5, discovery:3, smarts:2, special:{name:"ほりほりダッシュ", discP:30, discN:2, digN:5} },
     { key:"toypoodle", label:"🦋 パピヨン",                 fullName:"パピヨン",                 cry:"くうん",   realH:27, rarity:"プチレア", power:2, discovery:3, smarts:5, special:{name:"ぴったりハント", discP:60, discN:4, digN:3} },
-    { key:"shiba",     label:"🐕 黒柴",                     fullName:"黒柴",                     cry:"わん",     realH:38, rarity:"ノーマル", power:3, discovery:4, smarts:2, special:{name:"くんくんサーチ", discP:70, discN:4, digN:2} },
+    { key:"shiba",     label:"🐕 くろしば",                 fullName:"くろしば",                 cry:"わん",     realH:38, rarity:"ノーマル", power:3, discovery:4, smarts:2, special:{name:"くんくんサーチ", discP:70, discN:4, digN:2} },
     { key:"chihuahua", label:"🐕 チワワ",                   fullName:"チワワ",                   cry:"きゃんっ", realH:17, rarity:"ノーマル", power:1, discovery:3, smarts:5, special:{name:"ちょこダッシュ", discP:50, discN:3, digN:3} },
     { key:"bulldog",   label:"🐕 ブルドッグ",               fullName:"ブルドッグ",               cry:"ぶふー",   realH:38, rarity:"ノーマル", power:5, discovery:2, smarts:2, special:{name:"どすこいほりほり", discP:30, discN:2, digN:4} }
 ];
@@ -5447,7 +5465,7 @@ const DOG_BUILDERS = {
     beagle:    ()=>build_dog_breed({ M:0xb07b3e, BE:0xf2ede2, D:0x3a2f22, AC:0x231e17, saddle:true, snoutCol:0xf2ede2, earCol:0xb07b3e, tail:"up", tailCol:0xf2ede2, ear:"longflop", legLen:0.48, bodyLen:1.02, bodyW:0.24, bodyH:0.36, headSize:0.22, snoutLen:0.26 }),   // 黒ブランケット/タン頭耳/白マズル・胸・尾先
     dachshund: ()=>build_dog_breed({ M:0x8a4a24, BE:0xa9663a, D:0x532b13, ear:"longflop", tail:"long",    legLen:0.30, bodyLen:1.15, bodyW:0.19, bodyH:0.30, headSize:0.18, snoutLen:0.30, snoutW:0.10 }),   // 少し短め
     toypoodle: ()=>build_dog_breed({ M:0xf4efe6, BE:0xf8f5ee, D:0xcfc6b6, earCol:0x7a4a28, earFringe:0xf4efe6, mask:0x7a4a28, ear:"butterfly", tail:"plume", tailCol:0xf4efe6, legLen:0.44, bodyLen:0.84, bodyW:0.19, bodyH:0.30, headSize:0.19, headH:0.30, snoutLen:0.20, snoutW:0.085 }),   // パピヨン（白地＋差し色耳/顔・バタフライ耳・房尾）
-    shiba:     ()=>build_dog({ M:0x2a2a2a, D:0x151515, C:0x9a6a38, N:0x0d0d0d }),   // 黒柴＝しば犬の色違い（構造同じ・黒＋タン）
+    shiba:     ()=>build_dog({ M:0x2a2a2a, D:0x151515, C:0x9a6a38, N:0x0d0d0d }),   // くろしば＝しばいぬの色違い（構造同じ・黒＋タン）
     chihuahua: ()=>build_dog_breed({ M:0xead9b0, BE:0xf3e8cc, D:0xc9b487, ear:"bigup",    tail:"thin",    legLen:0.42, bodyLen:0.72, bodyW:0.18, bodyH:0.28, headSize:0.21, snoutLen:0.16, snoutW:0.09 }),   // クリーム
     bulldog:   ()=>build_dog_breed({ M:0xecdcc0, BE:0xf5eeda, D:0xc9b48f, ear:"rose",     tail:"stub",    legLen:0.34, bodyLen:0.96, bodyW:0.32, bodyH:0.40, headSize:0.31, headH:0.42, snoutLen:0.14, snoutW:0.17, snoutH:0.18 })   // クリーム（頭を少し大きく・縦の潰れ解消）
 };
@@ -5463,7 +5481,7 @@ dog.position.set(2,GROUND_Y,2);
 
 /* ===================================================== * 相棒の登録・切り替え（拡張ポイント） * 将来マスコット等を追加する場合は registerCompanion() を呼ぶだけ。 * registerCompanion("xxx", { label:"🌼 なまえ", body:<THREE.Group>, lines:{...} }); * body には userData.legs（脚ピボット配列）、任意で userData.tail / userData.wings を持たせると * 歩行アニメ・尻尾ふり・羽ばたきが自動で適用されます。 * 相棒が1種類だけのときは切り替えUIは自動的に隠れます。 * ===================================================== */
 const COMPANIONS={};
-const SHIBA_LABEL = (YEAR_CONFIG.companions && YEAR_CONFIG.companions.dog && YEAR_CONFIG.companions.dog.label) || "🐕 しば犬";   // 犬種一覧の末尾に並ぶしば犬の表示名（他の犬種と同じくアイコン付き）
+const SHIBA_LABEL = (YEAR_CONFIG.companions && YEAR_CONFIG.companions.dog && YEAR_CONFIG.companions.dog.label) || "🐕 しばいぬ";   // 犬種一覧の末尾に並ぶしばいぬの表示名（他の犬種と同じくアイコン付き）
 let companionKind=DEFAULT_KIND;
 let BUDDY_LOCK=null;   // 相棒の固定（ARモデル画面の「たんけん」：表示していたモデルを最後まで相棒にする。null＝固定なし）
 function registerCompanion(key, def){ COMPANIONS[key]=def; refreshBuddyUI(); }
@@ -5492,11 +5510,11 @@ function dogNaturalH(){   // 犬の自然な高さ（相棒サイズ上限の基
     }catch(_){ _dogNatH=1; }
     return _dogNatH;
 }
-function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)。犬種=realHで大きさ差。プテラは相棒表示のみ1.25倍。表示サイズ比(しば犬=1)は1.8倍まで
+function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しばいぬ)。犬種=realHで大きさ差。プテラは相棒表示のみ1.25倍。表示サイズ比(しばいぬ=1)は1.8倍まで
     body.updateMatrixWorld(true);   // ※この時点でbodyはまだdogに未追加＝親変形なしの局所bbox
     const bb=new THREE.Box3().setFromObject(body); const H0=Math.max(0.001, bb.max.y-bb.min.y);
     const dim0=Math.max(bb.max.x-bb.min.x, bb.max.y-bb.min.y, bb.max.z-bb.min.z);   // 最大寸法（スケール1）
-    if(key==="dog"){ SHIBA_MAXDIM=dim0; body.userData.baseScale=1; return; }   // しば犬＝基準
+    if(key==="dog"){ SHIBA_MAXDIM=dim0; body.userData.baseScale=1; return; }   // しばいぬ＝基準
     let sc=1;
     if(typeof DOG_BUILDERS!=="undefined" && DOG_BUILDERS[key]){
         const R=(typeof COMPANIONS!=="undefined"&&COMPANIONS[key]&&COMPANIONS[key].realH)?COMPANIONS[key].realH:38;
@@ -5509,8 +5527,8 @@ function scaleBuddyIfDino(key, body){   // 恐竜=等倍(上限1.2×しば犬)�
         if(key==="ptera") sc*=1.25;   // 歩き回る相棒のプテラノドンは1.25倍
     }
     body.scale.setScalar(sc);
-    let ratio=(dim0*sc)/(SHIBA_MAXDIM||dim0);   // 表示サイズ比（しば犬=1、最大寸法で比較）
-    if(key!=="brachi" && key!=="fukuititan" && ratio>1.8){ sc*=1.8/ratio; body.scale.setScalar(sc); ratio=1.8; }   // ブラキオ・フクイティタン以外は最大しば犬の1.8倍まで
+    let ratio=(dim0*sc)/(SHIBA_MAXDIM||dim0);   // 表示サイズ比（しばいぬ=1、最大寸法で比較）
+    if(key!=="brachi" && key!=="fukuititan" && ratio>1.8){ sc*=1.8/ratio; body.scale.setScalar(sc); ratio=1.8; }   // ブラキオ・フクイティタン以外は最大しばいぬの1.8倍まで
     body.userData.baseScale = sc;   // 目線サイズ補正の基準スケール
 }
 function ensureBody(key){
@@ -5597,7 +5615,7 @@ function companionStats(){
     return { power:POWER_LV[g(pw)-1], discovery:DISCOVERY_LV[g(dc)-1], smarts:SMARTS_LV[g(sm)-1], smartsLv:g(sm) };
 }
 // 相棒＝犬＋恐竜8種（切り替えUIは自動表示）。power/discovery/smarts は 1〜5
-function curBuddyKeys(){ const set=(typeof curTarget!=="undefined" && curTarget!=="dino" && typeof DOGS!=="undefined")?DOGS:DINOS; return ["dog"].concat((set||[]).map(d=>d.key)); }   // 発掘対象連動：恐竜=しば犬+恐竜8 / 出土品=しば犬+犬種8
+function curBuddyKeys(){ const set=(typeof curTarget!=="undefined" && curTarget!=="dino" && typeof DOGS!=="undefined")?DOGS:DINOS; return ["dog"].concat((set||[]).map(d=>d.key)); }   // 発掘対象連動：恐竜=しばいぬ+恐竜8 / 出土品=しばいぬ+犬種8
 let buddyRandom=false;   // ブラウザのトグル：相棒を選ぶ／ランダム
 let dogOnly=true;        // 既定：犬のみモード
 let buddyListOpen=false; // スタンバイの相棒一覧の開閉（▼/▲）。リロード・リザルト戻りは閉じた状態が既定
@@ -5622,7 +5640,7 @@ function resetUnlocked(){ unlockedBuddies=["dog"]; }
 function unlockBuddy(key){ if(key && key!=="dog" && unlockedBuddies.indexOf(key)<0) unlockedBuddies.push(key); }
 // 獲得カード(target,idx)→相棒キー（出土品でも同順位=同indexの恐竜キー）
 function buddyKeyForCard(target, idx){ if(target!=="dino"){ const di=linkedDinoIdx(idx); return (typeof DOGS!=="undefined"&&DOGS[di])?DOGS[di].key:null; } return (typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null; }   // 出土品発掘=犬種／恐竜発掘=恐竜
-// 現在の相棒候補（curBuddyKeys の順：しば犬→No.1〜8）
+// 現在の相棒候補（curBuddyKeys の順：しばいぬ→No.1〜8）
 function buddyCandidates(){
     if(BUDDY_LOCK && COMPANIONS[BUDDY_LOCK]) return [BUDDY_LOCK];   // 固定中は候補もその相棒だけ
     if(buddyMode!=="unlock") return curBuddyKeys().filter(k=>COMPANIONS[k]);
@@ -5657,7 +5675,7 @@ function updateBuddyStandbyUI(){
     }
     if(dogOnly){
         if(companionKind!=="dog") setCompanion("dog");
-        const lab=document.createElement("div"); lab.textContent="相棒：しば犬"+(dogLevelUp?"（レベルアップ制）":"（固定）"); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
+        const lab=document.createElement("div"); lab.textContent="相棒：しばいぬ"+(dogLevelUp?"（レベルアップ制）":"（固定）"); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
         const st=document.createElement("div"); st.textContent="ちから:"+dogStats[0]+"  はっけん:"+dogStats[1]+"  かしこさ:"+dogStats[2]; st.style.cssText="color:#fdf3d5;font:bold 15px sans-serif;width:100%;text-align:center;margin-top:4px;"; el.appendChild(st);
         const start=document.createElement("button"); start.textContent="▶ スタート";
         start.style.cssText="font:bold 14px sans-serif;padding:8px 18px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:8px;";
@@ -5667,7 +5685,7 @@ function updateBuddyStandbyUI(){
     }
     if(typeof onlyDogBuddy==="function" && onlyDogBuddy()){   // 候補が犬だけ：▼・一覧・カードをひくは出さず「相棒：いぬ」表示（全モード共通）
         if(companionKind!=="dog") setCompanion("dog");
-        const lab=document.createElement("div"); lab.textContent="相棒：しば犬"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
+        const lab=document.createElement("div"); lab.textContent="相棒：しばいぬ"; lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
         const start=document.createElement("button"); start.textContent="▶ スタート";
         start.style.cssText="font:bold 14px sans-serif;padding:8px 18px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:8px;";
         start.onclick=()=>{ taAdvance(); };
@@ -5698,7 +5716,7 @@ function updateBuddyStandbyUI(){
         // 恐竜一覧（▼で開いているときだけ表示。リロード/リザルト戻りは閉じた状態が既定）
         if(buddyListOpen){
             const unlocked=(typeof buddyCandidates==="function")?buddyCandidates():curBuddyKeys();
-            const dispOrder=curBuddyKeys().filter(k=>k!=="dog").concat(["dog"]);   // しば犬を最後に
+            const dispOrder=curBuddyKeys().filter(k=>k!=="dog").concat(["dog"]);   // しばいぬを最後に
             dispOrder.forEach(k=>{ const c=COMPANIONS[k]; if(!c)return;
                 const b=document.createElement("button"); b.textContent=(c.label||k).replace(/^\S+\s+/,"");
                 const flexCss = IS_TOUCH ? "flex:1 1 96px;min-width:88px;" : "flex:0 0 calc(33.3% - 8px);box-sizing:border-box;";
@@ -5732,7 +5750,7 @@ registerCompanion("brachi", Object.assign({ builder:build_brachi, lines:dinoLine
 registerCompanion("stego", Object.assign({ builder:build_stego, lines:dinoLines("のっしり") }, YEAR_CONFIG.companions.stego));
 registerCompanion("tri", Object.assign({ builder:build_tri, lines:dinoLines("ブモォ") }, YEAR_CONFIG.companions.tri));
 registerCompanion("ptera", Object.assign({ builder:build_ptera, lines:dinoLines("ピギャー") }, YEAR_CONFIG.companions.ptera));
-// 犬種8種も相棒として登録（builder=DOG_BUILDERS / stats=DOG_BREEDS / セリフはしば犬と共通）。出土品を発掘するときの相棒候補（curBuddyKeys）
+// 犬種8種も相棒として登録（builder=DOG_BUILDERS / stats=DOG_BREEDS / セリフはしばいぬと共通）。出土品を発掘するときの相棒候補（curBuddyKeys）
 if(typeof DOG_BREEDS!=="undefined") DOG_BREEDS.forEach(d=>registerCompanion(d.key, {
     builder:DOG_BUILDERS[d.key], lines:dogLines(),
     label:d.label, fullName:d.fullName, realH:d.realH,
@@ -6467,7 +6485,7 @@ function _maybeFinishPreload(){ if(!(WARMUP_DONE && ARTIFACTS_DONE && CARDS_DONE
     try{ if(window.__resultBuddy && window.__resultBuddy.preload){ window.__resultBuddy.preload(onDone); } else onDone(); }catch(_){ onDone(); }
     setTimeout(onDone, 8000);   // 安全策：万一詰まっても8秒で強制解錠
 }
-// 恐竜・犬種・しば犬のカードを入室前に作っておく（全部できたら CARDS_DONE → ほかの準備もそろえば入室可能）
+// 恐竜・犬種・しばいぬのカードを入室前に作っておく（全部できたら CARDS_DONE → ほかの準備もそろえば入室可能）
 // 作ったカードは覚えておくので、2回目以降のプリロード（大きさの変更など）はすぐ終わる
 let _cardPreloadSeq=0;
 function preloadGameCards(){
@@ -6488,8 +6506,8 @@ function preloadEverything(done){
     if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
     const jobs=[];
     for(let i=0;i<8;i++) jobs.push({smooth:true,  idx:i, cache:_dinoCacheS});   // 恐竜（なめらか・実寸）
-    if(typeof DINOS!=="undefined"){ const _all=["dog"].concat(DINOS.map(d=>d.key)).concat((typeof DOGS!=="undefined"?DOGS:[]).map(d=>d.key)); for(const k of _all) jobs.push({companion:k, smooth:true}); }   // しば犬＋恐竜8＋犬種8（なめらか）
-    // 出土品のカード画像も事前読み込み（card01〜card08）。恐竜・犬種・しば犬のカードは、このあと（モデル生成の後）プログラムで作る
+    if(typeof DINOS!=="undefined"){ const _all=["dog"].concat(DINOS.map(d=>d.key)).concat((typeof DOGS!=="undefined"?DOGS:[]).map(d=>d.key)); for(const k of _all) jobs.push({companion:k, smooth:true}); }   // しばいぬ＋恐竜8＋犬種8（なめらか）
+    // 出土品のカード画像も事前読み込み（card01〜card08）。恐竜・犬種・しばいぬのカードは、このあと（モデル生成の後）プログラムで作る
     for(let i=0;i<8;i++) jobs.push({card:cardArtifactPath(i)});
     let j=0;
     const step=()=>{
@@ -7182,7 +7200,7 @@ function applyAutoForTarget(target){   // 発掘対象/モード切替時の推�
     setTimeLimit(90);                                                    // 制限時間：90秒（TAのみ有効）
     segSelect("segCardShow","on");    cardShown=true;                    // 獲得カード：表示
     segSelect("segBuddyMode","pick"); buddyRandom=false; dogOnly=false;  // 相棒の決め方：えらぶ
-    segSelect("segDogLevel","fixed"); dogLevelUp=false;                  // しば犬のレベル：固定型（2・2・2）
+    segSelect("segDogLevel","fixed"); dogLevelUp=false;                  // しばいぬのレベル：固定型（2・2・2）
     segSelect("segStar","on");        starEnabled=true;                  // スター：あり
     segSelect("segToolSwap","off");   toolSwapAllowed=false;             // 道具の持ち替え：持ち替えない
     segSelect("segHoloFreeze","off"); holoFreezeTime=false;             // 図鑑カード表示中の時間：止まらない
@@ -7210,7 +7228,7 @@ function applyChallengePreset(){   // 発掘チャレンジの自動設定。必
     segSelect("segBuddyPool","unlock"); buddyMode="unlock";           // 候補：獲得した相棒
     segSelect("segStar","on");        starEnabled=true;               // スター：あり（1ターン目のみ実行時にオフ）
     segSelect("segHoloFreeze","off"); holoFreezeTime=false;           // 図鑑カード表示中の時間：止まらない
-    segSelect("segDogLevel","fixed"); dogLevelUp=false;               // しば犬のレベル：固定型（2・2・2。チャレンジではレベルアップしない）
+    segSelect("segDogLevel","fixed"); dogLevelUp=false;               // しばいぬのレベル：固定型（2・2・2。チャレンジではレベルアップしない）
     if(recoOn){   // おすすめオン：5項目も自動固定
         setTimeLimit(90);                                             // 制限時間：90秒
         segSelect("segToolSwap","off");   toolSwapAllowed=false;      // 道具の持ち替え：持ち替えない
@@ -7892,7 +7910,7 @@ const resultBuddy=(function(){
         const sy=_sz.y>0?_sz.y:1, sx=_sz.x>0?_sz.x:1, sd=_sz.z>0?_sz.z:0.4;
         let fit=Math.min(TARGET_H/sy, TARGET_W/sx);
         if(dog && typeof DOGS!=="undefined" && DOGS[i]){
-            const R=DOGS[i].realH||38; fit*=Math.min(R/38, 1.2);           // realH連動（しば犬38基準・上限1.2倍）
+            const R=DOGS[i].realH||38; fit*=Math.min(R/38, 1.2);           // realH連動（しばいぬ38基準・上限1.2倍）
             if(DOGS[i].key==="chihuahua"||DOGS[i].key==="dachshund") fit*=1.5;   // チワワ・ダックスフントは小さいため結果表示1.5倍
         } else if(!dog && typeof DINOS!=="undefined" && DINOS[i] && DINOS[i].key==="ptera") fit*=1.5;   // プテラは結果表示1.5倍
         m.position.set(-_c.x, -_c.y, -_c.z);   // bbox中心を原点へ
@@ -8164,7 +8182,7 @@ function cardRarityOf(idx){
     if(curTarget==="dino"){ const k=(typeof DINOS!=="undefined"&&DINOS[idx])?DINOS[idx].key:null; return (k&&COMPANIONS[k])?COMPANIONS[k].rarity:"ノーマル"; }
     return ART_RARITY[idx] || "ノーマル";
 }
-function scoreRarity(score){   // タイムアタックのスコア→レア度（しば犬のレベルアップにも使う）
+function scoreRarity(score){   // タイムアタックのスコア→レア度（しばいぬのレベルアップにも使う）
     if(score>=4000) return "超激レア";
     if(score>=3000) return "激レア";
     if(score>=2200) return "レア";
@@ -8287,7 +8305,7 @@ function taFinish(){
     const score=Math.max(0, digPts + timeBonus);
     GAME.score=score; TA.lastScore=score;
     if(GAME.challenge){ chTaFinishResults(score, {digPts, secs, timeBonus, found:dexFoundCount()}); return; }   // チャレンジは専用リザルト（ターン得点＋相棒獲得）
-    if(ldigPlaying()){   // たんけん：ポイントだけ（カード・相棒・TOP5・記録・しば犬のレベルアップなし）
+    if(ldigPlaying()){   // たんけん：ポイントだけ（カード・相棒・TOP5・記録・しばいぬのレベルアップなし）
         clearTargets(); if(typeof clearStarPoint==="function") clearStarPoint();
         TA.state="results"; TA.lockUntil=performance.now()+1500; sfxTimeUp();
         const found=dexFoundCount(); GAME.buddyNew=false; GAME.dogLvMsg="";
@@ -8338,7 +8356,7 @@ function enterStandby(){   // ①スタンバイへ（④→①は内容保持�
 function collectionFinish(){   // ④コレクションのクリア（全8種）
     const sec = GAME.playStart ? (performance.now()-GAME.playStart)/1000 : 0;
     GAME.lastColTime = roundTime1(sec);
-    if(ldigPlaying()){   // たんけん：タイムだけ（カード・相棒・TOP5・記録・しば犬のレベルアップなし）
+    if(ldigPlaying()){   // たんけん：タイムだけ（カード・相棒・TOP5・記録・しばいぬのレベルアップなし）
         if(typeof clearStarPoint==="function") clearStarPoint();
         GAME.complete=true; GAME.buddyNew=false; GAME.dogLvMsg="";
         worldHud.drawExplore({ kind:"collect", time:GAME.lastColTime });
@@ -9196,7 +9214,7 @@ const _liteHP=new THREE.Vector3(), _liteCP=new THREE.Vector3(), _liteFaceQ=new T
 // 表示モデル生成（既存関数を再利用）：恐竜＝makeDigDino（標準姿勢）／出土品・遺構＝loadArtifactRoot(1024)
 // Lite用モデルキャッシュ：恐竜=専用neutralキャッシュ、出土品=(画質,idx)ごとにキャッシュ。切替時の再生成/再取得をなくす
 const _liteDino=[null,null,null,null,null,null,null,null];   // 恐竜（なめらか・neutral）
-const _liteDog=[];    // 犬種（neutral）＋末尾にしば犬
+const _liteDog=[];    // 犬種（neutral）＋末尾にしばいぬ
 const _liteArt={};   // key="q_idx" → THREE.Object3D
 function _liteDinoBuild(idx){
     if(_liteDino[idx]) return _liteDino[idx];
@@ -9229,7 +9247,7 @@ function liteDinoName(idx, plain){   // 表示名：ぬりえ＝「🖍 ティ�
 function _liteDogBuild(idx){
     if(_liteDog[idx]) return _liteDog[idx];
     if(typeof DOGS==="undefined") return null;
-    const useShiba=(idx>=DOGS.length);   // 末尾＝しば犬（build_dog）
+    const useShiba=(idx>=DOGS.length);   // 末尾＝しばいぬ（build_dog）
     const bfn = useShiba ? (typeof build_dog==="function"?build_dog:null) : ((DOGS[idx]&&typeof DOG_BUILDERS!=="undefined"&&DOG_BUILDERS[DOGS[idx].key])||null);
     if(!bfn) return null;
     const pv=(typeof VOX_CUR!=="undefined")?VOX_CUR:null, ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
@@ -9719,7 +9737,7 @@ function liteSelList(){   // 現在の対象のモデル一覧 [{idx,name}]
         const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>{ if(liteDinoPainted(i)) a.push({idx:i, plain:false, name:liteDinoName(i,false)}); });
         (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, plain:true, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
     if(LITE.target==="dino"){ const a=[]; (typeof DINOS!=="undefined"?DINOS:[]).forEach((d,i)=>a.push({idx:i, name:(d&&d.label)||("恐竜"+(i+1))})); return a; }
-    if(LITE.target==="dog"){ const a=[]; const N=(typeof DOGS!=="undefined"?DOGS.length:8); for(let i=0;i<N;i++) a.push({idx:i, name:((typeof DOGS!=="undefined"&&DOGS[i])?DOGS[i].label:("犬"+(i+1)))}); a.push({idx:N, name:SHIBA_LABEL}); return a; }   // 犬種＋末尾しば犬
+    if(LITE.target==="dog"){ const a=[]; const N=(typeof DOGS!=="undefined"?DOGS.length:8); for(let i=0;i<N;i++) a.push({idx:i, name:((typeof DOGS!=="undefined"&&DOGS[i])?DOGS[i].label:("犬"+(i+1)))}); a.push({idx:N, name:SHIBA_LABEL}); return a; }   // 犬種＋末尾しばいぬ
     const arts=mvArtifactRows(), sites=mvSiteRows(), a=[]; arts.forEach((r,i)=>a.push({idx:i, name:r.name||("出土品"+(i+1))}));
     if(window.MV_SHOW_SITE) sites.forEach((r,j)=>a.push({idx:arts.length+j, name:r.name||"遺構"})); return a;
 }
@@ -12312,7 +12330,7 @@ function ldigPaint(){
     const wx=lph$("lphDigWx"), wz=lph$("lphDigWz"); if(wx) wx.textContent=LDIG.wx; if(wz) wz.textContent=LDIG.wz;
     document.querySelectorAll("#lphDig .szrow button").forEach(b=>{ const v=LDIG[b.dataset.k]+(+b.dataset.d); b.disabled=(v<LDIG.min || v>LDIG.max); });
 }
-function ldigBuddyKey(){   // 表示中のモデル → 相棒のキー（恐竜＝DINOS／いぬ＝犬種、末尾はしば犬）
+function ldigBuddyKey(){   // 表示中のモデル → 相棒のキー（恐竜＝DINOS／いぬ＝犬種、末尾はしばいぬ）
     if(LITE.target==="dino") return (DINOS[LITE.curIdx]&&DINOS[LITE.curIdx].key)||null;
     if(LITE.target==="dog") return (typeof DOGS!=="undefined" && LITE.curIdx<DOGS.length && DOGS[LITE.curIdx]) ? DOGS[LITE.curIdx].key : "dog";
     return null;
@@ -12605,7 +12623,7 @@ async function ldigReturn(){
  *  ・画面の文字（HUD・ヒント・ボタンなど）＝ タブレットAR中だけ文字を見張って置き換え、終わったら元に戻す
  *  ・メニューなど、タブレットAR以外の画面は変えない
  * ===================================================== */
-const KID={ on:false, dict:{"確認": "かくにん", "発掘中": "はっくつちゅう", "使え": "つかえ", "全発掘": "ぜんはっくつ", "一斉完了": "いっせいかんりょう", "遺構": "いこう", "超激": "ちょうげき", "激": "げき", "しば犬": "しばいぬ", "聞く": "きく", "王者": "おうじゃ", "一撃": "いちげき", "出土品": "しゅつどひん", "一部": "いちぶ", "読み込め": "よみこめ", "通信環境": "つうしんかんきょう", "一回": "いっかい", "次に": "つぎに", "近く": "ちかく", "掘れる": "ほれる", "来い": "こい", "黄金": "おうごん", "秘宝": "ひほう", "黒柴": "くろしば", "相棒": "あいぼう", "最強": "さいきょう", "固定": "こてい", "選ぶ": "えらぶ", "一覧": "いちらん", "閉じる": "とじる", "開く": "ひらく", "恐竜図鑑": "きょうりゅうずかん", "発掘図鑑": "はっくつずかん", "調整中": "ちょうせいちゅう", "右": "みぎ", "回": "かい", "開始": "かいし", "戻る": "もどる", "発掘": "はっくつ", "挑戦": "ちょうせん", "か所": "かしょ", "掘り出そ": "ほりだそ", "制限時間": "せいげんじかん", "秒": "びょう", "本格的": "ほんかくてき", "狙っ": "ねらっ", "高得点": "こうとくてん", "目指そ": "めざそ", "最後": "さいご", "最高得点": "さいこうとくてん", "説明": "せつめい", "未発掘": "みはっくつ", "種": "しゅ", "準備中": "じゅんびちゅう", "原寸比": "げんすんひ", "約": "やく", "倍": "ばい", "実寸": "じっすん", "表示": "ひょうじ", "非表示": "ひひょうじ", "大き": "おおき", "恐竜": "きょうりゅう", "短辺": "たんぺん", "上限": "じょうげん", "未更新": "みこうしん", "更新": "こうしん", "反映": "はんえい", "発掘記録": "はっくつきろく", "消え": "きえ", "図鑑": "ずかん", "歩い": "あるい", "光っ": "ひかっ", "左": "ひだり", "移動": "いどう", "見回す": "みまわす", "獲得": "かくとく", "加わっ": "くわわっ", "結果": "けっか", "時間": "じかん", "残り": "のこり", "聞い": "きい", "合計": "ごうけい", "終了": "しゅうりょう", "今回": "こんかい", "計算": "けいさん", "完了": "かんりょう", "待ち": "まち", "再挑戦": "さいちょうせん", "道具": "どうぐ", "幅広": "はばひろ", "広く探せる": "ひろくさがせる", "掘り多め": "ほりおおめ", "狭い": "せまい", "掘り少なめ": "ほりすくなめ", "記録": "きろく", "削除": "さくじょ", "掘ろ": "ほろ", "近づく": "ちかづく", "光り": "ひかり", "発見": "はっけん", "発動": "はつどう", "会心": "かいしん", "確率": "かくりつ", "一気に": "いっきに", "見つかり": "みつかり", "見つけ": "みつけ", "もう少し": "もうすこし", "分かり": "わかり", "自信": "じしん", "回転": "かいてん", "操作可能": "そうさかのう", "操作不可": "そうさふか", "犬": "いぬ", "解除": "かいじょ", "もう一度発掘": "もういちどはっくつ", "基準": "きじゅん", "現在地": "げんざいち", "中央": "ちゅうおう", "向き": "むき", "前方": "ぜんぽう", "再配置": "さいはいち", "対応": "たいおう", "使っ": "つかっ", "端末": "たんまつ", "対応端末": "たいおうたんまつ", "開発者": "かいはつしゃ", "更新済み": "こうしんずみ", "開い": "ひらい", "試す": "ためす", "遊べ": "あそべ", "床": "ゆか", "位置": "いち", "認識": "にんしき", "映像": "えいぞう", "歩数": "ほすう", "画面": "がめん", "追跡": "ついせき", "見失い": "みうしない", "個": "こ", "見え": "みえ", "使用": "しよう", "作成": "さくせい", "失敗": "しっぱい", "補正": "ほせい", "最大": "さいだい", "許可": "きょか", "設定": "せってい", "もう一度": "もういちど", "試し": "ためし", "動き": "うごき", "再読み込み": "さいよみこみ", "選ん": "えらん", "届き": "とどき", "測る": "はかる", "方位": "ほうい", "無い": "ない", "方式": "ほうしき", "止まっ": "とまっ", "場所": "ばしょ", "まん中": "まんなか", "立っ": "たっ", "向け": "むけ", "左右": "さゆう", "動かし": "うごかし", "中心": "ちゅうしん", "置き直し": "おきなおし", "水色": "みずいろ", "線": "せん", "内側": "うちがわ", "走ら": "はしら", "歩こ": "あるこ", "映し": "うつし", "変更": "へんこう", "入室": "にゅうしつ", "読み込み中": "よみこみちゅう", "押し": "おし", "関連": "かんれん", "圧縮": "あっしゅく", "開け": "あけ", "越前国府発掘": "えちぜんこくふはっくつ", "隠す": "かくす", "常設": "じょうせつ", "右上": "みぎうえ", "各項目": "かくこうもく", "追加": "ついか", "既存": "きそん", "触れ": "ふれ", "区切り": "くぎり", "同じ見た目": "おなじみため", "区切り線": "くぎりせん", "見出し": "みだし", "色": "いろ", "準備": "じゅんび", "模様": "もよう", "復元": "ふくげん", "書き出し処理": "かきだししょり", "押せ": "おせ", "狭い時": "せまいとき", "並べる": "ならべる", "重なら": "かさなら", "以上": "いじょう", "途中": "とちゅう", "折り返さ": "おりかえさ", "探し": "さがし", "掘り当てよ": "ほりあてよ", "操作": "そうさ", "開発中": "かいはつちゅう", "未反映": "みはんえい", "対象": "たいしょう", "発掘道具": "はっくつどうぐ", "持ち替え": "もちかえ", "持ち替える": "もちかえる", "表示中": "ひょうじちゅう", "止まる": "とまる", "止まら": "とまら", "集め": "あつめ", "自動": "じどう", "発掘対象": "はっくつたいしょう", "選べ": "えらべ", "決め方": "きめかた", "固定型": "こていがた", "候補": "こうほ", "全て": "すべて", "遺跡": "いせき", "発掘場所": "はっくつばしょ", "横幅": "よこはば", "奥行き": "おくゆき", "得点": "とくてん", "仕組み": "しくみ", "残り秒": "のこりびょう", "速い順": "はやいじゅん", "越前国府": "えちぜんこくふ", "地面": "じめん", "埋まっ": "うまっ", "化石": "かせき", "掘り当てる発掘体験": "ほりあてるはっくつたいけん", "完成": "かんせい", "入室方法": "にゅうしつほうほう", "選び": "えらび", "入る": "はいる", "既定": "きてい", "合う入室": "あうにゅうしつ", "最適化": "さいてきか", "項目": "こうもく", "自分": "じぶん", "調整": "ちょうせい", "両方表示": "りょうほうひょうじ", "切り替える": "きりかえる", "関わら": "かかわら", "組み合わせ": "くみあわせ", "手動": "しゅどう", "変え": "かえ", "連続": "れんぞく", "腕試し": "うでだめし", "制限時間内": "せいげんじかんない", "速く発掘": "はやくはっくつ", "時間切れ": "じかんぎれ", "計測": "けいそく", "速い": "はやい", "応じ": "おうじ", "仲間": "なかま", "一緒": "いっしょ", "相棒犬": "あいぼうけん", "入り": "はいり", "範囲": "はんい", "広がり": "ひろがり", "決まり": "きまり", "進行": "しんこう", "流れ": "ながれ", "進み": "すすみ", "返し": "かえし", "撫で": "なで", "探す": "さがす", "反応": "はんのう", "近い": "ちかい", "振動": "しんどう", "音": "おと", "速く": "はやく", "金属探知": "きんぞくたんち", "現れ": "あらわれ", "見つける手助け": "みつけるてだすけ", "直後": "ちょくご", "最も近い": "もっともちかい", "最初": "さいしょ", "以外": "いがい", "歩き": "あるき", "振る": "ふる", "歩く": "あるく", "探知": "たんち", "掘る": "ほる", "強い場所": "つよいばしょ", "掘れる距離": "ほれるきょり", "整う": "ととのう", "脈打つ": "みゃくうつ", "削れ": "けずれ", "出土": "しゅつど", "光る": "ひかる", "視界": "しかい", "当たり": "あたり", "外れ": "はずれ", "着い": "つい", "判明": "はんめい", "撫でる": "なでる", "当てる確率": "あてるかくりつ", "上がり": "あがり", "頭上": "ずじょう", "一度": "いちど", "連れ": "つれ", "行っ": "いっ", "初期": "しょき", "向い": "むい", "素手": "すで", "照準": "しょうじゅん", "合わせ": "あわせ", "近づけ": "ちかづけ", "往復": "おうふく", "掘る回数": "ほるかいすう", "多い": "おおい", "少ない": "すくない", "常に持っ": "つねにもっ", "全て発掘": "すべてはっくつ", "一気に発掘": "いっきにはっくつ", "左手中指": "ひだりてなかゆび", "長押": "ながおし", "同じ番号": "おなじばんごう", "犬種": "けんしゅ", "掘っ": "ほっ", "同じ": "おなじ", "重複": "じゅうふく", "配点": "はいてん", "成績": "せいせき", "保存": "ほぞん", "片方": "かたほう", "日付": "ひづけ", "左手側": "ひだりてがわ", "常に表示": "つねにひょうじ", "大きく表示": "おおきくひょうじ", "右手中指": "みぎてなかゆび", "上下": "じょうげ", "距離": "きょり", "視点固定": "してんこてい", "画面左半分": "がめんひだりはんぶん", "右半分": "みぎはんぶん", "重ね": "かさね", "遊び": "あそび", "始め": "はじめ", "置き": "おき", "実際": "じっさい", "画面上": "がめんじょう", "強く": "つよく", "直接": "ちょくせつ", "掘り": "ほり", "活動範囲": "かつどうはんい", "近づい": "ちかづい", "走っ": "はしっ", "知らせ": "しらせ", "推定": "すいてい", "測れ": "はかれ", "準備画面": "じゅんびがめん", "幼児": "ようじ", "子ども": "こども", "大人": "おとな", "やり直し": "やりなおし", "置き直せ": "おきなおせ", "終わる": "おわる", "会場": "かいじょう", "非表示時": "ひひょうじじ", "横": "よこ", "奥行": "おくゆき", "指定": "してい", "確定": "かくてい", "以降": "いこう", "左手": "ひだりて", "矩形": "くけい", "番号": "ばんごう", "対象外": "たいしょうがい", "同じ並び": "おなじならび", "順位": "じゅんい", "回発掘": "かいはっくつ", "正面": "しょうめん", "掘り切る": "ほりきる", "評価": "ひょうか", "高評価": "こうひょうか", "未満": "みまん", "下位方向": "かいほうこう", "持っ": "もっ", "枚": "まい", "全部": "ぜんぶ", "関係": "かんけい", "体獲得": "たいかくとく", "増え": "ふえ", "超": "ちょう", "未獲得": "みかくとく", "秒数": "びょうすう", "点以上": "てんいじょう", "決め": "きめ", "抽選": "ちゅうせん", "最終": "さいしゅう", "掘る対象": "ほるたいしょう", "連動": "れんどう", "星": "ほし", "特技": "とくぎ", "違い": "ちがい", "良い": "よい", "上位": "じょうい", "埋め": "うめ", "度表示自体": "どひょうじじたい", "優先": "ゆうせん", "見る": "みる", "独立": "どくりつ", "各種": "かくしゅ", "分離": "ぶんり", "完全完了": "かんぜんかんりょう", "発掘対象切替": "はっくつたいしょうきりかえ", "起動": "きどう", "一本化": "いちほんか", "青い丸": "あおいまる", "吹き出し": "ふきだし", "文字": "もじ", "余白": "よはく", "段階": "だんかい", "本文": "ほんぶん", "多く": "おおく", "暖色": "だんしょく", "点灯": "てんとう", "同じ色": "おなじいろ", "警告": "けいこく", "画面下": "がめんした", "小さめ": "ちいさめ", "終了確認": "しゅうりょうかくにん", "手前": "てまえ", "出す": "だす", "開始直後": "かいしちょくご", "確保": "かくほ", "見よ": "みよ", "両手": "りょうて", "持と": "もと", "片手": "かたて", "持つ高": "もつたか", "名称": "めいしょう", "倍率": "ばいりつ", "録画中": "ろくがちゅう", "操作方法": "そうさほうほう", "少し下げる": "すこしさげる", "読み取り": "よみとり", "卵": "たまご", "孵化": "ふか", "大きく": "おおきく", "撮影": "さつえい", "変わら": "かわら", "終了後": "しゅうりょうご", "写真": "しゃしん", "動画": "どうが", "背景": "はいけい", "土": "つち", "長押し": "ながおし", "後で": "あとで"}, re:null, map:new Map(), obs:null, writing:false };
+const KID={ on:false, dict:{"確認": "かくにん", "発掘中": "はっくつちゅう", "使え": "つかえ", "全発掘": "ぜんはっくつ", "一斉完了": "いっせいかんりょう", "遺構": "いこう", "超激": "ちょうげき", "激": "げき", "聞く": "きく", "王者": "おうじゃ", "一撃": "いちげき", "出土品": "しゅつどひん", "一部": "いちぶ", "読み込め": "よみこめ", "通信環境": "つうしんかんきょう", "一回": "いっかい", "次に": "つぎに", "近く": "ちかく", "掘れる": "ほれる", "来い": "こい", "黄金": "おうごん", "秘宝": "ひほう", "くろしば": "くろしば", "相棒": "あいぼう", "最強": "さいきょう", "固定": "こてい", "選ぶ": "えらぶ", "一覧": "いちらん", "閉じる": "とじる", "開く": "ひらく", "恐竜図鑑": "きょうりゅうずかん", "発掘図鑑": "はっくつずかん", "調整中": "ちょうせいちゅう", "右": "みぎ", "回": "かい", "開始": "かいし", "戻る": "もどる", "発掘": "はっくつ", "挑戦": "ちょうせん", "か所": "かしょ", "掘り出そ": "ほりだそ", "制限時間": "せいげんじかん", "秒": "びょう", "本格的": "ほんかくてき", "狙っ": "ねらっ", "高得点": "こうとくてん", "目指そ": "めざそ", "最後": "さいご", "最高得点": "さいこうとくてん", "説明": "せつめい", "未発掘": "みはっくつ", "種": "しゅ", "準備中": "じゅんびちゅう", "原寸比": "げんすんひ", "約": "やく", "倍": "ばい", "実寸": "じっすん", "表示": "ひょうじ", "非表示": "ひひょうじ", "大き": "おおき", "恐竜": "きょうりゅう", "短辺": "たんぺん", "上限": "じょうげん", "未更新": "みこうしん", "更新": "こうしん", "反映": "はんえい", "発掘記録": "はっくつきろく", "消え": "きえ", "図鑑": "ずかん", "歩い": "あるい", "光っ": "ひかっ", "左": "ひだり", "移動": "いどう", "見回す": "みまわす", "獲得": "かくとく", "加わっ": "くわわっ", "結果": "けっか", "時間": "じかん", "残り": "のこり", "聞い": "きい", "合計": "ごうけい", "終了": "しゅうりょう", "今回": "こんかい", "計算": "けいさん", "完了": "かんりょう", "待ち": "まち", "再挑戦": "さいちょうせん", "道具": "どうぐ", "幅広": "はばひろ", "広く探せる": "ひろくさがせる", "掘り多め": "ほりおおめ", "狭い": "せまい", "掘り少なめ": "ほりすくなめ", "記録": "きろく", "削除": "さくじょ", "掘ろ": "ほろ", "近づく": "ちかづく", "光り": "ひかり", "発見": "はっけん", "発動": "はつどう", "会心": "かいしん", "確率": "かくりつ", "一気に": "いっきに", "見つかり": "みつかり", "見つけ": "みつけ", "もう少し": "もうすこし", "分かり": "わかり", "自信": "じしん", "回転": "かいてん", "操作可能": "そうさかのう", "操作不可": "そうさふか", "犬": "いぬ", "解除": "かいじょ", "もう一度発掘": "もういちどはっくつ", "基準": "きじゅん", "現在地": "げんざいち", "中央": "ちゅうおう", "向き": "むき", "前方": "ぜんぽう", "再配置": "さいはいち", "対応": "たいおう", "使っ": "つかっ", "端末": "たんまつ", "対応端末": "たいおうたんまつ", "開発者": "かいはつしゃ", "更新済み": "こうしんずみ", "開い": "ひらい", "試す": "ためす", "遊べ": "あそべ", "床": "ゆか", "位置": "いち", "認識": "にんしき", "映像": "えいぞう", "歩数": "ほすう", "画面": "がめん", "追跡": "ついせき", "見失い": "みうしない", "個": "こ", "見え": "みえ", "使用": "しよう", "作成": "さくせい", "失敗": "しっぱい", "補正": "ほせい", "最大": "さいだい", "許可": "きょか", "設定": "せってい", "もう一度": "もういちど", "試し": "ためし", "動き": "うごき", "再読み込み": "さいよみこみ", "選ん": "えらん", "届き": "とどき", "測る": "はかる", "方位": "ほうい", "無い": "ない", "方式": "ほうしき", "止まっ": "とまっ", "場所": "ばしょ", "まん中": "まんなか", "立っ": "たっ", "向け": "むけ", "左右": "さゆう", "動かし": "うごかし", "中心": "ちゅうしん", "置き直し": "おきなおし", "水色": "みずいろ", "線": "せん", "内側": "うちがわ", "走ら": "はしら", "歩こ": "あるこ", "映し": "うつし", "変更": "へんこう", "入室": "にゅうしつ", "読み込み中": "よみこみちゅう", "押し": "おし", "関連": "かんれん", "圧縮": "あっしゅく", "開け": "あけ", "越前国府発掘": "えちぜんこくふはっくつ", "隠す": "かくす", "常設": "じょうせつ", "右上": "みぎうえ", "各項目": "かくこうもく", "追加": "ついか", "既存": "きそん", "触れ": "ふれ", "区切り": "くぎり", "同じ見た目": "おなじみため", "区切り線": "くぎりせん", "見出し": "みだし", "色": "いろ", "準備": "じゅんび", "模様": "もよう", "復元": "ふくげん", "書き出し処理": "かきだししょり", "押せ": "おせ", "狭い時": "せまいとき", "並べる": "ならべる", "重なら": "かさなら", "以上": "いじょう", "途中": "とちゅう", "折り返さ": "おりかえさ", "探し": "さがし", "掘り当てよ": "ほりあてよ", "操作": "そうさ", "開発中": "かいはつちゅう", "未反映": "みはんえい", "対象": "たいしょう", "発掘道具": "はっくつどうぐ", "持ち替え": "もちかえ", "持ち替える": "もちかえる", "表示中": "ひょうじちゅう", "止まる": "とまる", "止まら": "とまら", "集め": "あつめ", "自動": "じどう", "発掘対象": "はっくつたいしょう", "選べ": "えらべ", "決め方": "きめかた", "固定型": "こていがた", "候補": "こうほ", "全て": "すべて", "遺跡": "いせき", "発掘場所": "はっくつばしょ", "横幅": "よこはば", "奥行き": "おくゆき", "得点": "とくてん", "仕組み": "しくみ", "残り秒": "のこりびょう", "速い順": "はやいじゅん", "越前国府": "えちぜんこくふ", "地面": "じめん", "埋まっ": "うまっ", "化石": "かせき", "掘り当てる発掘体験": "ほりあてるはっくつたいけん", "完成": "かんせい", "入室方法": "にゅうしつほうほう", "選び": "えらび", "入る": "はいる", "既定": "きてい", "合う入室": "あうにゅうしつ", "最適化": "さいてきか", "項目": "こうもく", "自分": "じぶん", "調整": "ちょうせい", "両方表示": "りょうほうひょうじ", "切り替える": "きりかえる", "関わら": "かかわら", "組み合わせ": "くみあわせ", "手動": "しゅどう", "変え": "かえ", "連続": "れんぞく", "腕試し": "うでだめし", "制限時間内": "せいげんじかんない", "速く発掘": "はやくはっくつ", "時間切れ": "じかんぎれ", "計測": "けいそく", "速い": "はやい", "応じ": "おうじ", "仲間": "なかま", "一緒": "いっしょ", "相棒犬": "あいぼうけん", "入り": "はいり", "範囲": "はんい", "広がり": "ひろがり", "決まり": "きまり", "進行": "しんこう", "流れ": "ながれ", "進み": "すすみ", "返し": "かえし", "撫で": "なで", "探す": "さがす", "反応": "はんのう", "近い": "ちかい", "振動": "しんどう", "音": "おと", "速く": "はやく", "金属探知": "きんぞくたんち", "現れ": "あらわれ", "見つける手助け": "みつけるてだすけ", "直後": "ちょくご", "最も近い": "もっともちかい", "最初": "さいしょ", "以外": "いがい", "歩き": "あるき", "振る": "ふる", "歩く": "あるく", "探知": "たんち", "掘る": "ほる", "強い場所": "つよいばしょ", "掘れる距離": "ほれるきょり", "整う": "ととのう", "脈打つ": "みゃくうつ", "削れ": "けずれ", "出土": "しゅつど", "光る": "ひかる", "視界": "しかい", "当たり": "あたり", "外れ": "はずれ", "着い": "つい", "判明": "はんめい", "撫でる": "なでる", "当てる確率": "あてるかくりつ", "上がり": "あがり", "頭上": "ずじょう", "一度": "いちど", "連れ": "つれ", "行っ": "いっ", "初期": "しょき", "向い": "むい", "素手": "すで", "照準": "しょうじゅん", "合わせ": "あわせ", "近づけ": "ちかづけ", "往復": "おうふく", "掘る回数": "ほるかいすう", "多い": "おおい", "少ない": "すくない", "常に持っ": "つねにもっ", "全て発掘": "すべてはっくつ", "一気に発掘": "いっきにはっくつ", "左手中指": "ひだりてなかゆび", "長押": "ながおし", "同じ番号": "おなじばんごう", "犬種": "けんしゅ", "掘っ": "ほっ", "同じ": "おなじ", "重複": "じゅうふく", "配点": "はいてん", "成績": "せいせき", "保存": "ほぞん", "片方": "かたほう", "日付": "ひづけ", "左手側": "ひだりてがわ", "常に表示": "つねにひょうじ", "大きく表示": "おおきくひょうじ", "右手中指": "みぎてなかゆび", "上下": "じょうげ", "距離": "きょり", "視点固定": "してんこてい", "画面左半分": "がめんひだりはんぶん", "右半分": "みぎはんぶん", "重ね": "かさね", "遊び": "あそび", "始め": "はじめ", "置き": "おき", "実際": "じっさい", "画面上": "がめんじょう", "強く": "つよく", "直接": "ちょくせつ", "掘り": "ほり", "活動範囲": "かつどうはんい", "近づい": "ちかづい", "走っ": "はしっ", "知らせ": "しらせ", "推定": "すいてい", "測れ": "はかれ", "準備画面": "じゅんびがめん", "幼児": "ようじ", "子ども": "こども", "大人": "おとな", "やり直し": "やりなおし", "置き直せ": "おきなおせ", "終わる": "おわる", "会場": "かいじょう", "非表示時": "ひひょうじじ", "横": "よこ", "奥行": "おくゆき", "指定": "してい", "確定": "かくてい", "以降": "いこう", "左手": "ひだりて", "矩形": "くけい", "番号": "ばんごう", "対象外": "たいしょうがい", "同じ並び": "おなじならび", "順位": "じゅんい", "回発掘": "かいはっくつ", "正面": "しょうめん", "掘り切る": "ほりきる", "評価": "ひょうか", "高評価": "こうひょうか", "未満": "みまん", "下位方向": "かいほうこう", "持っ": "もっ", "枚": "まい", "全部": "ぜんぶ", "関係": "かんけい", "体獲得": "たいかくとく", "増え": "ふえ", "超": "ちょう", "未獲得": "みかくとく", "秒数": "びょうすう", "点以上": "てんいじょう", "決め": "きめ", "抽選": "ちゅうせん", "最終": "さいしゅう", "掘る対象": "ほるたいしょう", "連動": "れんどう", "星": "ほし", "特技": "とくぎ", "違い": "ちがい", "良い": "よい", "上位": "じょうい", "埋め": "うめ", "度表示自体": "どひょうじじたい", "優先": "ゆうせん", "見る": "みる", "独立": "どくりつ", "各種": "かくしゅ", "分離": "ぶんり", "完全完了": "かんぜんかんりょう", "発掘対象切替": "はっくつたいしょうきりかえ", "起動": "きどう", "一本化": "いちほんか", "青い丸": "あおいまる", "吹き出し": "ふきだし", "文字": "もじ", "余白": "よはく", "段階": "だんかい", "本文": "ほんぶん", "多く": "おおく", "暖色": "だんしょく", "点灯": "てんとう", "同じ色": "おなじいろ", "警告": "けいこく", "画面下": "がめんした", "小さめ": "ちいさめ", "終了確認": "しゅうりょうかくにん", "手前": "てまえ", "出す": "だす", "開始直後": "かいしちょくご", "確保": "かくほ", "見よ": "みよ", "両手": "りょうて", "持と": "もと", "片手": "かたて", "持つ高": "もつたか", "名称": "めいしょう", "倍率": "ばいりつ", "録画中": "ろくがちゅう", "操作方法": "そうさほうほう", "少し下げる": "すこしさげる", "読み取り": "よみとり", "卵": "たまご", "孵化": "ふか", "大きく": "おおきく", "撮影": "さつえい", "変わら": "かわら", "終了後": "しゅうりょうご", "写真": "しゃしん", "動画": "どうが", "背景": "はいけい", "土": "つち", "長押し": "ながおし", "後で": "あとで"}, re:null, map:new Map(), obs:null, writing:false };
 (function(){
     const keys=Object.keys(KID.dict).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
     KID.re=new RegExp(keys.join("|"),"g");
@@ -12817,7 +12835,7 @@ addEventListener("resize",()=>{
         if(target==="dog"){
             let m=null;
             if(typeof DOGS!=="undefined"){
-                const useShiba=(idx>=DOGS.length);   // 末尾＝しば犬（build_dog）
+                const useShiba=(idx>=DOGS.length);   // 末尾＝しばいぬ（build_dog）
                 const bfn = useShiba ? (typeof build_dog==="function"?build_dog:null) : ((DOGS[idx]&&typeof DOG_BUILDERS!=="undefined"&&DOG_BUILDERS[DOGS[idx].key])||null);
                 if(bfn){
                     const pv=(typeof VOX_CUR!=="undefined")?VOX_CUR:null, ps=(typeof dinoSmooth!=="undefined")?dinoSmooth:false;
@@ -12836,7 +12854,7 @@ addEventListener("resize",()=>{
         const target = curDigTarget();
         const isDino = (target==="dino"), isDog = (target==="dog");
         const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8)
-                : isDog ? ((typeof DOGS!=="undefined" ? DOGS.length : 8)+1) : artCount();   // 出土品/恐竜=8点、犬=8犬種＋しば犬
+                : isDog ? ((typeof DOGS!=="undefined" ? DOGS.length : 8)+1) : artCount();   // 出土品/恐竜=8点、犬=8犬種＋しばいぬ
         curList = []; sel.innerHTML = "";
         if(isDino && window.__mvLiteMode && typeof DINOS!=="undefined"){   // 「ARで みる」：先に じぶんで ぬった恐竜（🖍 ○○（ぬりえ））
             for(let i=0;i<n;i++){ const d=DINOS[i]; if(!(d && window.__dinoHasPaint && window.__dinoHasPaint(d.key))) continue;
@@ -14421,19 +14439,20 @@ window.NURI_EVENT={
 };
 })();
 /* =====================================================================
- * トレーディングカード（HTML版）… カードのデザインを HTML/CSS で組む（ゲーム内の恐竜・犬種・しば犬のカードもここで作る）
+ * トレーディングカード（HTML版）… カードのデザインを HTML/CSS で組む（ゲーム内の恐竜・犬種・しばいぬのカードもここで作る）
  *   tcData(kind,key,plain,label) カードに出す内容（ゲームのデータをそのまま使う。値は変えない）。layout＝カードの形（dino／dog）
  *   tcBuild(data, img)        カードの要素を作る
  *   tcRenderArt(kind,key)     メイン画像（1:1）を3Dモデルから作る
  *                             恐竜＝ななめ下から見上げる／犬＝ななめ上から見下ろす／足踏み途中／エフェクトあり
  *                             ぬりえ済みの恐竜は、ぬりえの模様のまま撮る（色を付け直さない）
- *   URL に ?cardDebug=1       恐竜8枚＋しば犬・犬種9枚を一覧表示（デバッグ用・ゲーム本体の表示は変えない）
- *   window.TCARD.game         ゲーム側から使う窓口（恐竜・犬種・しば犬のカード画像・テクスチャ）
+ *   URL に ?cardDebug=1       恐竜8枚＋しばいぬ・犬種9枚を一覧表示（デバッグ用・ゲーム本体の表示は変えない）
+ *   window.TCARD.game         ゲーム側から使う窓口（恐竜・犬種・しばいぬのカード画像・テクスチャ）
  * ===================================================================== */
 (function tradingCards(){
 const TC_STAT=[["power","ちから"],["discovery","はっけん"],["smarts","かしこさ"]];   // 表示はこの3つだけ（digP・discN・digN・rarity は出さない）
-const TC_INFO=[["group","分類"],["diet","食性"],["era","時代"],["region","地域"]];
-const TC_UNSET="未設定";
+const TC_INFO=[["group","{分類|ぶんるい}"],["size","{全長|ぜんちょう}"],["era","{時代|じだい}"],["region","{地域|ちいき}"]];   // 項目名（{漢字|よみ}＝ふりがな）
+const TC_SIZE_LABEL={ ptera:"{翼開長|よくかいちょう}", dog:"{背|せ}の{高|たか}さ" };   // 大きさ（size）の項目名がちがうもの（ほかは「全長」）
+const TC_UNSET="{未設定|みせってい}";
 /* ---- 左上の名前（イベントのカード ?cardDebug=2 だけ）----
  * 使える幅 ＝ スコア枠の左端 − スコアとのすき間 − 左の余白（単位はカードの 1px＝縦798基準）
  *   スコア枠の左端 ＝ カード幅 553.2 − 右の余白 35 − スコア枠の幅（最大 114：4桁＋カンマ・27px 太字・左右16）− 外側の飾り線 3.5 ≒ 400.7
@@ -14524,8 +14543,42 @@ function tcScore(f, cs){
 // ★☆の5段階（1→★☆☆☆☆ … 5→★★★★★）。値そのものは変えない
 function tcStars(v){ const n=Math.max(0,Math.min(5,Math.round(Number(v)||0))); return "★".repeat(n)+"☆".repeat(5-n); }
 function tcVal(v){ return (v==null || String(v).trim()==="")? TC_UNSET : String(v); }
+function tcSize(v){ const n=Number(v); if(v==null || String(v).trim()==="" || !(n>0)) return TC_UNSET; return "{約|やく}"+(n<1? Math.round(n*100)+"cm" : n+"m"); }   // 大きさ（m）→「約12m」「約4.2m」（1m未満は「約40cm」）
+function tcInfoItems(d){   // 分類〜地域の4つ（「項目名: 値」）
+    return TC_INFO.map(([f,lab])=> f==="size"? (TC_SIZE_LABEL[d.key]||lab)+": "+tcSize(d.info.size) : lab+": "+tcVal(d.info[f])); }
+// ふりがな：文字の中の {漢字|よみ} を [{t:"漢字", r:"よみ"}, {t:"ほかの文字"}…] に分ける
+function tcRubySegs(s){ const a=[]; String(s).replace(/\{([^|{}]+)\|([^{}]+)\}|[^{]+|\{/g, (m,b,r)=>{ a.push(b? { t:b, r } : { t:m }); return m; }); return a; }
+// ふりがなの並べ方（画面のカード・画像のカードで同じ）。ふりがなは文字の半分の大きさで、漢字の真上（真ん中ぞろえ）に書く。
+// ふりがなが漢字より長い時は、となりがふりがなのない字なら その上にはみ出してよい（ふりがな1字分まで。となりの字の上では、両側からのふりがなの間に ふりがな半字分を残す）。足りない分だけ漢字の両側をあける
+const TC_RUBY={ k:0.5, gap:1 };   // k＝文字に対するふりがなの大きさ・gap＝文字とふりがなの間
+let _tcRubyCtx=null;
+function tcNoKid(fn){ const kid=(typeof KID!=="undefined" && KID.on); if(kid) KID.on=false; try{ return fn(); } finally { if(kid) KID.on=true; } }   // 幼児向け（ひらがな）の置き換えはしない（ふりがなで読める）
+function tcRubyMeasure(s, fw, px, ls, edge){   // edge＝行のはしで はみ出してよい幅（省略＝ふりがな1字分）→ { segs:[{t, r, bw, rw, padL, padR, w}], w:幅, ext:はみ出しも入れた幅 }
+    const ctx=_tcRubyCtx||(_tcRubyCtx=document.createElement("canvas").getContext("2d")), rpx=px*TC_RUBY.k;
+    return tcNoKid(()=>{
+        const segs=tcRubySegs(s);
+        segs.forEach(g=>{ tcSetFont(ctx,fw,px,ls); g.bw=ctx.measureText(g.t).width; g.rw=0;
+            if(g.r){ tcSetFont(ctx,fw,rpx,0); g.rw=ctx.measureText(g.r).width; } });
+        const room=n=>!n? (edge!=null? edge : rpx) : n.r? 0 : Math.max(0, Math.min(rpx, (n.bw-rpx/2)/2));
+        let w=0, l=0, r=0;
+        segs.forEach((g,i)=>{ g.padL=g.padR=0;
+            const ex=g.r? Math.max(0,(g.rw-g.bw)/2) : 0, oL=Math.min(ex, room(segs[i-1])), oR=Math.min(ex, room(segs[i+1]));
+            g.padL=ex-oL; g.padR=ex-oR; g.w=g.bw+g.padL+g.padR; w+=g.w;
+            if(i===0) l=oL; if(i===segs.length-1) r=oR; });
+        return { segs, w, ext:w+l+r };
+    });
+}
+// HTML に書く（漢字＝.tc-rb、ふりがな＝その上の .tc-rt。あけ方は tcRubyMeasure と同じ）
+function tcRubyFill(e, s, px, edge){
+    tcRubyMeasure(s,"700",px,0.5,edge).segs.forEach(g=>{
+        if(!g.r){ e.appendChild(document.createTextNode(g.t)); return; }
+        const rb=el("span","tc-rb",g.t), rt=el("span","tc-rt"), u=v=>"calc(var(--u)*"+v.toFixed(2)+")";
+        if(g.padL || g.padR){ rb.style.paddingLeft=u(g.padL); rb.style.paddingRight=u(g.padR); rt.style.left=u(g.padL); rt.style.right=u(g.padR); }
+        rt.appendChild(el("span",null,g.r)); rb.appendChild(rt); e.appendChild(rb); });
+    return e;
+}
 
-function tcData(kind, key, plain, label){   // plain＝ぬり絵なしのカード（恐竜：元の値・模様なし）／label＝左上の名称（しば犬の形を決める）
+function tcData(kind, key, plain, label){   // plain＝ぬり絵なしのカード（恐竜：元の値・模様なし）／label＝左上の名称（しばいぬの形を決める）
     let info=(YEAR_CONFIG.cardInfo||{})[key]||{};
     if(kind==="dino"){
         const i=DINOS.findIndex(d=>d.key===key), def=(YEAR_CONFIG.companions||{})[key]||{}, c=plain? def : (COMPANIONS[key]||def);
@@ -14536,11 +14589,11 @@ function tcData(kind, key, plain, label){   // plain＝ぬり絵なしのカー�
                  painted:!plain && !!(window.__dinoHasPaint && window.__dinoHasPaint(key)), info,
                  score:tcScore({ power:c.power, discovery:c.discovery, smarts:c.smarts, discP:sp.discP, discN:sp.discN, digN:sp.digN }, cs) };
     }
-    if(key==="dog"){   // しば犬＝companions.dog の基本の値（レベルアップ制で上がった値は使わない）
+    if(key==="dog"){   // しばいぬ＝companions.dog の基本の値（レベルアップ制で上がった値は使わない）
         const def=(YEAR_CONFIG.companions||{}).dog||{}, sp=def.special||{};
         const dinoForm=(label===CARD_LABEL.dino) && !!info.dino;   // 恐竜発掘カード＝恐竜と同じ形（cardInfo.dog.dino）／遺跡発掘カード＝犬の形
         if(dinoForm) info=info.dino;
-        return { kind, key, layout:dinoForm? "dino" : "dog", no:0, name:def.fullName||"しば犬", power:def.power, discovery:def.discovery, smarts:def.smarts, special:sp.name||"",
+        return { kind, key, layout:dinoForm? "dino" : "dog", no:0, name:def.fullName||"しばいぬ", power:def.power, discovery:def.discovery, smarts:def.smarts, special:sp.name||"",
                  discP:sp.discP, digP:(sp.discP!=null? 100-sp.discP : null), discN:sp.discN, digN:sp.digN, painted:false, info,
                  score:tcScore({ power:def.power, discovery:def.discovery, smarts:def.smarts, discP:sp.discP, discN:sp.discN, digN:sp.digN }, null) };
     }
@@ -14607,10 +14660,10 @@ function tcBuild(d, img){
     art.appendChild(pl);
     art.appendChild(el("i","tc-gem"));
     tin.appendChild(art);
-    // 基本情報（分類・食性・時代・地域）… 恐竜の形のカードだけ（恐竜・恐竜発掘カードのしば犬）。YEAR_CONFIG.cardInfo から。空なら「未設定」
+    // 基本情報（分類・大きさ・時代・地域）… 恐竜の形のカードだけ（恐竜・恐竜発掘カードのしばいぬ）。YEAR_CONFIG.cardInfo から。空なら「未設定」
     if(card.dataset.layout==="dino"){
-        const dl=el("dl","tc-info");
-        TC_INFO.forEach(([f,lab])=>{ const w=el("div"); w.appendChild(el("dt",null,lab)); const dd=el("dd",null,tcVal(d.info[f])); w.appendChild(dd); dl.appendChild(w); });
+        const dl=el("div","tc-info");
+        tcInfoItems(d).forEach(t=>dl.appendChild(tcRubyFill(el("div"), t, 15, 5)));   // 半角のコロン＋空白（4つを1行に収める）
         tin.appendChild(dl);
         tin.appendChild(el("div","tc-rule r1"));
     }
@@ -14623,9 +14676,9 @@ function tcBuild(d, img){
     const spc=el("p","tc-special"); spc.appendChild(el("span","tc-fit","スペシャル「"+d.special+"」")); tin.appendChild(spc);
     // 特徴
     const ft=el("dl","tc-feature"), fw=el("div");   // 特徴（項目名は書かない）
-    const fd=el("dd",null,tcVal(d.info.feature)); fw.appendChild(fd); ft.appendChild(fw);
+    fw.appendChild(tcRubyFill(el("dd"),tcVal(d.info.feature),14.5)); ft.appendChild(fw);
     if(card.dataset.layout==="dog"){   // 犬の形は2行目（feature2）。空なら何も出さない
-        const f2=el("dd","tc-feature2", String(d.info.feature2||"").trim()); ft.appendChild(f2); }
+        ft.appendChild(tcRubyFill(el("dd","tc-feature2"), String(d.info.feature2||"").trim(), 14.5)); }
     tin.appendChild(ft);
     return card;
 }
@@ -14669,7 +14722,7 @@ function tcBuildModel(kind, key, plain){
         if(!plain) try{ if(window.__dinoPaintApply) window.__dinoPaintApply(key, m); }catch(e){ console.warn("[カード] ぬりえ", e); }   // ぬりえ済み＝その模様のまま（plain＝模様なし）
         return { root:cont, m };
     }
-    const b=(key==="dog")? ()=>build_dog() : (typeof DOG_BUILDERS!=="undefined")? DOG_BUILDERS[key] : null; if(!b) throw new Error("no dog "+key);   // しば犬＝build_dog（相棒と同じ）
+    const b=(key==="dog")? ()=>build_dog() : (typeof DOG_BUILDERS!=="undefined")? DOG_BUILDERS[key] : null; if(!b) throw new Error("no dog "+key);   // しばいぬ＝build_dog（相棒と同じ）
     const pv=VOX_CUR, ps=dinoSmooth; let body; try{ VOX_CUR=VOX/6; dinoSmooth=true; body=b(); } finally { VOX_CUR=pv; dinoSmooth=ps; }   // 相棒（ensureBody）と同じ作り方
     const root=new THREE.Group(); root.add(body); return { root, m:body };
 }
@@ -15195,6 +15248,17 @@ function tcText(ctx, txt, cx, cy, maxW, opt){
     ctx.fillStyle=opt.color; ctx.fillText(txt,0,0); ctx.restore();
     return w*k;
 }
+function tcRubyDraw(ctx, m, x, cy, fw, px, ls, color){   // ふりがな付きの文字を書く（m＝tcRubyMeasure の結果・x＝左はし・cy＝文字の上下の中心）
+    tcNoKid(()=>{ const rpx=px*TC_RUBY.k, ry=cy-px/2-TC_RUBY.gap-rpx/2;
+        ctx.fillStyle=color; ctx.textAlign="left"; ctx.textBaseline="middle";
+        m.segs.forEach(g=>{ tcSetFont(ctx,fw,px,ls); ctx.fillText(g.t, x+g.padL, cy);
+            if(g.r){ tcSetFont(ctx,fw,rpx,0); ctx.fillText(g.r, x+g.padL+(g.bw-g.rw)/2, ry); }
+            x+=g.w; }); });
+}
+function tcRubyText(ctx, s, cx, cy, maxW, fw, px, ls, color){   // 1行・真ん中ぞろえ（はみ出したふりがなも入れて maxW を超えたら横に縮める）
+    const m=tcRubyMeasure(s,fw,px,ls), k=(maxW && m.ext>maxW)? maxW/m.ext : 1;
+    ctx.save(); ctx.translate(cx,cy); ctx.scale(k,1); tcRubyDraw(ctx,m,-m.w/2,0,fw,px,ls,color); ctx.restore();
+}
 function tcLoadImg(src){ return new Promise((res,rej)=>{ if(!src) return res(null); const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
 function tcBadgePaint(ctx, kind, x, y, s){   // 右上の六角形アイコン（SVG と同じ形）
     ctx.save(); ctx.translate(x,y); ctx.scale(s/100,s/100);
@@ -15273,19 +15337,17 @@ async function tcCardCanvas(d, imgUrl, scale){
 
     // 基本情報（恐竜の形のカードだけ）
     if(!dog){
-        tcSetFont(ctx,"700",15,0.5);
-        const items=TC_INFO.map(([f,lab])=>lab+": "+tcVal(d.info[f])), gap=14, ws=items.map(t=>ctx.measureText(t).width);   // 半角のコロン＋空白（4つを1行に収める）
-        let tot=ws.reduce((a,b)=>a+b,0)+gap*(items.length-1); const kk=tot>CW-52? (CW-52)/tot : 1;
-        ctx.save(); ctx.translate(cx,593); ctx.scale(kk,1); let x=-tot/2;
-        ctx.fillStyle="#cdbf94"; ctx.textAlign="left"; ctx.textBaseline="middle";
-        items.forEach((t,i)=>{ ctx.fillText(t,x,0); x+=ws[i]+gap; }); ctx.restore();
-        ctx.fillStyle="#554727"; ctx.fillRect(26,607,CW-52,3);
+        const ms=tcInfoItems(d).map(t=>tcRubyMeasure(t, "700", 15, 0.5, 5)), gap=14;   // 半角のコロン＋空白（4つを1行に収める）。項目のはしのふりがなは 間（14）に 5 まではみ出してよい
+        const tot=ms.reduce((a,m)=>a+m.w,0)+gap*(ms.length-1), kk=tot>CW-52? (CW-52)/tot : 1;
+        ctx.save(); ctx.translate(cx,600); ctx.scale(kk,1); let x=-tot/2;   // 文字の中心 600（ふりがなは その上・画像のわくの宝石にかからない高さ）
+        ms.forEach(m=>{ tcRubyDraw(ctx, m, x, 0, "700", 15, 0.5, "#cdbf94"); x+=m.w+gap; }); ctx.restore();
+        ctx.fillStyle="#554727"; ctx.fillRect(26,610,CW-52,3);
     }
     // ステータス（★☆）
-    const sTop=dog? 586 : 613;
+    const sTop=dog? 586 : 615, sRow=dog? 26.5 : 26;   // 恐竜の形は ふりがなの分 少し詰める
     tcSetFont(ctx,"400",24,0.5); const starW=ctx.measureText("★★★★★").width;
     const gx=cx-(156+starW)/2;
-    TC_STAT.forEach(([k2,lab],i)=>{ const cy=sTop+26.5*i+13.25;
+    TC_STAT.forEach(([k2,lab],i)=>{ const cy=sTop+sRow*i+sRow/2;
         tcSetFont(ctx,"800",21,1); ctx.fillStyle="#fdf3d5"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(lab,gx,cy);
         tcSetFont(ctx,"400",24,0.5); ctx.fillText(tcStars(d[k2]),gx+156,cy+1); });
     ctx.fillStyle="#554727"; ctx.fillRect(26, dog? 670 : 697, CW-52, 3);
@@ -15293,11 +15355,10 @@ async function tcCardCanvas(d, imgUrl, scale){
     tcSetFont(ctx,"800",21,0.5);
     tcText(ctx, "スペシャル「"+d.special+"」", cx, (dog? 677 : 704)+17, CW-52, { color:"#ffd86a" });
     // 特徴
-    tcSetFont(ctx,"700",14.5,0.5);
-    const f1=tcVal(d.info.feature);   // 特徴（項目名は書かない）
-    if(!dog) tcText(ctx, f1, cx, 756, CW-60, { color:"#cdbf94" });
-    else { const lh=14.5*1.3; tcText(ctx, f1, cx, 742.5-lh/2, CW-60, { color:"#cdbf94" });
-        const f2=String(d.info.feature2||"").trim(); if(f2) tcText(ctx, f2, cx, 742.5+lh/2, CW-60, { color:"#cdbf94" }); }
+    const f1=tcVal(d.info.feature);   // 特徴（項目名は書かない・ふりがな付き）
+    if(!dog) tcRubyText(ctx, f1, cx, 760, CW-60, "700", 14.5, 0.5, "#cdbf94");
+    else { tcRubyText(ctx, f1, cx, 735, CW-60, "700", 14.5, 0.5, "#cdbf94");
+        const f2=String(d.info.feature2||"").trim(); if(f2) tcRubyText(ctx, f2, cx, 760, CW-60, "700", 14.5, 0.5, "#cdbf94"); }
     return cv;
 }
 function tcFileName(d, suffix){ return "card_"+d.kind+"_"+String(d.no).padStart(2,"0")+"_"+d.key+(suffix||"")+".png"; }
@@ -15405,7 +15466,7 @@ function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新
             const zoom=()=>tcDebugZoom(kind, item.key); card.addEventListener("click",zoom); card.addEventListener("keydown",ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); zoom(); } });
             pane.appendChild(fig); T.cards.push({ id, kind, key:item.key, card }); }); };
     make("dino", DINOS, T.panes.dino);
-    make("dog", [{key:"dog"}].concat(DOGS), T.panes.dog);   // しば犬＋犬種8
+    make("dog", [{key:"dog"}].concat(DOGS), T.panes.dog);   // しばいぬ＋犬種8
     // エフェクト見本（スコアに関係なく、全種類を同じカードで並べる）
     const F=T.panes.fx; F.innerHTML="";
     tcFxSamples().forEach(([kind,key,fx])=>{ const id="fx:"+kind+":"+key+":"+fx, fig=el("figure"), card=tcBuild(tcData(kind,key), T.imgs[id]);
@@ -17267,11 +17328,11 @@ function rwTick(w, dt){
     w.turn.rotation.set(RW_TILT, RW_YAW*(1-yawOut)+Math.PI*yawOut+(w.spin||0), 0);
     w.base.position.y=bob-out; if(w.k) w.base.scale.setScalar(w.k*scale);
 }
-/* ---------------- ゲーム内のカード（恐竜・犬種・しば犬）----------------
+/* ---------------- ゲーム内のカード（恐竜・犬種・しばいぬ）----------------
  * 獲得カード・図鑑・相棒カード・ホログラム・VR に出すカードを、ここで作る（出土品のカードだけは画像ファイルのまま）。
  *   ・恐竜は「ぬり絵なし」（元の値・模様なし）と「ぬり絵あり」（ぬりえの模様・補正後の値）の2種類
  *       図鑑・ホログラム＝ぬり絵なし／相棒えらび・リザルトの獲得カード＝ぬり絵あり（呼び出し側が paint で指定）
- *       ぬっていない恐竜は、どちらも同じ1枚（ぬり絵なし）を使う。犬種・しば犬は1種類だけ
+ *       ぬっていない恐竜は、どちらも同じ1枚（ぬり絵なし）を使う。犬種・しばいぬは1種類だけ
  *   ・メイン画像（3Dモデルの撮影）は1回だけ作って覚えておく（いちばん重い処理）
  *   ・カード全体（枠・文字・左上の名称）は「名称ごと」に作って覚えておく（JPEG の画像として持つ＝メモリを使いすぎない）
  *   ・入室前のプリロードで全部作る（犬→ぬりえの復元を待って恐竜）。ぬりえが変わった恐竜は、ぬり絵ありの方だけ作り直す
@@ -17395,7 +17456,7 @@ function gcTexture(kind, key, label, paint){   // ホログラム・VR 用（同
     if(!gcFresh(kind, key, label, paint)) gcEnsure(kind, key, label, paint).catch(e=>console.warn("[カード] 作れませんでした", kind, key, e));
     return s.t;
 }
-// 入室前のプリロード：しば犬（両方の名称）・犬種8（遺跡発掘カード）・恐竜8（恐竜発掘カード：ぬり絵なし＋ぬった恐竜はぬり絵ありも）
+// 入室前のプリロード：しばいぬ（両方の名称）・犬種8（遺跡発掘カード）・恐竜8（恐竜発掘カード：ぬり絵なし＋ぬった恐竜はぬり絵ありも）
 async function gcPreload(labels){
     const L=GC.labels=labels||{}, list=[];
     list.push(["dog","dog",L.artifact], ["dog","dog",L.dino]);
