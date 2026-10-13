@@ -15824,12 +15824,13 @@ function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新
     // エフェクト見本（スコアに関係なく、全種類を同じカードで並べる）
     const F=T.panes.fx; F.innerHTML="";
     tcFxSamples().forEach(([kind,key,fx])=>{ const id="fx:"+kind+":"+key+":"+fx, fig=el("figure"), card=tcBuild(tcData(kind,key), T.imgs[id]);
-        fig.appendChild(card); fig.appendChild(el("figcaption",null,"見本："+TC_EFFECT.label[fx]+"（"+tcFxRange(fx)+"）\n※スコアの数字はこのカードの実際の値"));
+        fig.appendChild(card); fig.appendChild(tcActions(kind, key, id, "_fx_"+fx));   // エフェクト見本もダウンロードできる（ファイル名の最後にエフェクトの名前：_fx_thunder など）
+        fig.appendChild(el("figcaption",null,"見本："+TC_EFFECT.label[fx]+"（"+tcFxRange(fx)+"）\n※スコアの数字はこのカードの実際の値"));
         tcZoomable(card, ()=>tcDebugZoom(kind, key, id));
         F.appendChild(fig); T.cards.push({ id, kind, key, card, fx }); });
     requestAnimationFrame(()=>tcFit(T.root));
 }
-function tcActions(kind, key, id){   // ダウンロード・余白ありダウンロードのボタン
+function tcActions(kind, key, id, sfx){   // ダウンロード・余白ありダウンロードのボタン（sfx＝ファイル名に足す文字。エフェクト見本＝"_fx_flame" など）
     const T=TCD, box=el("div","tcd-act");
     const run=async(fn)=>{ const url=T.imgs[id]; if(!url){ T.status.textContent="画像ができてから押してください"; return; }
         const all=box.querySelectorAll("button"); all.forEach(b=>b.disabled=true); T.status.textContent="カードを用意しています…";
@@ -15841,7 +15842,7 @@ function tcActions(kind, key, id){   // ダウンロード・余白ありダウ�
         const ck=id+(margin?":m":":c")+":"+url.length;
         let blob=(T.lastFile && T.lastFile.key===ck)? T.lastFile.blob : null;
         if(!blob){ blob=await tcCardBlob(d, url, margin); T.lastFile={ key:ck, blob }; }
-        try{ const how=await tcSaveBlob(blob, tcFileName(d, margin? "_89mm" : ""));
+        try{ const how=await tcSaveBlob(blob, tcFileName(d, (sfx||"")+(margin? "_89mm" : "")));
             return how==="share"? "「画像を保存」を選ぶと写真に入ります" : "ダウンロードしました"; }
         catch(e){
             if(e && e.name==="AbortError") return "";   // 共有シートを閉じた
@@ -16366,7 +16367,7 @@ function evFig(rec){
     const rp=B(["読込再現","再現"],()=>evReplay(rec.id)); rp.title="読み込み再現：読み込んだ直後の演出を、このカードでもう一度（カードは増えません）"; if(!rec.d) rp.disabled=true;
     B(["名前変更","改名"],()=>evRename(rec.id));
     B(["作り直す","再作"],()=>evEnqueue(rec.id,true)).style.display="none";   // 1枚ずつの作り直しは使わない（隠すだけ。全部は上の「すべて作り直す」）
-    if(!rec.demo){ const bo=evBlank(rec), bb=B(bo? ["白い所：模様","模様"] : ["白い所：白地","白地"],()=>evBlankToggle(rec.id));   // このカード（とランキングの歩く恐竜）の白い所
+    if(!rec.demo){ const bo=evBlank(rec), bb=B(bo? ["白：模様","模様"] : ["白：白地","白地"],()=>evBlankToggle(rec.id));   // このカード（とランキングの歩く恐竜）の白い所
         bb.setAttribute("aria-pressed",String(bo)); bb.title="ぬっていない白い所を、白地（ぬりえどおりの白）にするか、模様（ぬりえなしの時の模様）にするか（このカードだけ。押すとカードを作り直します）"; }
     B("削除",()=>evDelete(rec.id),"tce-danger");
     fig.appendChild(act);
