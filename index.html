@@ -16219,12 +16219,12 @@ function evOpen(){
     const putMute=()=>{ mute.textContent=EV.mute? "音：なし" : "音：あり"; mute.setAttribute("aria-pressed",String(!EV.mute)); };
     mute.addEventListener("click",()=>{ EV.mute=!EV.mute; try{ localStorage.setItem(EV_MUTE_KEY, EV.mute?"1":"0"); }catch(_){ } putMute(); }); putMute();
     const blank=el("button",null,""); blank.type="button";   // ぬっていない白い所：これから作るカードの値（既定＝ぬりえどおり）。今あるカードは、カードごとのボタンか一括変更で
-    const putBlank=()=>{ const on=!!(N() && N().blankOrig()); blank.textContent=on? "これから：白い所 元の模様" : "これから：白い所 ぬりえどおり"; blank.setAttribute("aria-pressed",String(on));
-        blank.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか。これから作るカードに使います（今あるカードは、カードごとの「白い所」ボタンか、一括変更で変わります）"; };
+    const putBlank=()=>{ const on=!!(N() && N().blankOrig()); blank.textContent=on? "これから：模様" : "これから：白地"; blank.setAttribute("aria-pressed",String(on));
+        blank.title="ぬっていない白い所を、白地（ぬりえどおりの白）にするか、模様（ぬりえなしの時の模様）にするか。これから作るカードに使います（今あるカードは、カードごとの「白い所」ボタンか、一括変更で変わります）"; };
     blank.addEventListener("click",()=>{ if(!N()) return; const on=!N().blankOrig(); N().setBlankOrig(on); putBlank();
-        evStatus("これから作るカードの白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にしました（今あるカードは変わりません）"); }); putBlank();
-    const blankAll=[false,true].map(on=>{ const b=el("button",null,"白い所を一括："+(on? "元の模様" : "ぬりえどおり")); b.type="button";   // 白い所の一括変更（今あるカードすべて＋これから）
-        b.title="今あるすべてのカード（見本も）の白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にして作り直し、これから作るカードも同じにします"; b.addEventListener("click",()=>evBlankAll(on)); return b; });
+        evStatus("これから作るカードの白い所を「"+(on? "模様" : "白地")+"」にしました（今あるカードは変わりません）"); }); putBlank();
+    const blankAll=[false,true].map(on=>{ const b=el("button",null,"一括："+(on? "模様" : "白地")); b.type="button";   // 白い所の一括変更（今あるカードすべて＋これから）
+        b.title="今あるすべてのカード（見本も）の白い所を「"+(on? "模様" : "白地")+"」にして作り直し、これから作るカードも同じにします"; b.addEventListener("click",()=>evBlankAll(on)); return b; });
     const redoAll=el("button",null,"すべて作り直す"); redoAll.type="button"; redoAll.addEventListener("click",evRedoAllToggle);
     const delAll=el("button","tce-danger","一括削除"); delAll.type="button"; delAll.addEventListener("click",evDeleteAll);
     const seqReset=el("button",null,"番号を1に戻す"); seqReset.type="button"; seqReset.addEventListener("click",evSeqReset);
@@ -16364,9 +16364,10 @@ function evFig(rec){
     if(dl.margin){ d2.textContent="✓ 余白あり\nダウンロード済"; d2.classList.add("done"); }
     if(!rec.d){ d1.disabled=d2.disabled=true; }
     const rp=B(["読込再現","再現"],()=>evReplay(rec.id)); rp.title="読み込み再現：読み込んだ直後の演出を、このカードでもう一度（カードは増えません）"; if(!rec.d) rp.disabled=true;
-    B(["名前変更","改名"],()=>evRename(rec.id)); B(["作り直す","再作"],()=>evEnqueue(rec.id,true));
-    if(!rec.demo){ const bo=evBlank(rec), bb=B(bo? ["白い所：元の模様","白：模様"] : ["白い所：ぬりえどおり","白：ぬりえ"],()=>evBlankToggle(rec.id));   // このカード（とランキングの歩く恐竜）の白い所
-        bb.setAttribute("aria-pressed",String(bo)); bb.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか（このカードだけ。押すとカードを作り直します）"; }
+    B(["名前変更","改名"],()=>evRename(rec.id));
+    B(["作り直す","再作"],()=>evEnqueue(rec.id,true)).style.display="none";   // 1枚ずつの作り直しは使わない（隠すだけ。全部は上の「すべて作り直す」）
+    if(!rec.demo){ const bo=evBlank(rec), bb=B(bo? ["白い所：模様","模様"] : ["白い所：白地","白地"],()=>evBlankToggle(rec.id));   // このカード（とランキングの歩く恐竜）の白い所
+        bb.setAttribute("aria-pressed",String(bo)); bb.title="ぬっていない白い所を、白地（ぬりえどおりの白）にするか、模様（ぬりえなしの時の模様）にするか（このカードだけ。押すとカードを作り直します）"; }
     B("削除",()=>evDelete(rec.id),"tce-danger");
     fig.appendChild(act);
     EV.figs.set(rec.id, fig);
@@ -16382,14 +16383,14 @@ async function evBlankToggle(id){
     rec.blank=!evBlank(rec);
     try{ await evTx("cards","readwrite",s=>{ if(EV.recs.get(id)===rec) s.put(rec); }); }catch(e){ console.warn("[イベントカード] 白い所", e); }
     evUpdateFig(id); evEnqueue(id, true);
-    evStatus(evLabel(rec)+" の白い所を「"+(rec.blank? "元の模様" : "ぬりえどおり")+"」にして、作り直しています…");
+    evStatus(evLabel(rec)+" の白い所を「"+(rec.blank? "模様" : "白地")+"」にして、作り直しています…");
 }
 // 白い所の一括変更：すべてのカード（見本も）をその値にして、これから作るカードの値にもする（値が変わったカードだけ作り直す）
 async function evBlankAll(on){
     const ids=[...EV.recs.values()].filter(r=>!r.demo && evBlank(r)!==on).map(r=>r.id).sort((a,b)=>b-a);
-    if(ids.length && !confirm("カード "+ids.length+" 枚の白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にして作り直します。\nこれから作るカードも「"+(on? "元の模様" : "ぬりえどおり")+"」になります。")) return;
+    if(ids.length && !confirm("カード "+ids.length+" 枚の白い所を「"+(on? "模様" : "白地")+"」にして作り直します。\nこれから作るカードも「"+(on? "模様" : "白地")+"」になります。")) return;
     N().setBlankOrig(on); if(EV.ui && EV.ui.putBlank) EV.ui.putBlank();
-    if(!ids.length){ evStatus("白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にしました（これから作るカードも）"); return; }
+    if(!ids.length){ evStatus("白い所を「"+(on? "模様" : "白地")+"」にしました（これから作るカードも）"); return; }
     const recs=ids.map(id=>EV.recs.get(id)); recs.forEach(r=>{ r.blank=on; });
     try{ await evTx("cards","readwrite",s=>{ recs.forEach(r=>{ if(EV.recs.get(r.id)===r) s.put(r); }); }); }catch(e){ console.warn("[イベントカード] 白い所", e); }
     ids.forEach(id=>evUpdateFig(id));
