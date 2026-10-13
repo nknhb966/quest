@@ -405,11 +405,11 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
                  0 0 calc(var(--u)*10) rgba(255,190,60,.75); }
 /* 基本情報（分類・食性・時代・地域） */
 .tcard .tc-info{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*580); height:calc(var(--u)*26); margin:0;
-    display:flex; flex-wrap:wrap; align-items:center; justify-content:center; column-gap:calc(var(--u)*20); row-gap:0;
+    display:flex; flex-wrap:nowrap; align-items:center; justify-content:center; column-gap:calc(var(--u)*14); row-gap:0;
     font-size:calc(var(--u)*15); font-weight:700; color:#cdbf94; line-height:1.15; letter-spacing:calc(var(--u)*.5); }
 .tcard .tc-info > div{ display:flex; white-space:nowrap; }
 .tcard .tc-info dt, .tcard .tc-info dd{ margin:0; }
-.tcard .tc-info dt::after{ content:"："; }
+.tcard .tc-info dt::after{ content:":\00a0"; }   /* 半角のコロン＋空白（4つを1行に収める） */
 .tcard .tc-rule{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); height:calc(var(--u)*3); background:#554727; }
 .tcard .tc-rule.r1{ top:calc(var(--u)*607); } .tcard .tc-rule.r2{ top:calc(var(--u)*697); }
 /* ステータス（ちから・はっけん・かしこさ）＝★☆の5段階 */
@@ -438,8 +438,8 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 </style>
 </head>
 <body>
-<script>/* 読み込み中の表示：ページを開いた瞬間から「押せない見た目」にする（読み込みが終わるとゲームの処理が外す）。イベント用カード作成・ランキング（?cardDebug=2/3）は対象外 */
-if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add("loading","preloading");</script>
+<script>/* 読み込み中の表示：ページを開いた瞬間から「押せない見た目」にする（読み込みが終わるとゲームの処理が外す）。カードだけの画面（?cardDebug=1〜3：カード確認・カード作成・ランキング）は対象外 */
+if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.add("loading","preloading");</script>
 
 <!-- ═══ タイトル / メニュー ═══ -->
 <div id="menu">
@@ -974,11 +974,11 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
 <div id="joystick"><i></i></div>
 
 <!-- ▼▼ 発掘モデル表示（model-viewer プレビュー） ▼▼ -->
-<script>/* モデル表示（model-viewer）の部品。イベント用カード作成（?cardDebug=2）・ランキング（?cardDebug=3）では使わないので読み込まない */
-if(!/[?&]cardDebug=[23](&|$)/.test(location.search)){ const s=document.createElement("script"); s.type="module"; s.src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"; document.head.appendChild(s); }
+<script>/* モデル表示（model-viewer）の部品。カード確認（?cardDebug=1）・イベント用カード作成（?cardDebug=2）・ランキング（?cardDebug=3）では使わないので読み込まない */
+if(!/[?&]cardDebug=[123](&|$)/.test(location.search)){ const s=document.createElement("script"); s.type="module"; s.src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"; document.head.appendChild(s); }
 else { document.documentElement.classList.add("card-event"); }</script>
 <style>/* イベント用カード作成：ゲームの画面は一切出さない（描画・アニメーションもしない） */
-html.card-event body > *:not(#tcEvent):not(#tcRank):not(script):not(style){ display:none !important; }</style>
+html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):not(style){ display:none !important; }</style>
 <style>
     /* 発掘モデルを見る＝独立パート（上の各種ボタンと区切り線で分離） */
     #mvSection{ width:100%; margin-top:16px; padding-top:14px; border-top:1px solid rgba(180,140,255,.28); }
@@ -3792,6 +3792,7 @@ import {ARButton} from "three/addons/webxr/ARButton.js";
 // イベント用カード作成（?cardDebug=2）：ぬりえの読み取りとカード作りだけを行う。ゲーム（遺跡・出土品の読み込み、恐竜の事前生成、
 // 描画ループ、モデル表示・AR の準備、ゲームのぬりえ模様の復元）は起動しない。恐竜の設定・モデルの作り方・カードの処理はそのまま使う
 const CARD_EVENT_MODE=/[?&]cardDebug=[23](&|$)/.test(location.search);   // 2＝カード作成／3＝ランキング（サブ画面）
+const CARD_ONLY_MODE=/[?&]cardDebug=[123](&|$)/.test(location.search);    // カードだけの画面（1＝カード確認／2＝カード作成／3＝ランキング）：ゲーム（発掘体験）は起動しない
 /* =====================================================================
  * カメラの選び方（サイト共通：ぬりえ読み取り・カード作成・iPhone AR・タブレットAR）
  *   既定の順：①外付けカメラ → ②背面（リア）カメラ → ③前面（フロント）カメラ → ④仮想カメラ（OBS など）
@@ -4109,26 +4110,26 @@ const YEAR_CONFIG = {
     //   名称・ちから・はっけん・かしこさ・スペシャルは、上の companions（恐竜・しば犬）と DOG_BREEDS（犬種）の値をそのまま使う（ここには書かない）。
     cardInfo: {
         // 恐竜（No.1〜8）
-        trex:        { group:"獣脚類", diet:"肉食",   era:"白亜紀後期", region:"北アメリカ", feature:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。" },              // ティラノサウルス
-        fukuiraptor: { group:"獣脚類", diet:"肉食",   era:"白亜紀前期", region:"福井県",     feature:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。" },   // フクイラプトル
-        fukuititan:  { group:"竜脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"福井県で発見された大型の竜脚類。長い首と尾を持つ。" },                 // フクイティタン
-        fukuisaurus: { group:"鳥脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。" },         // フクイサウルス
-        brachi:      { group:"竜脚類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。" },         // ブラキオサウルス
-        stego:       { group:"剣竜類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。" },                 // ステゴサウルス
-        tri:         { group:"角竜類", diet:"植物食", era:"白亜紀後期", region:"北アメリカ", feature:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。" },              // トリケラトプス
-        ptera:       { group:"翼竜類", diet:"魚食",   era:"白亜紀後期", region:"北アメリカ", feature:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。" },  // プテラノドン
+        trex:        { group:"獣脚類", diet:"肉食",   era:"白亜紀後期", region:"北アメリカ", feature:"とても大きな頭と強いアゴをもつ、肉を食べるきょうりゅう。" },              // ティラノサウルス
+        fukuiraptor: { group:"獣脚類", diet:"肉食",   era:"白亜紀前期", region:"福井県",     feature:"ふくいけんで見つかった。大きな手とするどいツメをもつ。" },   // フクイラプトル
+        fukuititan:  { group:"竜脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"ふくいけんで見つかった、首としっぽが長い大きなきょうりゅう。" },                 // フクイティタン
+        fukuisaurus: { group:"鳥脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"ふくいけんで見つかった。くちばしのような口で草を食べた。" },         // フクイサウルス
+        brachi:      { group:"竜脚類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"とても長い首で、高い木のはっぱを食べた大きなきょうりゅう。" },         // ブラキオサウルス
+        stego:       { group:"剣竜類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"せなかにならぶ大きないたと、しっぽのトゲがめじるし。" },                 // ステゴサウルス
+        tri:         { group:"角竜類", diet:"植物食", era:"白亜紀後期", region:"北アメリカ", feature:"3本の角と、大きなフリルがめじるしのきょうりゅう。" },              // トリケラトプス
+        ptera:       { group:"翼竜類", diet:"魚食",   era:"白亜紀後期", region:"北アメリカ", feature:"大きなつばさで空をとぶ、よくりゅう（きょうりゅうではない）。" },  // プテラノドン
         // しば犬・犬種（No.1〜8）… 分類・食性・時代・地域は表示しない。特徴は2行（feature＝1行目、feature2＝2行目）
         // しば犬だけは、恐竜を発掘する時（恐竜発掘カード）は dino の内容で、恐竜と同じ形（分類・食性・時代・地域＋特徴1行）のカードにする
-        dog:         { feature:"日本原産の中型犬。丈夫で身軽な体を持ち、活発で警戒心が強い。", feature2:"主人には忠実で、さまざまな環境に適応できる。",   // しば犬
-                       dino:{ group:"あいぼう", diet:"なんでも", era:"－", region:"－", feature:"たよれる相棒のしば犬。" } },
-        golden:      { feature:"大型で体格のしっかりした犬。", feature2:"人なつっこく、賢くて人の指示にもよく応える。" },                        // ゴールデン・レトリバー
-        labrador:    { feature:"大型で力の強い犬。", feature2:"優れた嗅覚と高い学習能力を持ち、探索や回収が得意。" },                            // ラブラドール
-        beagle:      { feature:"中型で嗅覚に優れた犬。", feature2:"小さなにおいも追跡できるほど鼻が良く、獲物を探すのが得意。" },                  // ビーグル
-        dachshund:   { feature:"胴が長く、足が短い特徴的な体型の犬。", feature2:"地面に近い体を活かして、狭い場所や地面を探るのが得意。" },          // ダックスフント
-        toypoodle:   { feature:"小型で大きな耳と長い飾り毛が特徴の犬。", feature2:"活発で賢く、人の指示を覚えるのが得意。" },                     // パピヨン
-        shiba:       { feature:"柴犬の一種で、黒を基調とした毛色が特徴。", feature2:"丈夫で活発な体を持ち、警戒心も強い。" },                       // 黒柴
-        chihuahua:   { feature:"世界でも特に小型の犬。", feature2:"小さな体で動きが素早く、活発で人によくなつく。" },                              // チワワ
-        bulldog:     { feature:"中型で筋肉質な体と特徴的な顔つきを持つ犬。", feature2:"がっしりした体格で、粘り強い性格をしている。" }              // ブルドッグ
+        dog:         { feature:"日本生まれの中くらいの犬。元気で、ようじんぶかい。", feature2:"かいぬしにとてもなつき、いろいろなところでくらせる。",   // しば犬
+                       dino:{ group:"あいぼう", diet:"なんでも", era:"－", region:"－", feature:"たよれるあいぼうのしば犬。" } },
+        golden:      { feature:"体が大きく、がっしりした犬。", feature2:"人なつっこくてかしこく、言うことをよく聞く。" },                        // ゴールデン・レトリバー
+        labrador:    { feature:"体が大きく、力の強い犬。", feature2:"はながよく、ものをさがしてもって来るのがとくい。" },                            // ラブラドール
+        beagle:      { feature:"中くらいの大きさで、はながとてもよい犬。", feature2:"小さなにおいもたどって、えものをさがすのがとくい。" },                  // ビーグル
+        dachshund:   { feature:"体が長くて、足がみじかい犬。", feature2:"ひくい体で、せまいところや土の中をさがすのがとくい。" },          // ダックスフント
+        toypoodle:   { feature:"小さな体に、大きな耳と長い毛がめじるしの犬。", feature2:"元気でかしこく、言われたことをおぼえるのがとくい。" },                     // パピヨン
+        shiba:       { feature:"しば犬のなかまで、黒い毛がめじるし。", feature2:"じょうぶで元気な体をもち、まわりによく気をつける。" },                       // 黒柴
+        chihuahua:   { feature:"せかいでも、とくに小さな犬。", feature2:"小さな体ですばやくうごき、元気で人によくなつく。" },                              // チワワ
+        bulldog:     { feature:"中くらいの大きさで、ぺちゃっとした顔がめじるし。", feature2:"がっしりした体で、ねばり強いせいかく。" }              // ブルドッグ
     },
 
     // ---- ② 挙動チューニング（年度で変えなくてもよいが、ここで調整可能）----
@@ -4594,7 +4595,7 @@ function updateSiteVis(){
 }
 function setSiteVisible(v){ siteVisible=!!v; updateSiteVis(); }
 let _sitePhs=null, siteMode=1;   // siteMode: 倍率1〜5（1倍=原寸）。既定1倍
-if(!CARD_EVENT_MODE) gltfLoader.load(SITE_GLB, (gltf)=>{   // イベント用カード作成では遺跡を読まない（恐竜の事前生成もしない）
+if(!CARD_ONLY_MODE) gltfLoader.load(SITE_GLB, (gltf)=>{   // カードだけの画面では遺跡を読まない（恐竜の事前生成もしない）
     siteRoot = gltf.scene;
     siteRoot.rotation.y = THREE.MathUtils.degToRad(-90);   // 元と同じ向き
     world.add(siteRoot);
@@ -4742,7 +4743,7 @@ function mvShowCsvError(msg){
     el.textContent=msg; el.style.display="block";
 }
 (async function loadArtifacts(){
-    if(CARD_EVENT_MODE) return;   // イベント用カード作成では出土品を読まない
+    if(CARD_ONLY_MODE) return;   // カードだけの画面では出土品を読まない
     document.body.classList.add("preloading");   // 出土品ロード完了まで入室不可
     let arts=[];
     try{ await mvLoadCsvRows(); arts=mvArtifactRows(); }catch(_){ }
@@ -6479,7 +6480,7 @@ function preloadGameCards(){
 let _warmupTTL=0;             // 残りウォームアップフレーム数（描画ループで消化）
 let _warmupModels=[];         // ウォームアップ対象（恐竜キャッシュ）
 function preloadEverything(done){
-    if(CARD_EVENT_MODE) return;   // イベント用カード作成：ゲームの恐竜・相棒・カード画像の事前生成はしない（カードは1枚ずつその場で作る）
+    if(CARD_ONLY_MODE) return;   // カードだけの画面：ゲームの恐竜・相棒・カード画像の事前生成はしない（カードは1枚ずつその場で作る）
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
     PRELOAD_DONE=false; document.body.classList.add("preloading");   // 完了まで入室不可
     _loaded={ sm:siteMode, wx:WORLD_X, wz:WORLD_Z, rs:realRefShort, cap:realCapToActual, ds:+dinoRealScale().toFixed(3) }; if(typeof loadBarRefresh==="function") loadBarRefresh();   // このサイズ・原寸比でモデルを生成する
@@ -10808,9 +10809,9 @@ function nuriScanShown(){ if(!_nuriScanEl) _nuriScanEl=document.getElementById("
 addEventListener("resize", ()=>requestTitleDraw(800));   // 画面の大きさが変わると絵が消えるので描き直す
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) requestTitleDraw(800); });
 renderer.domElement.addEventListener("webglcontextrestored", ()=>requestTitleDraw(800));
-if(CARD_EVENT_MODE) setTimeout(()=>renderer.setAnimationLoop(null), 0);   // イベント用カード作成：ゲームの描画ループは回さない（下で登録した直後に外す）
+if(CARD_ONLY_MODE) setTimeout(()=>renderer.setAnimationLoop(null), 0);   // カードだけの画面：ゲームの描画ループは回さない（下で登録した直後に外す）
 renderer.setAnimationLoop((_t, _xrFrame)=>{
-    if(CARD_EVENT_MODE) return;
+    if(CARD_ONLY_MODE) return;
     if(LITE.active){ liteArTick(); if(LITE.phone) litePhonePreRender(); renderer.render(scene,camera); if(LITE.phone) litePhoneAfterRender(_xrFrame); return; }   // スマホ：写真・動画の撮影   // Lite AR：ゲームを止めてモデルビューアのみ描画
     if(window.__mvPreviewPause) return;   // 「発掘モデル表示」プレビュー中はゲーム描画を止め、メモリを空ける（追加機能）
     if(TABAR.ending) return;              // タブレットAR（WebXR）の終了処理中は描画しない（終了直後にタブが落ちる対策）
@@ -12721,7 +12722,7 @@ addEventListener("resize",()=>{
 
 /* ===================================================== * 発掘モデル表示（model-viewer プレビュー） * ・「モデルを えらぶ」（しゅつどひん・いぬ・きょうりゅう）に応じて一覧を切替 * ・表示するモデルはセレクトで選択 * ・読み込み済み/生成済みのモデル * （出土品: artModels[idx] ／ 恐竜: _dinoCacheS[idx]）を * GLTFExporter で GLB(blob) 化して model-viewer に渡す * ・スマホ等でAR可能なときだけARボタンを表示してアクティベート * ===================================================== */
 (function initModelViewerPreview(){
-    if(CARD_EVENT_MODE) return;   // イベント用カード作成ではモデル表示を使わない（書き出しの空回しもしない）
+    if(CARD_ONLY_MODE) return;   // カードだけの画面ではモデル表示を使わない（書き出しの空回しもしない）
     const openBtn = document.getElementById("mvOpenBtn");
     const modal   = document.getElementById("mvModal");
     const sel     = document.getElementById("mvSelect");
@@ -14127,7 +14128,7 @@ async function nuriArSupported(){
     if(typeof litePhoneWanted!=="function" || !litePhoneWanted() || !navigator.xr || !navigator.xr.isSessionSupported) return false;
     try{ return await navigator.xr.isSessionSupported("immersive-ar"); }catch(_){ return false; }
 }
-if(!CARD_EVENT_MODE) setTimeout(()=>{ nuriArSupported().then(v=>{ NURI_AR.cap=!!v; nuriMenuRefresh(); }).catch(()=>{}); }, 0);   // ARが使えるAndroidか（「ぬりえを よむ」を押した時にすぐ判断するため先に調べておく）
+if(!CARD_ONLY_MODE) setTimeout(()=>{ nuriArSupported().then(v=>{ NURI_AR.cap=!!v; nuriMenuRefresh(); }).catch(()=>{}); }, 0);   // ARが使えるAndroidか（「ぬりえを よむ」を押した時にすぐ判断するため先に調べておく）
 async function nuriAfterScan(key){
     NURI_AR.key=key; NURI_AR.ok=await nuriArSupported();
     if(NURI_AR.ok){ nuriPreviewStart(key, { hatch:true, wait:true }); scMsg("たまごが できたよ！","「ARで かえす」で、へやの ゆかで うまれるよ"); }
@@ -14223,7 +14224,7 @@ function nuriSamplePreload(){
        .finally(()=>{ nuriSamplePaintUI(); });
     return NSMP.p;
 }
-if(!CARD_EVENT_MODE) setTimeout(()=>{ try{ nuriSamplePreload(); }catch(e){ console.warn("[見本]", e); } }, 0);
+if(!CARD_ONLY_MODE) setTimeout(()=>{ try{ nuriSamplePreload(); }catch(e){ console.warn("[見本]", e); } }, 0);
 document.addEventListener("click", e=>{   // 用意ができていない時は開かない（読めなかった時は、押すと読み直す）
     const sm=e.target && e.target.closest && e.target.closest("#nuriSample > summary"); if(!sm || NSMP.state==="ready") return;
     e.preventDefault(); if(NSMP.state==="error"){ const n=$("nuriSampleNote"); if(n) n.textContent=""; nuriSamplePreload(); } }, true);
@@ -14294,9 +14295,9 @@ const MV_READY={ preload:false, paint:false, viewer:false, exporter:false };
 function mvCheck(){ const ok=Object.values(MV_READY).every(Boolean); document.body.classList.toggle("nuri-mv-wait", !ok); return ok; }
 window.__mvReadyAll=()=>Object.values(MV_READY).every(Boolean);
 mvCheck();
-if(!CARD_EVENT_MODE) (function waitPreload(){ if(typeof PRELOAD_DONE!=="undefined" && PRELOAD_DONE){ MV_READY.preload=true; mvCheck(); return; } setTimeout(waitPreload,200); })();
-if(!CARD_EVENT_MODE) try{ Promise.race([customElements.whenDefined("model-viewer"), new Promise(r=>setTimeout(r,30000))]).then(()=>{ MV_READY.viewer=true; mvCheck(); }); }catch(_){ MV_READY.viewer=true; }   // 最大30秒（読めない時は既存の動きに任せる）
-if(!CARD_EVENT_MODE) import("three/addons/exporters/GLTFExporter.js").catch(()=>{}).finally(()=>{ MV_READY.exporter=true; mvCheck(); });   // 先に読み込む＝モデル表示側の読み込みは一瞬で終わる
+if(!CARD_ONLY_MODE) (function waitPreload(){ if(typeof PRELOAD_DONE!=="undefined" && PRELOAD_DONE){ MV_READY.preload=true; mvCheck(); return; } setTimeout(waitPreload,200); })();
+if(!CARD_ONLY_MODE) try{ Promise.race([customElements.whenDefined("model-viewer"), new Promise(r=>setTimeout(r,30000))]).then(()=>{ MV_READY.viewer=true; mvCheck(); }); }catch(_){ MV_READY.viewer=true; }   // 最大30秒（読めない時は既存の動きに任せる）
+if(!CARD_ONLY_MODE) import("three/addons/exporters/GLTFExporter.js").catch(()=>{}).finally(()=>{ MV_READY.exporter=true; mvCheck(); });   // 先に読み込む＝モデル表示側の読み込みは一瞬で終わる
 
 // ---- 起動時：保存してある模様があれば、その恐竜の表（小さい方）だけ読んで既存モデルへ反映 ----
 (async function nuriBoot(){
@@ -15273,7 +15274,7 @@ async function tcCardCanvas(d, imgUrl, scale){
     // 基本情報（恐竜の形のカードだけ）
     if(!dog){
         tcSetFont(ctx,"700",15,0.5);
-        const items=TC_INFO.map(([f,lab])=>lab+"："+tcVal(d.info[f])), gap=20, ws=items.map(t=>ctx.measureText(t).width);
+        const items=TC_INFO.map(([f,lab])=>lab+": "+tcVal(d.info[f])), gap=14, ws=items.map(t=>ctx.measureText(t).width);   // 半角のコロン＋空白（4つを1行に収める）
         let tot=ws.reduce((a,b)=>a+b,0)+gap*(items.length-1); const kk=tot>CW-52? (CW-52)/tot : 1;
         ctx.save(); ctx.translate(cx,593); ctx.scale(kk,1); let x=-tot/2;
         ctx.fillStyle="#cdbf94"; ctx.textAlign="left"; ctx.textBaseline="middle";
@@ -15358,6 +15359,7 @@ const TC_DBG_CSS=`
 #tcDebug .tcd-act{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 #tcDebug .tcd-act button{ padding:6px 10px; font-size:12.5px; }
 #tcDebug button:disabled{ opacity:.45; cursor:default; }
+#tcDebug button:not(:disabled){ pointer-events:auto !important; }   /* ゲームの「読み込み中はボタンを押せない」設定（body.loading）はこの画面には当てない */
 #tcDebug .tcd-zoom{ position:fixed; inset:0; z-index:3; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; padding:16px; cursor:zoom-out; }
 #tcDebug .tcd-zoom .tcard{ width:min(92vw, calc(88vh * 61 / 88)); }
 `;
@@ -15368,14 +15370,13 @@ async function tcWaitPaint(){   // 保存してある ぬりえ の復元が終�
     return false;
 }
 function tcDebugOpen(){
-    if(TCD){ TCD.root.style.display=""; return; }
+    if(TCD) return;
     if(!document.getElementById("tcDebugStyle")){ const st=document.createElement("style"); st.id="tcDebugStyle"; st.textContent=TC_DBG_CSS; document.head.appendChild(st); }
     const root=el("div"); root.id="tcDebug"; root.setAttribute("role","dialog"); root.setAttribute("aria-label","カード確認（デバッグ）");
     const bar=el("div","tcd-bar"); bar.appendChild(el("h1",null,"カード確認（デバッグ）"));
     const tabs={ dino:el("button",null,"恐竜"), dog:el("button",null,"犬"), fx:el("button",null,"エフェクト見本") };
     Object.entries(tabs).forEach(([k,b])=>{ b.type="button"; b.setAttribute("role","tab"); b.addEventListener("click",()=>tcDebugTab(k)); bar.appendChild(b); });
     const redo=el("button",null,"画像を作り直す"); redo.type="button"; redo.addEventListener("click",()=>tcDebugRenderAll()); bar.appendChild(redo);
-    const close=el("button",null,"とじる"); close.type="button"; close.addEventListener("click",()=>{ root.style.display="none"; }); bar.appendChild(close);
     const status=el("span","tcd-status",""); status.setAttribute("aria-live","polite"); bar.appendChild(status);
     root.appendChild(bar);
     root.appendChild(el("p","tcd-note","カードの下の小さい文字は確認用です（カードには表示しません）。ぬりえ済みの恐竜は、その模様のまま撮影しています。ぬりえをした後は「画像を作り直す」を押してください。"));
@@ -17425,7 +17426,7 @@ if(TC_EV && !TC_DBG){ const go=()=>{ (document.fonts && document.fonts.ready ? d
     if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",go); else go(); }
 })();
 /* ---- タブレットAR：警告の表示位置。画面下の HUD の高さを CSS 変数 --dhudH へ（HUD の帯が折り返しても警告と重ならない）---- */
-if(!CARD_EVENT_MODE) (function hudHeight(){ const put=()=>{ const h=document.getElementById("dhud"); if(!h) return; const r=h.getBoundingClientRect(); document.body.style.setProperty("--dhudH", Math.max(0,Math.round(innerHeight-r.top))+"px"); };
+if(!CARD_ONLY_MODE) (function hudHeight(){ const put=()=>{ const h=document.getElementById("dhud"); if(!h) return; const r=h.getBoundingClientRect(); document.body.style.setProperty("--dhudH", Math.max(0,Math.round(innerHeight-r.top))+"px"); };
     const h=document.getElementById("dhud"); if(h && window.ResizeObserver) new ResizeObserver(put).observe(h); addEventListener("resize",put); setInterval(()=>{ if(document.body.classList.contains("tabar")) put(); },1000); put(); })();
 </script>
 </body>
