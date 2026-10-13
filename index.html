@@ -426,7 +426,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 .tcard .tc-feature{ position:absolute; left:calc(var(--u)*30); right:calc(var(--u)*30); top:calc(var(--u)*741); height:calc(var(--u)*30); margin:0;
     display:flex; align-items:center; justify-content:center; text-align:center;
     font-size:calc(var(--u)*14.5); font-weight:700; color:#cdbf94; line-height:1.2; letter-spacing:calc(var(--u)*.5); }
-.tcard .tc-feature dt{ display:inline; } .tcard .tc-feature dt::after{ content:"："; } .tcard .tc-feature dd{ display:inline; margin:0; }
+.tcard .tc-feature dd{ display:inline; margin:0; }
 .tcard .tc-feature > div{ display:block; }
 .tcard .tc-feature{ flex-direction:column; }
 .tcard .tc-feature .tc-feature2{ display:block; min-height:1.2em; }
@@ -14621,7 +14621,7 @@ function tcBuild(d, img){
     // スペシャル
     const spc=el("p","tc-special"); spc.appendChild(el("span","tc-fit","スペシャル「"+d.special+"」")); tin.appendChild(spc);
     // 特徴
-    const ft=el("dl","tc-feature"), fw=el("div"); fw.appendChild(el("dt",null,"特徴"));
+    const ft=el("dl","tc-feature"), fw=el("div");   // 特徴（項目名は書かない）
     const fd=el("dd",null,tcVal(d.info.feature)); fw.appendChild(fd); ft.appendChild(fw);
     if(card.dataset.layout==="dog"){   // 犬の形は2行目（feature2）。空なら何も出さない
         const f2=el("dd","tc-feature2", String(d.info.feature2||"").trim()); ft.appendChild(f2); }
@@ -15293,7 +15293,7 @@ async function tcCardCanvas(d, imgUrl, scale){
     tcText(ctx, "スペシャル「"+d.special+"」", cx, (dog? 677 : 704)+17, CW-52, { color:"#ffd86a" });
     // 特徴
     tcSetFont(ctx,"700",14.5,0.5);
-    const f1="特徴："+tcVal(d.info.feature);
+    const f1=tcVal(d.info.feature);   // 特徴（項目名は書かない）
     if(!dog) tcText(ctx, f1, cx, 756, CW-60, { color:"#cdbf94" });
     else { const lh=14.5*1.3; tcText(ctx, f1, cx, 742.5-lh/2, CW-60, { color:"#cdbf94" });
         const f2=String(d.info.feature2||"").trim(); if(f2) tcText(ctx, f2, cx, 742.5+lh/2, CW-60, { color:"#cdbf94" }); }
