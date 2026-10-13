@@ -294,6 +294,9 @@
 #nuriPrintList a,#nuriResetList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; text-decoration:none; font-size:14px; cursor:pointer; }
 #nuriReset summary{ cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; }
 #nuriResetList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
+#nuriBlankList{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:4px; }
+#nuriBlankList button{ padding:8px 6px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:13px; font-family:inherit; line-height:1.35; }
+#nuriBlankList button.orig{ color:#ffd86a; border-color:rgba(255,216,106,.55); }
 #nuriResetList button.all, #nuriPrintList button.all{ grid-column:1/-1; color:#ffd86a; border-color:rgba(255,216,106,.55); font-family:inherit; }
 #nuriPrintList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:14px; cursor:pointer; }
 #nuriResetAll{ width:100%; padding:12px 0; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; cursor:pointer; }
@@ -672,13 +675,20 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <button id="nuriAgainAR" type="button">📱 ARで もういちど みる</button>
         <div id="nuriAgainNote"></div>
       </div>
-      <!-- おすすめ設定オフ：ぬっていない白い所の見え方（ぬりえどおり＝既定／もとの もよう） -->
+      <!-- おすすめ設定オフ：ぬっていない白い所の見え方（ぬりえどおり＝既定／もとの もよう）。これから よみこむ恐竜の値・ぜんぶ まとめて・恐竜ごと -->
       <div class="opt wide" id="nuriBlankOpt" style="display:none">
-        <div class="lbl">ぬっていない しろい ところ</div>
+        <div class="lbl">ぬっていない しろい ところ（これから よみこむ きょうりゅう）</div>
         <div class="seg" id="segNuriBlank">
           <button type="button" data-v="paper" class="on">⬜ ぬりえどおり</button>
           <button type="button" data-v="orig">🦖 もとの もよう</button>
         </div>
+        <div class="lbl">ぜんぶ まとめて かえる（みほんも。これからも この ほうに なるよ）</div>
+        <div class="seg" id="segNuriBlankAll">
+          <button type="button" data-v="paper">⬜ ぜんぶ ぬりえどおり</button>
+          <button type="button" data-v="orig">🦖 ぜんぶ もとの もよう</button>
+        </div>
+        <div class="lbl" id="nuriBlankListLbl" style="display:none">きょうりゅう ごと（おすと かわるよ）</div>
+        <div id="nuriBlankList"></div>
       </div>
       <!-- おすすめ設定オフ：みほんの もようを、じぶんで ぬった きょうりゅうとして とりこむ（新しく／うわがき） -->
       <details id="nuriSample" style="display:none"><summary>🎨 みほんから とりこむ</summary><div id="nuriSampleList"></div><div id="nuriSampleNote"></div></details>
@@ -826,7 +836,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>🖍 ぬりえで じぶんの きょうりゅう</h3>
         <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。</p>
         <p>ぬった色によって、その恐竜の<b>ステータスとスペシャル</b>も変わります（色とステータスの関係は「📊 得点・カードの仕組み」へ）。模様とステータスは、<b>相棒にしたとき・相棒えらびのカード・獲得カード</b>に入ります（図鑑のカードは元のまま）。</p>
-        <p class="k">ぬらずに白く残った所は、ふだんは ぬりえどおり白く見えます。おすすめ設定オフでは「ぬっていない しろい ところ」を「🦖 もとの もよう」にすると、その所を ぬりえなしの時の模様で表示します（見た目だけで、ステータスやカードのスコアは変わりません）。</p>
+        <p class="k">ぬらずに白く残った所は、ふだんは ぬりえどおり白く見えます。「🦖 もとの もよう」にすると、その所を ぬりえなしの時の模様で表示します（見た目だけで、ステータスやカードのスコアは変わりません）。<b>恐竜ごと</b>に決められ、その恐竜の相棒・AR・カードがいっしょに変わります。おすすめ設定オフのとき、メニューの「ぬっていない しろい ところ」で、これから よみこむ恐竜の値・ぜんぶ まとめて・恐竜ごとに変えられます（ARで じぶんで ぬった恐竜を出している時は「⬜ しろは しろ」ボタン、たんけんの準備では見本の恐竜ごとにも変えられます）。よみこみ直した恐竜は「これから」の値に戻ります。</p>
         <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。メイン画面の並びは、ヘッドセットでは「VR・ARで ほんかくはっくつ → ぬりえ → モデルを みよう」、それ以外（スマホ・タブレット・PC）では「ぬりえ → モデルを みよう → VR・ARで ほんかくはっくつ」です。</p>
         <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「📄 ぬりえを いんさつ」の「ぜんぶの きょうりゅう」で8まいを まとめて開けます（印刷はブラウザの印刷から）。「🎨 みほんから とりこむ」の恐竜は、⬆＝ぬりえなし、🔄＝ぬりえあり（水色＝ぬりえを よみこみずみ／黄色＝みほんを とりこみずみ）です。「↩ もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
       </section>
@@ -1308,6 +1318,9 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; line-height:1.15; }
     #lphDig .seg3 button span{ font-size:11.5px; font-weight:800; }
     #lphDig .seg3 button.on{ background:linear-gradient(135deg,#16a34a,#0d9488); border-color:#a7f3d0; }
+    #lphDigBlank{ display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+    #lphDigBlank button{ min-height:44px; padding:4px 2px; border-radius:10px; border:1px solid rgba(180,140,255,.4); background:rgba(28,20,52,.92); color:#c9bcff; font-family:inherit; font-size:11px; font-weight:800; line-height:1.3; }
+    #lphDigBlank button.orig{ color:#ffd86a; border-color:rgba(255,216,106,.55); }
     #lphDig .szrow{ display:flex; align-items:center; justify-content:center; gap:10px; font-weight:800; }
     #lphDig .szrow .k{ width:2.6em; color:#d9cbf5; }
     #lphDig .szrow b{ min-width:2em; text-align:center; font-size:22px; color:#8ff0ff; }
@@ -1391,6 +1404,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
             <button data-a="lock" id="lphLockBtn">✋<span>うごかせる</span></button>
             <button data-a="anim" id="lphAnimBtn">🎞<span>アニメ</span></button>
             <button data-a="walk" id="lphWalkBtn" style="display:none">🚶<span>あるく</span></button>
+            <button data-a="blank" id="lphBlankBtn" style="display:none">⬜<span>しろは しろ</span></button>   <!-- じぶんで ぬった恐竜：ぬっていない白い所（おすすめ設定オフだけ） -->
             <button data-a="desc" id="lphDescBtn">📖<span>せつめい</span></button>
             <button data-a="shot" class="cap">📷<span>しゃしん</span></button>
             <button data-a="rec" class="cap lph-recbtn">🎥<span>どうが</span></button>
@@ -1419,6 +1433,8 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
             <div class="szrow"><span class="k">おく</span><button type="button" data-k="wz" data-d="-1" aria-label="おくを せまく">－</button><b id="lphDigWz">5</b><span>m</span><button type="button" data-k="wz" data-d="1" aria-label="おくを ひろく">＋</button></div>
             <div class="lbl" id="lphDigSrcLbl" style="display:none">はっくつする きょうりゅう</div>
             <div class="seg3" id="lphDigSrc" style="display:none"></div>
+            <div class="lbl" id="lphDigBlankLbl" style="display:none">みほんの ぬっていない しろい ところ（おすと かわるよ）</div>
+            <div id="lphDigBlank" style="display:none"></div>
             <p class="note">「たんけんに いく」を おすと、たんけんの じゅんびに すすむよ。<br>おわったら、この がめんに もどれるよ。</p>
             <button type="button" id="lphDigGo">🗺 たんけんに いく</button>
             <button type="button" id="lphDigBack">もどる</button>
@@ -9928,6 +9944,7 @@ function litePhoneRefresh(){
     lph$("lphDescBtn").style.display=hasDesc?"":"none";
     lph$("lphAnimBtn").style.display=LITE.isDino?"":"none";
     lph$("lphWalkBtn").style.display=LPH.walk?"":"none";   // 恐竜・犬：あるく／とまる（卵の間は出さない）
+    { const bb=lph$("lphBlankBtn"); if(bb) bb.style.display=lphBlankKey()? "" : "none"; }   // じぶんで ぬった恐竜：白い所（おすすめ設定オフだけ）
     sel.style.display=(LITE.nuri && !LITE.nuri.pick)?"none":"";   // ぬりえから：その恐竜だけ（切り替えなし）。メイン画面から：ぬりえの恐竜を選べる
     { const dg=lph$("lphDigBtn"); if(dg) dg.style.display=(LITE.target==="dino"||LITE.target==="dog")?"":"none"; }   // はっくつ：出土品のときは出さない
     { const ex=lph$("lphExplore"), ok=(LITE.target==="dino"||LITE.target==="dog") && !(LPH.hatch && LPH.hatch.phase!=="done");   // たんけんする（卵の間は出さない）
@@ -9935,7 +9952,14 @@ function litePhoneRefresh(){
     const d=lph$("lphDesc"); d.textContent=LITE.curDesc||""; if(!hasDesc) d.classList.remove("on");
     lphPaintBtns(); LITE._phPct=-1; litePhoneTick();
 }
+function lphBlankKey(){   // 白い所を切り替えられる恐竜（じぶんで ぬった恐竜を出している・おすすめ設定オフ）→ その恐竜のキー
+    if(recoOn || LITE.target!=="dino" || (LITE.mvPick && LITE.selPlain) || !liteDinoPainted(LITE.curIdx)) return null;
+    if(LPH.hatch && LPH.hatch.phase!=="done") return null;   // 卵の間は出さない
+    return (DINOS[LITE.curIdx] && DINOS[LITE.curIdx].key) || null;
+}
+window.addEventListener("nuriblank", ()=>{ try{ if(LITE.active) lphPaintBtns(); }catch(_){ } });   // ほかの画面（メニュー・カード確認）で変えた時
 function lphPaintBtns(){
+    { const bb=lph$("lphBlankBtn"), k=lphBlankKey(); if(bb && k){ const o=window.NURI_GAME.blankOwn(k); bb.classList.toggle("on", o); bb.setAttribute("aria-pressed", String(o)); bb.innerHTML = o ? "🦖<span>しろは もよう</span>" : "⬜<span>しろは しろ</span>"; } }
     const lk=lph$("lphLockBtn"); lk.classList.toggle("off", LITE.opEnabled===false); lk.innerHTML = (LITE.opEnabled===false) ? "🔒<span>ロックちゅう</span>" : "✋<span>うごかせる</span>";
     const wk=lph$("lphWalkBtn"); if(wk){ const animOn=(window.MV_ANIM!==false), wo=!!(LPH.walk && !LPH.walk.off) && animOn; wk.disabled=!animOn; wk.classList.toggle("on", wo); wk.innerHTML = wo ? "🚶<span>あるく</span>" : "🧍<span>とまる</span>"; }   // 今の状態を表示（アニメ オフは灰色で押せない）
     const an=lph$("lphAnimBtn"); const ao=(window.MV_ANIM!==false); an.classList.toggle("off", !ao); an.innerHTML = ao ? "🎞<span>アニメ オン</span>" : "🎞<span>アニメ オフ</span>";
@@ -10538,6 +10562,8 @@ function lphAction(a){
         window.MV_ANIM=(window.MV_ANIM===false); lphPaintBtns(); lphSnd(); }
     else if(a==="walk"){ if(window.MV_ANIM===false){ lphMsg("「アニメ オン」の ときに えらべるよ"); return; } if(LPH.walk){ LPH.walk.off=!LPH.walk.off; LPH.walk.held=true;
         /* とまる：スマホの方をくるっと向いて止まる */ if(LPH.walk.off){ LPH.joy=null; LPH.popY=0; LPH.faceTurn={ until:performance.now()+900, then:"stop" }; } lphMsg(LPH.walk.off?"その ばに とまるよ":"あるきまわるよ"); } lphPaintBtns(); lphSnd(); }
+    else if(a==="blank"){ const k=lphBlankKey(); if(!k) return; const on=!window.NURI_GAME.blankOwn(k); window.NURI_GAME.setBlankOwn(k, on);   // その恐竜の相棒・カードも かわる
+        lphPaintBtns(); lphSnd(); lphMsg(on? "ぬっていない ところを、もとの もように したよ" : "ぬっていない ところを、しろの ままに したよ"); }
     else if(a==="desc"){ lph$("lphDesc").classList.toggle("on"); }
     else if(a==="shot"){ LPH.shotReq=true; }
     else if(a==="rec"){ if(LPH.rec && (LPH.rec.state==="pending"||LPH.rec.state==="rec")) lphRecStop(); else lphRecStart(); }
@@ -12327,6 +12353,12 @@ function ldigPaint(){
         if(box.dataset.k!==k+"|"+opts.length){ box.dataset.k=k+"|"+opts.length; box.innerHTML="";
             opts.forEach(o=>{ const b=document.createElement("button"); b.type="button"; b.dataset.v=o[0]; b.innerHTML=o[1]+"<span>"+o[2]+"</span>"; box.appendChild(b); }); }
         box.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.v===cur)); } }
+    { const box=lph$("lphDigBlank"), lb=lph$("lphDigBlankLbl"), cur=ldigSrcCur(), G=window.NURI_GAME;   // 見本の恐竜ごとの白い所（見本を使う恐竜だけ・おすすめ設定オフ）
+      const keys=(!recoOn && G && LITE.target==="dino" && (cur==="sample" || cur==="own"))? DINOS.map(d=>d.key).filter(k=>cur==="sample" || !(G.st.paint[k] && G.st.maps[k])) : [];
+      if(box && lb){ lb.style.display=box.style.display=keys.length? "" : "none"; box.innerHTML="";
+          keys.forEach(k=>{ const i=DINOS.findIndex(d=>d.key===k), o=G.blankSmp(k), b=document.createElement("button"); b.type="button"; b.className=o? "orig" : "";
+              b.innerHTML=((DINOS[i]&&DINOS[i].label)||k).replace(/^\S+\s*/,"")+"<br>"+(o? "🦖 もよう" : "⬜ しろ"); b.setAttribute("aria-pressed", String(o));
+              b.addEventListener("click", e=>{ e.stopPropagation(); G.setBlankSmp(k, !G.blankSmp(k)); try{ lphSnd(); }catch(_){ } ldigPaint(); }); box.appendChild(b); }); } }
     document.querySelectorAll("#lphDigMode button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.mode));
     const wx=lph$("lphDigWx"), wz=lph$("lphDigWz"); if(wx) wx.textContent=LDIG.wx; if(wz) wz.textContent=LDIG.wz;
     document.querySelectorAll("#lphDig .szrow button").forEach(b=>{ const v=LDIG[b.dataset.k]+(+b.dataset.d); b.disabled=(v<LDIG.min || v>LDIG.max); });
@@ -12514,14 +12546,16 @@ async function digSampleLoad(key){   // 見本の模様（覚えている → �
 async function digPaintModel(key, cont, p, pause){   // 発掘モデル1体に模様を貼る（元の形は NURI_ORIG に残る）。貼れたら { root, st }（はがす時に使う）
     if(!cont || !p || !p.rgba) return null;
     const D=NG().st.maps[key] || await NG().loadFaces(key), root=cont.userData.model||cont;
-    const st= pause ? await NG().buildStoreAsync(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V, pause)
-                    : NG().buildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V);
+    const bl=digBlank(key);
+    const st= pause ? await NG().buildStoreAsync(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V, pause, bl)
+                    : NG().buildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V, bl);
     if(!st || !st.ok){ console.warn("[たんけん] この恐竜モデルには模様を貼れませんでした", key); return null; }
     if(DIGP.done.has(cont)){ NG().disposeStore(st); return null; }   // 作っている間に、ほかの所で貼り終えた
     const r=NG().applyStore(root, st); if(!r.ok){ NG().disposeStore(st); return null; }
     return { root, st };
 }
 function digUnpaint(o){ if(!o) return; try{ NG().applyStore(o.root, null); }catch(_){ } try{ NG().disposeStore(o.st); }catch(_){ } }
+function digBlank(key){ return DIGP.src[key]==="own" ? NG().blankOwn(key) : NG().blankSmp(key); }   // 白い所の値（じぶんで ぬった＝その恐竜の値／見本＝見本ごとの値）
 function digPaintOf(key){ const w=DIGP.src[key]; return w==="own" ? NG().st.paint[key] : w==="smp" ? DIGP.smp[key] : null; }
 // 発掘モデル1体に、まだ貼っていなければ貼る（たんけん中だけ）
 //   sync＝その場で貼る（恐竜が出てくる時。まだ貼れていない時の最後の手段）／それ以外は少しずつ貼る（モデルを作り直した時など）
@@ -12531,7 +12565,7 @@ function digEnsure(idx, cont, sync){
     if(sync){
         // 少しずつ貼っている途中でも、今すぐ貼る（途中の方は、終わった時に貼らずに捨てる＝digPaintModel）
         try{ const D=NG().st.maps[k], root=cont.userData.model||cont;
-            const st=NG().buildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V);
+            const st=NG().buildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, NG().V, digBlank(k));
             if(!st || !st.ok){ console.warn("[たんけん] この恐竜モデルには模様を貼れませんでした", k); return; }
             if(!NG().applyStore(root, st).ok){ NG().disposeStore(st); return; }
             const o={ root, st }; DIGP.done.set(cont, o); DIGP.roots.push(o); }catch(e){ console.warn("[たんけん] 模様", k, e); }
@@ -13453,9 +13487,9 @@ function nuriQuantizeRgba(rgba){   // 面ごとの色（塗った面だけ）を
 //  store（恐竜ごと・共有）：{ geos[] } … 発掘キャッシュ・相棒・確認表示で同じ形を使う（メモリを増やさない）
 const NURI_ORIG=new WeakMap(), NURI_ORIGMAT=new WeakMap();   // mesh → 元のジオメトリ（元に戻す用）
 const NURI_LIN=(c)=> c<=0.04045? c/12.92 : Math.pow((c+0.055)/1.055,2.4);   // 紙の色（sRGB）→ 頂点カラー（リニア）
-// ぬっていない白い所（紙の白）の見え方：blankOrig＝false：ぬりえどおり（白）／true：ぬりえなしの時の模様（元の色）
+// ぬっていない白い所（紙の白）の見え方：false＝ぬりえどおり（白）／true＝ぬりえなしの時の模様（元の色）。恐竜ごと・カードごとに決める（nuriBlankOwn など）
 //   白の判定は、読み取りで「塗っていない」とする基準（info.colorRule の satThr・valThr）と同じ。見た目だけで、ステータス・スコアは変わらない
-const NURI_VIEW={ blankOrig:false, satThr:0.15, valThr:0.72 };
+const NURI_VIEW={ satThr:0.15, valThr:0.72 };
 function nuriIsBlank(rgba, o){ const r=rgba[o], g=rgba[o+1], b=rgba[o+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b); return mx>=NURI_VIEW.valThr*255 && (mx-mn)<=NURI_VIEW.satThr*mx; }
 function nuriMeshes(root){ const ms=[]; root.traverse(o=>{ if(o.isMesh){ const g=NURI_ORIG.get(o)||o.geometry; if(g && g.getAttribute && g.getAttribute("color") && g.getAttribute("normal")) ms.push(o); } }); return ms; }
 function nuriOffset(mesh, root){ let ox=0,oy=0,oz=0; for(let o=mesh; o && o!==root; o=o.parent){ ox+=o.position.x; oy+=o.position.y; oz+=o.position.z; } return [ox,oy,oz]; }
@@ -13464,13 +13498,14 @@ function nuriOffset(mesh, root){ let ox=0,oy=0,oz=0; for(let o=mesh; o && o!==ro
 //   表を引くときは、前と同じく「1粒の面を作る三角形2枚」それぞれの中心で引く（部品の位置が粒の半端にずれていると、2枚が別の色になることがある）
 //   2枚が同じ色の面はまとめられる。別の色の面は、その面だけ三角形ごとの色で作る（前と同じ見た目）
 //   同じ計算を、いっぺんに（nuriBuildStore）と、少しずつ（nuriBuildStoreAsync：ランキング画面の歩く恐竜）の両方で使う
-function nuriBuildStore(root, rgba, F, T, keyMap, normals, V){
-    const it=nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V); let r=it.next(); while(!r.done) r=it.next(); return r.value;
+//   blank＝ぬっていない白い所を、ぬりえなしの時の模様にする（恐竜ごと・カードごとの設定。NURI_VIEW の説明）
+function nuriBuildStore(root, rgba, F, T, keyMap, normals, V, blank){
+    const it=nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V, blank); let r=it.next(); while(!r.done) r=it.next(); return r.value;
 }
-async function nuriBuildStoreAsync(root, rgba, F, T, keyMap, normals, V, pause){
-    const it=nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V); let r=it.next(); while(!r.done){ if(pause) await pause(); r=it.next(); } return r.value;
+async function nuriBuildStoreAsync(root, rgba, F, T, keyMap, normals, V, pause, blank){
+    const it=nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V, blank); let r=it.next(); while(!r.done){ if(pause) await pause(); r=it.next(); } return r.value;
 }
-function* nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V){   // yield＝ここで一息つける（少しずつ版のみ待つ）
+function* nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V, blank){   // yield＝ここで一息つける（少しずつ版のみ待つ）
     const meshes=nuriMeshes(root), nIdx=new Map(normals.map((n,i)=>[n.join(",") ,i]));
     const geos=[]; let tot=0, hit=0;
     const E=1e-4;
@@ -13507,7 +13542,7 @@ function* nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V){   // yield�
                 if(ni!==undefined){
                     const k=[0,1,2].map(a=>{ let m=0; for(const q of tri) m+=cr[q][a]; return Math.round(c[1+a]+m/6+O[a]-n[a]*0.5); });   // 中心＝粒の中心＋4すみの平均（×0.5）、そこから面の半分だけ内側へ
                     const f=keyMap.get(nuriKey(k[0],k[1],k[2],ni));
-                    if(f!==undefined){ hit++; if(rgba && rgba[f*4+3] && !(NURI_VIEW.blankOrig && nuriIsBlank(rgba, f*4))) col=[NURI_LIN(rgba[f*4]/255), NURI_LIN(rgba[f*4+1]/255), NURI_LIN(rgba[f*4+2]/255)]; } }
+                    if(f!==undefined){ hit++; if(rgba && rgba[f*4+3] && !(blank && nuriIsBlank(rgba, f*4))) col=[NURI_LIN(rgba[f*4]/255), NURI_LIN(rgba[f*4+1]/255), NURI_LIN(rgba[f*4+2]/255)]; } }
                 triCol.push(col); }
             const same=triCol[0][0]===triCol[1][0] && triCol[0][1]===triCol[1][1] && triCol[0][2]===triCol[1][2];
             if(same) S.add(fi, c[1], c[2], c[3], triCol[0][0], triCol[0][1], triCol[0][2]);
@@ -13535,7 +13570,7 @@ function nuriApplyStore(root, store){
 function nuriDisposeStore(store){ if(!store) return; try{ store.geos.forEach(g=>g.dispose()); }catch(_){ } }
 //@@CORE_END
 /* ---------------- ここからアプリ内の状態・読み込み・UI（複数恐竜） ---------------- */
-const NURI={ reg:null, layout:null, maps:{}, paint:{}, store:{}, cstat:{} };   // cstat[key]＝色の面積（ぬり絵パラメータの元）   // maps[key]={info,F,keyMap,P,X}  paint[key]={rgba}（面ごとの色）  store[key]=共有の画像・材質・形
+const NURI={ reg:null, layout:null, maps:{}, paint:{}, store:{}, cstat:{}, blankOver:{} };   // blankOver[key]＝カードを撮る間だけ使う白い所の値（withPaint）   // cstat[key]＝色の面積（ぬり絵パラメータの元）   // maps[key]={info,F,keyMap,P,X}  paint[key]={rgba}（面ごとの色）  store[key]=共有の画像・材質・形
 const V_SMOOTH = VOX/6;                                  // makeDigDino の「なめらか」解像度と同じ
 const dinoIdx = (key)=> (typeof DINOS!=="undefined")? DINOS.findIndex(d=>d.key===key) : -1;
 const sheetOf = (key)=> NURI.reg && NURI.reg.sheets.find(s=>s.key===key);
@@ -13600,7 +13635,7 @@ function nuriApply(key, root){
     const D=NURI.maps[key]; if(!D) return null; const p=NURI.paint[key];
     if(!p) return nuriApplyStore(root, null);
     let st=NURI.store[key];
-    if(!st){ st=nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH);
+    if(!st){ st=nuriBuildStore(root, p.rgba, D.F, D.info.cellsPerSide, D.keyMap, D.info.normals, V_SMOOTH, (key in NURI.blankOver)? NURI.blankOver[key] : nuriBlankOwn(key));
         if(!st.ok){ console.warn("[ぬりえ] この恐竜モデルには適用できませんでした", key, st); return st; }
         NURI.store[key]=st; }
     const r=nuriApplyStore(root, st); if(!r.ok) console.warn("[ぬりえ] 形が合わないモデルには貼りません", key);
@@ -13624,20 +13659,38 @@ function nuriHolders(key){
     return roots;
 }
 function nuriRefreshHolders(key){ for(const r of nuriHolders(key)){ try{ nuriApply(key, r); }catch(e){ console.warn("[ぬりえ]",e); } } }
-// ---- ぬっていない白い所の見え方（NURI_VIEW.blankOrig）----
-//   ゲーム：おすすめ設定オン＝ぬりえどおり（既定）／オフ＝メニューのトグルで選んだ値（端末に保存）
-//   イベント用カード作成（?cardDebug=2）・ランキング（?cardDebug=3）：カード作成画面の上のトグルで選んだ値（ゲームとは別に保存）
+// ---- ぬっていない白い所の見え方（恐竜ごと）----
+//   ゲーム：じぶんで ぬった恐竜（nuriBlankOwn）・たんけんの見本（nuriBlankSmp）を、恐竜ごとに端末に保存。おすすめ設定のオン・オフに関係なく使う
+//     「これから」の値（NURI_BLANK_KEY）＝新しく よみこんだ／みほんから とりこんだ恐竜の値（うわがきも、この値に戻す）。「ぜんぶ」＝両方を一度に変えて、これからの値にもする
+//   イベント用カード作成（?cardDebug=2）・ランキング（?cardDebug=3）：カードごと（カードの記録 rec.blank）。「これから」の値はゲームとは別に保存
 const NURI_BLANK_KEY = CARD_EVENT_MODE ? "nurieEventBlankOrig" : "nuriBlankOrig";
+const NURI_BLANK_MAP={ own:"nuriBlankOwn", smp:"nuriBlankSmp" };   // { 恐竜のキー: 1（元の模様）| 0（ぬりえどおり） }
 function nuriBlankSaved(){ try{ return localStorage.getItem(NURI_BLANK_KEY)==="1"; }catch(_){ return false; } }
 function nuriBlankSave(on){ try{ localStorage.setItem(NURI_BLANK_KEY, on?"1":"0"); }catch(_){ } }
-function nuriBlankWanted(){ if(CARD_EVENT_MODE) return nuriBlankSaved(); const reco=(typeof recoOn==="undefined") || recoOn; return !reco && nuriBlankSaved(); }
-function nuriBlankSync(){   // 使う値が変わったら、ぬってある恐竜の模様を貼り直す（相棒・ARの恐竜・カード）。変わった時だけ true
-    const on=nuriBlankWanted(); if(on===NURI_VIEW.blankOrig) return false;
-    NURI_VIEW.blankOrig=on;
-    for(const k of Object.keys(NURI.paint)) if(NURI.paint[k]) nuriSetPaint(k, NURI.paint[k]);
-    return true;
+function nuriBlankMap(kind){ try{ const m=JSON.parse(localStorage.getItem(NURI_BLANK_MAP[kind])||"{}"); return (m && typeof m==="object")? m : {}; }catch(_){ return {}; } }
+function nuriBlankMapPut(kind, key, on){ const m=nuriBlankMap(kind); m[key]=on? 1 : 0; try{ localStorage.setItem(NURI_BLANK_MAP[kind], JSON.stringify(m)); }catch(_){ } }
+function nuriBlankOf(kind, key){ const m=nuriBlankMap(kind); return (key in m)? !!m[key] : nuriBlankSaved(); }
+function nuriBlankOwn(key){ return nuriBlankOf("own", key); }   // じぶんで ぬった恐竜（相棒・ARの恐竜・カード）
+function nuriBlankSmp(key){ return nuriBlankOf("smp", key); }   // たんけんの見本の恐竜（発掘する恐竜・図鑑のカード）
+function nuriBlankOwnNew(key){ nuriBlankMapPut("own", key, nuriBlankSaved()); }   // 新しく よみこんだ・とりこんだ（うわがき）：これからの値にする（模様を貼る前に呼ぶ）
+function nuriBlankSetOwn(key, on){   // じぶんで ぬった恐竜の値を変えて、模様を貼り直す（相棒・ARの恐竜・カード）
+    if(nuriBlankOwn(key)===!!on){ nuriBlankMapPut("own", key, on); return false; }
+    nuriBlankMapPut("own", key, on);
+    if(NURI.paint[key]) nuriSetPaint(key, NURI.paint[key]);
+    nuriBlankNotify("own", key); return true;
 }
-NURI_VIEW.blankOrig=nuriBlankWanted();
+function nuriBlankSetSmp(key, on){ const ch=nuriBlankSmp(key)!==!!on; nuriBlankMapPut("smp", key, on); if(ch) nuriBlankNotify("smp", key); return ch; }
+function nuriBlankAll(on){   // ぜんぶ（じぶんで ぬった恐竜＋見本）を同じ値にして、これからの値にもする
+    nuriBlankSave(on);
+    for(const d of (YEAR_CONFIG.dinos||[])){ nuriBlankSetOwn(d.key, on); nuriBlankSetSmp(d.key, on); }
+}
+function nuriBlankNotify(kind, key){ try{ window.dispatchEvent(new CustomEvent("nuriblank", { detail:{ kind, key } })); }catch(_){ } }   // 開いている画面（AR・たんけんの準備・カード確認）の表示を合わせる
+// ほかのタブ（カード確認 ?cardDebug=1 など）で変えた時：その恐竜の模様を貼り直す
+if(!CARD_EVENT_MODE) addEventListener("storage", e=>{
+    if(e.key===NURI_BLANK_MAP.own){ let a={}, b={}; try{ a=JSON.parse(e.oldValue||"{}")||{}; b=JSON.parse(e.newValue||"{}")||{}; }catch(_){ }
+        for(const k of Object.keys(Object.assign({}, a, b))) if(!!a[k]!==!!b[k] && NURI.paint[k]){ nuriSetPaint(k, NURI.paint[k]); nuriBlankNotify("own", k); } }
+    else if(e.key===NURI_BLANK_MAP.smp || e.key===NURI_BLANK_KEY) nuriBlankNotify("smp", null);
+});
 // ---- ぬり絵パラメータ：相棒の能力値へ反映 ----
 // ぬり絵あり＝YEAR_CONFIG.paintBase（基本値）＋ぬり絵補正 ／ ぬり絵なし・もとにもどした時＝YEAR_CONFIG.companions の値
 function nuriStatsFor(key){
@@ -13745,9 +13798,15 @@ function nuriMenuRefresh(){
     if(NURI_DBG && rl && rl.parentNode){ let dl=$("nuriDbgList"); if(!dl){ dl=document.createElement("div"); dl.id="nuriDbgList"; rl.parentNode.insertBefore(dl, rl.nextSibling); }   // 開発用（?nuriDebug=1）
         dl.innerHTML=""; for(const k of painted){ const b=document.createElement("button"); b.type="button"; b.textContent="🔍 No."+nuriSheetNo(k)+" "+nm(k)+"の けっか"; b.addEventListener("click",()=>nuriDebugShow(k)); dl.appendChild(b); } }
     if(pr) pr.style.display = reco? "none" : "";
-    { const bo=$("nuriBlankOpt"), on=nuriBlankSaved();   // ぬっていない白い所の見え方（おすすめ設定オフだけ）
+    { const bo=$("nuriBlankOpt"), on=nuriBlankSaved();   // ぬっていない白い所の見え方（おすすめ設定オフだけ表示。値はオンでも使う）
       if(bo) bo.style.display = reco? "none" : "";
-      document.querySelectorAll("#segNuriBlank button").forEach(b=>b.classList.toggle("on", (b.dataset.v==="orig")===on)); }
+      document.querySelectorAll("#segNuriBlank button").forEach(b=>b.classList.toggle("on", (b.dataset.v==="orig")===on));
+      const bl=$("nuriBlankList"), lb=$("nuriBlankListLbl");   // 恐竜ごと（ぬってある恐竜）：押すと その恐竜の相棒・AR・カードが かわる
+      if(lb) lb.style.display = painted.length? "" : "none";
+      if(bl){ bl.innerHTML="";
+          for(const k of painted){ const o=nuriBlankOwn(k), b=document.createElement("button"); b.type="button"; b.className=o? "orig" : "";
+              b.innerHTML=nm(k)+"<br>"+(o? "🦖 もとの もよう" : "⬜ ぬりえどおり"); b.setAttribute("aria-pressed", String(o));
+              b.addEventListener("click",()=>{ nuriBlankSetOwn(k, !nuriBlankOwn(k)); nuriMenuRefresh(); }); bl.appendChild(b); } } }
     { const sp=$("nuriSample"), sl=$("nuriSampleList");   // みほんから とりこむ（おすすめ設定オフだけ）
       if(sp) sp.style.display = reco? "none" : "";
       nuriSamplePaintUI();
@@ -13949,6 +14008,7 @@ function scCapture(resSmall, s, key){
             photo=null;
             if(out.paintedFaces===0){ SC.busy=false; scMode("error"); scMsg("いろが みつからなかったよ","ぬった ぬりえで もういちど ためしてね"); return; }
             nuriPreviewStop();
+            nuriBlankOwnNew(key);   // 白い所は「これから」の値（うわがきも）
             nuriSetPaint(key, { rgba:out.rgba, cs:out.colorStat });
             nuriSave(key, out.rgba, D.info, out.colorStat);
             nuriDebugAuto(key);
@@ -14115,6 +14175,7 @@ function lphScanCapture(frame, resSmall, key){
                 setTimeout(()=>{ if(LPH.scan){ LPH.scan.busy=false; LPH.scan.stable=0; LPH.scan.last=null; } }, 2000); return;
             }
             if(out.paintedFaces===0){ lphNCard("いろが みつからなかったよ","ぬった ぬりえを うつしてね"); setTimeout(()=>{ if(LPH.scan){ LPH.scan.busy=false; LPH.scan.stable=0; LPH.scan.last=null; } }, 2500); return; }
+            nuriBlankOwnNew(key);   // 白い所は「これから」の値（うわがきも）
             nuriSetPaint(key, { rgba:out.rgba, cs:out.colorStat });
             nuriSave(key, out.rgba, D.info, out.colorStat);
             nuriDebugAuto(key);
@@ -14265,6 +14326,7 @@ async function nuriImportSample(keys){
         try{ const p=await digSampleLoad(k); if(!p) throw new Error("見本の模様を作れませんでした");
             const D=await nuriLoadFaces(k);
             if(D.info.keysSha1!==p.keysSha1) throw new Error("ぬりえの表が かわりました");
+            nuriBlankOwnNew(k);   // 白い所は「これから」の値（うわがきも）
             nuriSetPaint(k, { rgba:new Uint8Array(p.rgba), cs:p.cs ? JSON.parse(JSON.stringify(p.cs)) : null });   // 見本の模様の写し（見本の方は たんけん でも使うので分ける）
             if(!(await nuriSave(k, p.rgba, D.info, p.cs, "sample"))) throw new Error("ほぞんできませんでした（ようりょうが いっぱいかも）");
             ok++;
@@ -14292,8 +14354,10 @@ function nuriWire(){
     const sb=$("nuriScanBtn");
     if(sb) sb.addEventListener("click",()=>{ if(!nuriCanScan()) return; nuriStartScan(); });
     const ra=$("nuriResetAll"); if(ra) ra.addEventListener("click",nuriResetAll);
-    document.querySelectorAll("#segReco button").forEach(b=>b.addEventListener("click",()=>setTimeout(()=>{ nuriBlankSync(); nuriMenuRefresh(); },0)));   // おすすめ設定の切替に合わせて表示・白い所の見え方を変える（ほかの onclick の後に動く）
-    document.querySelectorAll("#segNuriBlank button").forEach(b=>b.addEventListener("click",()=>{ nuriBlankSave(b.dataset.v==="orig"); nuriBlankSync(); nuriMenuRefresh(); }));   // ぬっていない白い所の見え方
+    document.querySelectorAll("#segReco button").forEach(b=>b.addEventListener("click",()=>setTimeout(()=>{ nuriMenuRefresh(); },0)));   // おすすめ設定の切替に合わせて表示・白い所の見え方を変える（ほかの onclick の後に動く）
+    document.querySelectorAll("#segNuriBlank button").forEach(b=>b.addEventListener("click",()=>{ nuriBlankSave(b.dataset.v==="orig"); nuriMenuRefresh(); nuriBlankNotify("smp", null); }));   // ぬっていない白い所：これから よみこむ恐竜の値
+    document.querySelectorAll("#segNuriBlankAll button").forEach(b=>b.addEventListener("click",()=>{ nuriBlankAll(b.dataset.v==="orig"); nuriMenuRefresh(); }));   // ぜんぶ まとめて（じぶんで ぬった恐竜＋見本。これからの値にもする）
+    window.addEventListener("nuriblank", ()=>nuriMenuRefresh());
     const back=$("nuriBack"), done=$("nuriDone"), again=$("nuriAgain");
     { const a=$("nuriCamSw"), b=$("nuriCamDef"); if(a) a.onclick=()=>scCamSwitch(); if(b) b.onclick=()=>scCamDefault(); }   // カメラの切り替え
     if(back) back.addEventListener("click",scClose);
@@ -14346,6 +14410,7 @@ if(!CARD_ONLY_MODE) import("three/addons/exporters/GLTFExporter.js").catch(()=>{
                 const cs=(t.saved && t.saved.cs) || null;                                           // 色の面積（ない＝古い保存→ぬり絵なしの値）
                 { const q=nuriQuantizeRgba(rgba); if(q!==rgba){ rgba=q; await nuriSave(sh.key, rgba, D.info, cs); } }   // 1024色以内に
                 if(!t.saved){ if(await nuriSave(sh.key, rgba, D.info)){ try{ for(const s of [NURI_CFG.legacyV3, NURI_CFG.legacyV2]) localStorage.removeItem(NURI_CFG.storePrefix+sh.key+s); if(sh.key===NURI_CFG.legacy.key) localStorage.removeItem(NURI_CFG.legacy.storeKey); }catch(_){ } } }   // 古い保存を新しい形へ
+                if(!(sh.key in nuriBlankMap("own"))) nuriBlankOwnNew(sh.key);   // 白い所の値がまだない（前の版で ぬった）：いまの「これから」の値で決める
                 nuriSetPaint(sh.key, { rgba, cs });
                 nuriMenuRefresh();
                 await new Promise(r=>setTimeout(r,0));                                              // 1体ごとに描画へ手番を返す（固まらないように）
@@ -14361,7 +14426,8 @@ window.NURI_DEBUG={ state:NURI, mvReady:()=>Object.assign({},MV_READY) };   // �
 // ゲーム側（たんけんの模様・みほんから とりこむ・模様なしの複製）から使う窓口（この囲みの外からは中の名前が見えないため）
 window.NURI_GAME={ st:NURI, loadRegistry:nuriLoadRegistry, loadFaces:nuriLoadFaces, unzip:nuriUnzip, zip:nuriZip,
     buildStore:nuriBuildStore, buildStoreAsync:nuriBuildStoreAsync, applyStore:nuriApplyStore, disposeStore:nuriDisposeStore,
-    dropPix:nuriDropPix, V:V_SMOOTH, orig:NURI_ORIG, origMat:NURI_ORIGMAT };
+    dropPix:nuriDropPix, V:V_SMOOTH, orig:NURI_ORIG, origMat:NURI_ORIGMAT,
+    blankOwn:nuriBlankOwn, blankSmp:nuriBlankSmp, setBlankOwn:nuriBlankSetOwn, setBlankSmp:nuriBlankSetSmp };   // ぬっていない白い所（恐竜ごと）
 window.NURI_EVENT={
     async prepare(){ await Promise.all([nuriLoadLib(), nuriLoadRegistry()]); await nuriLoadFaces(NURI.reg.sheets[0].key); },
     detector(){ return new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 }); },
@@ -14380,11 +14446,12 @@ window.NURI_EVENT={
         const out=nuriProcess(photo, res.H, D);
         return { rgba:out.rgba, cs:out.colorStat, keysSha1:D.info.keysSha1, paintedFaces:out.paintedFaces };
     },
-    async withPaint(key, p, keysSha1, fn){
+    async withPaint(key, p, keysSha1, fn, blank){   // blank＝この模様の白い所の値（カードごと。省略＝じぶんで ぬった恐竜の値）
         await nuriLoadRegistry(); const D=await nuriLoadFaces(key), T=D.info.cellsPerSide;
         if(keysSha1!==D.info.keysSha1 || !p || !p.rgba || p.rgba.length!==D.F.face_part.length*T*T*4) throw new Error("ぬりえの表が更新されたため、このカードは作り直せません");
         const op=NURI.paint[key], oc=NURI.cstat[key], os=NURI.store[key], pk=NURI.plainKey;
         delete NURI.store[key]; NURI.plainKey=null;   // （ぬりえなしの相棒で たんけん中でも、この模様の値で計算する）
+        const hadOver=(key in NURI.blankOver), ob=NURI.blankOver[key]; if(blank!==undefined) NURI.blankOver[key]=!!blank;
         NURI.paint[key]={ rgba:p.rgba, cs:p.cs };
         if(nuriCsOk(p.cs)) NURI.cstat[key]=p.cs; else delete NURI.cstat[key];
         nuriApplyStats(key);
@@ -14395,6 +14462,7 @@ window.NURI_EVENT={
             if(oc) NURI.cstat[key]=oc; else delete NURI.cstat[key];
             if(os) NURI.store[key]=os; else delete NURI.store[key];
             NURI.plainKey=pk;
+            if(hadOver) NURI.blankOver[key]=ob; else delete NURI.blankOver[key];
             nuriApplyStats(key);
             if(ts && ts!==os) nuriDisposeStore(ts);   // カード撮影用に作った模様は捨てる（ゲームの恐竜には貼っていない）
         }
@@ -14422,21 +14490,20 @@ window.NURI_EVENT={
     // ランキング画面の歩く恐竜：1体の模型にカードの模様を少しずつ貼る（出てくる時に画面が止まらないように。pause() を途中で何回も呼ぶ）
     //   ゲームの模様の状態は使わない・変えない。返した store は消す時に disposeStore
     //   中身は nuriBuildStore と同じ計算（nuriBuildStoreAsync＝面をまとめた形にも正しく貼れる）
-    async paintModelAsync(key, p, keysSha1, root, pause){
+    async paintModelAsync(key, p, keysSha1, root, pause, blank){   // blank＝白い所の値（カードごと）
         await nuriLoadRegistry(); const D=await nuriLoadFaces(key), T=D.info.cellsPerSide;
         if(keysSha1!==D.info.keysSha1 || !p || !p.rgba || p.rgba.length!==D.F.face_part.length*T*T*4) return null;
-        const st=await nuriBuildStoreAsync(root, p.rgba, D.F, T, D.keyMap, D.info.normals, V_SMOOTH, pause);
+        const st=await nuriBuildStoreAsync(root, p.rgba, D.F, T, D.keyMap, D.info.normals, V_SMOOTH, pause, !!blank);
         if(!st.ok) return null;
         nuriApplyStore(root, st); return st;
     },
     disposeStore:(st)=>nuriDisposeStore(st),
     zip:(u8)=>nuriZip(u8, true), unzip:(u8,z)=>nuriUnzip(u8,z),
     paintReady:()=>!!MV_READY.paint,
-    blankKey:NURI_BLANK_KEY,                                            // 保存のキー（ほかの画面の storage で見分ける）
-    blankOrig:()=>nuriBlankSaved(),                                     // ぬっていない白い所：true＝元の模様
-    setBlankOrig(on){ nuriBlankSave(!!on); return nuriBlankSync(); },   // 保存して、使う値を合わせる（変わった時だけ true）
-    blankSync:()=>nuriBlankSync(),                                      // ほかの画面で変えた時（storage）に合わせる
-    blankOn:()=>NURI_VIEW.blankOrig                                     // いま使っている値（カードの目印に入れる）
+    blankOrig:()=>nuriBlankSaved(),                                     // ぬっていない白い所：「これから」の値（true＝元の模様）
+    setBlankOrig(on){ nuriBlankSave(!!on); },                           // 「これから」の値を保存
+    blankOwn:(key)=>nuriBlankOwn(key),                                  // ゲーム：じぶんで ぬった恐竜の値（カードの目印に入れる）
+    blankSmp:(key)=>nuriBlankSmp(key)                                   // ゲーム：たんけんの見本の値
 };
 })();
 /* =====================================================================
@@ -15700,6 +15767,7 @@ const TC_DBG_CSS=`
 #tcDebug .tcd-grid .tcard{ cursor:zoom-in; box-shadow:0 10px 26px rgba(0,0,0,.55); }
 #tcDebug .tcd-act{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 #tcDebug .tcd-act button{ padding:6px 10px; font-size:12.5px; }
+#tcDebug .tcd-act button.tcd-blank.on{ color:#ffd86a; border-color:rgba(255,216,106,.6); }
 #tcDebug button:disabled{ opacity:.45; cursor:default; }
 #tcDebug button:not(:disabled){ pointer-events:auto !important; }   /* ゲームの「読み込み中はボタンを押せない」設定（body.loading）はこの画面には当てない */
 #tcDebug .tcd-zoom{ position:fixed; inset:0; z-index:3; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; padding:16px; cursor:zoom-out; }
@@ -15729,6 +15797,7 @@ function tcDebugOpen(){
     tcDebugFill();
     tcDebugTab("dino");
     addEventListener("resize",()=>{ if(TCD && TCD.root.style.display!=="none") tcFit(TCD.root); });
+    window.addEventListener("nuriblank", e=>{ const d=e.detail||{}; if(TCD && d.kind==="own" && d.key && !TCD.busy) tcDebugRerender("dino", d.key); });   // 白い所を変えた（この画面・ほかのタブのゲーム）→ その恐竜のカードを作り直す
     (async()=>{ status.textContent="ぬりえの読み込みを待っています…"; await tcWaitPaint(); tcDebugFill(); tcDebugRenderAll(); })();
 }
 function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新のゲームデータで作り直す
@@ -15737,6 +15806,11 @@ function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新
         list.forEach(item=>{ const d=tcData(kind, item.key), id=kind+":"+item.key;
             const fig=el("figure"), card=tcBuild(d, T.imgs[id]); fig.appendChild(card);
             fig.appendChild(tcActions(kind, item.key, id));
+            if(kind==="dino" && d.painted && window.NURI_GAME){   // ぬってある恐竜：白い所（ゲームのその恐竜と共通。相棒・ARの恐竜も かわる）
+                const G=window.NURI_GAME, o=G.blankOwn(item.key), b=el("button","tcd-blank"+(o? " on" : ""), "白い所："+(o? "元の模様" : "ぬりえどおり")); b.type="button"; b.setAttribute("aria-pressed", String(o));
+                b.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか（この恐竜だけ。ゲームの相棒・ARの恐竜も同じになります）";
+                b.addEventListener("click", ev=>{ ev.stopPropagation(); G.setBlankOwn(item.key, !G.blankOwn(item.key)); });   // 作り直しは下の nuriblank で
+                fig.lastChild.appendChild(b); }
             const S=d.score, P=S.paint;
             fig.appendChild(el("figcaption",null,"No."+d.no+"　"+d.key+(kind==="dino"? "　ぬりえ："+(d.painted?"あり":"なし") : "")
                 +"　内部値 power "+d.power+"・discovery "+d.discovery+"・smarts "+d.smarts
@@ -15792,6 +15866,14 @@ function tcDebugTab(k){
 function tcZoomable(card, zoom){   // 押すと1枚大きく表示
     card.tabIndex=0; card.setAttribute("role","button");
     card.addEventListener("click",zoom); card.addEventListener("keydown",ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); zoom(); } });
+}
+// 1枚だけ作り直す（白い所を変えた時）
+async function tcDebugRerender(kind, key){
+    const T=TCD; if(!T) return; const id=kind+":"+key;
+    tcDebugFill();   // ボタンの表示・スコアの文字を合わせる
+    T.status.textContent="画像を作り直しています…";
+    try{ const url=await tcRenderArt(kind, key, null); T.imgs[id]=url; T.cards.filter(c=>c.id===id).forEach(c=>tcSetImage(c.card,url)); T.status.textContent=""; }
+    catch(e){ console.warn("[カード] 作り直せませんでした", e); T.status.textContent="作り直せませんでした"; }
 }
 function tcDebugZoom(kind, key, id){   // id＝画像の名前（恐竜・犬＝"dino:trex" など／エフェクト見本＝"fx:dino:trex:flame" など）
     const T=TCD, z=el("div","tcd-zoom"), c=tcBuild(tcData(kind,key), T.imgs[id]);
@@ -16099,6 +16181,7 @@ function evCardData(rec){ return Object.assign({}, rec.d, { player:rec.name||"" 
 const EV_DINO_SHORT={ fukuiraptor:"ラプトル", fukuititan:"ティタン", fukuisaurus:"フクサウ", ptera:"プテラ" };
 function evDinoShort(rec){ if(EV_DINO_SHORT[rec.key]) return EV_DINO_SHORT[rec.key]; const c=((YEAR_CONFIG.companions||{})[rec.key])||{}; return c.label? String(c.label).replace(/^\S+\s+/,"") : (rec.sheet||rec.key||""); }
 function evIsReal(rec){ return !!(rec && !rec.sample && !rec.demo); }   // 参加者のカード（見本・ランキング用のぬりえなしカードではない）
+function evBlank(rec){ return (rec && rec.blank!==undefined)? !!rec.blank : !!(N() && N().blankOrig()); }   // ぬっていない白い所（カードごと。true＝元の模様）。ない時は「これから」の値
 function evSaved(rec){ return !!(rec.dl && (rec.dl.card || rec.dl.margin)); }
 function evSafeName(s){ return tcNameClean(s).replace(/[\\/:*?"<>|\s]+/g,"_").replace(/^_+|_+$/g,""); }
 function evLabel(rec){ return !rec? "" : rec.sample? "見本"+rec.sample : rec.demo? "恐竜"+rec.demo : "#"+String(rec.id).padStart(3,"0"); }   // 見本は番号を使わない
@@ -16135,11 +16218,13 @@ function evOpen(){
     const mute=el("button",null,""); mute.type="button";
     const putMute=()=>{ mute.textContent=EV.mute? "音：なし" : "音：あり"; mute.setAttribute("aria-pressed",String(!EV.mute)); };
     mute.addEventListener("click",()=>{ EV.mute=!EV.mute; try{ localStorage.setItem(EV_MUTE_KEY, EV.mute?"1":"0"); }catch(_){ } putMute(); }); putMute();
-    const blank=el("button",null,""); blank.type="button";   // ぬっていない白い所の見え方（既定＝ぬりえどおり）
-    const putBlank=()=>{ const on=!!(N() && N().blankOrig()); blank.textContent=on? "白い所：元の模様" : "白い所：ぬりえどおり"; blank.setAttribute("aria-pressed",String(on));
-        blank.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか。これから作るカードとランキングの歩く恐竜に使います（今あるカードは「すべて作り直す」で変わります）"; };
+    const blank=el("button",null,""); blank.type="button";   // ぬっていない白い所：これから作るカードの値（既定＝ぬりえどおり）。今あるカードは、カードごとのボタンか一括変更で
+    const putBlank=()=>{ const on=!!(N() && N().blankOrig()); blank.textContent=on? "これから：白い所 元の模様" : "これから：白い所 ぬりえどおり"; blank.setAttribute("aria-pressed",String(on));
+        blank.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか。これから作るカードに使います（今あるカードは、カードごとの「白い所」ボタンか、一括変更で変わります）"; };
     blank.addEventListener("click",()=>{ if(!N()) return; const on=!N().blankOrig(); N().setBlankOrig(on); putBlank();
-        evStatus("ぬっていない白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にしました。今あるカードは「すべて作り直す」で変わります"); }); putBlank();
+        evStatus("これから作るカードの白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にしました（今あるカードは変わりません）"); }); putBlank();
+    const blankAll=[false,true].map(on=>{ const b=el("button",null,"白い所を一括："+(on? "元の模様" : "ぬりえどおり")); b.type="button";   // 白い所の一括変更（今あるカードすべて＋これから）
+        b.title="今あるすべてのカード（見本も）の白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にして作り直し、これから作るカードも同じにします"; b.addEventListener("click",()=>evBlankAll(on)); return b; });
     const redoAll=el("button",null,"すべて作り直す"); redoAll.type="button"; redoAll.addEventListener("click",evRedoAllToggle);
     const delAll=el("button","tce-danger","一括削除"); delAll.type="button"; delAll.addEventListener("click",evDeleteAll);
     const seqReset=el("button",null,"番号を1に戻す"); seqReset.type="button"; seqReset.addEventListener("click",evSeqReset);
@@ -16151,7 +16236,7 @@ function evOpen(){
     Object.keys(EV_SETS).forEach(n=>evSetPut(n, EV_SETS[n].def));   // 開くたびに既定値へ（開いているランキング画面も）
     const sliders=[evSlider("size"), evSlider("stage")].concat(EV_QR? [evSlider("qr")] : []);   // サイズ比・恐竜出現（秒）・QR表示（秒）
     const qrSet=el("button",null,"受け取りQRの設定（開発中）"); qrSet.type="button"; qrSet.addEventListener("click",evQrSetup);
-    const tools=el("div","tce-tools"); [rank,pv,only,blank].concat(sliders,[bulkC,bulkM,mute,redoAll,delAll,seqReset]).concat(EV_QR? [qrSet] : []).forEach(b=>tools.appendChild(b)); bar.appendChild(tools);
+    const tools=el("div","tce-tools"); [rank,pv,only,blank].concat(blankAll,sliders,[bulkC,bulkM,mute,redoAll,delAll,seqReset]).concat(EV_QR? [qrSet] : []).forEach(b=>tools.appendChild(b)); bar.appendChild(tools);
     root.appendChild(bar);
     // 左：名前とカメラ
     const main=el("div","tce-main"), side=el("div","tce-side");
@@ -16180,7 +16265,7 @@ function evOpen(){
     main.appendChild(side); main.appendChild(list);
     const body=el("div","tce-body"), pvPane=el("div","tce-pv"); body.appendChild(main); body.appendChild(pvPane); root.appendChild(body);
     document.body.appendChild(root);
-    EV.ui={ root, pvBtn:pv, pvPane, count, only, bulkC, bulkM, redoAll, delAll, seqReset, input, hintN, cam, video, camMsg, camOff, start, stop, sw, def, row, next, status, grid, empty, list };
+    EV.ui={ root, pvBtn:pv, pvPane, count, only, putBlank, bulkC, bulkM, redoAll, delAll, seqReset, input, hintN, cam, video, camMsg, camOff, start, stop, sw, def, row, next, status, grid, empty, list };
     evCamMsg("「カメラを開始」を押してください","", "");
     evBc();   // ランキング画面が開いているかを受け取る
     // 画面の向きが変わった時は、一覧の並びを計算し直す（iPhone の Safari 対策）
@@ -16218,6 +16303,8 @@ async function evLoad(){
     try{
         try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(_){ }   // ブラウザが勝手に消さないように
         const all=await evTx("cards","readonly",s=>s.getAll());
+        { const fix=(all||[]).filter(r=>!r.demo && r.blank===undefined);   // 前の版のカード：白い所は、いまの「これから」の値（その値で作ってある）
+          if(fix.length){ const on=!!N().blankOrig(); fix.forEach(r=>{ r.blank=on; }); await evTx("cards","readwrite",s=>{ fix.forEach(r=>s.put(r)); }); } }
         (all||[]).sort((a,b)=>b.id-a.id).forEach(r=>{ EV.recs.set(r.id,r); EV.ui.grid.appendChild(evFig(r)); });   // 参加者（新しい順）→ 見本 → 恐竜カード
         evCount();
         const old=(all||[]).some(evSampleOld);   // 前の版の見本（見本3枚の時のもの）がある → 塗り直す（塗り直すまで、その見本の画像は作らない）
@@ -16277,7 +16364,10 @@ function evFig(rec){
     if(dl.margin){ d2.textContent="✓ 余白あり\nダウンロード済"; d2.classList.add("done"); }
     if(!rec.d){ d1.disabled=d2.disabled=true; }
     const rp=B(["読込再現","再現"],()=>evReplay(rec.id)); rp.title="読み込み再現：読み込んだ直後の演出を、このカードでもう一度（カードは増えません）"; if(!rec.d) rp.disabled=true;
-    B(["名前変更","改名"],()=>evRename(rec.id)); B(["作り直す","再作"],()=>evEnqueue(rec.id,true)); B("削除",()=>evDelete(rec.id),"tce-danger");
+    B(["名前変更","改名"],()=>evRename(rec.id)); B(["作り直す","再作"],()=>evEnqueue(rec.id,true));
+    if(!rec.demo){ const bo=evBlank(rec), bb=B(bo? ["白い所：元の模様","白：模様"] : ["白い所：ぬりえどおり","白：ぬりえ"],()=>evBlankToggle(rec.id));   // このカード（とランキングの歩く恐竜）の白い所
+        bb.setAttribute("aria-pressed",String(bo)); bb.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか（このカードだけ。押すとカードを作り直します）"; }
+    B("削除",()=>evDelete(rec.id),"tce-danger");
     fig.appendChild(act);
     EV.figs.set(rec.id, fig);
     return fig;
@@ -16285,6 +16375,28 @@ function evFig(rec){
 function evUpdateFig(id){
     const rec=EV.recs.get(id), old=EV.figs.get(id); if(!rec || !old) return;
     const nf=evFig(rec); old.replaceWith(nf); evCount();
+}
+// 白い所（カードごと）：変えたら、そのカードを作り直す（ランキングの歩く恐竜も、作り直したカードの知らせで貼り直す）
+async function evBlankToggle(id){
+    const rec=EV.recs.get(id); if(!rec || rec.demo) return;
+    rec.blank=!evBlank(rec);
+    try{ await evTx("cards","readwrite",s=>{ if(EV.recs.get(id)===rec) s.put(rec); }); }catch(e){ console.warn("[イベントカード] 白い所", e); }
+    evUpdateFig(id); evEnqueue(id, true);
+    evStatus(evLabel(rec)+" の白い所を「"+(rec.blank? "元の模様" : "ぬりえどおり")+"」にして、作り直しています…");
+}
+// 白い所の一括変更：すべてのカード（見本も）をその値にして、これから作るカードの値にもする（値が変わったカードだけ作り直す）
+async function evBlankAll(on){
+    const ids=[...EV.recs.values()].filter(r=>!r.demo && evBlank(r)!==on).map(r=>r.id).sort((a,b)=>b-a);
+    if(ids.length && !confirm("カード "+ids.length+" 枚の白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にして作り直します。\nこれから作るカードも「"+(on? "元の模様" : "ぬりえどおり")+"」になります。")) return;
+    N().setBlankOrig(on); if(EV.ui && EV.ui.putBlank) EV.ui.putBlank();
+    if(!ids.length){ evStatus("白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にしました（これから作るカードも）"); return; }
+    const recs=ids.map(id=>EV.recs.get(id)); recs.forEach(r=>{ r.blank=on; });
+    try{ await evTx("cards","readwrite",s=>{ recs.forEach(r=>{ if(EV.recs.get(r.id)===r) s.put(r); }); }); }catch(e){ console.warn("[イベントカード] 白い所", e); }
+    ids.forEach(id=>evUpdateFig(id));
+    const B=EV.bulk || (EV.bulk={ total:0, done:0, ids:new Set() });
+    ids.forEach(id=>{ if(!B.ids.has(id)){ B.ids.add(id); B.total++; } if(!EV.queue.includes(id)) EV.queue.push(id); evSetBusy(id,true); });
+    if(EV.ui) EV.ui.redoAll.textContent="作り直しを止める";
+    evWork();
 }
 function evSetBusy(id, on){ const f=EV.figs.get(id); if(f) f.toggleAttribute("data-busy", !!on); }
 
@@ -16327,7 +16439,7 @@ function evPreview(on){
 async function evCreate(key, out, name){
     const U=EV.ui;
     const id=evNextSeq(), zz=await N().zip(out.rgba);
-    const rec={ id, name, key, sheet:N().sheetName(key), createdAt:Date.now(), d:null, card:null, composed:0, rendered:0, dl:{ card:0, margin:0 }, err:null };
+    const rec={ id, name, key, sheet:N().sheetName(key), createdAt:Date.now(), blank:!!N().blankOrig(), d:null, card:null, composed:0, rendered:0, dl:{ card:0, margin:0 }, err:null };   // blank＝白い所（「これから」の値）
     await evTx(["cards","paint"],"readwrite",(c,p)=>{ p.put({ id, key, keysSha1:out.keysSha1, z:zz.z, rgba:zz.d, cs:out.cs }); c.put(rec); });
     EV.recs.set(id, rec);
     if(tcNameClip(tcNameClean(U.input.value))===name){ U.input.value=""; U.input.dispatchEvent(new Event("input")); }   // 次の人へ（読み取り中に次の名前を入れ始めていたら消さない）
@@ -16395,7 +16507,7 @@ async function evRender(id){
     } else {
         const p=await evTx("paint","readonly",s=>s.get(id)); if(!p || !p.rgba) throw new Error("模様のデータがないため作れません");
         const rgba=await N().unzip(p.rgba, p.z);
-        await N().withPaint(p.key, { rgba, cs:p.cs }, p.keysSha1, async()=>{ d=tcData("dino", p.key); url=await tcRenderArt("dino", p.key, null); });   // ステータス・スコア・エフェクトは、この用紙の模様で決まる
+        await N().withPaint(p.key, { rgba, cs:p.cs }, p.keysSha1, async()=>{ d=tcData("dino", p.key); url=await tcRenderArt("dino", p.key, null); }, evBlank(rec));   // ステータス・スコア・エフェクトは、この用紙の模様で決まる（白い所はカードごとの値）
     }
     if(EV.recs.get(id)!==rec) return;   // 作っている間に削除された（見本の塗り直しで入れ替わった）
     d=JSON.parse(JSON.stringify(d)); delete d.player;
@@ -16707,7 +16819,7 @@ function evMakeSamples(opt){
                 const now=EV.recs.get(id);   // 塗っている間に削除された前の版の見本は作らない
                 if(cur && now!==cur) continue;
                 const same=!!(cur && cur.key===S.key);   // 同じ恐竜の塗り直し：付けた名前はそのまま
-                const rec={ id, sample:n, sig:evSampleSig(S), name:same? cur.name : TC_NAME.def+"見本"+n, key:S.key, sheet:N().sheetName(S.key), createdAt:Date.now(), d:null, card:null, composed:0, rendered:0, dl:{ card:0, margin:0 }, err:null };
+                const rec={ id, sample:n, sig:evSampleSig(S), name:same? cur.name : TC_NAME.def+"見本"+n, key:S.key, sheet:N().sheetName(S.key), createdAt:Date.now(), blank:same? evBlank(cur) : !!N().blankOrig(), d:null, card:null, composed:0, rendered:0, dl:{ card:0, margin:0 }, err:null };   // 白い所：同じ恐竜の塗り直しは そのまま
                 if(cur){   // 前の版の見本：作っている途中の画像はやめて、ランキングからいったん外す（歩く恐竜も入れ替える）
                     const qi=EV.queue.indexOf(id); if(qi>=0) EV.queue.splice(qi,1); const ci=EV.cq.indexOf(id); if(ci>=0) EV.cq.splice(ci,1);
                     evNotify("delete", id); }
@@ -17113,9 +17225,6 @@ function rkOpen(){
     root.appendChild(el("div","rk-dim"));   // まん中に恐竜が出ている間、カードの所を少し暗くする
     document.body.appendChild(root);
     Object.assign(RK,{ root, scroll:sc, grid });
-    window.addEventListener("storage", e=>{   // カード作成画面で「白い所」の見え方を変えた：これから出てくる歩く恐竜から合わせる
-        if(!N() || e.key!==N().blankKey) return;
-        if(N().blankSync()){ RW.cache.forEach(w=>rwDispose(w)); RW.cache.clear(); } });
     if(!RK_PREVIEW){   // 別ウィンドウ（サブ画面）：クリックで全画面にする（はじめの数秒だけ案内を出す）
         const hint=el("div","rk-hint","クリックすると全画面になります（もう一度クリックで戻ります）"); root.appendChild(hint);
         setTimeout(()=>{ hint.style.opacity="0"; }, 7000);
@@ -17129,7 +17238,7 @@ function rkOpen(){
     // カード作成の画面からの連絡
     if(window.BroadcastChannel){ const bc=new BroadcastChannel(EV_BC_NAME);
         bc.onmessage=(ev)=>{ const m=ev.data||{};
-            if(m.type==="card") rkOne(m.id, !!m.isNew).then(()=>rwSync(m.isNew? m.id : null)).catch(()=>{});
+            if(m.type==="card") rkOne(m.id, !!m.isNew).then(()=>{ rwSync(m.isNew? m.id : null); rwRemodel(m.id); }).catch(()=>{});
             else if(m.type==="delete"){ rkDrop(m.id); rkLayout(); rwForget(m.id); rwSync(null); rkQrHide(m.id); }
             else if(m.type==="qrConf") rkQrDraw();   // 受け取りQRの設定が変わった
             else if(m.type==="replay") rkReplay(m.id);   // 読み込み再現
@@ -17357,9 +17466,27 @@ function rwForget(id){
     const c=RW.cache.get(id); if(c){ RW.cache.delete(id); rwDispose(c); }
     RW.list.forEach(w=>{ if(w.id===id) w.sample=false; });   // 歩いている途中：出ていったら捨てる
 }
+function rwBlank(rec){ return rec.demo? null : evBlank(rec); }   // 歩く恐竜の白い所（ぬりえなしのカードは関係ない）
+// カードの白い所が変わった：歩いている恐竜の形と模様だけ作り直す（いる場所・動きはそのまま）
+function rwRemodel(id){
+    RW.busy=RW.busy.then(async()=>{
+        const rec=RK.recs.get(id); if(!rec) return;
+        const c=RW.cache.get(id); if(c && c.blank!==rwBlank(rec)){ RW.cache.delete(id); rwDispose(c); }
+        for(const w of RW.list.slice()){
+            if(w.id!==id || w.state==="leave" || w.blank===rwBlank(rec)) continue;
+            const n=await rwBuild(rec); if(!n) continue;
+            if(!RW.list.includes(w) || w.state==="leave"){ rwDispose(n); continue; }   // 作っている間に出ていった
+            n.turn.remove(n.base); n.base.position.copy(w.base.position); n.base.rotation.copy(w.base.rotation); n.base.visible=w.base.visible;
+            w.turn.remove(w.base); if(w.store) N().disposeStore(w.store); (w.slim||[]).forEach(g=>g.dispose());
+            w.turn.add(n.base);
+            Object.assign(w, { base:n.base, cont:n.cont, model:n.model, store:n.store, slim:n.slim, blank:n.blank, h0:n.h0, u:n.u });
+            rwFit(w);
+        }
+    }).catch(e=>console.warn("[ランキング] 歩く恐竜の白い所", e));
+}
 // 恐竜の模型を作る（カードと同じ作り方）＋カードの模様を貼る
 async function rwBuild(rec){
-    if(RW.cache.has(rec.id)){ const w=RW.cache.get(rec.id); RW.cache.delete(rec.id); return w; }   // 前に出ていた見本：作り直さない
+    if(RW.cache.has(rec.id)){ const w=RW.cache.get(rec.id); RW.cache.delete(rec.id); if(w.blank===rwBlank(rec)) return w; rwDispose(w); }   // 前に出ていた見本：作り直さない（白い所を変えた時は作り直す）
     const i=DINOS.findIndex(d=>d.key===rec.key); if(i<0) return null;
     let p=null; try{ p=await evTx("paint","readonly",s=>s.get(rec.id)); }catch(_){ }
     const rgba=(p && p.rgba)? await N().unzip(p.rgba, p.z) : null;
@@ -17369,7 +17496,8 @@ async function rwBuild(rec){
     else { const ps=dinoSmooth; try{ dinoSmooth=true; cont=makeDigDino(DINOS[i]); } finally { dinoSmooth=ps; } }
     const m=cont.userData.model||cont; let store=null;
     await rwYield();
-    try{ if(rgba) store=await N().paintModelAsync(p.key, { rgba, cs:p.cs }, p.keysSha1, m, rwSlicer()); }   // 模様は少しずつ貼る
+    const blank=rwBlank(rec);
+    try{ if(rgba) store=await N().paintModelAsync(p.key, { rgba, cs:p.cs }, p.keysSha1, m, rwSlicer(), blank); }   // 模様は少しずつ貼る（白い所はカードごとの値）
     catch(e){ console.warn("[ランキング] 歩く恐竜の模様", rec.key, e); }
     await rwYield();
     cont.updateMatrixWorld(true);
@@ -17377,7 +17505,7 @@ async function rwBuild(rec){
     const base=new THREE.Group(); cont.position.set(-c.x, -bb.min.y, -c.z); base.add(cont);   // 足もとの真ん中を原点に
     const turn=new THREE.Group(); turn.add(base);
     const hold=new THREE.Group(); hold.add(turn);
-    const w={ hold, turn, base, cont, model:m, store, h0:bb.max.y-bb.min.y, u:cont.userData, sample:!!(rec.sample || rec.demo) };   // sample：また出てくるので、出ていっても取っておく（見本・恐竜カード）
+    const w={ hold, turn, base, cont, model:m, store, blank, h0:bb.max.y-bb.min.y, u:cont.userData, sample:!!(rec.sample || rec.demo) };   // sample：また出てくるので、出ていっても取っておく（見本・恐竜カード）
     try{ await rwSlim(w, rwSlicer()); }catch(e){ console.warn("[ランキング] 軽い形", e); }   // 同じ色の面をまとめて軽くする（見た目は同じ）
     rwFit(w); await rwYield(); rwWarm(w);
     return w;
@@ -17640,7 +17768,7 @@ function gcPaintSig(key){   // ぬりえの模様の目印
         return s; }catch(_){ return "?"; }
 }
 function gcSigs(kind, key, label, R){
-    const bo=!R.plain && window.NURI_EVENT && window.NURI_EVENT.blankOn();   // 白い所を元の模様にしている時は、別のカード（ぬりえどおりのカードと取り違えない）
+    const NE=window.NURI_EVENT, bo=!R.plain && kind==="dino" && NE && (R.smp? NE.blankSmp(key) : NE.blankOwn(key));   // 白い所を元の模様にしている時は、別のカード（ぬりえどおりのカードと取り違えない）
     const d=tcData(kind, key, R.plain, label), base=JSON.stringify(Object.assign({ a:GC_APP, d, p:R.plain? "" : gcPaintSig(key) }, bo? { b:1 } : {}));
     return { d, art:hash64(base), card:hash64(base+"|"+label) };
 }
@@ -17661,7 +17789,7 @@ function gcRef(kind, key, paint){   // 実際に使うカードの種類（ぬ�
 }
 function gcWithPaint(R, key, fn){   // 見本の模様のカード：その模様を一時的に「いまの模様」にして作る（ゲームの恐竜には貼らない）
     if(R && R.smp){ const p=window.__digSamplePaint ? window.__digSamplePaint(key) : null;
-        if(p && window.NURI_EVENT) return window.NURI_EVENT.withPaint(key, { rgba:p.rgba, cs:p.cs }, p.keysSha1, fn); }
+        if(p && window.NURI_EVENT) return window.NURI_EVENT.withPaint(key, { rgba:p.rgba, cs:p.cs }, p.keysSha1, fn, window.NURI_EVENT.blankSmp(key)); }
     return fn();
 }
 function gcCk(kind, key, label, paint){ return gcRef(kind, key, paint).id+"|"+label; }
