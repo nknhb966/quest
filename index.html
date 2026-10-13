@@ -407,16 +407,16 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 .tcard .tc-rb{ position:relative; display:inline-block; }
 .tcard .tc-rt{ position:absolute; left:0; right:0; bottom:calc(100% + var(--u)*1); display:flex; justify-content:center;
     font-size:50%; line-height:1; letter-spacing:0; white-space:nowrap; }
-/* 基本情報（分類・大きさ・時代・地域）＝ふりがな付き。文字の中心 600（ふりがなは画像のわくの宝石にかからない高さ） */
-.tcard .tc-info{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*(600 - var(--tc-info,15)/2)); height:calc(var(--u)*var(--tc-info,15)); margin:0;
+/* 基本情報（分類・大きさ・時代・地域）＝ふりがな付き。文字の中心 601.5（ふりがなは画像のわくの宝石にかからない高さ） */
+.tcard .tc-info{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*(601.5 - var(--tc-info,15)/2)); height:calc(var(--u)*var(--tc-info,15)); margin:0;
     display:flex; flex-wrap:nowrap; align-items:center; justify-content:center; column-gap:calc(var(--u)*14);
     font-size:calc(var(--u)*var(--tc-info,15)); font-weight:700; color:#cdbf94; line-height:1; letter-spacing:calc(var(--u)*.5); }   /* 文字の大きさ＝全カード共通（tcTextSize） */
 .tcard .tc-info > div{ white-space:nowrap; }
 .tcard .tc-rule{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); height:calc(var(--u)*3); background:#554727; }
-.tcard .tc-rule.r1{ top:calc(var(--u)*610); } .tcard .tc-rule.r2{ top:calc(var(--u)*697); }
+.tcard .tc-rule.r1{ top:calc(var(--u)*611); } .tcard .tc-rule.r2{ top:calc(var(--u)*697); }
 /* ステータス（ちから・はっけん・かしこさ）＝★☆の5段階 */
-.tcard .tc-stats{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*615); margin:0; padding:0; list-style:none;
-    display:grid; grid-template-columns:calc(var(--u)*156) auto; justify-content:center; grid-auto-rows:calc(var(--u)*26); align-items:center; }
+.tcard .tc-stats{ position:absolute; left:calc(var(--u)*26); right:calc(var(--u)*26); top:calc(var(--u)*616); margin:0; padding:0; list-style:none;
+    display:grid; grid-template-columns:calc(var(--u)*156) auto; justify-content:center; grid-auto-rows:calc(var(--u)*25.67); align-items:center; }
 .tcard .tc-stats li{ display:contents; }
 .tcard .tc-sl{ font-size:calc(var(--u)*21); font-weight:800; letter-spacing:calc(var(--u)*1); line-height:1; white-space:nowrap; }
 .tcard .tc-stars{ font-size:calc(var(--u)*24); line-height:1; letter-spacing:calc(var(--u)*.5); white-space:nowrap; color:#fdf3d5; }
@@ -4107,26 +4107,27 @@ const YEAR_CONFIG = {
     // group=分類 / size=大きさ（数字・単位m）/ diet=食性（カードには出さない）/ era=時代 / region=地域 / feature=特徴（犬は feature2＝特徴の2行目も）
     //   size の項目名はカードで「全長」（プテラノドン＝「翼開長」、しばいぬ＝「背の高さ」）。「約12m」のように出る（1m未満は「約40cm」）
     // ★空文字 "" のままなら、カードには「未設定」と表示される。あとから文字を入れるだけで反映される。
-    // ★ふりがなは {漢字|よみ} と書く（例：{肉食|にくしょく}）。カードでは漢字の上に小さく出る。漢字は小学校で習うものまで
+    // ★ふりがなは {漢字|よみ} と書く（例：{肉食|にくしょく}）。カードでは漢字の上に小さく出る。漢字は小学校で習うものまで（恐竜・翼竜は例外）
+    //   分類〜地域の行のカタカナは、カードでは半角（ｼﾞｭﾗ・ｱﾒﾘｶ）で出る（ここには全角で書く）
     //   名称・ちから・はっけん・かしこさ・スペシャルは、上の companions（恐竜・しばいぬ）と DOG_BREEDS（犬種）の値をそのまま使う（ここには書かない）。
     cardInfo: {
         // 恐竜（No.1〜8）
         trex:        { group:"{獣脚類|じゅうきゃくるい}", size:12,   diet:"{肉食|にくしょく}",       era:"{白亜紀後期|はくあきこうき}", region:"{北|きた}アメリカ",
-                       feature:"{大|おお}きな{頭|あたま}と{強|つよ}いあごをもつ、{肉食|にくしょく}きょうりゅうの{王|おう}さま。" },               // ティラノサウルス
+                       feature:"{大|おお}きな{頭|あたま}と{強|つよ}いあごをもつ、{肉食|にくしょく}{恐竜|きょうりゅう}の{王|おう}さま。" },               // ティラノサウルス
         fukuiraptor: { group:"{獣脚類|じゅうきゃくるい}", size:4.2,  diet:"{肉食|にくしょく}",       era:"{白亜紀前期|はくあきぜんき}", region:"{福井県|ふくいけん}",
                        feature:"{福井県|ふくいけん}で{見|み}つかった。{大|おお}きな{手|て}とするどいつめをもつ。" },                             // フクイラプトル
         fukuititan:  { group:"{竜脚類|りゅうきゃくるい}", size:10,   diet:"{植物食|しょくぶつしょく}", era:"{白亜紀前期|はくあきぜんき}", region:"{福井県|ふくいけん}",
-                       feature:"{福井県|ふくいけん}で{見|み}つかった、{首|くび}としっぽが{長|なが}いきょうりゅう。" },                         // フクイティタン
+                       feature:"{福井県|ふくいけん}で{見|み}つかった、{首|くび}としっぽが{長|なが}い{恐竜|きょうりゅう}。" },                         // フクイティタン
         fukuisaurus: { group:"{鳥脚類|ちょうきゃくるい}", size:4.7,  diet:"{植物食|しょくぶつしょく}", era:"{白亜紀前期|はくあきぜんき}", region:"{福井県|ふくいけん}",
                        feature:"{福井県|ふくいけん}で{見|み}つかった。くちばしのような{口|くち}で{草|くさ}を{食|た}べた。" },                     // フクイサウルス
         brachi:      { group:"{竜脚類|りゅうきゃくるい}", size:25,   diet:"{植物食|しょくぶつしょく}", era:"ジュラ{紀後期|きこうき}",       region:"{北|きた}アメリカ",
-                       feature:"{長|なが}い{首|くび}で、{高|たか}い{木|き}の{葉|は}を{食|た}べた{大|おお}きなきょうりゅう。" },                   // ブラキオサウルス
+                       feature:"{長|なが}い{首|くび}で、{高|たか}い{木|き}の{葉|は}を{食|た}べた{大|おお}きな{恐竜|きょうりゅう}。" },                   // ブラキオサウルス
         stego:       { group:"{剣竜類|けんりゅうるい}", size:7,      diet:"{植物食|しょくぶつしょく}", era:"ジュラ{紀後期|きこうき}",       region:"{北|きた}アメリカ",
                        feature:"{背中|せなか}にならぶ{大|おお}きな{板|いた}と、しっぽのとげが{目印|めじるし}。" },                               // ステゴサウルス
         tri:         { group:"{角竜類|つのりゅうるい}", size:9,      diet:"{植物食|しょくぶつしょく}", era:"{白亜紀後期|はくあきこうき}", region:"{北|きた}アメリカ",
-                       feature:"3{本|ぼん}の{角|つの}と、{大|おお}きなフリルが{目印|めじるし}のきょうりゅう。" },                                 // トリケラトプス
+                       feature:"3{本|ぼん}の{角|つの}と、{大|おお}きなフリルが{目印|めじるし}の{恐竜|きょうりゅう}。" },                                 // トリケラトプス
         ptera:       { group:"{翼竜類|よくりゅうるい}", size:7,      diet:"{魚食|ぎょしょく}",         era:"{白亜紀後期|はくあきこうき}", region:"{北|きた}アメリカ",
-                       feature:"{大|おお}きなつばさで{空|そら}を{飛|と}ぶ、よくりゅう（きょうりゅうではない）。" },                              // プテラノドン
+                       feature:"{大|おお}きなつばさで{空|そら}を{飛|と}ぶ、{翼竜|よくりゅう}（{恐竜|きょうりゅう}ではない）。" },                              // プテラノドン
         // しばいぬ・犬種（No.1〜8）… 分類・大きさ・時代・地域は表示しない。特徴は2行（feature＝1行目、feature2＝2行目）
         // しばいぬだけは、恐竜を発掘する時（恐竜発掘カード）は dino の内容で、恐竜と同じ形（分類・大きさ・時代・地域＋特徴1行）のカードにする
         dog:         { feature:"{日本|にほん}{生|う}まれの{中|ちゅう}くらいの{犬|いぬ}。{元気|げんき}で{用心|ようじん}ぶかい。",
@@ -14545,8 +14546,13 @@ function tcScore(f, cs){
 function tcStars(v){ const n=Math.max(0,Math.min(5,Math.round(Number(v)||0))); return "★".repeat(n)+"☆".repeat(5-n); }
 function tcVal(v){ return (v==null || String(v).trim()==="")? TC_UNSET : String(v); }
 function tcSize(v){ const n=Number(v); if(v==null || String(v).trim()==="" || !(n>0)) return TC_UNSET; return "{約|やく}"+(n<1? Math.round(n*100)+"cm" : n+"m"); }   // 大きさ（m）→「約12m」「約4.2m」（1m未満は「約40cm」）
-function tcInfoItems(d){   // 分類〜地域の4つ（「項目名: 値」）
-    return TC_INFO.map(([f,lab])=> f==="size"? (TC_SIZE_LABEL[d.key]||lab)+": "+tcSize(d.info.size) : lab+": "+tcVal(d.info[f])); }
+function tcInfoItems(d){   // 分類〜地域の4つ（「項目名: 値」）。カタカナは半角にする（行を短くして文字を大きくするため）
+    return TC_INFO.map(([f,lab])=> tcHanKana(f==="size"? (TC_SIZE_LABEL[d.key]||lab)+": "+tcSize(d.info.size) : lab+": "+tcVal(d.info[f]))); }
+const TC_HAN=(()=>{ const z="ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロワヲンヴー・",
+    h=["ｧ","ｱ","ｨ","ｲ","ｩ","ｳ","ｪ","ｴ","ｫ","ｵ","ｶ","ｶﾞ","ｷ","ｷﾞ","ｸ","ｸﾞ","ｹ","ｹﾞ","ｺ","ｺﾞ","ｻ","ｻﾞ","ｼ","ｼﾞ","ｽ","ｽﾞ","ｾ","ｾﾞ","ｿ","ｿﾞ","ﾀ","ﾀﾞ","ﾁ","ﾁﾞ","ｯ","ﾂ","ﾂﾞ","ﾃ","ﾃﾞ","ﾄ","ﾄﾞ","ﾅ","ﾆ","ﾇ","ﾈ","ﾉ",
+       "ﾊ","ﾊﾞ","ﾊﾟ","ﾋ","ﾋﾞ","ﾋﾟ","ﾌ","ﾌﾞ","ﾌﾟ","ﾍ","ﾍﾞ","ﾍﾟ","ﾎ","ﾎﾞ","ﾎﾟ","ﾏ","ﾐ","ﾑ","ﾒ","ﾓ","ｬ","ﾔ","ｭ","ﾕ","ｮ","ﾖ","ﾗ","ﾘ","ﾙ","ﾚ","ﾛ","ﾜ","ｦ","ﾝ","ｳﾞ","ｰ","･"], m={};
+    [...z].forEach((c,i)=>{ m[c]=h[i]; }); return m; })();
+function tcHanKana(s){ return String(s).replace(/[ァ-ヴー・]/g, c=>TC_HAN[c]||c); }   // 全角カタカナ → 半角ｶﾀｶﾅ
 // ふりがな：文字の中の {漢字|よみ} を [{t:"漢字", r:"よみ"}, {t:"ほかの文字"}…] に分ける
 function tcRubySegs(s){ const a=[]; String(s).replace(/\{([^|{}]+)\|([^{}]+)\}|[^{]+|\{/g, (m,b,r)=>{ a.push(b? { t:b, r } : { t:m }); return m; }); return a; }
 // ふりがなの並べ方（画面のカード・画像のカードで同じ）。ふりがなは文字の半分の大きさで、漢字の真上（真ん中ぞろえ）に書く。
@@ -14572,7 +14578,7 @@ function tcRubyMeasure(s, fw, px, ls, edge){   // edge＝行のはしで はみ�
 // HTML に書く（漢字＝.tc-rb、ふりがな＝その上の .tc-rt。あけ方は tcRubyMeasure と同じ）
 // 分類〜地域の行・特徴の文字の大きさ（全カード共通）＝ YEAR_CONFIG.cardInfo の中で いちばん長い行が1行に収まる大きさ（ふりがなは その半分）
 //   info＝分類〜地域の行（はば 501・項目の間 14）／feat＝特徴（はば 493）／pitch＝犬の形の特徴2行の間（文字の中心どうし）
-const TC_TXT={ infoMax:16, featMax:17, infoGap:14 };   // 大きさの上限（上下の すき間で決まる）
+const TC_TXT={ infoMax:17, featMax:19, infoGap:14 };   // 大きさの上限（上下の すき間で決まる：分類〜地域＝画像のわくの宝石と線の間／特徴＝スペシャルとカードの下の間）
 let _tcTxt=null;
 function tcTextSize(){
     if(_tcTxt) return _tcTxt;
@@ -15557,12 +15563,12 @@ async function tcCardCanvas(d, imgUrl, scale){
     if(!dog){
         const ms=tcInfoItems(d).map(t=>tcRubyMeasure(t, "700", TX.info, 0.5, TX.info/3)), gap=TC_TXT.infoGap;   // 半角のコロン＋空白（4つを1行に収める）。項目のはしのふりがなは 間に 文字の1/3 まではみ出してよい
         const tot=ms.reduce((a,m)=>a+m.w,0)+gap*(ms.length-1), kk=tot>CW-52? (CW-52)/tot : 1;
-        ctx.save(); ctx.translate(cx,600); ctx.scale(kk,1); let x=-tot/2;   // 文字の中心 600（ふりがなは その上・画像のわくの宝石にかからない高さ）
+        ctx.save(); ctx.translate(cx,601.5); ctx.scale(kk,1); let x=-tot/2;   // 文字の中心 601.5（ふりがなは その上・画像のわくの宝石にかからない高さ）
         ms.forEach(m=>{ tcRubyDraw(ctx, m, x, 0, "700", TX.info, 0.5, "#cdbf94"); x+=m.w+gap; }); ctx.restore();
-        ctx.fillStyle="#554727"; ctx.fillRect(26,610,CW-52,3);
+        ctx.fillStyle="#554727"; ctx.fillRect(26,611,CW-52,3);
     }
     // ステータス（★☆）
-    const sTop=dog? 586 : 615, sRow=dog? 26.5 : 26;   // 恐竜の形は ふりがなの分 少し詰める
+    const sTop=dog? 586 : 616, sRow=dog? 26.5 : 25.67;   // 恐竜の形は ふりがな付きの行の分 少し詰める
     tcSetFont(ctx,"400",24,0.5); const starW=ctx.measureText("★★★★★").width;
     const gx=cx-(156+starW)/2;
     TC_STAT.forEach(([k2,lab],i)=>{ const cy=sTop+sRow*i+sRow/2;
