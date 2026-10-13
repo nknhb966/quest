@@ -14470,8 +14470,8 @@ function tcNameClip(s){ let u=0, out=""; for(const ch of String(s||"")){ const w
 function tcPlayerText(v){ const t=tcNameClean(v); return t || TC_NAME.def; }
 const TC_S=1024;   // メイン画像の大きさ（px・正方形）
 const TC_VIEW={    // カメラ。yaw＝横の向き（+で頭が左を向く）。box＝画像の中で体が収まる範囲（左,上,右,下の割合）
-    dino:{ fov:42, yaw:35, low:true,  eye:0.10, tilt:16, box:[0.07,0.09,0.93,0.76] },   // 見上げる：地面すれすれの低い目線から上向き
-    dog: { fov:34, yaw:35, low:false, pitch:33,          box:[0.10,0.11,0.90,0.76] }    // 見下ろす：ななめ上から
+    dino:{ fov:42, yaw:35, low:true,  eye:0.10, tilt:16, box:[0.04,0.06,0.96,0.78] },   // 見上げる：地面すれすれの低い目線から上向き
+    dog: { fov:34, yaw:35, low:false, pitch:33,          box:[0.07,0.08,0.93,0.78] }    // 見下ろす：ななめ上から
 };
 
 /* ---- カードのスコア（右上に表示）----
@@ -14730,7 +14730,8 @@ function tcBuildModel(kind, key, plain){
 // 足踏み途中のポーズ（ゲームの歩き方と同じ脚の振り方で、いちばん開いたところ）
 function tcPose(m){
     const u=m.userData||{};
-    if(u.wings) u.wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*0.52; });   // プテラノドン：脚は動かさず、はねを上げたところ
+    if(u.wings){ u.wings.forEach(w=>{ if(w) w.rotation.z=(w.userData.sign||1)*0.52; });   // プテラノドン：はねを上げ、脚は後ろへたたむ（ランキング画面で縁を飛ぶ時と同じ）
+        (u.legs||[]).forEach(l=>{ if(l) l.rotation.x=0.5; }); }
     else (u.legs||[]).forEach(l=>{ if(l) l.rotation.x=Math.sin(Math.PI/2+(l.userData.phase||0))*0.34; });
     if(u.tail) u.tail.rotation.y=0.22;
 }
@@ -15243,7 +15244,7 @@ const TC_FX={
             for(let i=0;i<5;i++){ const x=rnd()<0.5? S*(0.04+rnd()*0.14) : S*(0.82+rnd()*0.14), y=S*(0.15+rnd()*0.65), cs=S*(0.02+rnd()*0.02), rot=rnd();
                 if(!tcOnBody(I,x,y,cs*0.6)) tcCube(ctx,x,y,cs,[255,150,50],1,rot,"rgba(255,140,30,.95)"); } } },
     // 疾風（恐竜）：体のまわりをうずまく強い風＋飛ばされる葉・小石＋足もとのつむじ風
-    gale:{ glow:["rgba(120,255,190,.95)",38], vig:.5, rim:[0x9cffd0,1.8], ground:false,
+    gale:{ glow:["rgba(130,255,200,1)",48,2], vig:.5, rim:[0x9cffd0,1.8], ground:false,
         back(ctx,I,rnd){ const S=I.S, {mx,my}=I;
             let g=ctx.createRadialGradient(mx,my,0,mx,my,S*0.9);
             g.addColorStop(0,"#eafff4"); g.addColorStop(0.12,"#86ecc0"); g.addColorStop(0.33,"#1f9a72"); g.addColorStop(0.68,"#0b4436"); g.addColorStop(1,"#02120d");
@@ -15253,9 +15254,11 @@ const TC_FX={
                 const lg=ctx.createLinearGradient(x,0,x+L,0); lg.addColorStop(0,"rgba(200,255,230,0)"); lg.addColorStop(0.7,"rgba(200,255,230,"+a+")"); lg.addColorStop(1,"rgba(255,255,255,0)");
                 ctx.fillStyle=lg; ctx.fillRect(x, y, L, Math.max(1,S*(0.001+rnd()*0.003))); }
             for(let i=0;i<30;i++){ const rx=S*(0.24+rnd()*0.36); tcGust(ctx, mx, my+(rnd()-0.4)*S*0.25, rx, rx*(0.35+rnd()*0.25), rnd()*Math.PI*2, 0.7+rnd()*1.3, S*(0.006+rnd()*0.022), 0.35+rnd()*0.55, (rnd()-0.5)*0.5); }
+            { const a0=rnd()*Math.PI*2;   // 太い風を3本（向きをずらして体のまわりに）
+              [0.3,0.4,0.5].forEach((k,i)=>{ const rx=S*k; tcGust(ctx, mx, my+(i-1)*S*0.06, rx, rx*(0.4+rnd()*0.12), a0+i*Math.PI*2/3, 1.5+rnd()*0.5, S*(0.05+rnd()*0.015), 0.7+rnd()*0.2, (rnd()-0.5)*0.35); }); }
             tcWhirl(ctx, I, rnd, 1);
-            tcPixels(ctx,I,rnd,260,[[210,255,235],[160,240,200],[255,255,255]],0.35,0.95,2,5);
-            for(let i=0;i<12;i++) tcGlint(ctx, rnd()*S, rnd()*S*0.85, S*(0.012+rnd()*0.02), 0.5+rnd()*0.5, "#ffffff", "rgba(140,255,200,1)");
+            tcPixels(ctx,I,rnd,520,[[210,255,235],[160,240,200],[255,255,255]],0.35,0.95,2,5);
+            for(let i=0;i<24;i++) tcGlint(ctx, rnd()*S, rnd()*S*0.85, S*(0.012+rnd()*0.02), 0.5+rnd()*0.5, "#ffffff", "rgba(140,255,200,1)");
             ctx.globalCompositeOperation="source-over";
             for(let i=0;i<34;i++){ const a=rnd()*Math.PI*2, r=S*(0.26+rnd()*0.42); tcLeaf(ctx, mx+Math.cos(a)*r, my+Math.sin(a)*r*0.8, S*(0.014+rnd()*0.024), rnd()*Math.PI*2, rnd); }
             for(let i=0;i<14;i++){ const a=rnd()*Math.PI*2, r=S*(0.3+rnd()*0.35); tcCube(ctx, mx+Math.cos(a)*r, my+Math.sin(a)*r*0.8, S*(0.012+rnd()*0.018), [150,140,120], 0.95, rnd(), "rgba(140,255,200,.6)"); } },
@@ -15264,7 +15267,8 @@ const TC_FX={
             for(let i=0;i<10;i++){ const left=rnd()<0.5, cx=left? S*(0.02+rnd()*0.16) : S*(0.82+rnd()*0.16), cy=S*(0.2+rnd()*0.65), rx=S*(0.06+rnd()*0.08);
                 if(!tcOnBody(I,cx,cy,rx)) tcGust(ctx, cx, cy, rx, rx*0.4, rnd()*Math.PI*2, 1+rnd()*1.2, S*(0.008+rnd()*0.012), 0.6+rnd()*0.35, 0); }
             tcWhirl(ctx, I, rnd, 0.6);
-            tcFrontGlints(ctx,I,rnd,5,0.01,0.022,0.7,"#ffffff","rgba(140,255,200,1)");
+            tcFrontGlints(ctx,I,rnd,10,0.01,0.022,0.7,"#ffffff","rgba(140,255,200,1)");
+            tcPixels(ctx,I,rnd,80,[[220,255,240]],0.4,0.9,2,4);
             ctx.globalCompositeOperation="source-over";
             for(let i=0;i<10;i++){ const x=rnd()<0.5? S*(0.03+rnd()*0.16) : S*(0.81+rnd()*0.16), y=S*(0.12+rnd()*0.75), s=S*(0.02+rnd()*0.025);
                 if(!tcOnBody(I,x,y,s)) tcLeaf(ctx, x, y, s, rnd()*Math.PI*2, rnd); } } },
@@ -15323,8 +15327,7 @@ const TC_FX={
             const g=ctx.createRadialGradient(I.mx,I.my,0,I.mx,I.my,S*0.42); g.addColorStop(0,"rgba(200,235,255,.4)"); g.addColorStop(1,"rgba(200,235,255,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
             tcPixels(ctx,I,rnd,400,[[225,245,255],[170,225,255],[255,255,255]],0.35,0.9,2,6);
             for(let i=0;i<24;i++) tcGlint(ctx, rnd()*S, rnd()*S*0.85, S*(0.01+rnd()*0.018), 0.5+rnd()*0.5, "#ffffff", "rgba(150,220,255,1)");
-            ctx.globalCompositeOperation="source-over";
-            for(let i=0;i<8;i++){ const a=rnd()*Math.PI*2, r=S*(0.3+rnd()*0.35); tcIceCube(ctx, I.mx+Math.cos(a)*r, I.my+Math.sin(a)*r*0.9, S*(0.018+rnd()*0.02), 0.55, (rnd()-0.5)*0.5); } },
+            ctx.globalCompositeOperation="source-over"; },
         front(ctx,I,rnd){ const S=I.S; ctx.globalCompositeOperation="lighter";
             tcPixels(ctx,I,rnd,80,[[200,240,255]],0.4,0.9,2,4,{x:I.mx,y:I.my,r0:S*0.05,r1:S*0.35,k:1});
             tcFrontGlints(ctx,I,rnd,8,0.01,0.022,0.7,"#ffffff","rgba(150,220,255,1)");
@@ -15412,7 +15415,7 @@ async function tcRenderArtNow(kind, key, fxName, plain){
     // 足もとの影（地面がある景色のときだけ）
     if(FX.ground && !I.skyOnly){ const sh=tcGroundRing(cam, ctr, bb.min.y, Math.max(size.x,size.z)*(V.low? 0.36 : 0.3)); ctx.save(); tcPath(ctx, sh); ctx.fillStyle=V.low? "rgba(0,0,0,.38)" : "rgba(0,0,0,.2)"; ctx.shadowColor="rgba(0,0,0,.5)"; ctx.shadowBlur=(V.low? 18 : 30)*S/1024; ctx.fill(); ctx.restore(); }
     // 恐竜・犬（ふちの光）
-    if(FX.glow){ ctx.save(); ctx.shadowColor=FX.glow[0]; ctx.shadowBlur=FX.glow[1]*S/1024; ctx.drawImage(src,0,0,S,S); ctx.restore(); }
+    if(FX.glow){ ctx.save(); ctx.shadowColor=FX.glow[0]; ctx.shadowBlur=FX.glow[1]*S/1024; for(let i=0;i<(FX.glow[2]||1);i++) ctx.drawImage(src,0,0,S,S); ctx.restore(); }   // glow＝[色, ぼかし, 重ねる回数（省略＝1。多いほど強く光る）]
     ctx.save(); ctx.shadowColor=FX.glow? "rgba(255,245,215,.85)" : "rgba(0,0,0,.25)"; ctx.shadowBlur=(FX.glow? 8 : 6)*S/1024; ctx.drawImage(src,0,0,S,S); ctx.restore();
     ctx.drawImage(src,0,0,S,S);
     if(!bgImg){ tcBodyMask(I, src); I.front=true; FX.front(ctx, I, rnd); I.front=false; }   // 手前の飾りは体（目）にかからない
