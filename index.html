@@ -843,6 +843,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>🔍 モデルを みよう</h3>
         <p>「モデルを えらぶ」で<b>しゅつどひん・いぬ・きょうりゅう</b>を選び、<b>「🔍 かんたんAR」</b>で3Dモデルを回して見たり、<b>「📱 ARで あそぶ」</b>で目の前に置いて見たりできます。ぬりえをした恐竜は、その模様で表示されます。</p>
+        <p class="k">iPhone・iPad では、AR画面を開いたら スマホ（タブレット）を<b>ななめ まえ</b>（下に15〜55°）に向けると、その先に卵が出て孵ります（「📱 ARで あそぶ」はモデルが現れます）。「🖍 ぬりえを よみこむ」で読み取ったときも、用紙の上ではなく、ななめ まえの床に出ます。</p>
         <p class="k">「📱 ARで あそぶ」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。AR画面の「🗺 たんけん」（うごかせるの左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
       </section>
       <section>
@@ -9927,8 +9928,12 @@ function litePhoneStarted(){
             });
         }).catch(()=>{});
     } else lph$("lphFloor").textContent="この きかいでは ゆかを みつけられないよ（だいたいの たかさに おくね）";
-    LPH.hatch=null; LPH.walk=null; LPH.popY=0;
+    LPH.hatch=null; LPH.walk=null; LPH.popY=0; LPH.aim=null;
     window.MV_ANIM=true;   // スマホのLite・ぬりえは「アニメ オン」＋「あるく」で始める
+    if(LITE.iar && !(LITE.nuri && (LITE.nuri.scan || LITE.nuri.egg))){   // iPhone・iPad（卵なし：ARで あそぶ など）：ななめ まえに向けたらモデルを出す（lphAimTick）
+        LPH.aim={ t0:performance.now() }; if(LITE.model) LITE.model.visible=false; r.classList.add("lph-ncard"); iarAimCard(iarAimWhat());
+        litePhoneRefresh(); return;
+    }
     if(LITE.nuri){   // ぬりえから：卵（または生まれた恐竜）→ 左右に歩く。操作方法は自動で出さない（「？ そうさ」で見る）
         if(LITE.nuri.scan){ LPH.hatch={ phase:"scan", t0:performance.now(), egg:null }; if(LITE.model) LITE.model.visible=false; r.classList.add("lph-scan"); if(window.__nuriArScan) window.__nuriArScan.start(); }   // AR内で読み取りから
         else if(LITE.nuri.egg){ LPH.hatch={ phase:"wait", t0:performance.now(), egg:null }; if(LITE.model) LITE.model.visible=false; r.classList.add("lph-ncard"); }
@@ -9973,10 +9978,25 @@ function lphPaintBtns(){
 function litePhoneTick(){
     const pct=Math.round(((LITE.group?LITE.group.scale.x:1)||1)*100);
     if(pct!==LITE._phPct){ LITE._phPct=pct; const e=lph$("lphPct"); if(e) e.textContent=pct+"%"; }
+    if(LPH.aim) lphAimTick();
     if(LPH.hatch) lphHatchTick();
     if(LPH.walk) lphWalkTick();
     lphBubbleTick();
     lphGround();
+}
+// ---- iPhone・iPad（卵なし：ARで あそぶ など）：ななめ まえに向けたら、その向きでモデルを出す ----
+function lphAimTick(){
+    const now=performance.now();
+    if(LITE.model) LITE.model.visible=false;
+    LITE.placeFrames=0;   // 入った直後の自動の置き方はしない（出す時に置く）
+    if(!iarAimReady(now)){ lph$("litePh").classList.add("lph-ncard"); iarAimCard(iarAimWhat()); return; }
+    LPH.aim=null; lph$("litePh").classList.remove("lph-ncard");
+    litePhonePlaceFront();   // 今のスマホの向きで置く（恐竜＝手前の端が2.0m／用紙と同じ大きさ＝画面の真ん中の向きの先）
+    if(LITE.model) LITE.model.visible=true;
+    if(LITE.target==="dino" || LITE.target==="dog") LPH.walk=lphWalkNew();   // 歩く範囲の中心＝出した場所
+    litePhoneRefresh();
+    if(!LITE.nuri && (LITE.target==="dino" || LITE.target==="dog") && typeof lphExploreSay==="function") lphExploreSay(2500);
+    try{ chord([523,659],0.05,"triangle",0.3); }catch(_){ }
 }
 // ---- ぬりえから：ARの床で卵から生まれる（ゲームの発掘演出と同じ卵・動き・音。時間は×1.5） ----
 //   床が見つかる → 恐竜の手前の端（2.0m）の位置に卵が跳ねて着地・回転 → 揺れる → 割れる（掘る音）→ 恐竜が跳ねて登場（鳴き声・振動）→ 左右に歩く
@@ -9987,7 +10007,11 @@ function lphHatchTick(){
     if(H.phase==="wait"){   // 床さがし（見つからなければ目安の床で開始）
         if(LITE.model) LITE.model.visible=false;
         if(LITE.nuri && now-H.t0<(LPH.paper?900:1500)) return;   // 「よめたよ！」を少し見せる
-        if(LITE.nuri && (LPH.paper || (LITE.nuri.small && LPH.floorFound))) lph$("litePh").classList.remove("lph-ncard");   // 用紙の上・目の前：そのまま卵（セリフは出さない）
+        if(LITE.iar){   // iPhone・iPad：ななめ まえに向けたら、画面の真ん中あたりに卵を出す
+            if(!iarAimReady(now)){ lph$("litePh").classList.add("lph-ncard"); iarAimCard("たまご"); return; }
+            lph$("litePh").classList.remove("lph-ncard");
+        }
+        else if(LITE.nuri && (LPH.paper || (LITE.nuri.small && LPH.floorFound))) lph$("litePh").classList.remove("lph-ncard");   // 用紙の上・目の前：そのまま卵（セリフは出さない）
         else if(LITE.nuri){   // スマホが下を向いたまま（ぬりえを見ている）なら、前を向くのを待つ
             camera.getWorldQuaternion(_lphQ); const fy=_lphV1.set(0,0,-1).applyQuaternion(_lphQ).y;
             if(fy<-0.72 && now-H.t0<15000){ lphNCard("まえを むいてね！","たまごが ゆかに でてくるよ"); return; }
@@ -9995,7 +10019,6 @@ function lphHatchTick(){
             lph$("litePh").classList.remove("lph-ncard");   // 卵が出る時のセリフは出さない
         }
         if(!LPH.floorFound && now-H.t0<LPH_CFG.eggWaitMaxMs) return;
-        if(LITE.iar && LITE.iar.diag && !LITE.iar.ori && now-H.t0<4000) return;   // スマホの向きが分かってから置く（斜め前の向きを決めるため）
         litePhonePlaceFront();   // 今のスマホの向きで、恐竜の手前の端を2.0mに
         camera.getWorldPosition(_lphCamP);
         let fx=LITE.targetPos.x-_lphCamP.x, fz=LITE.targetPos.z-_lphCamP.z; const fl=Math.hypot(fx,fz)||1; fx/=fl; fz/=fl;
@@ -10045,7 +10068,7 @@ function lphNuriRepick(idx){
     lph$("litePh").classList.add("lph-ncard");
     LPH.hatch={ phase:"wait", t0:performance.now(), egg:null };
     const nm=(LITE.curName||"").replace(/^\S+\s*/,"");
-    lphNCard((nm||"きょうりゅう")+"の たまご", "まえを むいてね。たまごが でてくるよ");
+    lphNCard((nm||"きょうりゅう")+"の たまご", LITE.iar ? (iarDevName()+"を ななめ まえに むけてね。たまごが でてくるよ") : "まえを むいてね。たまごが でてくるよ");
     try{ if(window.__nuriSetArKey && DINOS[idx]) window.__nuriSetArKey(DINOS[idx].key); }catch(_){ }
     litePhoneRefresh();
 }
@@ -10100,9 +10123,13 @@ function lphGrabCam(frame, maxLong){   // カメラ映像だけを読み出す�
 const IAR_CFG = {
     holdHeight: 1.1,      // カメラ＋ジャイロ：スマホを持つ高さ(m)＝床はこの下
     fovLongDeg: 67,       // カメラの視野（長辺）の初期値。ぬりえを読むと、ジャイロの向きと用紙から実際の値を求めて端末に覚える
-    diagDist: 0.4,        // 「ARで もういちど みる」で用紙の高さが分からない時：スマホから恐竜（足もとの中心）までの距離(m)
-    diagMinDeg: 20,       // 　その向き：スマホが見ている向きの下向きの角度を、この範囲におさめる（度）
-    diagMaxDeg: 60,
+    diagDist: 0.4,        // 用紙と同じ大きさの恐竜で用紙の高さが分からない時：スマホから恐竜（足もとの中心）までの距離(m)。向きは画面の真ん中（showMinDeg〜showMaxDeg）
+    showMinDeg: 15,       // 卵・モデルを出す向き（ななめ まえ）：スマホが見ている向きの下向きの角度がこの範囲に入ったら出す（度）
+    showMaxDeg: 55,
+    showHoldMs: 400,      // 　その範囲で、ほぼ止めたままこの時間たったら出す（ちらっと通っただけ・動かしている間は出さない）
+    showSteadyDeg: 8,     // 　「ほぼ止めた」＝向きの動きがこの角度以内（度）
+    smallMinDist: 0.25,   // 用紙と同じ大きさの恐竜：用紙の高さが分かっている時、その面の上で画面の真ん中に当たる所までの距離をこの範囲に（m）
+    smallMaxDist: 0.9,
 };
 function iarPaperDropSave(d){ try{ if(d>0.12 && d<1.8) sessionStorage.setItem("iarPaperDrop", String(d)); }catch(_){ } }   // スマホから用紙（机など）までの高さ
 function iarPaperDropLoad(){ try{ const d=parseFloat(sessionStorage.getItem("iarPaperDrop")); return (d>0.12 && d<1.8) ? d : 0; }catch(_){ return 0; } }
@@ -10112,6 +10139,26 @@ function iarWanted(){   // iPhone / iPad（WebXR の immersive-ar が無い iOS�
 }
 const _iarQ=new THREE.Quaternion(), _iarQ1=new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)), _iarE=new THREE.Euler(), _iarZ=new THREE.Vector3(0,0,1);
 function iarOnOrient(e){ const I=LITE.iar; if(!I || e.alpha==null) return; I.ori={ a:e.alpha, b:e.beta, g:e.gamma }; }
+// ---- 卵・モデルを出すのは、スマホを「ななめ まえ」（下向き showMinDeg〜showMaxDeg）に向けた時（iPhone・iPad）----
+const _iarAimQ=new THREE.Quaternion(), _iarAimV=new THREE.Vector3();
+function iarDevName(){ const ua=navigator.userAgent||""; return (/iPad/i.test(ua) || (navigator.platform==="MacIntel" && (navigator.maxTouchPoints||0)>1)) ? "タブレット" : "スマホ"; }
+function iarLookDownDeg(){ camera.getWorldQuaternion(_iarAimQ); const fy=_iarAimV.set(0,0,-1).applyQuaternion(_iarAimQ).y; return Math.asin(THREE.MathUtils.clamp(-fy,-1,1))*THREE.MathUtils.RAD2DEG; }   // 画面の真ん中の向き：水平＝0°、真下＝90°
+function iarAimReady(now){   // ななめ まえで、ほぼ止めたまま showHoldMs たったら true。向きが分からないまま4秒たったら true（これまでどおり出す）
+    const I=LITE.iar; if(!I) return true;
+    if(now-(I.aimLast||0)>1000) I.aimT=0; I.aimLast=now;   // しばらく待っていなかった（前の時の続き）なら数え直す
+    if(!I.ori){ I.aimT=0; return now-(I.t0||now)>4000; }
+    const d=iarLookDownDeg();
+    if(!(d>=IAR_CFG.showMinDeg && d<=IAR_CFG.showMaxDeg)){ I.aimT=0; return false; }
+    const f=_iarAimV.set(0,0,-1).applyQuaternion(_iarAimQ);   // 今の向き（iarLookDownDeg で求めたもの）
+    if(!I.aimT || !I.aimDir || I.aimDir.dot(f)<Math.cos(IAR_CFG.showSteadyDeg*THREE.MathUtils.DEG2RAD)){ I.aimT=now; I.aimDir=(I.aimDir||new THREE.Vector3()).copy(f); }   // 動かしている間は数え直す
+    return now-I.aimT>=IAR_CFG.showHoldMs;
+}
+function iarAimCard(what){   // 待っている間のことば（what＝出てくるもの）
+    const I=LITE.iar, d=(I && I.ori) ? iarLookDownDeg() : null;
+    const hint = d==null ? "" : d>IAR_CFG.showMaxDeg ? "もうすこし まえを むいてね。" : d<IAR_CFG.showMinDeg ? "もうすこし したに むけてね。" : "そのまま まってね。";
+    lphNCard(iarDevName()+"を ななめ まえに むけてね", hint+what+"が でてくるよ");
+}
+function iarAimWhat(){ return (LPH.hatch && LPH.hatch.phase==="wait") ? "たまご" : LITE.target==="dino" ? "きょうりゅう" : LITE.target==="dog" ? "いぬ" : "しゅつどひん"; }
 async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     // 1) 向きセンサーの許可（iOSはタップ直後に聞く必要がある）
     { try{ const DOE=window.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission==="function"){ const r=await DOE.requestPermission(); if(r!=="granted") return "orient"; } }catch(_){ return "orient"; } }
@@ -10124,9 +10171,9 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     LITE.phone=true; LITE.nuri = (opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, small:!!opts.small, pick:!!opts.pick } : null;
     LITE.paperScale = (LITE.nuri && LITE.nuri.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;
     const _drop=(opts && opts.nuri && opts.small) ? iarPaperDropLoad() : 0;   // 「ARで もういちど みる」：さっきの用紙の高さを台にする（Androidで机が床として見つかるのと同じ見え方）
-    const _diag=!!(opts && opts.nuri && opts.small && !_drop);                  // 用紙の高さが分からない時：スマホから斜め前 0.4m に出す（litePhonePlaceFront）
-    LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, diag:_diag,
-        hold:(_drop || (_diag ? IAR_CFG.diagDist*Math.sin(THREE.MathUtils.degToRad(IAR_CFG.diagMinDeg)) : IAR_CFG.holdHeight)),
+    const _diag=!!(opts && opts.nuri && opts.small && !_drop);                  // 用紙の高さが分からない時：画面の真ん中の向きの 0.4m 先に出す（litePhonePlaceFront）
+    LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, diag:_diag, drop:_drop, aimT:0,
+        hold:(_drop || (_diag ? IAR_CFG.diagDist*Math.sin(THREE.MathUtils.degToRad(IAR_CFG.showMinDeg)) : IAR_CFG.holdHeight)),
         save:{ pPos:player.position.clone(), pQ:player.quaternion.clone(), pS:player.scale.clone(), cPos:camera.position.clone(), cQ:camera.quaternion.clone() } };   // リグとカメラは入る前の状態を保存
     // 3) モデル（Androidと同じ準備）
     liteSetPick(target, opts);   // 「ARで みる」：ぬりえ／ぬりえなし を選べる
@@ -10501,11 +10548,10 @@ function litePhonePlaceFront(){   // スマホに正対・足元は床。恐竜�
     if(LPH.paper){ litePhonePlacePaper(); return; }
     if(LITE.nuri && LITE.nuri.small){   // 「ARで もういちど みる」：用紙と同じ大きさで、床の0.5m先（恐竜の中心）
         let dist=LPH_CFG.smallDist;
-        if(LITE.iar && LITE.iar.diag){   // iPhone で用紙の高さが分からない時：スマホが見ている向き（下向き20〜60°）の0.4m先＝そこを床にする
-            const q=camera.getWorldQuaternion(new THREE.Quaternion()), fy=new THREE.Vector3(0,0,-1).applyQuaternion(q).y;
-            const a=THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(-fy,-1,1)), THREE.MathUtils.degToRad(IAR_CFG.diagMinDeg), THREE.MathUtils.degToRad(IAR_CFG.diagMaxDeg));
-            LITE.iar.hold=IAR_CFG.diagDist*Math.sin(a); camera.position.y=LITE.iar.hold; camera.updateMatrixWorld(true);
-            dist=IAR_CFG.diagDist*Math.cos(a);
+        if(LITE.iar){   // iPhone・iPad：画面の真ん中の向き（下向き a）の先に置く。用紙の高さが分かっていれば、その面に当たる所（0.25〜0.9m先）／分からなければ 0.4m先
+            const a=THREE.MathUtils.degToRad(THREE.MathUtils.clamp(iarLookDownDeg(), IAR_CFG.showMinDeg, IAR_CFG.showMaxDeg)), t=Math.tan(a);
+            dist = LITE.iar.drop ? THREE.MathUtils.clamp(LITE.iar.drop/t, IAR_CFG.smallMinDist, IAR_CFG.smallMaxDist) : IAR_CFG.diagDist*Math.cos(a);
+            LITE.iar.hold=dist*t; camera.position.y=LITE.iar.hold; camera.updateMatrixWorld(true);   // 床＝その点の高さ（スマホからの高さ）
         }
         placeYawFront(LITE.group, 0, dist);
         LITE.targetPos.copy(LITE.group.position); LITE.targetQuat.copy(LITE.group.quaternion); LPH.gKey="";
@@ -10831,7 +10877,7 @@ function litePhoneExit(){
     LPH.shotReq=false; LPH.g=null; LPH.tap=null; LPH.glb=null; LPH.glbTried=false;
     if(LPH.hatch && LPH.hatch.egg){ scene.remove(LPH.hatch.egg); LPH.hatch.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
     { const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null; if(hd){ hd.rotation.x=0; hd.rotation.y=0; } }
-    LPH.hatch=null; LPH.walk=null; LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; { const bb=lph$("lphBubble"); if(bb) bb.classList.remove("on"); } LPH.scan=null; LPH.paper=null; LITE.paperScale=0; if(LITE.model) LITE.model.visible=true;
+    LPH.hatch=null; LPH.walk=null; LPH.aim=null; LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; { const bb=lph$("lphBubble"); if(bb) bb.classList.remove("on"); } LPH.scan=null; LPH.paper=null; LITE.paperScale=0; if(LITE.model) LITE.model.visible=true;
     lph$("litePh").classList.remove("lph-scan","lph-ncard");
     LPH.hts.forEach(h=>{ try{ h.cancel(); }catch(_){ } }); LPH.hts=[]; LPH.floorFound=false; LPH.floorY=null; LPH.gpModel=null; LPH.gp=null; LPH.gKey="";
     if(LPH.shadow) LPH.shadow.visible=false; lph$("lphFloor").classList.remove("on");
@@ -14223,7 +14269,12 @@ function lphScanDone(key, pose){   // 読めた → その恐竜にして、用�
     LPH.scan=null; NURI_AR.key=key; NURI_AR.ok=true;
     try{ scMode("done"); }catch(_){ }   // 「できた！」画面はARを終えてから開く（iPhoneではAR画面の上に重なってしまうため）
     const okPose = !!pose;   // 用紙の位置は読み取りの時点で確かめ済み（床の2m先には出さない）
-    if(okPose){
+    if(okPose && LITE.iar){   // iPhone・iPad：用紙の上ではなく、ななめ まえに向けた先の床に出す（「ARで もういちど みる」と同じ。大きさは用紙サイズ）
+        camera.getWorldPosition(_lphCamP); const dr=_lphCamP.y-pose.center.y;
+        LPH.paper=null; LITE.nuri.small=true; LITE.iar.drop=(dr>0.12 && dr<1.8) ? dr : 0; LITE.iar.aimT=0;
+        LITE.paperScale=LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW;   // プテラノドンの翼幅15cm
+        LPH.floorFound=true; LPH.floorY=0; lph$("lphFloor").classList.remove("on");
+    } else if(okPose){
         const _ax=pose.xAxis.clone(); _ax.y=0; if(_ax.lengthSq()<1e-6) _ax.set(1,0,0); _ax.normalize();
         LPH.paper={ center:pose.center.clone(), normal:pose.normal.clone(), xAxis:_ax };   // xAxis＝用紙の横（長い辺）の向き（歩ける範囲に使う）
         LITE.paperScale=LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW;   // プテラノドンの翼幅15cm
@@ -14236,7 +14287,7 @@ function lphScanDone(key, pose){   // 読めた → その恐竜にして、用�
     try{ chord([523,659,784],0.06,"triangle",0.4); }catch(_){ }
     const r=lph$("litePh"); r.classList.remove("lph-scan"); r.classList.add("lph-ncard");
     LPH.hatch={ phase:"wait", t0:performance.now(), egg:null };
-    lphNCard("よめたよ！ "+(sheetOf(key).name||""), okPose ? "ぬりえの うえを みててね" : "まえを むいてね。たまごが でてくるよ");
+    lphNCard("よめたよ！ "+(sheetOf(key).name||""), LITE.iar ? (iarDevName()+"を ななめ まえに むけると、たまごが でてくるよ") : okPose ? "ぬりえの うえを みててね" : "まえを むいてね。たまごが でてくるよ");
 }
 window.__nuriArScan={ start:lphScanStart, frame:lphScanFrame };
 
