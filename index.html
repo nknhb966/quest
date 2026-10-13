@@ -861,6 +861,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>🗺 たんけん（ARで あそぶ）</h3>
         <p>スマホ・タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。<b>「📱 ARで あそぶ」</b>のAR画面で、恐竜かいぬを表示して<b>「🗺 たんけん」</b>を押します（恐竜と→恐竜を、いぬと→出土品をさがします。出土品の表示中は出ません）。「たんけんの じゅんび」で<b>あそびかた</b>（3かい ちょうせん／じかんまで さがす（既定）／ぜんぶ みつける）と<b>さがす ばしょの ひろさ</b>（よこ・おく 3〜10m、既定5×5m）を選び、<b>「🗺 たんけんに いく」</b>→<b>「はじめる」</b>。あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここで はじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
+        <p><b>フィールドが ずれたとき</b>：床に「まんなか」と「まえ」の印（テープなど）を付けておき、「ここで はじめる」は まんなかの印に立って まえの印の方を向いて押します。ずれたら、まんなかの印に立って まえの印の方を向き、画面下の<b>「📍 ずれを なおす」</b>→<b>「なおす」</b>。発掘ポイント・スコア・タイム・進み具合はそのままで、フィールドの位置と向きだけを合わせ直します（ゲームの途中でも使えます）。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「ちいさい こ 0.9m／こども 1.2m／おとな 1.5m」を選びます）。スタンバイ中は「やめる」→「ここで はじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
       </section>
       <section>
@@ -975,6 +976,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
     <button id="dShowAll" style="display:none;">全て発掘</button>
     <button id="dDex">図鑑</button>
     <button id="dRecords">記録</button>
+    <button id="dFix" aria-label="フィールドの ずれを なおす">📍 ずれを なおす</button>   <!-- タブレットAR：フィールドを置いた後だけ表示 -->
     <button id="dQuit">やめる</button>
   </div>
 </div>
@@ -1174,6 +1176,8 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     /* プレイ中のHUD：文字サイズはそのまま、指で押しやすい高さ（44px）を確保 */
     body.tabar #dhud button{ min-height:44px; }
     body.tabar #dexBtn{ min-height:44px; }
+    #dhud #dFix{ display:none; border-color:#8ff0ff; color:#c9f8ff; background:rgba(6,36,48,.82); }   /* ずれを なおす（水色の線と同じ色） */
+    body.tabar.tabar-placed:not(.tabar-rescan) #dhud #dFix{ display:inline-block; }   /* フィールドを置いた後だけ（置き直しの床さがし中は出さない） */
     body.tabar #buddyStandby button{ min-height:44px; }
     @media (prefers-reduced-motion: reduce){ #tabarDig.show{ animation:none; } }
 </style>
@@ -7941,7 +7945,7 @@ const resultBuddy=(function(){
         if(cont && cont!==rec.model && cont.parent===holder) holder.remove(cont);
         cont=rec.model; if(cont.parent!==holder) holder.add(cont);
         try{ cont.traverse(o=>{ if(o.isMesh){ o.renderOrder=600; if(o.material){ const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>{ if(m){ m.transparent=true; m.depthWrite=true; m.depthTest=true; m.needsUpdate=true; } }); } } }); }catch(_){ }   // 透明パス化＋renderOrder600でリザルト暗幕(500)より後に描画＝暗転しない（自己遮蔽はdepthWriteで維持）
-        fitGeo=rec.fit; halfDepthGeo=rec.halfDepth; idx=i; lastKey=ck;
+        fitGeo=rec.fit; halfDepthGeo=rec.halfDepth; lastKey=ck;
     }
     return {
         set(i){ if(i==null||i<0){ this.clear(); return; } const ck=_ckey(i); if(ck!==lastKey||!cont){ build(i); } active=!!cont; },
@@ -7957,7 +7961,7 @@ const resultBuddy=(function(){
             };
             setTimeout(stepB, 25);
         },
-        invalidate(){ if(holder&&cont&&cont.parent===holder) holder.remove(cont); for(const k in _cache) delete _cache[k]; cont=null; idx=-1; lastKey=""; active=false; _preloadKicked=false; if(holder) holder.visible=false; },
+        invalidate(){ if(holder&&cont&&cont.parent===holder) holder.remove(cont); for(const k in _cache) delete _cache[k]; cont=null; lastKey=""; active=false; _preloadKicked=false; if(holder) holder.visible=false; },
         // 板(worldHud.mesh)の位置・向き・スケール s に合わせて配置。板よりさらに1.0m奥・0.8倍・ゆっくり回転
         update(s){
             if(!holder) return;
@@ -9925,7 +9929,7 @@ function litePhoneStarted(){
     } else lph$("lphFloor").textContent="この きかいでは ゆかを みつけられないよ（だいたいの たかさに おくね）";
     LPH.hatch=null; LPH.walk=null; LPH.popY=0;
     window.MV_ANIM=true;   // スマホのLite・ぬりえは「アニメ オン」＋「あるく」で始める
-    if(LITE.nuri){   // ぬりえから：卵（または生まれた恐竜）→ 左右に歩く。操作方法は後で（❓）
+    if(LITE.nuri){   // ぬりえから：卵（または生まれた恐竜）→ 左右に歩く。操作方法は自動で出さない（「？ そうさ」で見る）
         if(LITE.nuri.scan){ LPH.hatch={ phase:"scan", t0:performance.now(), egg:null }; if(LITE.model) LITE.model.visible=false; r.classList.add("lph-scan"); if(window.__nuriArScan) window.__nuriArScan.start(); }   // AR内で読み取りから
         else if(LITE.nuri.egg){ LPH.hatch={ phase:"wait", t0:performance.now(), egg:null }; if(LITE.model) LITE.model.visible=false; r.classList.add("lph-ncard"); }
         else LPH.walk=lphWalkNew();
@@ -9933,7 +9937,7 @@ function litePhoneStarted(){
     }
     if(LITE.target==="dino" || LITE.target==="dog"){ LPH.walk=lphWalkNew(); litePhoneRefresh(); if(typeof lphExploreSay==="function") lphExploreSay(2500);
     }
-    if(!LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); }   // 初回だけ操作方法を表示
+    // 操作方法は自動で出さない（「？ そうさ」で見る）
 }
 function litePhoneRefresh(){
     lph$("lphName").textContent=LITE.curName||"";
@@ -10027,7 +10031,7 @@ function lphHatchTick(){
     if(H.phase==="dino"){   // 跳ねて登場（上昇→頂点→着地）
         const r=Math.min((now-H.t2)/1000/(1.0*T),1), peak=H.height*0.35;
         LPH.popY = r<0.5 ? lerp(0,peak,r*2) : lerp(peak,0,(r-0.5)*2);
-        if(r>=1){ LPH.popY=0; H.phase="done"; LPH.walk=lphWalkNew(); litePhoneRefresh(); if(typeof lphExploreSay==="function") lphExploreSay(3200); setTimeout(()=>{ if(LITE.active && LITE.phone && !LPH.helpSeen){ LPH.helpSeen=true; lph$("lphHelp").classList.add("on"); } }, 2500); }
+        if(r>=1){ LPH.popY=0; H.phase="done"; LPH.walk=lphWalkNew(); litePhoneRefresh(); if(typeof lphExploreSay==="function") lphExploreSay(3200); }   // 操作方法は自動で出さない（「？ そうさ」で見る）
     }
 }
 // ---- ぬりえから（Android）：AR内のカメラ映像でぬりえを読み取る（通常の読み取りと同じ判定・処理） ----
@@ -11716,7 +11720,7 @@ const R4={
 const L={ gen:0, session:null, viewer:null, hc:null, hn:null, sup:false, placed:false, fy:0,
     list:[], creating:false, lastMake:0, wantPrimary:false, primaryT:0, refHooked:null, wasTracking:true, lastCam:{x:0,y:0,z:0},
     scan:[], cand:null, candT:0, best:null, ys:[],
-    st:{ lost:0, resets:0, made:0, fail:0, dropped:0, used:0, tracked:0, jump:0, jumpMax:0, mode:"-" } };
+    st:{ lost:0, resets:0, made:0, fail:0, dropped:0, used:0, tracked:0, jump:0, jumpMax:0, fix:0, mode:"-" } };
 const DBG=/[?&]tabardebug=1/.test(location.search);
 
 function rigGet(){ return {yaw:player.rotation.y, x:player.position.x, y:player.position.y, z:player.position.z}; }
@@ -11901,9 +11905,18 @@ function tick(dt, now, fr){
         if(DBG) dbgShow(now);
     }catch(e){ console.warn("[床ロック]", e); }
 }
+/* ---- ずれなおし：今の台に「水平の回転 dyaw（世界の原点まわり）＋平行移動」を足して、カメラの位置 cw（世界）を H に移す。
+ *   見えているアンカーは合わせ直した台で覚え直し、見えていないアンカーは次に見えた時に覚え直す（食い違いを持ち越さない）---- */
+function realign(dyaw, cw, H){
+    const [rx,rz]=R4.rot(dyaw, cw.x, cw.z);
+    const n=R4.compose({ yaw:R4.wrap(dyaw), x:H.x-rx, y:0, z:H.z-rz }, rigGet());
+    rigSet(n);
+    for(const A of L.list){ if(A.ok && A.P){ A.W=R4.compose(n, A.P); A.W.y=L.fy; } else { A.W=null; A.fade=0; } }
+    L.st.fix++; L.st.jump=0; L.st.jumpMax=0;
+}
 function reset(){
     clearAnchors(); L.placed=false; L.wantPrimary=false; L.refHooked=null; L.wasTracking=true; L.ys.length=0; scanReset();
-    Object.assign(L.st,{ lost:0, resets:0, made:0, fail:0, dropped:0, used:0, tracked:0, jump:0, jumpMax:0, mode:"-" });
+    Object.assign(L.st,{ lost:0, resets:0, made:0, fail:0, dropped:0, used:0, tracked:0, jump:0, jumpMax:0, fix:0, mode:"-" });
 }
 function cleanup(){
     for(const s of [L.hc, L.hn]){ if(s){ try{ s.cancel(); }catch(_){ } } }
@@ -11918,10 +11931,10 @@ function dbgShow(now){
     d.style.display=""; const r=rigGet(), s=L.st;
     d.textContent=`床ロック ${s.mode}  追跡 ${TABAR.tracking?"○":"×"}  見失い ${s.lost}回  reset ${s.resets}回\n`+
         `アンカー ${L.list.length}個（見えている ${s.tracked}・使用 ${s.used}）  作成 ${s.made}  削除 ${s.dropped}  失敗 ${s.fail}\n`+
-        `補正 今${(s.jump*100).toFixed(1)}cm 最大${(s.jumpMax*100).toFixed(1)}cm  床 ${L.fy.toFixed(3)}m\n`+
+        `補正 今${(s.jump*100).toFixed(1)}cm 最大${(s.jumpMax*100).toFixed(1)}cm  床 ${L.fy.toFixed(3)}m  ずれなおし ${s.fix}回\n`+
         `台 (${r.x.toFixed(2)}, ${r.y.toFixed(2)}, ${r.z.toFixed(2)}) ${(r.yaw*180/Math.PI).toFixed(1)}°`;
 }
-return { begin, scan, scanReset, onPlace, tick, reset, cleanup };
+return { begin, scan, scanReset, onPlace, tick, reset, cleanup, realign };
 })();
 
 /* ---------- camera バックエンド（iPadOS Safari 等） ---------- */
@@ -12040,6 +12053,7 @@ function tabarEnterCommon(backend){
     TABAR.warnKey=""; TABAR.lvl=-1; TABAR.radarOn=false; TABAR.digShown=false; TABAR.tracking=true; TABAR.pointers.clear();
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
     tabarLock.reset();   // 床ロックの状態を消す
+    TABAR.home=null; document.body.classList.remove("tabar-placed");   // ずれなおしの基準（フィールドを置いた時の位置・向き）
     tabarBuddyReset();   // 相棒の待機位置を消す
     kidStart();          // タブレットARの間は、画面のことばを幼児向け（ひらがな）に
 }
@@ -12097,6 +12111,8 @@ function tabarPlace(){
     recenterFieldHere();   // 現在地＝フィールド中央、向いている方向＝奥(-Z)（Quest の基準設定と同じ処理）
     stage.position.y=fy; worldYAdjust=fy;
     if(TABAR.backend==="webxr") tabarLock.onPlace(fy);   // 床ロック：床の高さを記録し、床にアンカーを打ち始める
+    { const cw=camera.getWorldPosition(new THREE.Vector3()), f=tabarForwardH(new THREE.Vector3());   // ずれなおしの基準＝置いた時のタブレットの位置と向き（recenterFieldHere と同じ求め方）
+      TABAR.home={ x:cw.x, z:cw.z, yaw:Math.atan2(-f.x,-f.z) }; document.body.classList.add("tabar-placed"); }
     stage.visible=true;
     tabarReticle().visible=false;
     tabarUI.scan.classList.remove("open");
@@ -12141,6 +12157,25 @@ function tabarBeginRescan(){
     tabarUI.warn.className=""; TABAR.warnKey="";
     tabarBeginScan();
 }
+/* ずれなおし（HUDの「📍 ずれを なおす」）：床の「まんなか」の印に立ち「まえ」の印を向いて押す
+ *   →「ここで はじめる」を押した時の位置・向き（TABAR.home）に、今のタブレットの位置・向きを合わせ直す。
+ *   フィールド・発掘ポイント・スコア・タイム・進み具合はそのまま（台＝カメラの親 だけを動かす）。
+ *   床ロック（webxr）のアンカーは、合わせ直した位置で覚え直す。camera 方式（iPad 等）でも使える。 */
+function tabarFixAsk(){
+    if(!(TABAR.on && TABAR.phase==="play" && TABAR.home && !TABAR.rescan)) return;
+    tabarAsk("📍 ずれを なおす", "まんなかの しるしの うえに たって、\nまえの しるしの ほうを むいてね。\nじゅんびが できたら「なおす」を おしてね。", "なおす", "もどる")
+        .then(r=>{ if(r===true) tabarFixNow(); });
+}
+function tabarFixNow(){
+    const H=TABAR.home; if(!(TABAR.on && TABAR.phase==="play" && H && !TABAR.rescan)) return;
+    const cw=camera.getWorldPosition(new THREE.Vector3()), f=tabarForwardH(new THREE.Vector3());
+    tabarLock.realign(H.yaw-Math.atan2(-f.x,-f.z), cw, H);
+    if(TABAR.backend==="camera"){ TABAR.walk.x=player.position.x; TABAR.walk.z=player.position.z; }   // 歩数で進む位置も合わせる
+    tabarBuddyReset();   // 相棒は新しい位置から追い直す
+    showCenterHint("ずれを なおしたよ！", 1800);
+    try{ chord([523,784],0.06,"triangle",0.35); }catch(_){ }
+}
+document.getElementById("dFix").addEventListener("click", e=>{ e.stopPropagation(); tabarFixAsk(); });
 function tabarCancelRescan(){   // 床さがしで「もどる」：置き直さずにスタンバイへ戻る（前の配置のまま）
     TABAR.rescan=false; document.body.classList.remove("tabar-rescan");
     tabarReticle().visible=false; tabarUI.scan.classList.remove("open");
@@ -12174,6 +12209,7 @@ function tabarCleanup(){
     if(TABAR.stream){ try{ TABAR.stream.getTracks().forEach(t=>t.stop()); }catch(_){} TABAR.stream=null; }
     tabarUI.video.srcObject=null;
     tabarRemoveSiteBorder(); TABAR.area=null;
+    TABAR.home=null; document.body.classList.remove("tabar-placed");
     if(TABAR.reticle) TABAR.reticle.visible=false;
     const sv=TABAR.saved||{};
     scene.background=(sv.bg!==undefined)?sv.bg:scene.background; scene.fog=(sv.fog!==undefined)?sv.fog:scene.fog; renderer.setClearColor(0x000000, 1);
