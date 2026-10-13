@@ -430,11 +430,11 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 .tcard .tc-feature > div{ display:block; }
 .tcard .tc-feature{ flex-direction:column; }
 .tcard .tc-feature .tc-feature2{ display:block; min-height:1.2em; }
-/* 犬：分類〜地域の行がないので、その1行分（27）上に詰めて、特徴を2行にする */
-.tcard[data-kind="dog"] .tc-stats{ top:calc(var(--u)*586); }
-.tcard[data-kind="dog"] .tc-rule.r2{ top:calc(var(--u)*670); }
-.tcard[data-kind="dog"] .tc-special{ top:calc(var(--u)*677); }
-.tcard[data-kind="dog"] .tc-feature{ top:calc(var(--u)*714); height:calc(var(--u)*57); line-height:1.3; }
+/* 犬の形：分類〜地域の行がないので、その1行分（27）上に詰めて、特徴を2行にする */
+.tcard[data-layout="dog"] .tc-stats{ top:calc(var(--u)*586); }
+.tcard[data-layout="dog"] .tc-rule.r2{ top:calc(var(--u)*670); }
+.tcard[data-layout="dog"] .tc-special{ top:calc(var(--u)*677); }
+.tcard[data-layout="dog"] .tc-feature{ top:calc(var(--u)*714); height:calc(var(--u)*57); line-height:1.3; }
 </style>
 </head>
 <body>
@@ -873,7 +873,7 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <h3>🧩 カード・相棒・レア度の対応</h3>
         <p>カードと相棒は、図鑑と同じ<b>No.01〜No.08の番号</b>で対応します。<b>出土品</b>を掘ると同じ番号の<b>犬種</b>が、<b>恐竜</b>を掘ると同じ番号の<b>恐竜</b>が相棒になります。<b>しば犬</b>は最初から仲間です（獲得カードには出ませんが、相棒えらびでカードを見られます）。</p>
         <p>レア度は番号ごとに固定です：<b>No.01＝超激レア／No.02＝激レア／No.03＝レア／No.04・05＝プチレア／No.06・07・08＝ノーマル</b>（出土品・犬種・恐竜とも同じ並び）。順位は 超激レア＞激レア＞レア＞プチレア＞ノーマル。</p>
-        <p class="k">恐竜：No.01 ティラノサウルス／02 フクイラプトル／03 フクイティタン／04 フクイサウルス／05 ブラキオサウルス／06 ステゴサウルス／07 トリケラトプス／08 プテラノドン。犬種：No.01 ゴールデンレトリバー／02 ラブラドール／03 ビーグル／04 ダックスフント／05 パピヨン／06 黒柴／07 チワワ／08 ブルドッグ。</p>
+        <p class="k">恐竜：No.01 ティラノサウルス／02 フクイラプトル／03 フクイティタン／04 フクイサウルス／05 ブラキオサウルス／06 ステゴサウルス／07 トリケラトプス／08 プテラノドン。犬種：No.01 ゴールデン・レトリバー／02 ラブラドール／03 ビーグル／04 ダックスフント／05 パピヨン／06 黒柴／07 チワワ／08 ブルドッグ。</p>
       </section>
       <section>
         <h3>💯 得点（スコア）</h3>
@@ -910,7 +910,7 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
       <section>
         <h3>🃏 カードの見方（恐竜・犬種・しば犬）</h3>
         <p><b>左上</b>：発掘している対象（<b>恐竜発掘カード</b>／<b>遺跡発掘カード</b>）。<b>右上の数字</b>：カードのスコア。<b>右上の六角形</b>：恐竜＝頭の骨／犬＝肉球。画像の下に<b>名前</b>。</p>
-        <p>恐竜は<b>分類・食性・時代・地域</b>も書いてあります。その下に<b>ちから・はっけん・かしこさ</b>（★1〜5）、<b>スペシャル</b>、<b>特徴</b>。</p>
+        <p>恐竜は<b>分類・食性・時代・地域</b>も書いてあります（しば犬も、恐竜を発掘する時のカードは恐竜と同じ形）。その下に<b>ちから・はっけん・かしこさ</b>（★1〜5）、<b>スペシャル</b>、<b>特徴</b>。</p>
         <p class="k">恐竜のカードは2種類：<b>相棒えらび・獲得カード</b>＝ぬりえの模様とステータスが入ったカード／<b>図鑑</b>＝ぬりえをしていない元のカード（ぬっていない恐竜は同じカード）。出土品のカードは、決まった絵柄のカードです（ぬりえ・ステータスはありません）。</p>
       </section>
       <section>
@@ -4109,24 +4109,26 @@ const YEAR_CONFIG = {
     //   名称・ちから・はっけん・かしこさ・スペシャルは、上の companions（恐竜・しば犬）と DOG_BREEDS（犬種）の値をそのまま使う（ここには書かない）。
     cardInfo: {
         // 恐竜（No.1〜8）
-        trex:        { group:"", diet:"", era:"", region:"", feature:"" },   // ティラノサウルス
-        fukuiraptor: { group:"", diet:"", era:"", region:"", feature:"" },   // フクイラプトル
-        fukuititan:  { group:"", diet:"", era:"", region:"", feature:"" },   // フクイティタン
-        fukuisaurus: { group:"", diet:"", era:"", region:"", feature:"" },   // フクイサウルス
-        brachi:      { group:"", diet:"", era:"", region:"", feature:"" },   // ブラキオサウルス
-        stego:       { group:"", diet:"", era:"", region:"", feature:"" },   // ステゴサウルス
-        tri:         { group:"", diet:"", era:"", region:"", feature:"" },   // トリケラトプス
-        ptera:       { group:"", diet:"", era:"", region:"", feature:"" },   // プテラノドン
+        trex:        { group:"獣脚類", diet:"肉食",   era:"白亜紀後期", region:"北アメリカ", feature:"大型の肉食恐竜。非常に大きな頭部と強力なアゴを持つ。" },              // ティラノサウルス
+        fukuiraptor: { group:"獣脚類", diet:"肉食",   era:"白亜紀前期", region:"福井県",     feature:"福井県で発見された肉食恐竜。大きな手と発達した指、鋭い爪を持つ。" },   // フクイラプトル
+        fukuititan:  { group:"竜脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"福井県で発見された大型の竜脚類。長い首と尾を持つ。" },                 // フクイティタン
+        fukuisaurus: { group:"鳥脚類", diet:"植物食", era:"白亜紀前期", region:"福井県",     feature:"福井県で発見された植物食恐竜。くちばし状の口を持つ鳥脚類。" },         // フクイサウルス
+        brachi:      { group:"竜脚類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"非常に長い首を持つ大型の竜脚類。高い位置の植物を食べた。" },         // ブラキオサウルス
+        stego:       { group:"剣竜類", diet:"植物食", era:"ジュラ紀後期", region:"北アメリカ", feature:"背中の骨板と尾のスパイクが特徴的な植物食恐竜。" },                 // ステゴサウルス
+        tri:         { group:"角竜類", diet:"植物食", era:"白亜紀後期", region:"北アメリカ", feature:"3本の角と大きなフリルが特徴的な大型の植物食恐竜。" },              // トリケラトプス
+        ptera:       { group:"翼竜類", diet:"魚食",   era:"白亜紀後期", region:"北アメリカ", feature:"大きな翼と長いくちばし、頭部のトサカを持つ翼竜（恐竜ではない）。" },  // プテラノドン
         // しば犬・犬種（No.1〜8）… 分類・食性・時代・地域は表示しない。特徴は2行（feature＝1行目、feature2＝2行目）
-        dog:         { feature:"", feature2:"" },   // しば犬
-        golden:      { feature:"", feature2:"" },   // ゴールデンレトリバー
-        labrador:    { feature:"", feature2:"" },   // ラブラドール
-        beagle:      { feature:"", feature2:"" },   // ビーグル
-        dachshund:   { feature:"", feature2:"" },   // ダックスフント
-        toypoodle:   { feature:"", feature2:"" },   // パピヨン
-        shiba:       { feature:"", feature2:"" },   // 黒柴
-        chihuahua:   { feature:"", feature2:"" },   // チワワ
-        bulldog:     { feature:"", feature2:"" }    // ブルドッグ
+        // しば犬だけは、恐竜を発掘する時（恐竜発掘カード）は dino の内容で、恐竜と同じ形（分類・食性・時代・地域＋特徴1行）のカードにする
+        dog:         { feature:"日本原産の中型犬。丈夫で身軽な体を持ち、活発で警戒心が強い。", feature2:"主人には忠実で、さまざまな環境に適応できる。",   // しば犬
+                       dino:{ group:"あいぼう", diet:"なんでも", era:"－", region:"－", feature:"たよれる相棒のしば犬。" } },
+        golden:      { feature:"大型で体格のしっかりした犬。", feature2:"人なつっこく、賢くて人の指示にもよく応える。" },                        // ゴールデン・レトリバー
+        labrador:    { feature:"大型で力の強い犬。", feature2:"優れた嗅覚と高い学習能力を持ち、探索や回収が得意。" },                            // ラブラドール
+        beagle:      { feature:"中型で嗅覚に優れた犬。", feature2:"小さなにおいも追跡できるほど鼻が良く、獲物を探すのが得意。" },                  // ビーグル
+        dachshund:   { feature:"胴が長く、足が短い特徴的な体型の犬。", feature2:"地面に近い体を活かして、狭い場所や地面を探るのが得意。" },          // ダックスフント
+        toypoodle:   { feature:"小型で大きな耳と長い飾り毛が特徴の犬。", feature2:"活発で賢く、人の指示を覚えるのが得意。" },                     // パピヨン
+        shiba:       { feature:"柴犬の一種で、黒を基調とした毛色が特徴。", feature2:"丈夫で活発な体を持ち、警戒心も強い。" },                       // 黒柴
+        chihuahua:   { feature:"世界でも特に小型の犬。", feature2:"小さな体で動きが素早く、活発で人によくなつく。" },                              // チワワ
+        bulldog:     { feature:"中型で筋肉質な体と特徴的な顔つきを持つ犬。", feature2:"がっしりした体格で、粘り強い性格をしている。" }              // ブルドッグ
     },
 
     // ---- ② 挙動チューニング（年度で変えなくてもよいが、ここで調整可能）----
@@ -5428,7 +5430,7 @@ function build_dog_breed(P){   // 基本の犬（四足）。Pで体型・色・
 // 犬種データ（レア度/ステータス/実寸cm/スペシャル）。realHは犬種セット内の相対比（cm）
 // ステータスは「得意がはっきり」型：各犬に5を1つ・P+S+B合計は超激11/激〜プチ10/ノーマル9（恐竜と同じ範囲）。discP/digPは30〜70%、discN/digNは最大5
 const DOG_BREEDS = [
-    { key:"golden",    label:"🦮 ゴールデンレトリバー",     fullName:"ゴールデンレトリバー",     cry:"ワン！",   realH:56, rarity:"超激レア", power:5, discovery:3, smarts:3, special:{name:"黄金の秘宝", discP:30, discN:3, digN:5} },
+    { key:"golden",    label:"🦮 ゴールデン・レトリバー",   fullName:"ゴールデン・レトリバー",     cry:"ワン！",   realH:56, rarity:"超激レア", power:5, discovery:3, smarts:3, special:{name:"黄金の秘宝", discP:30, discN:3, digN:5} },
     { key:"labrador",  label:"🦮 ラブラドール", fullName:"ラブラドール", cry:"ワン！",   realH:58, rarity:"激レア",   power:3, discovery:5, smarts:2, special:{name:"インサイト", discP:50, discN:4, digN:4} },
     { key:"beagle",    label:"🐕 ビーグル",                 fullName:"ビーグル",                 cry:"わおーん", realH:38, rarity:"レア",     power:2, discovery:5, smarts:3, special:{name:"ハンティング", discP:70, discN:5, digN:2} },
     { key:"dachshund", label:"🐕 ダックスフント",           fullName:"ダックスフント",           cry:"きゃん",   realH:14, rarity:"プチレア", power:5, discovery:3, smarts:2, special:{name:"ほりほりダッシュ", discP:30, discN:2, digN:5} },
@@ -14419,7 +14421,7 @@ window.NURI_EVENT={
 })();
 /* =====================================================================
  * トレーディングカード（HTML版）… カードのデザインを HTML/CSS で組む（ゲーム内の恐竜・犬種・しば犬のカードもここで作る）
- *   tcData(kind,key)          カードに出す内容（ゲームのデータをそのまま使う。値は変えない）
+ *   tcData(kind,key,plain,label) カードに出す内容（ゲームのデータをそのまま使う。値は変えない）。layout＝カードの形（dino／dog）
  *   tcBuild(data, img)        カードの要素を作る
  *   tcRenderArt(kind,key)     メイン画像（1:1）を3Dモデルから作る
  *                             恐竜＝ななめ下から見上げる／犬＝ななめ上から見下ろす／足踏み途中／エフェクトあり
@@ -14522,25 +14524,27 @@ function tcScore(f, cs){
 function tcStars(v){ const n=Math.max(0,Math.min(5,Math.round(Number(v)||0))); return "★".repeat(n)+"☆".repeat(5-n); }
 function tcVal(v){ return (v==null || String(v).trim()==="")? TC_UNSET : String(v); }
 
-function tcData(kind, key, plain){   // plain＝ぬり絵なしのカード（恐竜：元の値・模様なし）
-    const info=(YEAR_CONFIG.cardInfo||{})[key]||{};
+function tcData(kind, key, plain, label){   // plain＝ぬり絵なしのカード（恐竜：元の値・模様なし）／label＝左上の名称（しば犬の形を決める）
+    let info=(YEAR_CONFIG.cardInfo||{})[key]||{};
     if(kind==="dino"){
         const i=DINOS.findIndex(d=>d.key===key), def=(YEAR_CONFIG.companions||{})[key]||{}, c=plain? def : (COMPANIONS[key]||def);
         const sp=c.special||def.special||{};   // COMPANIONS＝ゲームが実際に使っている値（ぬりえ済みなら補正後の値）／plain＝YEAR_CONFIG の元の値
         const cs=(!plain && window.__dinoPaintStat)? window.__dinoPaintStat(key) : null;   // ステータスに使った画素数（ぬり絵なしは null）
-        return { kind, key, no:i+1, name:c.fullName||def.fullName||key, power:c.power, discovery:c.discovery, smarts:c.smarts, special:sp.name||"",
+        return { kind, key, layout:"dino", no:i+1, name:c.fullName||def.fullName||key, power:c.power, discovery:c.discovery, smarts:c.smarts, special:sp.name||"",
                  discP:sp.discP, digP:(sp.digP!=null? sp.digP : (sp.discP!=null? 100-sp.discP : null)), discN:sp.discN, digN:sp.digN,
                  painted:!plain && !!(window.__dinoHasPaint && window.__dinoHasPaint(key)), info,
                  score:tcScore({ power:c.power, discovery:c.discovery, smarts:c.smarts, discP:sp.discP, discN:sp.discN, digN:sp.digN }, cs) };
     }
     if(key==="dog"){   // しば犬＝companions.dog の基本の値（レベルアップ制で上がった値は使わない）
         const def=(YEAR_CONFIG.companions||{}).dog||{}, sp=def.special||{};
-        return { kind, key, no:0, name:def.fullName||"しば犬", power:def.power, discovery:def.discovery, smarts:def.smarts, special:sp.name||"",
+        const dinoForm=(label===CARD_LABEL.dino) && !!info.dino;   // 恐竜発掘カード＝恐竜と同じ形（cardInfo.dog.dino）／遺跡発掘カード＝犬の形
+        if(dinoForm) info=info.dino;
+        return { kind, key, layout:dinoForm? "dino" : "dog", no:0, name:def.fullName||"しば犬", power:def.power, discovery:def.discovery, smarts:def.smarts, special:sp.name||"",
                  discP:sp.discP, digP:(sp.discP!=null? 100-sp.discP : null), discN:sp.discN, digN:sp.digN, painted:false, info,
                  score:tcScore({ power:def.power, discovery:def.discovery, smarts:def.smarts, discP:sp.discP, discN:sp.discN, digN:sp.digN }, null) };
     }
     const i=DOGS.findIndex(d=>d.key===key), d=DOGS[i]||{}, sp=d.special||{};   // 犬種＝DOG_BREEDS の値
-    return { kind, key, no:i+1, name:d.fullName||key, power:d.power, discovery:d.discovery, smarts:d.smarts, special:sp.name||"",
+    return { kind, key, layout:"dog", no:i+1, name:d.fullName||key, power:d.power, discovery:d.discovery, smarts:d.smarts, special:sp.name||"",
              discP:sp.discP, digP:(sp.discP!=null? 100-sp.discP : null), discN:sp.discN, digN:sp.digN, painted:false, info,
              score:tcScore({ power:d.power, discovery:d.discovery, smarts:d.smarts, discP:sp.discP, discN:sp.discN, digN:sp.digN }, null) };
 }
@@ -14570,7 +14574,7 @@ function tcBadgeSVG(kind){
 
 function tcBuild(d, img){
     const card=el("article","tcard");
-    card.dataset.kind=d.kind; card.dataset.key=d.key;
+    card.dataset.kind=d.kind; card.dataset.key=d.key; card.dataset.layout=d.layout||(d.kind==="dog"? "dog" : "dino");
     // ゲーム内部の値（カードには表示しない。HTML内に持っておくだけ）
     Object.assign(card.dataset, { power:d.power, discovery:d.discovery, smarts:d.smarts, digP:d.digP, discN:d.discN, digN:d.digN });
     const tin=el("div","tc-in"); card.appendChild(tin);
@@ -14602,8 +14606,8 @@ function tcBuild(d, img){
     art.appendChild(pl);
     art.appendChild(el("i","tc-gem"));
     tin.appendChild(art);
-    // 基本情報（分類・食性・時代・地域）… 恐竜だけ。YEAR_CONFIG.cardInfo から。空なら「未設定」
-    if(d.kind==="dino"){
+    // 基本情報（分類・食性・時代・地域）… 恐竜の形のカードだけ（恐竜・恐竜発掘カードのしば犬）。YEAR_CONFIG.cardInfo から。空なら「未設定」
+    if(card.dataset.layout==="dino"){
         const dl=el("dl","tc-info");
         TC_INFO.forEach(([f,lab])=>{ const w=el("div"); w.appendChild(el("dt",null,lab)); const dd=el("dd",null,tcVal(d.info[f])); w.appendChild(dd); dl.appendChild(w); });
         tin.appendChild(dl);
@@ -14619,7 +14623,7 @@ function tcBuild(d, img){
     // 特徴
     const ft=el("dl","tc-feature"), fw=el("div"); fw.appendChild(el("dt",null,"特徴"));
     const fd=el("dd",null,tcVal(d.info.feature)); fw.appendChild(fd); ft.appendChild(fw);
-    if(d.kind==="dog"){   // 犬は2行目（feature2）。空なら何も出さない
+    if(card.dataset.layout==="dog"){   // 犬の形は2行目（feature2）。空なら何も出さない
         const f2=el("dd","tc-feature2", String(d.info.feature2||"").trim()); ft.appendChild(f2); }
     tin.appendChild(ft);
     return card;
@@ -15211,7 +15215,7 @@ function tcBadgePaint(ctx, kind, x, y, s){   // 右上の六角形アイコン�
 async function tcCardCanvas(d, imgUrl, scale){
     const k=scale||TC_OUT_SCALE, CW=TC_CW, cx=CW/2, cv=document.createElement("canvas"); cv.width=Math.round(CW*k); cv.height=798*k;
     const ctx=cv.getContext("2d", evSoft2D()? { willReadFrequently:true } : undefined); ctx.scale(k,k);   // evSoft2D の時は CPU で描く（上の tcRenderArtNow と同じ理由）
-    const dog=(d.kind==="dog");
+    const dog=((d.layout||(d.kind==="dog"? "dog" : "dino"))==="dog");   // 犬の形（分類〜地域なし・特徴2行）
     if(document.fonts && document.fonts.ready) await document.fonts.ready;
     const img=await tcLoadImg(imgUrl);
     // 地と外わく
@@ -15266,7 +15270,7 @@ async function tcCardCanvas(d, imgUrl, scale){
     tcText(ctx, d.name, acx, pt+30, 282, { color:"#fff1b8", outline:[4.2,"#3b1d02"], glow:[10,"rgba(255,190,60,.75)"] });
     ctx.restore();   // わくの中の clip を外す
 
-    // 基本情報（恐竜だけ）
+    // 基本情報（恐竜の形のカードだけ）
     if(!dog){
         tcSetFont(ctx,"700",15,0.5);
         const items=TC_INFO.map(([f,lab])=>lab+"："+tcVal(d.info[f])), gap=20, ws=items.map(t=>ctx.measureText(t).width);
@@ -17290,7 +17294,7 @@ function gcPaintSig(key){   // ぬりえの模様の目印
 }
 function gcSigs(kind, key, label, R){
     const bo=!R.plain && window.NURI_EVENT && window.NURI_EVENT.blankOn();   // 白い所を元の模様にしている時は、別のカード（ぬりえどおりのカードと取り違えない）
-    const d=tcData(kind, key, R.plain), base=JSON.stringify(Object.assign({ a:GC_APP, d, p:R.plain? "" : gcPaintSig(key) }, bo? { b:1 } : {}));
+    const d=tcData(kind, key, R.plain, label), base=JSON.stringify(Object.assign({ a:GC_APP, d, p:R.plain? "" : gcPaintSig(key) }, bo? { b:1 } : {}));
     return { d, art:hash64(base), card:hash64(base+"|"+label) };
 }
 async function gcDbGet(k, sig){ if(!GC_APP) return null; const r=await ldbReq("cards","readonly",st=>st.get(k)); return (r && r.sig===sig && r.blob)? r.blob : null; }
