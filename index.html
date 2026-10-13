@@ -673,6 +673,14 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <button id="nuriAgainAR" type="button">📱 ARで もういちど みる</button>
         <div id="nuriAgainNote"></div>
       </div>
+      <!-- おすすめ設定オフ：ぬっていない白い所の見え方（ぬりえどおり＝既定／もとの もよう） -->
+      <div class="opt wide" id="nuriBlankOpt" style="display:none">
+        <div class="lbl">ぬっていない しろい ところ</div>
+        <div class="seg" id="segNuriBlank">
+          <button type="button" data-v="paper" class="on">⬜ ぬりえどおり</button>
+          <button type="button" data-v="orig">🦖 もとの もよう</button>
+        </div>
+      </div>
       <!-- おすすめ設定オフ：みほんの もようを、じぶんで ぬった きょうりゅうとして とりこむ（新しく／うわがき） -->
       <details id="nuriSample" style="display:none"><summary>🎨 みほんから とりこむ</summary><div id="nuriSampleList"></div><div id="nuriSampleNote"></div></details>
       <div id="nuriStatus"></div>
@@ -819,6 +827,7 @@ if(!/[?&]cardDebug=[23](&|$)/.test(location.search)) document.body.classList.add
         <h3>🖍 ぬりえで じぶんの きょうりゅう</h3>
         <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。</p>
         <p>ぬった色によって、その恐竜の<b>ステータスとスペシャル</b>も変わります（色とステータスの関係は「📊 得点・カードの仕組み」へ）。模様とステータスは、<b>相棒にしたとき・相棒えらびのカード・獲得カード</b>に入ります（図鑑のカードは元のまま）。</p>
+        <p class="k">ぬらずに白く残った所は、ふだんは ぬりえどおり白く見えます。おすすめ設定オフでは「ぬっていない しろい ところ」を「🦖 もとの もよう」にすると、その所を ぬりえなしの時の模様で表示します（見た目だけで、ステータスやカードのスコアは変わりません）。</p>
         <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。メイン画面の並びは、ヘッドセットでは「VR・ARで ほんかくはっくつ → ぬりえ → モデルを みよう」、それ以外（スマホ・タブレット・PC）では「ぬりえ → モデルを みよう → VR・ARで ほんかくはっくつ」です。</p>
         <p class="k">「📱 ARで もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「📄 ぬりえを いんさつ」の「ぜんぶの きょうりゅう」で8まいを まとめて開けます（印刷はブラウザの印刷から）。「🎨 みほんから とりこむ」の恐竜は、⬆＝ぬりえなし、🔄＝ぬりえあり（水色＝ぬりえを よみこみずみ／黄色＝みほんを とりこみずみ）です。「↩ もとに もどす」で、恐竜ごと／ぜんぶ、ぬりえをしていない状態に戻せます。</p>
       </section>
@@ -13422,6 +13431,10 @@ function nuriQuantizeRgba(rgba){   // 面ごとの色（塗った面だけ）を
 //  store（恐竜ごと・共有）：{ geos[] } … 発掘キャッシュ・相棒・確認表示で同じ形を使う（メモリを増やさない）
 const NURI_ORIG=new WeakMap(), NURI_ORIGMAT=new WeakMap();   // mesh → 元のジオメトリ（元に戻す用）
 const NURI_LIN=(c)=> c<=0.04045? c/12.92 : Math.pow((c+0.055)/1.055,2.4);   // 紙の色（sRGB）→ 頂点カラー（リニア）
+// ぬっていない白い所（紙の白）の見え方：blankOrig＝false：ぬりえどおり（白）／true：ぬりえなしの時の模様（元の色）
+//   白の判定は、読み取りで「塗っていない」とする基準（info.colorRule の satThr・valThr）と同じ。見た目だけで、ステータス・スコアは変わらない
+const NURI_VIEW={ blankOrig:false, satThr:0.15, valThr:0.72 };
+function nuriIsBlank(rgba, o){ const r=rgba[o], g=rgba[o+1], b=rgba[o+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b); return mx>=NURI_VIEW.valThr*255 && (mx-mn)<=NURI_VIEW.satThr*mx; }
 function nuriMeshes(root){ const ms=[]; root.traverse(o=>{ if(o.isMesh){ const g=NURI_ORIG.get(o)||o.geometry; if(g && g.getAttribute && g.getAttribute("color") && g.getAttribute("normal")) ms.push(o); } }); return ms; }
 function nuriOffset(mesh, root){ let ox=0,oy=0,oz=0; for(let o=mesh; o && o!==root; o=o.parent){ ox+=o.position.x; oy+=o.position.y; oz+=o.position.z; } return [ox,oy,oz]; }
 // 形（面をまとめた長方形でもよい）→ 1粒ずつの面に分けて、表（面ごとの色）の色を付け、また面をまとめて形にする
@@ -13472,7 +13485,7 @@ function* nuriBuildStoreSteps(root, rgba, F, T, keyMap, normals, V){   // yield�
                 if(ni!==undefined){
                     const k=[0,1,2].map(a=>{ let m=0; for(const q of tri) m+=cr[q][a]; return Math.round(c[1+a]+m/6+O[a]-n[a]*0.5); });   // 中心＝粒の中心＋4すみの平均（×0.5）、そこから面の半分だけ内側へ
                     const f=keyMap.get(nuriKey(k[0],k[1],k[2],ni));
-                    if(f!==undefined){ hit++; if(rgba && rgba[f*4+3]) col=[NURI_LIN(rgba[f*4]/255), NURI_LIN(rgba[f*4+1]/255), NURI_LIN(rgba[f*4+2]/255)]; } }
+                    if(f!==undefined){ hit++; if(rgba && rgba[f*4+3] && !(NURI_VIEW.blankOrig && nuriIsBlank(rgba, f*4))) col=[NURI_LIN(rgba[f*4]/255), NURI_LIN(rgba[f*4+1]/255), NURI_LIN(rgba[f*4+2]/255)]; } }
                 triCol.push(col); }
             const same=triCol[0][0]===triCol[1][0] && triCol[0][1]===triCol[1][1] && triCol[0][2]===triCol[1][2];
             if(same) S.add(fi, c[1], c[2], c[3], triCol[0][0], triCol[0][1], triCol[0][2]);
@@ -13589,6 +13602,20 @@ function nuriHolders(key){
     return roots;
 }
 function nuriRefreshHolders(key){ for(const r of nuriHolders(key)){ try{ nuriApply(key, r); }catch(e){ console.warn("[ぬりえ]",e); } } }
+// ---- ぬっていない白い所の見え方（NURI_VIEW.blankOrig）----
+//   ゲーム：おすすめ設定オン＝ぬりえどおり（既定）／オフ＝メニューのトグルで選んだ値（端末に保存）
+//   イベント用カード作成（?cardDebug=2）・ランキング（?cardDebug=3）：カード作成画面の上のトグルで選んだ値（ゲームとは別に保存）
+const NURI_BLANK_KEY = CARD_EVENT_MODE ? "nurieEventBlankOrig" : "nuriBlankOrig";
+function nuriBlankSaved(){ try{ return localStorage.getItem(NURI_BLANK_KEY)==="1"; }catch(_){ return false; } }
+function nuriBlankSave(on){ try{ localStorage.setItem(NURI_BLANK_KEY, on?"1":"0"); }catch(_){ } }
+function nuriBlankWanted(){ if(CARD_EVENT_MODE) return nuriBlankSaved(); const reco=(typeof recoOn==="undefined") || recoOn; return !reco && nuriBlankSaved(); }
+function nuriBlankSync(){   // 使う値が変わったら、ぬってある恐竜の模様を貼り直す（相棒・ARの恐竜・カード）。変わった時だけ true
+    const on=nuriBlankWanted(); if(on===NURI_VIEW.blankOrig) return false;
+    NURI_VIEW.blankOrig=on;
+    for(const k of Object.keys(NURI.paint)) if(NURI.paint[k]) nuriSetPaint(k, NURI.paint[k]);
+    return true;
+}
+NURI_VIEW.blankOrig=nuriBlankWanted();
 // ---- ぬり絵パラメータ：相棒の能力値へ反映 ----
 // ぬり絵あり＝YEAR_CONFIG.paintBase（基本値）＋ぬり絵補正 ／ ぬり絵なし・もとにもどした時＝YEAR_CONFIG.companions の値
 function nuriStatsFor(key){
@@ -13696,6 +13723,9 @@ function nuriMenuRefresh(){
     if(NURI_DBG && rl && rl.parentNode){ let dl=$("nuriDbgList"); if(!dl){ dl=document.createElement("div"); dl.id="nuriDbgList"; rl.parentNode.insertBefore(dl, rl.nextSibling); }   // 開発用（?nuriDebug=1）
         dl.innerHTML=""; for(const k of painted){ const b=document.createElement("button"); b.type="button"; b.textContent="🔍 No."+nuriSheetNo(k)+" "+nm(k)+"の けっか"; b.addEventListener("click",()=>nuriDebugShow(k)); dl.appendChild(b); } }
     if(pr) pr.style.display = reco? "none" : "";
+    { const bo=$("nuriBlankOpt"), on=nuriBlankSaved();   // ぬっていない白い所の見え方（おすすめ設定オフだけ）
+      if(bo) bo.style.display = reco? "none" : "";
+      document.querySelectorAll("#segNuriBlank button").forEach(b=>b.classList.toggle("on", (b.dataset.v==="orig")===on)); }
     { const sp=$("nuriSample"), sl=$("nuriSampleList");   // みほんから とりこむ（おすすめ設定オフだけ）
       if(sp) sp.style.display = reco? "none" : "";
       nuriSamplePaintUI();
@@ -14240,7 +14270,8 @@ function nuriWire(){
     const sb=$("nuriScanBtn");
     if(sb) sb.addEventListener("click",()=>{ if(!nuriCanScan()) return; nuriStartScan(); });
     const ra=$("nuriResetAll"); if(ra) ra.addEventListener("click",nuriResetAll);
-    document.querySelectorAll("#segReco button").forEach(b=>b.addEventListener("click",()=>setTimeout(nuriMenuRefresh,0)));   // おすすめ設定の切替に合わせて表示を変える（既存の onclick の後に動く）
+    document.querySelectorAll("#segReco button").forEach(b=>b.addEventListener("click",()=>setTimeout(()=>{ nuriBlankSync(); nuriMenuRefresh(); },0)));   // おすすめ設定の切替に合わせて表示・白い所の見え方を変える（ほかの onclick の後に動く）
+    document.querySelectorAll("#segNuriBlank button").forEach(b=>b.addEventListener("click",()=>{ nuriBlankSave(b.dataset.v==="orig"); nuriBlankSync(); nuriMenuRefresh(); }));   // ぬっていない白い所の見え方
     const back=$("nuriBack"), done=$("nuriDone"), again=$("nuriAgain");
     { const a=$("nuriCamSw"), b=$("nuriCamDef"); if(a) a.onclick=()=>scCamSwitch(); if(b) b.onclick=()=>scCamDefault(); }   // カメラの切り替え
     if(back) back.addEventListener("click",scClose);
@@ -14378,7 +14409,12 @@ window.NURI_EVENT={
     },
     disposeStore:(st)=>nuriDisposeStore(st),
     zip:(u8)=>nuriZip(u8, true), unzip:(u8,z)=>nuriUnzip(u8,z),
-    paintReady:()=>!!MV_READY.paint
+    paintReady:()=>!!MV_READY.paint,
+    blankKey:NURI_BLANK_KEY,                                            // 保存のキー（ほかの画面の storage で見分ける）
+    blankOrig:()=>nuriBlankSaved(),                                     // ぬっていない白い所：true＝元の模様
+    setBlankOrig(on){ nuriBlankSave(!!on); return nuriBlankSync(); },   // 保存して、使う値を合わせる（変わった時だけ true）
+    blankSync:()=>nuriBlankSync(),                                      // ほかの画面で変えた時（storage）に合わせる
+    blankOn:()=>NURI_VIEW.blankOrig                                     // いま使っている値（カードの目印に入れる）
 };
 })();
 /* =====================================================================
@@ -15748,6 +15784,11 @@ function evOpen(){
     const mute=el("button",null,""); mute.type="button";
     const putMute=()=>{ mute.textContent=EV.mute? "音：なし" : "音：あり"; mute.setAttribute("aria-pressed",String(!EV.mute)); };
     mute.addEventListener("click",()=>{ EV.mute=!EV.mute; try{ localStorage.setItem(EV_MUTE_KEY, EV.mute?"1":"0"); }catch(_){ } putMute(); }); putMute();
+    const blank=el("button",null,""); blank.type="button";   // ぬっていない白い所の見え方（既定＝ぬりえどおり）
+    const putBlank=()=>{ const on=!!(N() && N().blankOrig()); blank.textContent=on? "白い所：元の模様" : "白い所：ぬりえどおり"; blank.setAttribute("aria-pressed",String(on));
+        blank.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか。これから作るカードとランキングの歩く恐竜に使います（今あるカードは「すべて作り直す」で変わります）"; };
+    blank.addEventListener("click",()=>{ if(!N()) return; const on=!N().blankOrig(); N().setBlankOrig(on); putBlank();
+        evStatus("ぬっていない白い所を「"+(on? "元の模様" : "ぬりえどおり")+"」にしました。今あるカードは「すべて作り直す」で変わります"); }); putBlank();
     const redoAll=el("button",null,"すべて作り直す"); redoAll.type="button"; redoAll.addEventListener("click",evRedoAllToggle);
     const delAll=el("button","tce-danger","一括削除"); delAll.type="button"; delAll.addEventListener("click",evDeleteAll);
     const seqReset=el("button",null,"番号を1に戻す"); seqReset.type="button"; seqReset.addEventListener("click",evSeqReset);
@@ -15759,7 +15800,7 @@ function evOpen(){
     Object.keys(EV_SETS).forEach(n=>evSetPut(n, EV_SETS[n].def));   // 開くたびに既定値へ（開いているランキング画面も）
     const sliders=[evSlider("size"), evSlider("stage")].concat(EV_QR? [evSlider("qr")] : []);   // サイズ比・恐竜出現（秒）・QR表示（秒）
     const qrSet=el("button",null,"受け取りQRの設定（開発中）"); qrSet.type="button"; qrSet.addEventListener("click",evQrSetup);
-    const tools=el("div","tce-tools"); [rank,pv,only].concat(sliders,[bulkC,bulkM,mute,redoAll,delAll,seqReset]).concat(EV_QR? [qrSet] : []).forEach(b=>tools.appendChild(b)); bar.appendChild(tools);
+    const tools=el("div","tce-tools"); [rank,pv,only,blank].concat(sliders,[bulkC,bulkM,mute,redoAll,delAll,seqReset]).concat(EV_QR? [qrSet] : []).forEach(b=>tools.appendChild(b)); bar.appendChild(tools);
     root.appendChild(bar);
     // 左：名前とカメラ
     const main=el("div","tce-main"), side=el("div","tce-side");
@@ -16721,6 +16762,9 @@ function rkOpen(){
     root.appendChild(el("div","rk-dim"));   // まん中に恐竜が出ている間、カードの所を少し暗くする
     document.body.appendChild(root);
     Object.assign(RK,{ root, scroll:sc, grid });
+    window.addEventListener("storage", e=>{   // カード作成画面で「白い所」の見え方を変えた：これから出てくる歩く恐竜から合わせる
+        if(!N() || e.key!==N().blankKey) return;
+        if(N().blankSync()){ RW.cache.forEach(w=>rwDispose(w)); RW.cache.clear(); } });
     if(!RK_PREVIEW){   // 別ウィンドウ（サブ画面）：クリックで全画面にする（はじめの数秒だけ案内を出す）
         const hint=el("div","rk-hint","クリックすると全画面になります（もう一度クリックで戻ります）"); root.appendChild(hint);
         setTimeout(()=>{ hint.style.opacity="0"; }, 7000);
@@ -17245,7 +17289,8 @@ function gcPaintSig(key){   // ぬりえの模様の目印
         return s; }catch(_){ return "?"; }
 }
 function gcSigs(kind, key, label, R){
-    const d=tcData(kind, key, R.plain), base=JSON.stringify({ a:GC_APP, d, p:R.plain? "" : gcPaintSig(key) });
+    const bo=!R.plain && window.NURI_EVENT && window.NURI_EVENT.blankOn();   // 白い所を元の模様にしている時は、別のカード（ぬりえどおりのカードと取り違えない）
+    const d=tcData(kind, key, R.plain), base=JSON.stringify(Object.assign({ a:GC_APP, d, p:R.plain? "" : gcPaintSig(key) }, bo? { b:1 } : {}));
     return { d, art:hash64(base), card:hash64(base+"|"+label) };
 }
 async function gcDbGet(k, sig){ if(!GC_APP) return null; const r=await ldbReq("cards","readonly",st=>st.get(k)); return (r && r.sig===sig && r.blob)? r.blob : null; }
