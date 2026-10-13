@@ -929,7 +929,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>🎨 カードのスコアと背景</h3>
         <p>カード右上のスコアは、<b>ステータス点</b>（ちから・はっけん・かしこさ、スペシャルの個数、発見型／発掘型のかたより）と<b>ぬり方点</b>（色ごとの面積、色の広がり、ぬった面積）の合計です（約1100〜9000。ゲームの得点やレア度とは別です）。ぬりえをしていないカードは、ステータス点だけで決まります。</p>
-        <p>カードの絵の背景はスコアで変わります：<b>4200未満</b> 景色／<b>4200以上</b> きらめき／<b>4700以上</b> 光の筋＋青空／<b>5100以上</b> 炎または氷の結晶／<b>5500以上</b> 金の稲妻。</p>
+        <p>カードの絵の背景はスコアで変わります：<b>4200未満</b> 景色／<b>4200以上</b> きらめき／<b>4700以上</b> 光の筋＋青空／<b>5100以上</b> 炎または疾風（犬は炎または氷の結晶）／<b>5500以上</b> 金の稲妻。</p>
       </section>
       <section>
         <h3>⭐ スターブロック</h3>
@@ -14492,26 +14492,27 @@ const TC_SCORE={
     coverMul:450                 // 塗った面積：塗った画素の合計 × 450 ÷ t … 0〜450
 };
 /* ---- メイン画像のエフェクト（スコアだけで決める。ぬり絵なしでも同じ）----
- * steps：上から順に「スコアが min 以上ならこのエフェクト」。blaze は 炎 か 氷の結晶（恐竜・犬とも。カードごとに決まった“ランダム”＝同じカードはいつも同じ）
+ * steps：上から順に「スコアが min 以上ならこのエフェクト」。blaze は 恐竜＝炎 か 疾風／犬＝炎 か 氷の結晶（カードごとに決まった“ランダム”＝同じカードはいつも同じ）
  * bg：背景を画像に差し替える時は、そのエフェクトの所にファイルのパスを書く（1:1・動物なしの画像）。
  *     画像を指定したエフェクトは、プログラムで描く背景・飾りの代わりにその画像を使う
  */
 const TC_EFFECT={
-    // 境目（ぬり絵ありのカードの目安：稲妻 約1割・炎/氷 約2割・光 約1.5割・きらめき 約2.5割・景色 約3割）
+    // 境目（ぬり絵ありのカードの目安：稲妻 約1割・炎/疾風/氷 約2割・光 約1.5割・きらめき 約2.5割・景色 約3割）
     // ぬり絵なしのカード（恐竜・犬）も同じ境目で決める
     steps:[ { min:5500, fx:"thunder" },    // 金の稲妻
-            { min:5100, fx:"blaze"   },    // 炎 または 氷の結晶
+            { min:5100, fx:"blaze"   },    // 炎 または 疾風（恐竜）／炎 または 氷の結晶（犬）
             { min:4700, fx:"light"   },    // 光の筋＋青空
             { min:4200, fx:"magic"   },    // きらめき（キラキラ多め）
             { min:0,    fx:"scene"   } ],  // 景色だけ
-    blaze:["flame","ice"],
-    label:{ thunder:"金の稲妻", flame:"炎", ice:"氷の結晶", light:"光の筋＋青空", magic:"きらめき", scene:"景色だけ" },
-    bg:{ thunder:"", flame:"", ice:"", light:"", magic:"", scene:"" }
+    blaze:{ dino:["flame","gale"], dog:["flame","ice"] },
+    label:{ thunder:"金の稲妻", flame:"炎", gale:"疾風", ice:"氷の結晶", light:"光の筋＋青空", magic:"きらめき", scene:"景色だけ" },
+    bg:{ thunder:"", flame:"", gale:"", ice:"", light:"", magic:"", scene:"" }
 };
 function tcHash(str){ let h=2166136261; for(const ch of str){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
 function tcEffectFor(kind, key, total){
     for(const st of TC_EFFECT.steps) if(total>=st.min)
-        return st.fx==="blaze"? TC_EFFECT.blaze[tcHash(kind+":"+key) % TC_EFFECT.blaze.length] : st.fx;
+        if(st.fx==="blaze"){ const L=TC_EFFECT.blaze[kind==="dino"? "dino" : "dog"]; return L[tcHash(kind+":"+key) % L.length]; }
+        else return st.fx;
     return "scene";
 }
 // 背景が「景色」のエフェクトのとき、地面を描かずに空だけにする動物（飛んでいる）
@@ -15009,15 +15010,24 @@ function tcShrub(ctx, x, y, s, rnd){
         ctx.strokeStyle=tcPick(rnd,["#7d8a3a","#98a04a","#6b7a32","#a89a50"]); ctx.beginPath(); ctx.moveTo(x,y); ctx.quadraticCurveTo(x+Math.cos(a)*L*0.4, y+Math.sin(a)*L*0.7, x+Math.cos(a)*L, y+Math.sin(a)*L); ctx.stroke(); }
 }
 // 台地（乾燥地の遠くの山。上が平ら）
-function tcMesas(ctx, I, rnd, hMax, col, hi){
-    const S=I.S, hy=I.hy; let x=-S*0.1;
-    while(x<S*1.05){ const bw=S*(0.12+rnd()*0.22), h=hMax*(0.35+rnd()*0.65), sl=bw*(0.12+rnd()*0.1), tx0=x+sl, tx1=x+bw-sl;
-        if(rnd()<0.8){
-            ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x,hy+2); ctx.lineTo(tx0,hy-h); ctx.lineTo(tx1,hy-h); ctx.lineTo(x+bw,hy+2); ctx.closePath(); ctx.fill();
-            ctx.fillStyle=hi; ctx.beginPath(); ctx.moveTo(x,hy+2); ctx.lineTo(tx0,hy-h); ctx.lineTo(tx0+(tx1-tx0)*0.35,hy-h); ctx.lineTo(x+bw*0.3,hy+2); ctx.closePath(); ctx.fill();   // 日の当たる面
-            ctx.strokeStyle="rgba(255,235,200,.25)"; ctx.lineWidth=Math.max(1,S*0.002); ctx.beginPath();   // 地層のしま
-            for(let k=1;k<4;k++){ const yy=hy-h+h*k/4, f=k/4; ctx.moveTo(tx0-sl*f,yy); ctx.lineTo(tx1+sl*f,yy); } ctx.stroke(); }
-        x+=bw*(0.6+rnd()*0.6); }
+// 岩山（乾燥地の遠くの山）：上が平らな台地・切り立ったがけ・ふもとのゆるい坂が、ふぞろいに続く
+function tcMesas(ctx, I, rnd, hMax, top, base, dark, lite){
+    const S=I.S, hy=I.hy, dx=S*0.004, P=[]; let h=0, tgt=0, left=0;
+    for(let x=-dx; x<=S+dx; x+=dx){
+        if(--left<=0){ const valley=(rnd()<0.28); tgt=valley? hMax*rnd()*0.12 : hMax*(0.35+rnd()*0.65); left=valley? 4+((rnd()*10)|0) : 8+((rnd()*40)|0); }
+        const d=tgt-h; h+= d>0? Math.min(d, hMax*(0.12+rnd()*0.2)) : Math.max(d, -hMax*(rnd()<0.5? 0.05 : 0.18));   // 上りは切り立ち、下りはがけ か ゆるい坂
+        P.push([x, hy-Math.max(0, h+(rnd()-0.5)*hMax*0.025)]); }
+    const path=()=>{ ctx.beginPath(); ctx.moveTo(-dx,hy+2); P.forEach(q=>ctx.lineTo(q[0],q[1])); ctx.lineTo(S+dx,hy+2); ctx.closePath(); };
+    const g=ctx.createLinearGradient(0,hy-hMax,0,hy); g.addColorStop(0,top); g.addColorStop(1,base);
+    path(); ctx.fillStyle=g; ctx.fill();
+    ctx.save(); path(); ctx.clip(); ctx.lineCap="round";
+    for(let i=1;i<P.length;i++){ const [x,y]=P[i], hh=hy-y; if(hh<hMax*0.15 || rnd()>0.35) continue;   // がけの縦のすじ（雨けずられたあと）
+        const L=hh*(0.2+rnd()*0.7); ctx.strokeStyle=rnd()<0.6? dark : lite; ctx.lineWidth=S*(0.0015+rnd()*0.003);
+        ctx.beginPath(); ctx.moveTo(x,y+1); ctx.lineTo(x+(rnd()-0.5)*S*0.006, y+L); ctx.stroke(); }
+    for(let i=1;i<P.length;i++){ const d=P[i][1]-P[i-1][1]; if(d<-hMax*0.08){   // 日の当たる（左向きの）がけを明るく
+        const x=P[i][0], y=P[i][1]; ctx.fillStyle=lite; ctx.fillRect(x-S*0.008, y, S*0.008, hy-y); } }
+    ctx.restore();
+    ctx.strokeStyle=lite; ctx.lineWidth=Math.max(1,S*0.0018); ctx.beginPath(); P.forEach((q,i)=> i? ctx.lineTo(q[0],q[1]) : ctx.moveTo(q[0],q[1])); ctx.stroke();   // 上のふちの光
 }
 function tcDinoLand(ctx, I, rnd, type){
     const S=I.S, hy=I.hy, y0=tcClamp(hy,0,S), per=(y)=> tcClamp((y-hy)/Math.max(1,S-hy), 0, 1);
@@ -15027,8 +15037,8 @@ function tcDinoLand(ctx, I, rnd, type){
     if(type==="dry"){
         { const g=ctx.createLinearGradient(0,y0-S*0.35,0,y0); g.addColorStop(0,"rgba(255,225,180,0)"); g.addColorStop(1,"rgba(255,220,170,.55)"); ctx.fillStyle=g; ctx.fillRect(0,y0-S*0.35,S,S*0.35); }   // 地平線の近くは暖かい色
         if(showFar){ const hm=Math.min(S*0.2, hy*0.6);
-            tcMesas(ctx,I,rnd,hm,"rgba(214,170,150,1)","rgba(232,196,172,1)");
-            tcMesas(ctx,I,rnd,hm*0.6,"rgba(186,118,74,1)","rgba(214,150,96,1)"); }
+            tcMesas(ctx,I,rnd,hm,"rgb(222,184,166)","rgb(206,170,158)","rgba(150,105,95,.25)","rgba(255,235,215,.3)");      // 遠く（かすんだ色）
+            tcMesas(ctx,I,rnd,hm*0.6,"rgb(204,132,82)","rgb(170,104,64)","rgba(100,50,25,.3)","rgba(255,210,160,.3)"); }   // 近く
         const g=ctx.createLinearGradient(0,y0,0,S); g.addColorStop(0,"#ecd6a2"); g.addColorStop(0.45,"#d9b878"); g.addColorStop(1,"#b48850");
         ctx.fillStyle=g; ctx.fillRect(0,y0,S,S-y0+1);
         for(let i=0;i<16;i++){ const y=yAt(rnd()), x=rnd()*S, r=S*(0.05+rnd()*0.12)*(0.4+per(y)), lg=ctx.createRadialGradient(x,y,0,x,y,r);
@@ -15105,6 +15115,30 @@ function tcRays(ctx, ox, oy, n, rnd, rgb, aMin, aMax, len, wMin, wMax, spread, d
     for(let i=0;i<n;i++){ const a=(dir==null? rnd()*Math.PI*2 : dir+(rnd()-0.5)*spread), w=wMin+rnd()*(wMax-wMin), L=len*(0.5+rnd()*0.5);
         const g=ctx.createLinearGradient(ox,oy,ox+Math.cos(a)*L,oy+Math.sin(a)*L); g.addColorStop(0,"rgba("+rgb+","+(aMin+rnd()*(aMax-aMin)).toFixed(3)+")"); g.addColorStop(1,"rgba("+rgb+",0)");
         ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox+Math.cos(a-w)*L,oy+Math.sin(a-w)*L); ctx.lineTo(ox+Math.cos(a+w)*L,oy+Math.sin(a+w)*L); ctx.closePath(); ctx.fill(); }
+}
+// 風のすじ（だ円の一部・先が細い三日月形）：中心 cx,cy・半径 rx,ry・始まりの角度 a0・長さ（角度）span・太さ w・こさ a・かたむき rot
+function tcGust(ctx, cx, cy, rx, ry, a0, span, w, a, rot){
+    const n=28, out=[], inn=[], c=Math.cos(rot||0), s=Math.sin(rot||0);
+    for(let i=0;i<=n;i++){ const t=i/n, ang=a0+span*t, k=Math.sin(Math.PI*Math.pow(t,0.8))*w, ex=Math.cos(ang), ey=Math.sin(ang);
+        const pt=(r1,r2)=>{ const x=ex*r1, y=ey*r2; return [cx+x*c-y*s, cy+x*s+y*c]; };
+        out.push(pt(rx+k/2, ry+k/2)); inn.push(pt(rx-k/2, ry-k/2)); }
+    ctx.fillStyle="rgba(225,255,240,"+a.toFixed(2)+")"; ctx.beginPath(); out.forEach((q,i)=> i? ctx.lineTo(q[0],q[1]) : ctx.moveTo(q[0],q[1])); for(let i=inn.length-1;i>=0;i--) ctx.lineTo(inn[i][0],inn[i][1]); ctx.closePath(); ctx.fill();
+}
+// 足もとのつむじ風（地面の円の上に、上へ広がりながら回る風）
+function tcWhirl(ctx, I, rnd, k){
+    const S=I.S, R=I.R, gy=I.groundY;
+    for(let j=0;j<5;j++){ const ring=tcGroundRing(I.cam, I.ctr, gy, R*(0.7+j*0.22)), lift=S*0.03*j, n=ring.length;
+        const i0=(rnd()*n)|0, len=(n*(0.25+rnd()*0.3))|0;
+        ctx.strokeStyle="rgba(220,255,240,"+(k*(0.55-j*0.08)).toFixed(2)+")"; ctx.lineWidth=S*(0.012-j*0.0015)*k; ctx.lineCap="round"; ctx.beginPath();
+        for(let i=0;i<len;i++){ const q=ring[(i0+i)%n]; const y=q[1]-lift; if(I.front && tcOnBody(I,q[0],y,S*0.01)){ ctx.stroke(); ctx.beginPath(); continue; } i? ctx.lineTo(q[0],y) : ctx.moveTo(q[0],y); }
+        ctx.stroke(); }
+}
+// 飛ばされる葉（シダの小葉のような細長い葉）
+function tcLeaf(ctx, x, y, s, rot, rnd){
+    ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
+    ctx.fillStyle=tcPick(rnd,["#5fbf4a","#7fd35a","#3f9a3a","#a6d860"]); ctx.beginPath(); ctx.ellipse(0,0,s,s*0.32,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="rgba(30,80,30,.6)"; ctx.lineWidth=Math.max(0.8,s*0.08); ctx.beginPath(); ctx.moveTo(-s,0); ctx.lineTo(s,0); ctx.stroke();
+    ctx.restore();
 }
 function tcFlame(ctx, x, y, ang, L, W, hot){   // ほのおの舌（根元→先へ、白黄→だいだい→赤）
     ctx.save(); ctx.translate(x,y); ctx.rotate(ang);
@@ -15208,6 +15242,32 @@ const TC_FX={
             ctx.globalCompositeOperation="source-over";
             for(let i=0;i<5;i++){ const x=rnd()<0.5? S*(0.04+rnd()*0.14) : S*(0.82+rnd()*0.14), y=S*(0.15+rnd()*0.65), cs=S*(0.02+rnd()*0.02), rot=rnd();
                 if(!tcOnBody(I,x,y,cs*0.6)) tcCube(ctx,x,y,cs,[255,150,50],1,rot,"rgba(255,140,30,.95)"); } } },
+    // 疾風（恐竜）：体のまわりをうずまく強い風＋飛ばされる葉・小石＋足もとのつむじ風
+    gale:{ glow:["rgba(120,255,190,.95)",38], vig:.5, rim:[0x9cffd0,1.8], ground:false,
+        back(ctx,I,rnd){ const S=I.S, {mx,my}=I;
+            let g=ctx.createRadialGradient(mx,my,0,mx,my,S*0.9);
+            g.addColorStop(0,"#eafff4"); g.addColorStop(0.12,"#86ecc0"); g.addColorStop(0.33,"#1f9a72"); g.addColorStop(0.68,"#0b4436"); g.addColorStop(1,"#02120d");
+            ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
+            ctx.globalCompositeOperation="lighter";
+            for(let i=0;i<120;i++){ const y=rnd()*S, x=rnd()*S, L=S*(0.08+rnd()*0.3), a=(0.05+rnd()*0.25).toFixed(2);   // 横に走る風のすじ
+                const lg=ctx.createLinearGradient(x,0,x+L,0); lg.addColorStop(0,"rgba(200,255,230,0)"); lg.addColorStop(0.7,"rgba(200,255,230,"+a+")"); lg.addColorStop(1,"rgba(255,255,255,0)");
+                ctx.fillStyle=lg; ctx.fillRect(x, y, L, Math.max(1,S*(0.001+rnd()*0.003))); }
+            for(let i=0;i<30;i++){ const rx=S*(0.24+rnd()*0.36); tcGust(ctx, mx, my+(rnd()-0.4)*S*0.25, rx, rx*(0.35+rnd()*0.25), rnd()*Math.PI*2, 0.7+rnd()*1.3, S*(0.006+rnd()*0.022), 0.35+rnd()*0.55, (rnd()-0.5)*0.5); }
+            tcWhirl(ctx, I, rnd, 1);
+            tcPixels(ctx,I,rnd,260,[[210,255,235],[160,240,200],[255,255,255]],0.35,0.95,2,5);
+            for(let i=0;i<12;i++) tcGlint(ctx, rnd()*S, rnd()*S*0.85, S*(0.012+rnd()*0.02), 0.5+rnd()*0.5, "#ffffff", "rgba(140,255,200,1)");
+            ctx.globalCompositeOperation="source-over";
+            for(let i=0;i<34;i++){ const a=rnd()*Math.PI*2, r=S*(0.26+rnd()*0.42); tcLeaf(ctx, mx+Math.cos(a)*r, my+Math.sin(a)*r*0.8, S*(0.014+rnd()*0.024), rnd()*Math.PI*2, rnd); }
+            for(let i=0;i<14;i++){ const a=rnd()*Math.PI*2, r=S*(0.3+rnd()*0.35); tcCube(ctx, mx+Math.cos(a)*r, my+Math.sin(a)*r*0.8, S*(0.012+rnd()*0.018), [150,140,120], 0.95, rnd(), "rgba(140,255,200,.6)"); } },
+        front(ctx,I,rnd){ const S=I.S;
+            ctx.globalCompositeOperation="lighter";
+            for(let i=0;i<10;i++){ const left=rnd()<0.5, cx=left? S*(0.02+rnd()*0.16) : S*(0.82+rnd()*0.16), cy=S*(0.2+rnd()*0.65), rx=S*(0.06+rnd()*0.08);
+                if(!tcOnBody(I,cx,cy,rx)) tcGust(ctx, cx, cy, rx, rx*0.4, rnd()*Math.PI*2, 1+rnd()*1.2, S*(0.008+rnd()*0.012), 0.6+rnd()*0.35, 0); }
+            tcWhirl(ctx, I, rnd, 0.6);
+            tcFrontGlints(ctx,I,rnd,5,0.01,0.022,0.7,"#ffffff","rgba(140,255,200,1)");
+            ctx.globalCompositeOperation="source-over";
+            for(let i=0;i<10;i++){ const x=rnd()<0.5? S*(0.03+rnd()*0.16) : S*(0.81+rnd()*0.16), y=S*(0.12+rnd()*0.75), s=S*(0.02+rnd()*0.025);
+                if(!tcOnBody(I,x,y,s)) tcLeaf(ctx, x, y, s, rnd()*Math.PI*2, rnd); } } },
     // 氷の結晶（ラブラドールのカードに近づける：光のバースト＋氷のブロック＋魔法陣）
     ice:{ glow:["rgba(120,210,255,.95)",36], vig:.45, rim:[0x7fd0ff,1.6], ground:false,
         back(ctx,I,rnd){ const S=I.S, {mx,my}=I;
@@ -15247,12 +15307,12 @@ const TC_FX={
                 tcFirework(ctx, S*(sp[0]+(rnd()-0.5)*0.06), y, S*(0.09+rnd()*0.05), rnd, cols[(i*2+((rnd()*2)|0))%cols.length], u); });
             ctx.globalCompositeOperation="lighter";
             const g=ctx.createRadialGradient(I.mx,I.my,0,I.mx,I.my,S*0.45); g.addColorStop(0,"rgba(255,255,235,.5)"); g.addColorStop(1,"rgba(255,255,235,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
-            tcPixels(ctx,I,rnd,150,[[255,250,225],[255,230,150]],0.35,0.9,2,5);
-            for(let i=0;i<10;i++) tcGlint(ctx, rnd()*S, rnd()*S*0.85, S*(0.012+rnd()*0.02), 0.5+rnd()*0.5);
+            tcPixels(ctx,I,rnd,400,[[255,250,225],[255,230,150]],0.35,0.9,2,5);   // きらめきの量は「きらめき」と同じ
+            for(let i=0;i<24;i++) tcGlint(ctx, rnd()*S, rnd()*S*0.85, S*(0.012+rnd()*0.02), 0.5+rnd()*0.5);
             ctx.globalCompositeOperation="source-over"; },
         front(ctx,I,rnd){ ctx.globalCompositeOperation="lighter";
-            tcFrontGlints(ctx,I,rnd,5,0.01,0.024,0.7);
-            tcPixels(ctx,I,rnd,40,[[255,250,220],[255,200,230],[200,240,255]],0.4,0.9,2,4);
+            tcFrontGlints(ctx,I,rnd,8,0.01,0.024,0.7);
+            tcPixels(ctx,I,rnd,80,[[255,250,220],[255,200,230],[200,240,255]],0.4,0.9,2,4);
             ctx.globalCompositeOperation="source-over"; } },
     // きらめき（魔法陣なし。キラキラ多め）
     magic:{ glow:["rgba(140,220,255,.85)",24], vig:.28, rim:[0xbfe8ff,1.0], ground:true,
@@ -15596,8 +15656,7 @@ function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新
                 +"\nスコア "+S.total+" ＝ ステータス "+S.statusTotal+"（"+S.status.pds+"＋"+S.status.n+"＋"+S.status.type+"）＋ 塗り方 "+S.paintTotal
                 +(P? "（power根拠 "+P.power+"・discovery根拠 "+P.discovery+"・smarts根拠 "+P.smarts+"・黄 "+P.yellow+"・型 "+P.type+"・広がり "+P.spread+"・塗った面積 "+P.cover+"）" : "（ぬり絵なし）")
                 +"\nエフェクト："+TC_EFFECT.label[tcEffectFor(kind, item.key, S.total)]));
-            card.tabIndex=0; card.setAttribute("role","button");
-            const zoom=()=>tcDebugZoom(kind, item.key); card.addEventListener("click",zoom); card.addEventListener("keydown",ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); zoom(); } });
+            tcZoomable(card, ()=>tcDebugZoom(kind, item.key, id));
             pane.appendChild(fig); T.cards.push({ id, kind, key:item.key, card }); }); };
     make("dino", DINOS, T.panes.dino);
     make("dog", [{key:"dog"}].concat(DOGS), T.panes.dog);   // しばいぬ＋犬種8
@@ -15605,6 +15664,7 @@ function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新
     const F=T.panes.fx; F.innerHTML="";
     tcFxSamples().forEach(([kind,key,fx])=>{ const id="fx:"+kind+":"+key+":"+fx, fig=el("figure"), card=tcBuild(tcData(kind,key), T.imgs[id]);
         fig.appendChild(card); fig.appendChild(el("figcaption",null,"見本："+TC_EFFECT.label[fx]+"（"+tcFxRange(fx)+"）\n※スコアの数字はこのカードの実際の値"));
+        tcZoomable(card, ()=>tcDebugZoom(kind, key, id));
         F.appendChild(fig); T.cards.push({ id, kind, key, card, fx }); });
     requestAnimationFrame(()=>tcFit(T.root));
 }
@@ -15631,19 +15691,23 @@ function tcActions(kind, key, id){   // ダウンロード・余白ありダウ�
         const b=el("button",null,lab); b.type="button"; b.addEventListener("click",(ev)=>{ ev.stopPropagation(); run(fn); }); box.appendChild(b); });
     return box;
 }
-function tcFxSamples(){ const L=[], all=["thunder","flame","ice","light","magic","scene"];
-    all.forEach(f=>L.push(["dino","trex",f])); all.forEach(f=>L.push(["dog","golden",f])); ["light","magic","scene"].forEach(f=>L.push(["dino","ptera",f]));   // プテラノドン＝空だけ
+function tcFxSamples(){ const L=[], all=k=>["thunder"].concat(TC_EFFECT.blaze[k], ["light","magic","scene"]);
+    all("dino").forEach(f=>L.push(["dino","trex",f])); all("dog").forEach(f=>L.push(["dog","golden",f])); ["light","magic","scene"].forEach(f=>L.push(["dino","ptera",f]));   // プテラノドン＝空だけ
     return L; }
 function tcFxRange(fx){   // 見本の説明用：そのエフェクトになるスコアの範囲
-    const st=TC_EFFECT.steps; for(let i=0;i<st.length;i++){ const f=st[i].fx; if(f===fx || (f==="blaze" && (fx==="flame"||fx==="ice")))
+    const st=TC_EFFECT.steps; for(let i=0;i<st.length;i++){ const f=st[i].fx; if(f===fx || (f==="blaze" && Object.values(TC_EFFECT.blaze).some(L=>L.includes(fx))))
         return "スコア "+st[i].min+(i>0? "〜"+(st[i-1].min-1) : " 以上"); } return ""; }
 function tcDebugTab(k){
     const T=TCD; Object.entries(T.tabs).forEach(([n,b])=>b.setAttribute("aria-selected", String(n===k)));
     Object.entries(T.panes).forEach(([n,p])=>{ p.style.display=(n===k)?"":"none"; });
     requestAnimationFrame(()=>tcFit(T.panes[k]));
 }
-function tcDebugZoom(kind, key){
-    const T=TCD, z=el("div","tcd-zoom"), c=tcBuild(tcData(kind,key), T.imgs[kind+":"+key]);
+function tcZoomable(card, zoom){   // 押すと1枚大きく表示
+    card.tabIndex=0; card.setAttribute("role","button");
+    card.addEventListener("click",zoom); card.addEventListener("keydown",ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); zoom(); } });
+}
+function tcDebugZoom(kind, key, id){   // id＝画像の名前（恐竜・犬＝"dino:trex" など／エフェクト見本＝"fx:dino:trex:flame" など）
+    const T=TCD, z=el("div","tcd-zoom"), c=tcBuild(tcData(kind,key), T.imgs[id]);
     z.appendChild(c); z.addEventListener("click",()=>z.remove()); T.root.appendChild(z); requestAnimationFrame(()=>tcFit(z));
 }
 async function tcDebugRenderAll(){
