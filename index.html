@@ -14828,14 +14828,40 @@ function tcBoltPts(x0,y0,x1,y1,rnd,disp,depth){
         pts=np; }
     return pts;
 }
+// 太い稲妻：折れ目（V の間の点）は4つまで。太さは 細い→太い→細い→太い… と、長さにそって まっすぐ（線形に）変わる
+//   wMin・wMax＝色の部分の太さ（いちばん細い所・太い所）／cycles＝太くなる回数／purple＝紫の稲妻
+function tcBoltTaper(ctx, V, wMin, wMax, cycles, purple){
+    const S=TC_S, c=document.createElement("canvas"); c.width=c.height=S; const g=c.getContext("2d");
+    const segL=[]; let L=0; for(let i=0;i<V.length-1;i++){ const d=Math.hypot(V[i+1][0]-V[i][0], V[i+1][1]-V[i][1]); segL.push(d); L+=d; }
+    const wAt=(s)=>{ const u=(s/L*cycles*2)%2; return wMin+(wMax-wMin)*(u<1? u : 2-u); };   // 三角の波（はじめは細い）
+    const knots=[]; for(let k=1;k<cycles*2;k++) knots.push(L*k/(cycles*2));   // 太さが いちばん太い／細い 所
+    const layer=(col, f)=>{ g.fillStyle=col; let s0=0;
+        for(let i=0;i<V.length-1;i++){ const [ax,ay]=V[i], [bx,by]=V[i+1], d=segL[i]||1, nx=-(by-ay)/d, ny=(bx-ax)/d;
+            const cut=[0].concat(knots.filter(k=>k>s0 && k<s0+d).map(k=>k-s0), [d]);   // この線の中で、太さの変わり目で区切る
+            for(let j=0;j<cut.length-1;j++){ const t0=cut[j], t1=cut[j+1], w0=wAt(s0+t0)*f/2, w1=wAt(s0+t1)*f/2;
+                const p0=[ax+(bx-ax)*t0/d, ay+(by-ay)*t0/d], p1=[ax+(bx-ax)*t1/d, ay+(by-ay)*t1/d];
+                g.beginPath(); g.moveTo(p0[0]+nx*w0,p0[1]+ny*w0); g.lineTo(p1[0]+nx*w1,p1[1]+ny*w1); g.lineTo(p1[0]-nx*w1,p1[1]-ny*w1); g.lineTo(p0[0]-nx*w0,p0[1]-ny*w0); g.closePath(); g.fill();
+                g.beginPath(); g.arc(p1[0],p1[1],w1,0,Math.PI*2); g.fill(); }   // つなぎ目（折れ目）を丸く
+            s0+=d; }
+        g.beginPath(); g.arc(V[0][0],V[0][1],wAt(0)*f/2,0,Math.PI*2); g.fill(); };
+    const P=purple? ["#b98aff","#e2d0ff","#faf5ff","rgba(160,80,255,.95)","rgba(205,165,255,.9)"] : ["#ffc84a","#fff2c0","#fffdf2","rgba(255,170,40,.95)","rgba(255,220,120,.9)"];
+    layer(P[0],1); layer(P[1],0.55); layer(P[2],0.28);
+    ctx.save(); ctx.shadowColor=P[3]; ctx.shadowBlur=wMax*1.2; ctx.drawImage(c,0,0); ctx.shadowColor=P[4]; ctx.shadowBlur=wMax*0.4; ctx.drawImage(c,0,0); ctx.restore();
+}
+// 太い稲妻の形：n 本のまっすぐな線を、交互に左右へ折る（折れ目＝n−1 か所）
+function tcZigzag(x0,y0,x1,y1,rnd,n,amp){
+    const dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy)||1, nx=-dy/L, ny=dx/L, V=[[x0,y0]];
+    for(let i=1;i<n;i++){ const t=(i+(rnd()-0.5)*0.5)/n, o=(i%2? 1 : -1)*L*amp*(0.6+rnd()*0.8); V.push([x0+dx*t+nx*o, y0+dy*t+ny*o]); }
+    V.push([x1,y1]); return V;
+}
 function tcStroke(ctx, pts, w, col, blur, glow){
     ctx.save(); ctx.lineJoin="round"; ctx.lineCap="round"; ctx.lineWidth=w; ctx.strokeStyle=col;
     if(blur){ ctx.shadowBlur=blur; ctx.shadowColor=glow||col; }
     ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.stroke(); ctx.restore();
 }
 const TC_RAINBOW=["rgba(255,110,110,1)","rgba(255,190,80,1)","rgba(255,245,110,1)","rgba(110,255,150,1)","rgba(110,190,255,1)","rgba(190,130,255,1)"];   // 虹色（きらめきの光の色）
-function tcBolt(ctx, pts, purple){
-    const S=TC_S/1024;
+function tcBolt(ctx, pts, purple, k){   // k＝太さの倍率（省略＝1）
+    const S=TC_S/1024*(k||1);
     if(purple){ tcStroke(ctx,pts,10*S,"rgba(150,70,255,.28)",28*S,"rgba(170,90,255,.9)"); tcStroke(ctx,pts,3.2*S,"#c9a0ff",10*S,"#b07cff"); tcStroke(ctx,pts,1.3*S,"#f5eaff"); }
     else { tcStroke(ctx,pts,12*S,"rgba(255,160,30,.25)",30*S,"rgba(255,170,40,.95)"); tcStroke(ctx,pts,4*S,"#ffc84a",12*S,"#ffb020"); tcStroke(ctx,pts,1.6*S,"#fffbe6"); }
 }
@@ -15217,11 +15243,11 @@ const TC_FX={
                 ctx.save(); ctx.translate(mx,my); ctx.rotate(ang); const lg=ctx.createLinearGradient(-S*L/2,0,S*L/2,0);
                 lg.addColorStop(0,"rgba(255,240,190,0)"); lg.addColorStop(0.5,"rgba(255,255,240,.95)"); lg.addColorStop(1,"rgba(255,240,190,0)");
                 ctx.fillStyle=lg; ctx.beginPath(); ctx.ellipse(0,0,S*L/2,S*w,0,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-            const NB=16;
+            const NB=24;   // 細い稲妻の本数
             for(let i=0;i<NB;i++){
                 const a=i/NB*Math.PI*2+(rnd()-0.5)*0.4, r0=S*(0.08+rnd()*0.1), r1=S*(0.55+rnd()*0.35);
                 const x0=mx+Math.cos(a)*r0, y0=my+Math.sin(a)*r0, x1=mx+Math.cos(a+(rnd()-0.5)*0.5)*r1, y1=my+Math.sin(a+(rnd()-0.5)*0.5)*r1;
-                const p2=tcBoltPts(x0,y0,x1,y1,rnd,0.6,7), purple=(i%3===1);   // 3本に1本は紫
+                const p2=tcBoltPts(x0,y0,x1,y1,rnd,0.6,7), purple=(i%2===1);   // 半分は紫
                 tcBolt(ctx, p2, purple);
                 for(let b=0;b<3;b++){ const p=p2[(6+rnd()*(p2.length-12))|0], ba=Math.atan2(y1-y0,x1-x0)+(rnd()<0.5?-1:1)*(0.35+rnd()*0.6), bl=Math.hypot(x1-x0,y1-y0)*(0.12+rnd()*0.25);
                     tcBolt(ctx, tcBoltPts(p[0],p[1],p[0]+Math.cos(ba)*bl,p[1]+Math.sin(ba)*bl,rnd,0.65,5), purple); }
@@ -15237,12 +15263,28 @@ const TC_FX={
             { const ring=tcGroundRing(I.cam,I.ctr,I.groundY,I.R);   // 輪から上へ飛び散る光
               for(let i=0;i<70;i++){ const p=ring[(rnd()*(ring.length-1))|0], L=S*(0.02+rnd()*0.09), p2=Math.max(2,(1.5+rnd()*3)*u);
                   for(let k=0;k<5;k++){ ctx.fillStyle="rgba(255,"+(200+((rnd()*55)|0))+",120,"+(0.9-k*0.17).toFixed(2)+")"; ctx.fillRect(Math.round(p[0]+(rnd()-0.5)*4*u), Math.round(p[1]-L*k/5), p2, p2); } } }
-            ctx.globalCompositeOperation="source-over"; },
+            ctx.globalCompositeOperation="source-over";
+            { const J=Object.assign({},I); if(I.src) tcBodyMask(J,I.src);   // 太い稲妻を6本（金3・紫3を交互）：体のふちから外へ、長く見える向きを選ぶ（体の後ろに かくれないように）
+              const C=[]; for(let i=0;i<24;i++){ const a=i/24*Math.PI*2+(rnd()-0.5)*0.2, ca=Math.cos(a), sa=Math.sin(a);
+                  let r=S*0.04; while(r<S*0.8 && tcOnBody(J, mx+ca*r, my+sa*r, 0)) r+=S*0.01;
+                  const rx=ca>0? (S-mx)/ca : ca<0? -mx/ca : 1e9, ry=sa>0? (S-my)/sa : sa<0? -my/sa : 1e9, r1=Math.min(rx,ry);
+                  C.push({ a, r0:r+S*0.01, r1:r1+S*0.03, len:r1-r }); }
+              C.sort((p,q)=>q.len-p.len); const pick=[];
+              for(const c of C){ if(pick.length<6 && c.len>S*0.1 && pick.every(p=>Math.abs(Math.atan2(Math.sin(c.a-p.a),Math.cos(c.a-p.a)))>Math.PI/4)) pick.push(c); }
+              for(const c of C){ if(pick.length<6 && !pick.includes(c) && c.len>S*0.08 && pick.every(p=>Math.abs(Math.atan2(Math.sin(c.a-p.a),Math.cos(c.a-p.a)))>Math.PI/7)) pick.push(c); }   // 足りない時は間をせまくして選ぶ
+              pick.sort((p,q)=>p.a-q.a);   // まわる順に並べて、金と紫を交互にする
+              ctx.save(); ctx.globalCompositeOperation="source-over";   // ほかの稲妻の光に溶けないよう、ふつうに重ねて描く
+              pick.forEach(({a,r0,r1},pi)=>{ const purple=(pi%2===1); const x0=mx+Math.cos(a)*r0, y0=my+Math.sin(a)*r0, x1=mx+Math.cos(a)*r1, y1=my+Math.sin(a)*r1, p2=tcZigzag(x0,y0,x1,y1,rnd,3+((rnd()*3)|0),0.1);   // 折れ目は2〜4か所
+                  tcBoltTaper(ctx, p2, 8, 48, 2, purple);
+                  for(let b=0;b<2;b++){ const i=(rnd()*(p2.length-1))|0, t=0.2+rnd()*0.6, p=[p2[i][0]+(p2[i+1][0]-p2[i][0])*t, p2[i][1]+(p2[i+1][1]-p2[i][1])*t];   // 枝分かれ（細い稲妻）
+                      const ba=a+(rnd()<0.5?-1:1)*(0.4+rnd()*0.5), bl=Math.hypot(x1-x0,y1-y0)*(0.2+rnd()*0.2);
+                      tcBolt(ctx, tcBoltPts(p[0],p[1],p[0]+Math.cos(ba)*bl,p[1]+Math.sin(ba)*bl,rnd,0.6,5), purple, 2.2); } });
+              ctx.restore(); } },
         front(ctx,I,rnd){ const S=I.S;
             ctx.globalCompositeOperation="lighter";
-            for(const side of [0,1]){ const x0=side? S*(0.86+rnd()*0.1) : S*(0.04+rnd()*0.1), x1=side? S*(0.8+rnd()*0.16) : S*(0.04+rnd()*0.16);   // 手前の左右に落ちる稲妻（体にはかからない）
-                const p=tcBoltPts(x0, -S*0.02, x1, S*(0.55+rnd()*0.3), rnd, 0.35, 6).filter(q=>!tcOnBody(I,q[0],q[1],S*0.015));
-                if(p.length>8) tcBolt(ctx, p, side===1); }
+            for(const side of [0,1,0]){ const x0=side? S*(0.82+rnd()*0.16) : S*(0.02+rnd()*0.16), x1=side? S*(0.78+rnd()*0.2) : S*(0.02+rnd()*0.2);   // 手前の左右に落ちる稲妻（3本・体にはかからない）
+                let run=[]; const out=()=>{ if(run.length>4) tcBolt(ctx, run, side===1); run=[]; };   // 体にかかる所で切る
+                tcBoltPts(x0, -S*0.02, x1, S*(0.55+rnd()*0.3), rnd, 0.35, 6).forEach(q=>{ if(tcOnBody(I,q[0],q[1],S*0.02)) out(); else run.push(q); }); out(); }
             ctx.globalCompositeOperation="source-over";
             for(let i=0;i<12;i++){ const x=rnd()<0.5? S*(0.04+rnd()*0.14) : S*(0.82+rnd()*0.14), y=S*(0.2+rnd()*0.6), cs=S*(0.03+rnd()*0.03), rot=(rnd()-0.5)*0.5;
                 if(!tcOnBody(I,x,y,cs*0.6)) tcCube(ctx,x,y,cs,[240,180,60],1,rot,"rgba(255,210,90,.9)"); }
@@ -15451,7 +15493,7 @@ async function tcRenderArtNow(kind, key, fxName, plain){
     const cv=document.createElement("canvas"); cv.width=cv.height=S; const ctx=cv.getContext("2d", CTX2D);
     const bgImg=await tcLoadBg((TC_EFFECT.bg||{})[fxName]);
     if(bgImg){ const k=Math.max(S/bgImg.width, S/bgImg.height), w=bgImg.width*k, h=bgImg.height*k; ctx.drawImage(bgImg,(S-w)/2,(S-h)/2,w,h); }
-    else FX.back(ctx, I, rnd);
+    else { I.src=src; FX.back(ctx, I, rnd); }   // I.src＝体だけの絵（体の形を見て描く飾り用）
     // 足もとの影（地面がある景色のときだけ）
     if(FX.ground && !I.skyOnly){ const sh=tcGroundRing(cam, ctr, bb.min.y, Math.max(size.x,size.z)*(V.low? 0.36 : 0.3)); ctx.save(); tcPath(ctx, sh); ctx.fillStyle=V.low? "rgba(0,0,0,.38)" : "rgba(0,0,0,.2)"; ctx.shadowColor="rgba(0,0,0,.5)"; ctx.shadowBlur=(V.low? 18 : 30)*S/1024; ctx.fill(); ctx.restore(); }
     // 恐竜・犬（ふちの光）
