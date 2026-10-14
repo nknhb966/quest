@@ -46,6 +46,9 @@
     #loadingNote i{ display:inline-block; width:13px; height:13px; margin-right:8px; vertical-align:-2px;
         border:2px solid rgba(200,180,255,.35); border-top-color:#c9bcff; border-radius:50%; animation:spin 0.9s linear infinite; }
     @keyframes spin{ to{ transform:rotate(360deg);} }
+    #loadingPct{ display:inline-block; min-width:3em; text-align:left; font-variant-numeric:tabular-nums; }
+    #menu #loadingNote #loadingRetry{ display:block; margin:10px auto 0; padding:10px 16px; border-radius:10px; border:1px solid #c9bcff; background:#2a1f4f; color:#fff;
+        font-weight:800; font-size:14px; letter-spacing:0; pointer-events:auto !important; cursor:pointer !important; opacity:1 !important; filter:none !important; }   /* 読み込み中でも押せる */
     .menu-inner{ width:min(620px,94vw); margin:auto 0; display:flex; flex-direction:column; align-items:center; }
     .kicker{ letter-spacing:6px; font-size:12px; color:var(--dim); margin:0 0 10px; }
     .title{
@@ -459,7 +462,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
     <h1 class="title">越前国府発掘クエスト</h1>
     <p class="subtitle">歩いて探して、出土品や恐竜を掘り当てよう</p>
 
-    <p id="loadingNote"><i></i>データを読み込み中…</p>
+    <p id="loadingNote"><i></i>データを読み込み中… <span id="loadingPct"></span><button type="button" id="loadingRetry" style="display:none">🔄 うまく いかない ときは、もういちど よみこむ</button></p>
     <!-- VR・ARで ほんかくはっくつ（入室ボタン・まとめて更新・設定）。並び順は端末で変わる（下の .menu-inner の order） -->
     <div id="digSection">
     <div class="digSectionTitle">⛏ VR・ARで ほんかくはっくつ</div>
@@ -867,7 +870,8 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>🗺 たんけん（ARで あそぶ）</h3>
         <p>スマホ・タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。<b>「📱 ARで あそぶ」</b>のAR画面で、恐竜かいぬを表示して<b>「🗺 たんけん」</b>を押します（恐竜と→恐竜を、いぬと→出土品をさがします。出土品の表示中は出ません）。「たんけんの じゅんび」で<b>あそびかた</b>（3かい ちょうせん／じかんまで さがす（既定）／ぜんぶ みつける）と<b>さがす ばしょの ひろさ</b>（よこ・おく 3〜10m、既定5×5m）を選び、<b>「🗺 たんけんに いく」</b>→<b>「はじめる」</b>。あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここで はじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた かせきカードを手で掘り出し、AR画面のまま カードを映すと、その恐竜が卵から生まれます（卵の出方・大きさは「ARで おおきく みる」と同じ。時間なし・見つけた数を数え、「おわる」で見つけた恐竜の一覧を出してから元の画面に戻ります）。カードは メニューの「🦴 かせきカードを いんさつ」（おすすめ設定オフ）で印刷します（はがき大・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦴 かせきカードを いんさつ」の「おおきい カード（A4）」）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上に土のブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒の「きく」は「カードを さがしてね」と言い、スターブロックは出ません。</p>
+        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた かせきカードを手で掘り出し、AR画面のまま カードを映すと、その恐竜が卵から生まれます（卵の出方・大きさは「ARで おおきく みる」と同じ。時間なし・見つけた数を数え、「おわる」で見つけた恐竜の一覧を出してから元の画面に戻ります）。カードは メニューの「🦴 かせきカードを いんさつ」（おすすめ設定オフ）で印刷します（はがき大・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦴 かせきカードを いんさつ」の「おおきい カード（A4）」）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上に土のブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒の「きく」は「カードを さがしてね」と言い、スターブロックは出ません。掘ったカードの「もう ほったよ」は、カードが一度 画面から外れて また映った時に出ます（卵から恐竜が出る間は、カードのことばは出ません）。</p>
+        <p><b>ARの しくみ（Android）</b>：「そのばで ぐるっと」「ほって かえす」「カードを さがす」は、Android では「📡 ARCore（ふつう）」と「📷 カメラ＋センサー」を選べます（前回の選択を覚えます。iPhone・iPad は いつも カメラ＋センサー）。ARCore の「そのばで ぐるっと」は足もとの わっかから1m はなれると「わっかに もどろう」と出ます。ARCore の「カードを さがす」は、一度見つけたカードの場所を ARCore が覚えるので、画面から外れても そのままです。ARCore でカードを読むにはカメラ映像の許可（camera-access）が必要で、もらえない端末では自動で カメラ＋センサーに切り替えて続けます（「ほって かえす」は iPhone と同じ方式の AR 画面になります）。</p>
         <p><b>フィールドが ずれたとき</b>：床に「まんなか」と「まえ」の印（テープなど）を付けておき、「ここで はじめる」は まんなかの印に立って まえの印の方を向いて押します。ずれたら、まんなかの印に立って まえの印の方を向き、画面下の<b>「📍 ずれを なおす」</b>→<b>「なおす」</b>。発掘ポイント・スコア・タイム・進み具合はそのままで、フィールドの位置と向きだけを合わせ直します（ゲームの途中でも使えます）。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「ちいさい こ 0.9m／こども 1.2m／おとな 1.5m」を選びます）。スタンバイ中は「やめる」→「ここで はじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
       </section>
@@ -1333,7 +1337,11 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; line-height:1.15; }
     #lphDig .seg3 button span{ font-size:11.5px; font-weight:800; }
     #lphDig .seg3 button.on{ background:linear-gradient(135deg,#16a34a,#0d9488); border-color:#a7f3d0; }
-    #lphDigStyle{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }   /* さがしかた（あるいて／そのばで ぐるっと／ほって かえす／カードを さがす） */
+    #lphDigStyle, #lphDigAr{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+    #lphDigAr button{ min-height:46px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(28,20,52,.92); color:#fff; font-size:16px;
+        display:flex; align-items:center; justify-content:center; gap:6px; font-family:inherit; line-height:1.25; }
+    #lphDigAr button span{ font-size:11.5px; font-weight:800; text-align:left; }
+    #lphDigAr button.on{ background:linear-gradient(135deg,#16a34a,#0d9488); border-color:#a7f3d0; }   /* さがしかた（あるいて／そのばで ぐるっと／ほって かえす／カードを さがす） */
     #lphDigStyle button{ min-height:52px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(28,20,52,.92); color:#fff; font-size:17px;
         display:flex; align-items:center; justify-content:center; gap:6px; font-family:inherit; line-height:1.25; }
     #lphDigStyle button span{ font-size:11.5px; font-weight:800; text-align:left; }
@@ -1467,6 +1475,11 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
                 <button type="button" data-v="round">🔄<span>そのばで<br>ぐるっと</span></button>
                 <button type="button" data-v="dig">⛏<span>ほって<br>かえす</span></button>
                 <button type="button" data-v="card">🃏<span>カードを<br>さがす</span></button>
+            </div>
+            <div class="lbl" id="lphDigArLbl" style="display:none">ARの しくみ</div>
+            <div id="lphDigAr" style="display:none">
+                <button type="button" data-v="arcore">📡<span>ARCore<br>（ふつう）</span></button>
+                <button type="button" data-v="camera">📷<span>カメラ＋<br>センサー</span></button>
             </div>
             <div class="lbl" id="lphDigModeLbl">あそびかた</div>
             <div class="seg3" id="lphDigMode">
@@ -3946,9 +3959,12 @@ const TABAR_CFG = {
     dogFwd:        1.5, // 相棒の前方距離(m)。縦持ちタブレットの画面下端に見える距離
     roundR:        1.3, // たんけん「そのばで ぐるっと」：発掘ポイントを置く円の半径(m)。子どもは まんなかに立ったまま、まわりを見回して探す
     roundDogFwd:   2.1, //  同：相棒の前方距離(m)（円の外に立たせて、発掘ポイントを隠さない）
+    roundLeaveR:   1.0, // そのばで ぐるっと（ARCore）：まんなかから これより はなれたら「わっかに もどろう」(m)
     roundDetectMul:0.6, //  同：探知の半径の倍率（8点が円の上に近く並ぶので狭める。向きが合うほど強く、点と点の間では弱くなる）
     cardBlockFs:   0.38,// たんけん「カードを さがす」：土のブロックの大きさの倍率（0.8m×0.38＝約30cm。カードと同じくらい）
-    cardEvery:     120, //  同：カードを探す間隔(ms)
+    cardEvery:     120, //  同：カードを探す間隔(ms)。読み取りは別の処理（ワーカー）で行い、前のコマを読み終わるまでは次を渡さない
+    cardLong:      640, //  同：読み取りに使う映像の長い辺(px)
+    cardRelookMs:  1000,// たんけん「カードを さがす」：これより長く映らなかったカードが また映ったら「また見えた」（掘ったカードの「もう ほったよ」を出す）
     cardLostMs:    3000,// たんけん「カードを さがす」：見つけたカードが映らなくなってから、ブロックを消すまで（ms）。ほかの カードの所に 前の ブロックが 残らないように
     runSpeed:      1.4, // 移動の速さ(m/s)がこれを超え続けたら「ゆっくり歩こう」（webxr）
     runSteps:      4,   // 1.2秒あたりの歩数がこれ以上で「ゆっくり歩こう」（camera）
@@ -4532,11 +4548,24 @@ _dimOverlay.renderOrder=1050; _dimOverlay.visible=false; _dimOverlay.frustumCull
 const _resultDim=new THREE.Mesh(new THREE.PlaneGeometry(40,40),
     new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.62, depthTest:false, depthWrite:false, side:THREE.DoubleSide, toneMapped:false}));
 _resultDim.renderOrder=500; _resultDim.visible=false; _resultDim.frustumCulled=false; scene.add(_resultDim);
+const RESULT_DIM_WAIT=1000, RESULT_DIM_FADE=1000, RESULT_DIM_OP=0.62;   // リザルトの暗幕：最後の卵がかえり恐竜（出土品）が出終わってから1秒待ち、1秒かけて暗くする
+let _rdReadyT=null, _rdFull=false;
+function resultRevealBusy(){ return (typeof eggHatch!=="undefined" && eggHatch.length>0) || (typeof popAnims!=="undefined" && popAnims.length>0); }   // 卵・恐竜・出土品が出てくる途中
 function updateResultDim(){
     const inResult = (typeof gamePhase==="function") && gamePhase()==="result";
     const dexDim = (typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // 図鑑カード暗転が優先
-    const on = inResult && !dexDim;
+    if(!inResult){ _rdReadyT=null; _rdFull=false; _resultDim.visible=false; return; }
+    const now=performance.now();
+    let k=1;
+    if(!_rdFull){                                                // 暗くなりきったら、そのまま（後から出てきた物では明るく戻さない）
+        if(resultRevealBusy()) _rdReadyT=null;                  // まだ出てくる途中：待つ
+        else if(_rdReadyT==null) _rdReadyT=now+RESULT_DIM_WAIT; // 出終わった：1秒後から暗くし始める
+        k = (_rdReadyT==null) ? 0 : Math.max(0, Math.min(1, (now-_rdReadyT)/RESULT_DIM_FADE));
+        if(k>=1) _rdFull=true;
+    }
+    const on = !dexDim && k>0;
     _resultDim.visible=on;
+    _resultDim.material.opacity=RESULT_DIM_OP*k;
     if(!on) return;
     const cwp=camera.getWorldPosition(_doCwp), wq=camera.getWorldQuaternion(_doWq), fwd=_doFwd.set(0,0,-1).applyQuaternion(wq);
     _resultDim.position.copy(cwp).addScaledVector(fwd, 0.55); _resultDim.quaternion.copy(wq);   // リザルト板(手前)より少し手前の膜
@@ -6560,6 +6589,7 @@ function makeDigDino(dn){
     if(isFinite(bb.min.y)) inner.position.y = -bb.min.y;    // 底面をコンテナ原点にそろえる
     const cont=new THREE.Group(); cont.add(inner);
     cont.userData.builtScale=dinoCurScale();   // 生成時のスケール（出現時に現在のスケールへ補正するため）
+    cont.userData.builtH=dinoTargetHeight(dn.key); cont.userData.dinoKey=dn.key;   // 生成時の高さ（広さが変わった時は、作り直さず大きさだけ変える＝dinoRescale）
     cont.userData.model=inner;
     cont.userData.legs=inner.userData.legs; cont.userData.tail=inner.userData.tail; cont.userData.wings=inner.userData.wings; cont.userData.head=inner.userData.head;
     cont.userData.flying=!!inner.userData.wings;
@@ -6573,26 +6603,26 @@ let _preloadTimer=null;
 let PRELOAD_DONE=false;        // プリロード＋GPUウォームアップ＋出土品ロード＋カード作成＋相棒クローン完了フラグ（入室可否）
 let WARMUP_DONE=false, ARTIFACTS_DONE=false, CARDS_DONE=false, _finishingPreload=false;
 function _maybeFinishPreload(){ if(!(WARMUP_DONE && ARTIFACTS_DONE && CARDS_DONE)) return; if(_finishingPreload) return; _finishingPreload=true;
-    let done=false; const onDone=()=>{ if(done) return; done=true; PRELOAD_DONE=true; document.body.classList.remove("preloading"); requestTitleDraw(1000); };   // 完全ゲート：相棒クローンまで全部揃ってから解錠
+    let done=false; const onDone=()=>{ if(done) return; done=true; preProg("buddy", 1); PRELOAD_BASE=true; preloadExtras(); };   // 相棒クローンまで揃ったら → 追加の準備（全部そろってから解錠）
     try{ if(window.__resultBuddy && window.__resultBuddy.preload){ window.__resultBuddy.preload(onDone); } else onDone(); }catch(_){ onDone(); }
-    setTimeout(onDone, 8000);   // 安全策：万一詰まっても8秒で強制解錠
+    // 強制解錠（8秒）はやめた：終わるまで必ず待つ。止まった時だけ「もういちど よみこむ」を出す（preStalled）
 }
 // 恐竜・犬種・しばいぬのカードを入室前に作っておく（全部できたら CARDS_DONE → ほかの準備もそろえば入室可能）
 // 作ったカードは覚えておくので、2回目以降のプリロード（大きさの変更など）はすぐ終わる
 let _cardPreloadSeq=0;
 function preloadGameCards(){
     const seq=++_cardPreloadSeq;
-    let fired=false; const fin=()=>{ if(fired || seq!==_cardPreloadSeq) return; fired=true; CARDS_DONE=true; _maybeFinishPreload(); };
+    let fired=false; const fin=()=>{ if(fired || seq!==_cardPreloadSeq) return; fired=true; preProg("cards", PRE.tot.cards||1, PRE.tot.cards||1); CARDS_DONE=true; _maybeFinishPreload(); };
     const G=gameCards(); if(!G){ fin(); return; }
-    G.preload(CARD_LABEL).then(fin, e=>{ console.warn("[カード] プリロードできませんでした", e); fin(); });
-    setTimeout(fin, 300000);   // 安全策：万一詰まっても5分で入室可能に（できていないカードは、必要になった時に作る）
+    G.preload(CARD_LABEL, (d,t)=>{ if(seq===_cardPreloadSeq) preProg("cards", d, t); }).then(fin, e=>{ console.warn("[カード] プリロードできませんでした", e); fin(); });
+    // 強制解錠（5分）はやめた：終わるまで必ず待つ（作れなかったカードは飛ばして進むので、止まることはない）
 }
 let _warmupTTL=0;             // 残りウォームアップフレーム数（描画ループで消化）
 let _warmupModels=[];         // ウォームアップ対象（恐竜キャッシュ）
 function preloadEverything(done){
     if(CARD_ONLY_MODE) return;   // カードだけの画面：ゲームの恐竜・相棒・カード画像の事前生成はしない（カードは1枚ずつその場で作る）
     if(_preloadTimer){ clearTimeout(_preloadTimer); _preloadTimer=null; }
-    PRELOAD_DONE=false; document.body.classList.add("preloading");   // 完了まで入室不可
+    PRELOAD_DONE=false; PRELOAD_BASE=false; document.body.classList.add("preloading");   // 完了まで入室不可（追加の準備も含めて全部そろうまで）
     _loaded={ sm:siteMode, wx:WORLD_X, wz:WORLD_Z, rs:realRefShort, cap:realCapToActual, ds:+dinoRealScale().toFixed(3) }; if(typeof loadBarRefresh==="function") loadBarRefresh();   // このサイズ・原寸比でモデルを生成する
     _finishingPreload=false; WARMUP_DONE=false; CARDS_DONE=false;   // 再プリロード（対象/モード切替など）でも完全ゲートを再入可能に（一度きりガードで固まるのを防止）
     if(typeof DINOS==="undefined"){ PRELOAD_DONE=true; document.body.classList.remove("preloading"); if(done) done(); return; }
@@ -6601,10 +6631,12 @@ function preloadEverything(done){
     if(typeof DINOS!=="undefined"){ const _all=["dog"].concat(DINOS.map(d=>d.key)).concat((typeof DOGS!=="undefined"?DOGS:[]).map(d=>d.key)); for(const k of _all) jobs.push({companion:k, smooth:true}); }   // しばいぬ＋恐竜8＋犬種8（なめらか）
     // 出土品のカード画像も事前読み込み（card01〜card08）。恐竜・犬種・しばいぬのカードは、このあと（モデル生成の後）プログラムで作る
     for(let i=0;i<8;i++) jobs.push({card:cardArtifactPath(i)});
+    preProgStart(jobs.length);   // 進み具合（％）の登録
     let j=0;
     const step=()=>{
         _preloadTimer=null;
         while(j<jobs.length && jobs[j].cache && jobs[j].cache[jobs[j].idx]) j++;
+        preProg("jobs", j);
         if(j>=jobs.length){
             // パーティクルプール事前生成（初回発掘時のSprite/Mesh/Material生成スパイクを回避）
             try{
@@ -6625,7 +6657,7 @@ function preloadEverything(done){
             }catch(_){ _warmupTTL=0; }
             preloadGameCards();                                // カードを作る（モデル生成の後・全部できるまで入室不可）
             if(done) done();                                   // body.loading は解除（ただし入室は body.preloading で継続ロック）
-            if(_warmupTTL===0){ WARMUP_DONE=true; _maybeFinishPreload(); }   // ウォームアップ対象なし＝即完了（出土品ロードも待つ）
+            if(_warmupTTL===0){ WARMUP_DONE=true; preProg("warm", 1); _maybeFinishPreload(); }   // ウォームアップ対象なし＝即完了（出土品ロードも待つ）
             return;
         }
         const job=jobs[j];
@@ -6647,6 +6679,141 @@ function preloadEverything(done){
     voxCacheReady(3000).then(()=>{ if(run===_preloadRun) step(); });   // 保存した形を読み終わってから作り始める（最大3秒待つ）
 }
 let _preloadRun=0;
+/* ===== 入る前の準備：進み具合（％）と、止まった時の「もういちど よみこむ」 =====
+ *   終わるまで必ず待つ（時間で打ち切って先へ進むことはしない）。準備のどれかが30秒進まなかった時だけ、ボタンを出す。
+ *   読み込みに失敗したもの（ネットが切れた等）は飛ばして先へ進むので、失敗では止まらない。 */
+let PRELOAD_BASE=false;        // モデル・カード・相棒の複製まで できた（このあと「追加の準備」→ 全部そろったら PRELOAD_DONE）
+const PRE={ tot:{}, done:{}, pct:0, lastT:0, lastSum:-1 };
+const PRE_STALL_MS=30000;      // これだけ進まなかったら「止まった」とみなす
+function preProgStart(nJobs){   // 準備の始め：数える項目と、それぞれの数を登録（後から増えても％が戻らないよう、わかる分は先に）
+    PRE.tot={}; PRE.done={}; PRE.pct=0; PRE.lastSum=-1; PRE.lastT=performance.now(); preRetryShow(false);
+    const nD=(typeof DINOS!=="undefined")?DINOS.length:8, nG=(typeof DOGS!=="undefined")?DOGS.length:0;
+    PRE.tot={ jobs:nJobs, cards:2+nG+nD, buddy:1, warm:1 };
+    if(EXTRAS.state!=="done") Object.assign(PRE.tot, { xPaint:1, xLib:1, xSmp:nD, xPix:nD, xExp:1, xCw:1, xLite:nD*2+nG+1, xSh:1, xWarm:1 });
+    preProgShow();
+}
+function preProg(key, done, total){ if(total!=null) PRE.tot[key]=total; PRE.done[key]=done; preProgShow(); }
+window.__preProg=preProg;      // ほかの囲み（ぬりえ・カード）から進み具合を知らせる
+function preProgShow(){
+    let d=0, t=0; for(const k in PRE.tot){ const T=PRE.tot[k]||0; t+=T; d+=Math.min(T, PRE.done[k]||0); }
+    if(d!==PRE.lastSum){ PRE.lastSum=d; PRE.lastT=performance.now(); preRetryShow(false); }
+    const pct=t? Math.min(99, Math.floor(d*100/t)) : 0; if(pct>PRE.pct) PRE.pct=pct;   // ％は戻さない
+    const el=document.getElementById("loadingPct"); if(el) el.textContent=PRE.pct+"%";
+}
+function prePct(){ return PRELOAD_DONE ? 100 : PRE.pct; }
+function preRetryShow(on){ const b=document.getElementById("loadingRetry"); if(b) b.style.display=on?"":"none"; }
+function preStalled(){ return !PRELOAD_DONE && document.body.classList.contains("preloading") && performance.now()-PRE.lastT>PRE_STALL_MS; }
+if(!CARD_ONLY_MODE){
+    setInterval(()=>{ if(document.hidden){ PRE.lastT=performance.now(); return; } if(preStalled()) preRetryShow(true); }, 1000);   // 画面が隠れている間は描画が止まるので数えない
+    document.addEventListener("visibilitychange", ()=>{ PRE.lastT=performance.now(); });
+    { const b=document.getElementById("loadingRetry"); if(b) b.addEventListener("click", ()=>{ location.reload(); }); }
+}
+/* ===== 追加の準備（遊びの中で初めて作る・読むものを、入る前に すませる）=====
+ *   ・ARで あそぶ のモデル（恐竜8＋ぬった恐竜の「ぬりえなし」・いぬ）
+ *   ・ぬりえ・かせきカードを読む部品／ぬりえのデータ（用紙の表）／見本の模様／モデル表示の書き出し
+ *   ・シェーダー（描き方のプログラム）を、AR（霧なし）と VR・画面（霧あり）の両方で先に作る（初めて出る物のカクつき対策）
+ *   ・作ったモデルを画面の外で一度描いて、GPU へ送っておく
+ *   一度すませたら、2回目以降のプリロード（大きさの変更など）では行わない。 */
+const EXTRAS={ state:"idle", samples:null };
+function preloadExtras(){
+    if(EXTRAS.state==="done"){ preloadFinish(); return; }
+    if(EXTRAS.state==="run") return;   // 実行中：終わった時に preloadFinish
+    EXTRAS.state="run";
+    preExtrasRun().catch(e=>console.warn("[じゅんび] 追加の準備でエラー（このまま進みます）", e))
+        .finally(()=>{ EXTRAS.state="done"; preloadFinish(); });
+}
+function preloadFinish(){
+    if(!PRELOAD_BASE || EXTRAS.state!=="done" || PRELOAD_DONE) return;
+    PRELOAD_DONE=true; document.body.classList.remove("preloading"); preRetryShow(false);
+    const el=document.getElementById("loadingPct"); if(el) el.textContent="100%";
+    requestTitleDraw(1000);
+}
+const _preSleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+async function _preWait(fn){ while(!fn()) await _preSleep(150); }
+async function preExtrasRun(){
+    // ① 保存してある ぬりえ の模様を戻し終わるまで待つ（ARで あそぶ のモデルに模様を貼るため）
+    const mvr=()=>(window.NURI_DEBUG && window.NURI_DEBUG.mvReady) ? window.NURI_DEBUG.mvReady() : null;
+    if(mvr()) await _preWait(()=>mvr().paint);
+    preProg("xPaint", 1);
+    // ② ネットから読むもの（並べて読む）。失敗しても止めずに進む（使う時に もう一度 読む）
+    const net=[], ok=(k)=>()=>preProg(k, PRE.tot[k]||1), ng=(k,lab)=>(e)=>{ console.warn("[じゅんび] "+lab, e); preProg(k, PRE.tot[k]||1); };
+    net.push(window.__nuriLoadLib ? window.__nuriLoadLib().then(ok("xLib"), ng("xLib","読み取りの部品")) : Promise.resolve(ok("xLib")()));
+    net.push(window.__nuriSamplePreload ? Promise.resolve(window.__nuriSamplePreload()).then(ok("xSmp"), ng("xSmp","見本の模様")) : Promise.resolve(ok("xSmp")()));
+    net.push(window.__nuriPrefetchPix ? window.__nuriPrefetchPix().then(ok("xPix"), ng("xPix","ぬりえのデータ")) : Promise.resolve(ok("xPix")()));
+    net.push(window.__mvWarm ? window.__mvWarm().then(ok("xExp"), ng("xExp","モデル表示の書き出し")) : Promise.resolve(ok("xExp")()));
+    net.push(cardWorkerInit().then(ok("xCw"), ng("xCw","カード読み取りの別の処理")));   // たんけん「カードを さがす」の読み取り（別の処理）
+    // ③ ARで あそぶ のモデル（1体ずつ・固まらないように）
+    const lite=[]; for(let i=0;i<8;i++) lite.push(()=>_liteDinoBuild(i));
+    for(let i=0;i<8;i++) lite.push(()=>_liteDinoPlainBuild(i));   // ぬった恐竜の「ぬりえなし」（ぬっていない恐竜は上と同じモデル＝作らない）
+    const nG=(typeof DOGS!=="undefined")?DOGS.length:0; for(let i=0;i<=nG;i++) lite.push(()=>_liteDogBuild(i));   // いぬ（末尾＝しばいぬ）
+    PRE.tot.xLite=lite.length;
+    for(let k=0;k<lite.length;k++){ try{ lite[k](); }catch(e){ console.warn("[じゅんび] ARのモデル", e); } preProg("xLite", k+1); await _preSleep(25); }
+    await Promise.all(net);
+    // ④ シェーダーを先に作る → ⑤ 画面の外で一度描く（GPU へ送る）
+    try{ preShaders(); await preShadersReady(); }catch(e){ console.warn("[じゅんび] シェーダー", e); } preProg("xSh", 1);
+    try{ await preWarmDraw(); }catch(e){ console.warn("[じゅんび] 下描き", e); } preProg("xWarm", 1);
+}
+function preLiteModels(){   // ARで あそぶ の作り置きモデル（重複なし）
+    const a=[]; const add=(m)=>{ if(m && !a.includes(m)) a.push(m); };
+    _liteDino.forEach(add); _liteDinoP.forEach(add); _liteDog.forEach(add); return a;
+}
+function preShaderSamples(){   // 遊びの中で初めて作られる物の見本（同じ描き方の材料）。捨てるとシェーダーも消えるので、ずっと持っておく
+    if(EXTRAS.samples) return EXTRAS.samples;
+    const g=new THREE.Group(); g.name="preShaderSamples"; g.visible=false;
+    const add=(o)=>{ if(o){ if(o.parent) o.parent.remove(o); g.add(o); } };
+    try{ add(makeMarker()); }catch(_){ }                                                                    // 発掘ポイントの わっか
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.1), new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0, depthWrite:false})));   // 掘るブロック
+    add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.1,0.1,0.1)), new THREE.LineBasicMaterial({color:0x101010, transparent:true, opacity:0.85, depthTest:true})));   // ブロックの枠
+    add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0,0,0.1)]), new THREE.LineBasicMaterial({color:0x8ff0ff, transparent:true, opacity:1, depthTest:true})));   // 場所の枠の線
+    add(new THREE.Mesh(new THREE.RingGeometry(0.2,0.3,12), new THREE.MeshBasicMaterial({color:0x8ff0ff, transparent:true, opacity:0.5, side:THREE.DoubleSide, depthWrite:false})));   // 足もとの わっか
+    try{ add(build_egg()); }catch(_){ }                                                                     // 卵
+    try{ add(makeLabelSprite("あ", 0xffffff, 0.3, 0)); }catch(_){ }                                         // 恐竜の名札
+    try{ lphShadowMake(); }catch(_){ }                                                                      // ARで あそぶ の足もとの影
+    scene.add(g); EXTRAS.samples=g; return g;
+}
+function preShaders(){   // シェーダーを先に作る：霧あり（タイトル・VR・画面操作）と霧なし（AR・タブレットAR・ARで あそぶ）の両方
+    preShaderSamples();
+    const keepFog=scene.fog, fogs=[keepFog || new THREE.FogExp2(0x0a0a16, 0.006), null];
+    const tmp=new THREE.Group(); tmp.visible=false; const lites=preLiteModels();
+    lites.forEach(m=>{ if(!m.parent) tmp.add(m); }); scene.add(tmp);   // ARで あそぶ のモデルは scene の外にあるので、一時的に入れて いっしょに作る
+    const hidden=[]; scene.traverse(o=>{ if(!o.visible){ hidden.push(o); o.visible=true; } });   // 見えていない物も作る（three.js の版によっては見える物しか作らないため）
+    try{ for(const f of fogs){ scene.fog=f; renderer.compile(scene, camera); } }
+    finally{
+        scene.fog=keepFog; hidden.forEach(o=>{ o.visible=false; });
+        lites.forEach(m=>{ if(m.parent===tmp) tmp.remove(m); }); scene.remove(tmp);
+    }
+}
+async function preShadersReady(){   // 作ったシェーダーの「でき上がり確認」もここで済ませる（しないと、初めて描く時に完成を待って止まる）。1つずつ・画面を止めすぎないように
+    const list=((renderer.info && renderer.info.programs) || []).slice();
+    for(const pr of list){ try{ if(pr.getUniforms) pr.getUniforms(); if(pr.getAttributes) pr.getAttributes(); }catch(_){ } await _preSleep(0); }
+}
+// 画面の外（y=-100000）で数フレーム描いて、形を GPU へ送る（描画ループで行う＝iOS でも安全）。終わったら元の場所・見え方に戻す
+let _warmX=null;
+function preWarmDraw(){
+    const items=[...preLiteModels()];
+    for(const k in COMPANIONS){ const d=COMPANIONS[k]; if(d && d.bodyS) items.push(d.bodyS); if(d && d.bodyB) items.push(d.bodyB); }   // 相棒（たんけん・発掘で初めて出る）
+    if(typeof artModels!=="undefined") artModels.forEach(m=>{ if(m) items.push(m); });   // 出土品（画像を GPU へ送っておく）
+    if(EXTRAS.samples) items.push(EXTRAS.samples);
+    if(!items.length) return Promise.resolve();
+    return new Promise(res=>{ _warmX={ items, ttl:3, res, saved:null }; });
+}
+function _warmXPre(){
+    const W=_warmX; if(!W) return;
+    if(!W.saved){
+        W.holder=new THREE.Group(); scene.add(W.holder);
+        W.saved=W.items.map(o=>{ const s={ o, par:o.parent, vis:o.visible, pos:o.position.clone(), fc:[] };
+            o.traverse(c=>{ if(c.isMesh || c.isLine || c.isSprite){ s.fc.push([c, c.frustumCulled]); c.frustumCulled=false; } });
+            if(!o.parent) W.holder.add(o);
+            return s; });
+    }
+    for(const s of W.saved){ s.o.visible=true; s.o.position.set(s.pos.x, s.pos.y-100000, s.pos.z); }
+}
+function _warmXPost(){
+    const W=_warmX; if(!W || !W.saved) return;
+    if(--W.ttl>0) return;
+    for(const s of W.saved){ s.o.visible=s.vis; s.o.position.copy(s.pos); s.fc.forEach(([c,f])=>{ c.frustumCulled=f; }); if(!s.par && s.o.parent===W.holder) W.holder.remove(s.o); }
+    scene.remove(W.holder); _warmX=null; W.res();
+}
 function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg, eggSize()); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);   // 卵は発掘ポイントに出現
@@ -7547,10 +7714,23 @@ function scheduleWorldReload(){ if(GAME.active){ reloadDinoCache(); return; }
     if(_worldReloadT) clearTimeout(_worldReloadT);
     _worldReloadT=setTimeout(()=>{ withParamLoading(()=>{ reloadDinoCache(); }); }, 250);   // 連続変更が落ち着いてから再生成
 }
-function reloadDinoCache(){ if(typeof _dinoCacheS==="undefined") return;   // サイズが変わるので恐竜モデルを作り直す
-    if(window.__resultBuddy && window.__resultBuddy.invalidate) window.__resultBuddy.invalidate();   // 相棒モデルの複製も作り直し対象に
-    [_dinoCacheS].forEach(cache=>cache.forEach((m,i)=>{ if(m){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); cache[i]=null; } }));
+function reloadDinoCache(){ if(typeof _dinoCacheS==="undefined") return;   // 広さ・倍率が変わった時の恐竜モデル
+    // 変わるのは大きさだけ（形は広さに関係なく同じ）→ 作り直さず、大きさだけ変える（すぐ終わる・GPU へ送り直さない）。
+    // 相棒・リザルトの相棒の複製は、自分の大きさに合わせ直して使うので、そのまま使える
+    _dinoCacheS.forEach((m,i)=>{ if(m && !dinoRescale(m)){ if(m.userData.nameLabel) stage.remove(m.userData.nameLabel); stage.remove(m); _dinoCacheS[i]=null; } });   // 大きさを変えられない物だけ作り直す
     if(typeof preloadEverything==="function") preloadEverything(); }
+function dinoRescale(cont){   // 発掘する恐竜の大きさだけを、いまの広さ・倍率に合わせる。できたら true
+    const inner=cont && cont.userData && cont.userData.model, h0=cont && cont.userData.builtH, key=cont && cont.userData.dinoKey;
+    if(!inner || !(h0>0) || !key) return false;
+    const h1=dinoTargetHeight(key); if(!(h1>0)) return false;
+    const r=h1/h0;
+    if(Math.abs(r-1)>1e-6){ inner.scale.multiplyScalar(r); inner.position.multiplyScalar(r); }   // 足もとを原点にそろえた位置も同じ割合で
+    cont.userData.builtH=h1; cont.userData.builtScale=dinoCurScale();
+    if(cont.visible){ cont.scale.setScalar(1); }   // 出ている恐竜：大きさの補正は中で済んだ
+    else if(cont.userData.nameLabel){ stage.remove(cont.userData.nameLabel); cont.userData.nameLabel=null; }   // 名札は出る時に作り直す
+    cont.updateMatrixWorld(true);
+    return true;
+}
 { const a=document.getElementById("wxSlider"), b=document.getElementById("wxNum");
   if(a)a.oninput=()=>setWorldX(+a.value); if(b)b.onchange=()=>setWorldX(+b.value);
   const c=document.getElementById("wzSlider"), d=document.getElementById("wzNum");
@@ -9360,11 +9540,23 @@ async function _liteArtLoad(idx, quality){
     const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N];
     if(!info || !info.path) return null;
     const MAX=(quality==="hi")?liteHiMax():(quality==="mid"?3072:1024);   // 軽い1024/普通3072/きれい=端末上限(iOS=4096等・無縮小0)
+    if(MAX===1024 && idx<N){ const sm=_liteArtShare(idx); if(sm){ _liteArt[key]=sm; return sm; } }   // 画質「軽い」：ゲーム用にプリロード済みの出土品（同じ1024）を使い回す＝待ちなし
     try{ const m=await loadArtifactRoot(mvResolveUrl(info.path), MAX); if(m){ m.visible=false; _liteArt[key]=m; } return m; }catch(_){ return null; }
+}
+function _liteArtShare(idx){   // ゲーム用の出土品モデルの複製（形・画像は共有＝GPU の記憶は増えない。材質だけ別にして ARで あそぶ の設定がゲームに移らないように）
+    const src=(typeof artModels!=="undefined") ? artModels[idx] : null; if(!src) return null;
+    const uds=[]; src.traverse(o=>{ uds.push([o, o.userData]); o.userData={}; });   // 名札などの参照は複製しない
+    let c=null; try{ c=src.clone(true); } finally { uds.forEach(([o,u])=>{ o.userData=u; }); }
+    c.traverse(o=>{ if(o.material) o.material=Array.isArray(o.material) ? o.material.map(m=>m.clone()) : o.material.clone(); });
+    c.position.set(0,0,0); c.quaternion.identity(); c.scale.setScalar(1); c.visible=false;
+    c.userData.liteShared=true;   // 捨てる時に、共有の形・画像は捨てない
+    return c;
 }
 // 入室時プリロード：対象の全モデルを先読み（恐竜=全種／出土品=選択画質で全点）
 function _litePurgeArtExcept(q){   // 現在の画質以外の出土品キャッシュを破棄（常に1画質分だけ保持）
-    for(const k in _liteArt){ if(k.indexOf(q+"_")!==0){ try{ const m=_liteArt[k]; if(m && m.parent) m.parent.remove(m); _liteDispose(m); }catch(_){ } delete _liteArt[k]; } }
+    for(const k in _liteArt){ if(k.indexOf(q+"_")!==0){ try{ const m=_liteArt[k]; if(m && m.parent) m.parent.remove(m);
+        if(m && m.userData && m.userData.liteShared) m.traverse(o=>{ if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(x=>x.dispose()); });   // 使い回しの複製：材質だけ捨てる（形・画像はゲームの物）
+        else _liteDispose(m); }catch(_){ } delete _liteArt[k]; } }
 }
 async function litePrewarmAll(target, quality){
     if(target==="dino"){ for(let i=0;i<(DINOS?DINOS.length:8);i++){ _liteDinoBuild(i); if(LITE.mvPick) _liteDinoPlainBuild(i); } return; }   // 「ARで みる」：ぬりえなしのモデルも先に
@@ -9995,6 +10187,7 @@ function litePhoneBuild(){
     litePhoneRefresh();
 }
 function litePhoneStarted(){
+    LPH.camOK=false; LPH.camN=0;   // カメラ映像（camera-access）の確認をやり直す
     const r=lph$("litePh"); if(r) r.classList.remove("lph-prep");
     LPH.floorY=null; LPH.floorFound=false; LPH.hts=[]; lph$("lphFloor").classList.add("on");
     const ses=renderer.xr.getSession();
@@ -10581,16 +10774,20 @@ function lphGround(){   // 足元が床に来るよう、目標の高さを毎�
     const fy=lphFloorY(), gi=lphGroundInfo(), lift=lphLift();
     LITE.targetPos.y = fy - gi.bottom + lift + (LPH.popY||0);
     // 足元の影（床が見つかった時だけ）
+    lphShadowMake();
+    const sh=LPH.shadow; sh.visible=LPH.floorFound && LPH_CFG.shadow!==false && LITE.model.visible && LITE.group.visible;   // 卵の間は恐竜の影を出さない
+    sh.material.uniforms.op.value = lift>0 ? 0.28 : 0.5;   // 浮いている時は薄く
+    if(sh.visible){ sh.position.set(LITE.group.position.x+gi.ox, fy+0.003, LITE.group.position.z+gi.oz); const rr=Math.max(0.05, gi.r*1.15); sh.scale.set(rr,rr,1); }
+}
+function lphShadowMake(){   // 足もとの影（入る前の準備でも作る＝シェーダーを先に作っておく）
     if(!LPH.shadow){   // 影は画像（テクスチャ）を使わず、シェーダーで丸いぼかしを描く
         const mat=new THREE.ShaderMaterial({ transparent:true, depthWrite:false, uniforms:{ op:{ value:0.5 } },
             vertexShader:"varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
             fragmentShader:"varying vec2 vUv; uniform float op; void main(){ float d=length(vUv-0.5)*2.0; float a=op*(1.0-smoothstep(0.0,1.0,d)); if(a<0.004) discard; gl_FragColor=vec4(0.0,0.0,0.0,a); }" });
         LPH.shadow=new THREE.Mesh(new THREE.PlaneGeometry(2,2), mat);
-        LPH.shadow.rotation.x=-Math.PI/2; LPH.shadow.renderOrder=-1; scene.add(LPH.shadow);
+        LPH.shadow.rotation.x=-Math.PI/2; LPH.shadow.renderOrder=-1; LPH.shadow.visible=false; scene.add(LPH.shadow);
     }
-    const sh=LPH.shadow; sh.visible=LPH.floorFound && LPH_CFG.shadow!==false && LITE.model.visible && LITE.group.visible;   // 卵の間は恐竜の影を出さない
-    sh.material.uniforms.op.value = lift>0 ? 0.28 : 0.5;   // 浮いている時は薄く
-    if(sh.visible){ sh.position.set(LITE.group.position.x+gi.ox, fy+0.003, LITE.group.position.z+gi.oz); const rr=Math.max(0.05, gi.r*1.15); sh.scale.set(rr,rr,1); }
+    return LPH.shadow;
 }
 function lphNearMin(fx, fz){   // 目標の向き・大きさで、中心から見た「スマホ方向(f)への最も手前の点」の位置（f方向の最小値, m）
     if(LPH.gpModel!==LITE.model) lphBuildGroundPts();
@@ -10841,6 +11038,7 @@ function lphComposite(frame, maxLong){
 }
 function litePhoneAfterRender(frame){
     try{ lphFloorUpdate(frame); }catch(e){ }
+    if(frame && !LITE.iar){ try{ const vp=frame.getViewerPose(renderer.xr.getReferenceSpace()); if(vp && vp.views && vp.views[0]){ LPH.camOK=!!vp.views[0].camera; LPH.camN=(LPH.camN||0)+1; } }catch(_){ } }   // カメラ映像（camera-access）をもらえているか（ほって かえす で使う）
     if(LPH.hatch && LPH.hatch.phase==="scan"){ const sc=LPH.card ? window.__nuriArCard : window.__nuriArScan;   // ほって かえす：かせきカード／それ以外：ぬりえ
         if(sc){ try{ sc.frame(frame); }catch(e){ console.warn("[ぬりえAR]", e); } } }
     const rec=LPH.rec;
@@ -10993,7 +11191,7 @@ renderer.setAnimationLoop((_t, _xrFrame)=>{
     {   const t0=performance.now();
         if(titleScreenShown()){
             if(!_titleWas){ _titleWas=true; requestTitleDraw(1000); }   // タイトルに戻った直後は少し描いて、裏の景色をいまの状態にする
-            if(_warmupTTL<=0 && t0>_titleDrawUntil){ lastTime=t0; return; }   // タイトル表示中は描かない（ウォームアップ中と、描き直しの間だけ描く）
+            if(_warmupTTL<=0 && !_warmX && t0>_titleDrawUntil){ lastTime=t0; return; }   // タイトル表示中は描かない（ウォームアップ中と、描き直しの間だけ描く）
         } else _titleWas=false;
     }
     const now=performance.now();
@@ -11122,15 +11320,17 @@ renderer.setAnimationLoop((_t, _xrFrame)=>{
 
     // ── GPUウォームアップ：恐竜キャッシュを画面外(y=-100000)で描画してGPU転送を確定（ループ内renderなのでiOS安全）──
     if(_warmupTTL>0){ for(const m of _warmupModels){ if(m){ m.visible=true; m.position.set(0,-100000,0); } } }
+    if(_warmX) _warmXPre();   // 追加の準備：ARで あそぶ のモデル・相棒・見本を画面の外で描く
 
     renderer.render(scene,camera);
+    if(_warmX) _warmXPost();
 
     if(_warmupTTL>0){
         _warmupTTL--;
         if(_warmupTTL===0){
             for(const m of _warmupModels){ if(m) m.visible=false; }   // 片付け（revealDinoが表示時に再配置する）
             _warmupModels=[];
-            WARMUP_DONE=true; _maybeFinishPreload();   // ウォームアップ完了（出土品ロード完了も待って入室可能に）
+            WARMUP_DONE=true; preProg("warm", 1); _maybeFinishPreload();   // ウォームアップ完了（出土品ロード完了も待って入室可能に）
         }
     }
 });
@@ -11735,12 +11935,12 @@ function tabarRefreshPrep(){
     const sup=TABAR.support;
     if(!sup || !tabarReady()){ tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしているよ…"); return; }
     if(!sup.secure){ tabarPrepStatus._final=true; tabarPrepStatus("カメラARは https:// で開いたページでだけ使えます。\nURLを確認してください。", true); return; }
-    const round=tabarRound(), card=tabarCard(), camOnly=round||card;   // そのばで ぐるっと／カードを さがす：どの端末もカメラ＋向きセンサー（ARCore は使わない）
+    const round=tabarRound(), card=tabarCard(), camOnly=tabarCamOnly(sup);   // そのばで ぐるっと／カードを さがす：カメラ＋センサー（iPhone・iPad・選んだ時）／ARCore（Android の既定）
     if(camOnly ? !(sup.camera && sup.orient) : (!sup.webxr && !(sup.camera && sup.orient))){ tabarPrepStatus._final=true; tabarPrepStatus(camOnly ? "この端末・ブラウザでは「"+(card?"カードを さがす":"そのばで ぐるっと")+"」を使えません。\nカメラと 向きセンサーが必要です。" : "この端末・ブラウザではカメラARを使えません。\nメニューの「画面操作で発掘する」で遊べます。", true); return; }
     tabarUI.startBtn.disabled=false;
     document.getElementById("tabarHeightOpt").style.display = (sup.webxr && !camOnly) ? "none" : "";   // 高さを実測できない方式のときだけ選ぶ
-    tabarPrepStatus(card ? "じゅんび できたよ！（ゆかの カードを さがして あそぶよ）"
-        : round ? "じゅんび できたよ！（そのばで まわりを みて さがすよ）"
+    tabarPrepStatus(card ? "じゅんび できたよ！（ゆかの カードを さがして あそぶよ"+(camOnly?"":"・ARCore")+"）"
+        : round ? "じゅんび できたよ！（そのばで まわりを みて さがすよ"+(camOnly?"":"・ARCore")+"）"
         : sup.webxr ? "じゅんび できたよ！"
         : "じゅんび できたよ！（カメラと うごきの センサーで あそぶよ）\n※"+tabarNoXRReason(sup).replace(/\n/g,""));
 }
@@ -11755,7 +11955,7 @@ async function tabarStart(){
     TABAR.starting=true; tabarUI.startBtn.disabled=true; unlockAudio();
     tabarPrepStatus("カメラを じゅんびしているよ…");
     const errs=[];   // 方式ごとの失敗理由（どちらで止まったか分かるように全て表示）
-    if(tabarRound() || tabarCard()){ }   // そのばで ぐるっと／カードを さがす：ARCore は使わず、カメラ＋向きセンサーだけ（下へ）
+    if(tabarCamOnly(sup)){ }   // そのばで ぐるっと／カードを さがす：カメラ＋センサーを選んだ時・iPhone・iPad（下へ）
     else if(sup.webxr){
         const r=await tabarStartWebXR();   // requestSession はタップ直後に呼ぶ（ユーザー操作が必要）
         if(r===true){ TABAR.starting=false; return; }
@@ -11778,7 +11978,7 @@ async function tabarStartWebXR(){
     let session;
     try{
         session = await navigator.xr.requestSession("immersive-ar", {
-            requiredFeatures:["hit-test"], optionalFeatures:["dom-overlay","anchors"], domOverlay:{ root:document.body } });   // 床ロック：anchors（マーカーは使わない）
+            requiredFeatures:["hit-test"], optionalFeatures:["dom-overlay","anchors"].concat(tabarCard() ? ["camera-access"] : []), domOverlay:{ root:document.body } });   // 床ロック：anchors（マーカーは使わない）／カードを さがす：カードを読むカメラ映像
     }catch(e){ console.warn("tabar webxr", e); return "ARを開始できませんでした（"+((e&&e.name)||"error")+"）。"; }
     if(!session.domOverlayState){   // 画面のボタン類を重ねられない＝操作できないため、カメラ映像方式へ切り替える
         try{ await session.end(); }catch(_){}
@@ -11789,8 +11989,9 @@ async function tabarStartWebXR(){
         renderer.xr.setReferenceSpaceType("local");   // 原点＝開始時の端末位置。床の高さはヒットテストで確定
         await renderer.xr.setSession(session);
     }catch(e){ console.warn("tabar setSession", e); TABAR.keepPrep=true; try{ await session.end(); }catch(_){} tabarCleanup(); return "ARを開始できませんでした。"; }
-    TABAR.session=session;
+    TABAR.session=session; TABAR.glb=null; TABAR.glbTried=false; TABAR.camOk=false; TABAR.camMissN=0; TABAR.camFallbackGo=false;
     await tabarLock.begin(session);   // 床ロック：ヒットテスト（中央＋足もと寄り）を用意。無ければ端末の高さから床を推定
+    if(tabarCard() && Array.isArray(session.enabledFeatures) && !session.enabledFeatures.includes("camera-access")){ setTimeout(tabarCardCamFallback, 300); }   // カメラ映像をもらえなかった → カメラ＋センサーへ
     tabarBeginScan();
     return true;
 }
@@ -12367,7 +12568,11 @@ function tabarCleanup(){
     kidStop();   // ことばを元に戻す
     updateSiteVis(); updatePanelScale(); applyWorldParams();   // 相棒距離などを通常値へ
     menu.style.display="flex"; refreshDexHTML();
-    if(TABAR.keepPrep){ TABAR.keepPrep=false; TABAR.phase="prep"; tabarUI.prep.classList.add("open"); return; }   // 開始に失敗：準備画面に戻って別方式を試す
+    if(TABAR.keepPrep){ TABAR.keepPrep=false; TABAR.phase="prep"; tabarUI.prep.classList.add("open");   // 開始に失敗：準備画面に戻って別方式を試す
+        if(TABAR.autoCam){ TABAR.autoCam=false; TABAR.starting=false; tabarRefreshPrep();   // ARCore でカードを読めない → そのまま カメラ＋センサーで始める
+            tabarPrepStatus("この たんまつでは ARCore で カードを よめないので、カメラ＋センサーで あそぶよ");
+            setTimeout(()=>{ if(TABAR.phase==="prep" && LDIG.on) tabarStart(); }, 600); }
+        return; }
     TABAR.phase="idle"; TABAR.starting=false; TABAR.ending=false;
     if(LDIG.on) ldigFinish();   // はっくつ：発掘を終えた → 設定を戻して ARモデル画面へ戻る
 }
@@ -12407,61 +12612,172 @@ function tabarBuildSiteBorder(){   // カスタムワールドは既存の field
 const TABAR_CARD_BASE=20;   // カードのマーカー番号 = 20 + No.−1（ぬりえの中の CARD_BASE と同じ値）
 function tabarCardFar(i){ return new THREE.Vector3(fieldCX+500+i*20, GROUND_Y, fieldCZ+500); }   // 映っていない まだ見つけていないポイントの置き場（遠く）
 function tabarCardReset(){ TABAR.card=null; const el=document.getElementById("tabarCardMsg"); if(el){ el.className=""; el.textContent=""; } }
-const _tcCv=document.createElement("canvas"), _tcD=new THREE.Vector3(), _tcQ=new THREE.Quaternion(), _tcP=new THREE.Vector3();
-function tabarCardTick(now){
-    if(TABAR.backend!=="camera") return;
-    const C=TABAR.card || (TABAR.card={ cards:[], det:null, loading:false, nextT:0, lastSeenT:0, msg:null });
-    if(!C.det){
-        if(!C.loading && window.__nuriLoadLib){ C.loading=true;   // マーカーを読む部品（ぬりえと同じ）
-            window.__nuriLoadLib().then(()=>{ if(TABAR.card===C) C.det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 }); })
-                .catch(e=>console.warn("[カードを さがす]", e)).finally(()=>{ C.loading=false; }); }
-        return;
+const _tcCv=document.createElement("canvas"), _tcD=new THREE.Vector3(), _tcQ=new THREE.Quaternion(), _tcP=new THREE.Vector3(), _tcO=new THREE.Vector3();
+/* カードの読み取りは「別の処理（ワーカー）」で行う：画面を動かす処理は、映像の1コマを渡すだけ（カクつかない）。
+ *   ・カメラ＋センサー：ビデオの1コマを小さくして渡す（ワーカーの中で画素にする）
+ *   ・ARCore：ARCore のカメラ映像（camera-access）を小さく読み出して渡す
+ *   ・ワーカーが使えない端末：これまでどおり画面の処理で読む
+ *   読み終わったら、そのコマを撮った瞬間のカメラの向きで、床の上の場所を求める（読む間にタブレットが動いても ずれない） */
+function _cardWorkerMain(){   // ワーカーの中身（文字にしてワーカーで動かす）
+    let det=null, cv=null, g=null;
+    const load=(urls)=>{ for(const u of urls) importScripts(u); };
+    self.onmessage=(e)=>{
+        const m=e.data||{};
+        if(m.type==="init"){
+            try{ try{ load(m.local); }catch(err){ load(m.cdn); }
+                det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 });
+                let oc=false; try{ oc=(typeof OffscreenCanvas!=="undefined") && !!new OffscreenCanvas(2,2).getContext("2d"); }catch(_){ }
+                self.postMessage({ type:"ready", oc });
+            }catch(err){ self.postMessage({ type:"error", msg:String((err&&err.message)||err) }); }
+            return;
+        }
+        if(m.type==="frame"){
+            const W=m.W, H=m.H; let out=[];
+            try{
+                let data;
+                if(m.bitmap){ if(!cv || cv.width!==W || cv.height!==H){ cv=new OffscreenCanvas(W,H); g=cv.getContext("2d", { willReadFrequently:true }); }
+                    g.drawImage(m.bitmap,0,0,W,H); try{ m.bitmap.close(); }catch(_){ } data=g.getImageData(0,0,W,H).data; }
+                else data=new Uint8ClampedArray(m.pixels);
+                const ms=det.detectImage(W,H,data)||[];
+                out=ms.filter(k=>k.corners && k.corners.length>=4).map(k=>{ let x=0,y=0; for(const p of k.corners){ x+=p.x; y+=p.y; } return { id:k.id, x:x/4, y:y/4 }; });
+            }catch(err){ out=[]; }
+            self.postMessage({ type:"result", seq:m.seq, W, H, markers:out });
+        }
+    };
+}
+const CARDW={ w:null, p:null, ready:false, oc:false, seq:0, cbs:new Map() };
+function cardWorkerInit(){   // 入る前の準備でも呼ぶ（部品の読み込みまで済ませておく）
+    if(CARDW.p) return CARDW.p;
+    CARDW.p=new Promise((res,rej)=>{
+        try{
+            if(typeof Worker==="undefined" || !window.__nuriLibUrls) throw new Error("no worker");
+            const url=URL.createObjectURL(new Blob(["("+_cardWorkerMain.toString()+")();"], { type:"text/javascript" }));
+            const w=new Worker(url); CARDW.w=w;
+            const fail=(e)=>{ CARDW.ready=false; const cbs=[...CARDW.cbs.values()]; CARDW.cbs.clear(); cbs.forEach(cb=>cb(null)); rej(e); };
+            w.onmessage=(e)=>{ const m=e.data||{};
+                if(m.type==="ready"){ CARDW.ready=true; CARDW.oc=!!m.oc; res(); }
+                else if(m.type==="error") fail(new Error(m.msg));
+                else if(m.type==="result"){ const cb=CARDW.cbs.get(m.seq); CARDW.cbs.delete(m.seq); if(cb) cb(m); } };
+            w.onerror=(e)=>{ try{ e.preventDefault(); }catch(_){ } fail(new Error((e&&e.message)||"worker")); };
+            const u=window.__nuriLibUrls(); w.postMessage({ type:"init", local:u.local, cdn:u.cdn });
+        }catch(e){ rej(e); }
+    });
+    CARDW.p.catch(e=>console.warn("[カードの読み取り] 別の処理を使えないので、画面の処理で読みます", e));
+    return CARDW.p;
+}
+function cardWorkerDetect(msg, transfer){ return new Promise(res=>{ const seq=++CARDW.seq; CARDW.cbs.set(seq, res); msg.type="frame"; msg.seq=seq;
+    try{ CARDW.w.postMessage(msg, transfer||[]); }catch(e){ CARDW.cbs.delete(seq); res(null); } }); }
+function tabarCardTick(now, fr){
+    const C=TABAR.card || (TABAR.card={ cards:[], det:null, nextT:0, lastSeenT:0, msg:null, busy:false, dugAt:{} });
+    if(!C.inited){ C.inited=true; cardWorkerInit().catch(()=>{}); }
+    if(now>=C.nextT && !C.busy){
+        let src=null; try{ src = TABAR.backend==="camera" ? tabarCardGrabVideo() : TABAR.backend==="webxr" ? tabarCardGrabXR(fr) : null; }catch(e){ console.warn("[カードを さがす]", e); }
+        if(src){ C.nextT=now+TABAR_CFG.cardEvery; tabarCardRun(C, src); }
     }
-    if(now>=C.nextT){ C.nextT=now+TABAR_CFG.cardEvery; try{ tabarCardDetect(C, now); }catch(e){ console.warn("[カードを さがす]", e); } }
     if(GAME.active) tabarCardSync(C, now);
     tabarCardMsg(C, now);
 }
-function tabarCardDetect(C, now){   // カメラ映像からカードを探し、床の上の場所を求める
-    const v=tabarUI.video, vw=v.videoWidth, vh=v.videoHeight; if(!vw || !vh || v.readyState<2) return;
-    const sc=Math.min(1, 640/Math.max(vw,vh)), W=Math.max(2,Math.round(vw*sc)), H=Math.max(2,Math.round(vh*sc));
-    if(_tcCv.width!==W || _tcCv.height!==H){ _tcCv.width=W; _tcCv.height=H; }
-    const g=_tcCv.getContext("2d", { willReadFrequently:true }); g.drawImage(v, 0, 0, W, H);
-    let ms=[]; try{ ms=C.det.detectImage(W, H, g.getImageData(0,0,W,H).data)||[]; }catch(_){ ms=[]; }
-    if(!ms.length) return;
-    const f=0.5*Math.max(W,H)/Math.tan(TABAR_CFG.camLongFov*Math.PI/360);   // 映像の焦点距離（3Dの画角 tabarFitCameraFov と同じ考え方）
-    camera.updateMatrixWorld(true); const cp=camera.getWorldPosition(_tcP), q=camera.getWorldQuaternion(_tcQ), fy=GROUND_Y+(stage.position.y||0);
-    for(const m of ms){
-        const i=m.id-TABAR_CARD_BASE; if(!(i>=0 && i<8) || !m.corners || m.corners.length<4) continue;
-        let u=0, w=0; for(const p of m.corners){ u+=p.x; w+=p.y; } u/=4; w/=4;   // カードの まんなか（映像の上）
-        const d=_tcD.set((u-W/2)/f, -(w-H/2)/f, -1).normalize().applyQuaternion(q);
+function tabarCardGrabVideo(){   // カメラ＋センサー：ビデオの1コマ（大きさだけ決める。画素にするのはワーカー）
+    const v=tabarUI.video, vw=v.videoWidth, vh=v.videoHeight; if(!vw || !vh || v.readyState<2) return null;
+    const sc=Math.min(1, TABAR_CFG.cardLong/Math.max(vw,vh)), W=Math.max(2,Math.round(vw*sc)), H=Math.max(2,Math.round(vh*sc));
+    camera.updateMatrixWorld(true);
+    const snap={ kind:"video", cp:camera.getWorldPosition(new THREE.Vector3()), q:camera.getWorldQuaternion(new THREE.Quaternion()),
+        f:0.5*Math.max(W,H)/Math.tan(TABAR_CFG.camLongFov*Math.PI/360) };   // 映像の焦点距離（3Dの画角 tabarFitCameraFov と同じ考え方）
+    return { kind:"video", v, W, H, snap };
+}
+function tabarCardPixels(src){   // ビデオの1コマを画素に（ワーカーで画素にできない時）
+    if(_tcCv.width!==src.W || _tcCv.height!==src.H){ _tcCv.width=src.W; _tcCv.height=src.H; }
+    const g=_tcCv.getContext("2d", { willReadFrequently:true }); g.drawImage(src.v, 0, 0, src.W, src.H);
+    return g.getImageData(0,0,src.W,src.H).data;
+}
+function tabarCardGrabXR(fr){   // ARCore：カメラ映像（camera-access）を小さく読み出す（上下を直した画素）
+    if(!fr || !fr.vp || !TABAR.session) return null;
+    const view=fr.vp.views && fr.vp.views[0]; if(!view || !view.camera) return null;
+    const gl=renderer.getContext();
+    if(!TABAR.glbTried){ TABAR.glbTried=true; try{ if(window.XRWebGLBinding) TABAR.glb=new XRWebGLBinding(TABAR.session, gl); }catch(_){ TABAR.glb=null; } }
+    if(!TABAR.glb || !TABAR.glb.getCameraImage) return null;
+    let tex=null; try{ tex=TABAR.glb.getCameraImage(view.camera); }catch(_){ tex=null; } if(!tex) return null;
+    const cw=view.camera.width, ch=view.camera.height; if(!cw || !ch) return null;
+    const camM=new THREE.Matrix4().fromArray(view.transform.matrix).premultiply(player.matrixWorld), projInv=new THREE.Matrix4().fromArray(view.projectionMatrix).invert();   // 撮った瞬間のカメラ
+    const fs=Math.min(1, gl.drawingBufferWidth/cw, gl.drawingBufferHeight/ch), fullW=Math.floor(cw*fs), fullH=Math.floor(ch*fs);
+    const sc=Math.min(1, TABAR_CFG.cardLong/Math.max(fullW,fullH)), W=Math.max(2,Math.round(fullW*sc)), H=Math.max(2,Math.round(fullH*sc));
+    const px=new Uint8Array(W*H*4);
+    try{
+        gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H);
+        gl.disable(gl.SCISSOR_TEST); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.disable(gl.STENCIL_TEST); gl.colorMask(true,true,true,true);
+        lphEnsureProg(gl); gl.useProgram(LPH.prog); gl.bindVertexArray(LPH.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.uniform1i(LPH.uTex,0);
+        gl.drawArrays(gl.TRIANGLES,0,3); gl.bindVertexArray(null); gl.bindTexture(gl.TEXTURE_2D,null);
+        gl.readPixels(0,0,W,H,gl.RGBA,gl.UNSIGNED_BYTE,px);
+    } finally { renderer.resetState(); }
+    const out=new Uint8ClampedArray(W*H*4), row=W*4;
+    for(let y=0;y<H;y++) out.set(px.subarray((H-1-y)*row,(H-y)*row), y*row);   // 上から下へ
+    return { kind:"xr", W, H, px:out, snap:{ kind:"xr", camM, projInv } };
+}
+async function tabarCardRun(C, src){   // 1コマを読む（終わるまで次のコマは渡さない）
+    C.busy=true; const guard=setTimeout(()=>{ C.busy=false; }, 2500);   // 万一 返事が来ない時
+    let res=null;
+    try{
+        if(CARDW.ready){
+            if(src.kind==="video" && CARDW.oc && window.createImageBitmap){
+                let bm=null; try{ bm=await createImageBitmap(src.v, { resizeWidth:src.W, resizeHeight:src.H, resizeQuality:"low" }); }catch(_){ try{ bm=await createImageBitmap(src.v); }catch(__){ bm=null; } }
+                if(bm) res=await cardWorkerDetect({ W:src.W, H:src.H, bitmap:bm }, [bm]);
+            }
+            if(!res && CARDW.ready){ const px = src.kind==="video" ? tabarCardPixels(src) : src.px; const cp=new Uint8ClampedArray(px);
+                res=await cardWorkerDetect({ W:src.W, H:src.H, pixels:cp.buffer }, [cp.buffer]); }
+        }
+        if(!res){   // ワーカーが使えない：画面の処理で読む（これまでと同じ）
+            if(!C.det){ if(!(window.AR && AR.Detector) && window.__nuriLoadLib) await window.__nuriLoadLib(); if(window.AR && AR.Detector) C.det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 }); }
+            if(C.det){ const data = src.kind==="video" ? tabarCardPixels(src) : src.px;
+                const ms=C.det.detectImage(src.W, src.H, data)||[];
+                res={ W:src.W, H:src.H, markers:ms.filter(k=>k.corners && k.corners.length>=4).map(k=>{ let x=0,y=0; for(const p of k.corners){ x+=p.x; y+=p.y; } return { id:k.id, x:x/4, y:y/4 }; }) }; }
+        }
+    }catch(e){ console.warn("[カードを さがす]", e); }
+    clearTimeout(guard); C.busy=false;
+    if(res && TABAR.card===C && TABAR.on) tabarCardApply(C, res, src.snap, performance.now());
+}
+function tabarCardApply(C, res, snap, now){   // 読めたカード → 床の上の場所
+    const fy=GROUND_Y+(stage.position.y||0);
+    for(const m of (res.markers||[])){
+        const i=m.id-TABAR_CARD_BASE; if(!(i>=0 && i<8)) continue;
+        let o, d;
+        if(snap.kind==="video"){ o=snap.cp; d=_tcD.set((m.x-res.W/2)/snap.f, -(m.y-res.H/2)/snap.f, -1).normalize().applyQuaternion(snap.q); }
+        else { o=_tcO.setFromMatrixPosition(snap.camM); d=_tcD.set(m.x/res.W*2-1, 1-m.y/res.H*2, -1).applyMatrix4(snap.projInv).normalize().transformDirection(snap.camM); }
         if(d.y>-0.05) continue;   // 床より上を向いた光線（床のカードではない）
-        const t=(fy-cp.y)/d.y; if(!(t>0)) continue;
-        const pos=new THREE.Vector3(cp.x+d.x*t, GROUND_Y, cp.z+d.z*t);
-        if(Math.hypot(pos.x-cp.x, pos.z-cp.z)>8) continue;
-        const c=C.cards[i];
-        if(c && now-c.t<600) c.pos.lerp(pos, 0.5); else C.cards[i]={ pos, t:now };   // 続けて見えている間は少しなめらかに
-        C.cards[i].t=now; C.lastSeenT=now;
+        const t=(fy-o.y)/d.y; if(!(t>0)) continue;
+        const pos=new THREE.Vector3(o.x+d.x*t, GROUND_Y, o.z+d.z*t);
+        if(Math.hypot(pos.x-o.x, pos.z-o.z)>8) continue;
+        tabarCardSeen(C, i, pos, now);
     }
+}
+function tabarCardSeen(C, i, pos, now){   // カード i が床の pos に見えた
+    let c=C.cards[i];
+    if(!c) c=C.cards[i]={ pos:pos.clone(), t:now, since:now };
+    else { if(now-c.t<600) c.pos.lerp(pos, 0.5); else c.pos.copy(pos);   // 続けて見えている間は少しなめらかに
+        if(now-c.t>TABAR_CFG.cardRelookMs) c.since=now; }                 // しばらく見えていなかった → 「また見えた」
+    c.t=now; C.lastSeenT=now;
 }
 function tabarCardSync(C, now){   // 発掘ポイントを、見えているカードの場所へ
     for(const t of GAME.targets){
         if(!t || t.done) continue;
         const c=C.cards[t.idx], fresh=!!(c && now-c.t<900);
         if(fresh){ if(!t._cardPos || t._cardPos.distanceToSquared(c.pos)>0.0004){ moveTargetTo(t, c.pos); t._cardPos=(t._cardPos||new THREE.Vector3()).copy(c.pos); } }
-        else if(t._cardPos && (!t.discovered || !c || now-c.t>TABAR_CFG.cardLostMs)){ moveTargetTo(t, tabarCardFar(t.idx)); t._cardPos=null; }   // 見失ったポイントは遠くへ（見つけたポイントは しばらく残す。掘りかけ・見つけた は そのまま＝また映すと すぐ出る）
+        else if(TABAR.backend!=="webxr" && t._cardPos && (!t.discovered || !c || now-c.t>TABAR_CFG.cardLostMs)){ moveTargetTo(t, tabarCardFar(t.idx)); t._cardPos=null; }   // 見失ったポイントは遠くへ（見つけたポイントは しばらく残す。掘りかけ・見つけた は そのまま＝また映すと すぐ出る）。ARCore は場所を覚えているので そのまま
     }
 }
 function tabarCardMsg(C, now){   // いま映っているカードのことば（掘れる時は「ひかっている つちの ブロックを…」が出る）
     let msg="";
-    if(GAME.active && gamePhase()==="play"){
-        const cp=camera.getWorldPosition(_tcP); let best=null;
-        for(let i=0;i<8;i++){ const c=C.cards[i]; if(c && now-c.t<500){ const d=Math.hypot(c.pos.x-cp.x, c.pos.z-cp.z); if(!best || d<best.d) best={ i, d }; } }
-        if(!best){ if(now-(C.lastSeenT||0)>1500) msg="🃏 カードを さがしてね"; }
-        else {
-            const t=GAME.targets.find(x=>x && x.idx===best.i && !x.done), no="No."+(best.i+1);
-            if(t){ if(!t.discovered) msg="🃏 "+no+" の カード！ ちかづいてね"; else if(!t.digReady) msg="もうすこし ちかづいてね"; }
-            else if(GAME.doneIdx && GAME.doneIdx.has(best.i)) msg=no+" は もう ほったよ";
-            else msg=no+" の カードには いないみたい";
+    C.dugAt=C.dugAt||{};
+    if(GAME.doneIdx) GAME.doneIdx.forEach(i=>{ if(C.dugAt[i]==null) C.dugAt[i]=now; });   // 掘り終わった時刻
+    if(GAME.active && gamePhase()==="play" && !resultRevealBusy()){   // 卵から恐竜（出土品）が出てくる間は、どのカードのことばも出さない
+        const cp=camera.getWorldPosition(_tcP), seen=[];
+        for(let i=0;i<8;i++){ const c=C.cards[i]; if(c && now-c.t<900) seen.push({ i, c, d:Math.hypot(c.pos.x-cp.x, c.pos.z-cp.z) }); }   // 0.9秒以内に見えたカード（読み取りが少し遅れても、ことばが ちらつかない）
+        seen.sort((a,b)=>a.d-b.d);
+        if(!seen.length){ if(now-(C.lastSeenT||0)>1500) msg="🃏 カードを さがしてね"; }
+        for(const s of seen){   // 近いカードから、ことばのあるものを1つ
+            const t=GAME.targets.find(x=>x && x.idx===s.i && !x.done), no="No."+(s.i+1);
+            if(t){ if(!t.discovered) msg="🃏 "+no+" の カード！ ちかづいてね"; else if(!t.digReady) msg="もうすこし ちかづいてね"; else msg=""; break; }
+            if(GAME.doneIdx && GAME.doneIdx.has(s.i)){ if(s.c.since>C.dugAt[s.i]){ msg=no+" は もう ほったよ"; break; } continue; }   // 掘ったカードは、一度 画面から外れて また映った時だけ
+            msg=no+" の カードには いないみたい"; break;
         }
     }
     if(msg!==C.msg){ C.msg=msg; const el=document.getElementById("tabarCardMsg"); if(el){ el.textContent=msg; el.className=msg? "show" : ""; } }
@@ -12499,7 +12815,11 @@ function tabarSafety(dt, now){
         running = ts.length>=TABAR_CFG.runSteps;
     }
     let key="", msg="";
-    if(edge<0){ key="out"; msg="せんの そとに でているよ\nみずいろの せんの なかに もどろう"; }
+    if(TABAR.backend==="webxr" && tabarCard()) edge=Infinity;   // カードを さがす（ARCore）：線は無い（カードの所で遊ぶ）
+    if(TABAR.backend==="webxr" && tabarRound()){ edge=Infinity;   // そのばで ぐるっと（ARCore）：足もとの わっかから はなれたら
+        if(Math.hypot(cp.x-fieldCX, cp.z-fieldCZ)>TABAR_CFG.roundLeaveR){ key="out"; msg="わっかから はなれているよ\nあしもとの わっかに もどろう"; } }
+    if(key){ }
+    else if(edge<0){ key="out"; msg="せんの そとに でているよ\nみずいろの せんの なかに もどろう"; }
     else if(running){ key="run"; msg="はしらないで、ゆっくり あるこうね"; }
     else if(TABAR.backend==="webxr" && !TABAR.tracking){ key="track"; msg="まわりを うつしながら\nタブレットを ゆっくり うごかしてね"; }
     // はしに近いだけ（edge≥0）の時は警告しない
@@ -12563,8 +12883,12 @@ function tabarTick(dt, now){
         if(v.paused && !document.hidden && now-(TABAR.vidRetryT||0)>1000){ TABAR.vidRetryT=now; const pr=v.play(); if(pr && pr.catch) pr.catch(()=>{}); }   // 映像が止まったら再生し直す
     }
     if(fr) tabarLock.tick(dt, now, fr);   // 床ロック：アンカーから台（カメラの親）を求め直す（床さがし・判定より先に）
+    if(fr && fr.vp && TABAR.backend==="webxr" && tabarCard() && !TABAR.camOk){   // カードを さがす（ARCore）：カメラ映像が来ているか
+        const v=fr.vp.views && fr.vp.views[0];
+        if(v && v.camera) TABAR.camOk=true; else if(++TABAR.camMissN>90) tabarCardCamFallback();   // 約1.5〜3秒 来なければ、この端末では読めない
+    }
     if(TABAR.phase==="scan") tabarScanTick(fr);
-    else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); if(tabarCard()) tabarCardTick(now); }
+    else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); if(tabarCard()) tabarCardTick(now, fr); }
 }
 
 
@@ -12579,11 +12903,19 @@ function tabarTick(dt, now){
  * ・メイン画面の設定とは連動しない（たんけんで選んだ値はこの画面だけで覚える）
  * ===================================================== */
 const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, ret:null, snap:null, waitT:0, prepTitle:null,
-    style:"walk",          // さがしかた：walk＝あるいて さがす（ARCore／歩数）／round＝そのばで ぐるっと（向きだけ・その場に立ったまま）。dig・card は準備中
+    style:"walk",          // さがしかた：walk＝あるいて さがす（ARCore／歩数）／round＝そのばで ぐるっと（向きだけ・その場に立ったまま）／dig＝ほって かえす／card＝カードを さがす
+    arMethod:(()=>{ try{ return localStorage.getItem("tabarArMethod")==="camera" ? "camera" : "arcore"; }catch(_){ return "arcore"; } })(),   // ARの しくみ（Android の 案1・案2・案4）：arcore（既定）／camera＝カメラ＋センサー。前回の選択を覚える
+    arRun:null,            // この回だけの しくみ（ARCore でカードを読めない端末 → "camera"）
     play:false,            // たんけんの設定でゲーム中（リザルトはポイント・タイムだけ／相棒は固定）
     srcNuri:"sample",      // 発掘する恐竜の模様：ぬりえから入った時（既定＝見本）。ページを開いている間は覚える
     srcMv:"plain" };       // 同：「ARで みる」（きょうりゅう）から入った時（既定＝ぬりえなし）
 function ldigPlaying(){ return !!LDIG.play; }
+function tabarCardCamFallback(){   // ARCore でカードを読めない端末：自動で「カメラ＋センサー」に切り替えて続ける
+    if(TABAR.camFallbackGo || !TABAR.on || TABAR.backend!=="webxr") return;
+    TABAR.camFallbackGo=true; LDIG.arRun="camera"; TABAR.keepPrep=true; TABAR.autoCam=true;
+    console.warn("[カードを さがす] この端末では ARCore のカメラ映像をもらえないので、カメラ＋センサーに切り替えます");
+    tabarExit();
+}
 function tabarRound(){ return !!(LDIG.play && LDIG.style==="round"); }   // たんけん「そのばで ぐるっと」で遊んでいる（準備画面〜終わるまで）
 function tabarCard(){ return !!(LDIG.play && LDIG.style==="card"); }     // たんけん「カードを さがす」で遊んでいる（準備画面〜終わるまで）
 // 発掘する恐竜の模様の選び方：ぬりえから入った時＝見本／じぶんで ぬった、「ARで みる」（きょうりゅう）＝ぬりえなし／見本／じぶんで ぬった
@@ -12614,6 +12946,9 @@ function ldigPaint(){
               b.addEventListener("click", e=>{ e.stopPropagation(); G.setBlankSmp(k, !G.blankSmp(k)); try{ lphSnd(); }catch(_){ } ldigPaint(); }); box.appendChild(b); }); } }
     document.querySelectorAll("#lphDigMode button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.mode));
     document.querySelectorAll("#lphDigStyle button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.style));
+    { const show=ldigArChoice(), lb=lph$("lphDigArLbl"), box=lph$("lphDigAr");   // ARの しくみ（Android の 案1・案2・案4 だけ）
+      if(lb) lb.style.display=show? "" : "none"; if(box) box.style.display=show? "" : "none";
+      document.querySelectorAll("#lphDigAr button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.arMethod)); }
     { const round=(LDIG.style==="round"), dig=(LDIG.style==="dig"), card=(LDIG.style==="card");   // そのばで ぐるっと：広さは選ばない（まわり1.3mの円の上）／ほって かえす：広さ・あそびかた は選ばない（時間なし）／カードを さがす：広さは選ばない（カードの所）
       const sl=lph$("lphDigSizeLbl"); if(sl) sl.style.display=(round||dig||card)? "none" : "";
       document.querySelectorAll("#lphDig .szrow").forEach(r=>{ r.style.display=(round||dig||card)? "none" : ""; });
@@ -12660,6 +12995,29 @@ function lphCardBegin(){
     LITE.nuri={ egg:true, scan:false, small:false, pick:false, card:true };   // 卵の出し方を「ARで おおきく みる」と同じにする
     lphCardScan();
 }
+function lphXRCamOK(){ return (LPH.camN||0)>5 ? !!LPH.camOK : true; }   // ARCore（ARで あそぶ）で カメラ映像（camera-access）をもらえているか（まだ分からない時は もらえている とみなす）
+function lphCardGo(){   // ほって かえす を はじめる：Android は ARCore（既定）か カメラ＋センサー。ARCore でカードを読めない端末は自動で カメラ＋センサー
+    if(LITE.active && LITE.phone && !LITE.iar){
+        const camOK=lphXRCamOK();
+        if(LDIG.arMethod==="camera" || !camOK){ lphCardToIar(LDIG.arMethod!=="camera"); return; }
+    }
+    lphCardBegin();
+}
+function lphCardToIar(auto){   // ARCore の AR を終えて、iPhone と同じ「カメラ＋センサー」の AR で 続ける（同じモデルのまま）
+    const opts = LITE.nuri ? { nuri:true, egg:false, small:!!LITE.nuri.small, pick:!!LITE.nuri.pick } : LITE.mvPick ? { mvPick:true, plain:!!LITE.selPlain } : undefined;
+    LPH.toIar={ target:LITE.target, idx:LITE.curIdx, quality:LITE.quality, intrinsic:LITE.intrinsic||1, opts, auto:!!auto };
+    window.__liteDigLeaving=true;   // AR を終えた後の画面（モデル表示・ぬりえ）を開かせない
+    ldigClose();
+    const ses=renderer.xr.getSession(); if(ses){ try{ ses.end().catch(()=>{}); }catch(_){ } }
+}
+window.addEventListener("litephoneend", ()=>{ const r=LPH.toIar; if(!r) return; LPH.toIar=null;
+    setTimeout(async()=>{
+        let ok=false; try{ ok=(await enterLiteIAR(r.target, r.idx, r.quality, r.intrinsic, r.opts))===true; }catch(e){ console.warn("[ほって かえす] カメラ＋センサー", e); }
+        window.__liteDigLeaving=false;
+        if(!ok){ try{ window.dispatchEvent(new CustomEvent("litephoneend", { detail:{ nuri:!!(r.opts && r.opts.nuri) } })); }catch(_){ } return; }   // 始められなかった：ふつうに AR を終えた時と同じ画面へ
+        lphCardBegin();
+        if(r.auto) setTimeout(()=>{ try{ lphMsg("この たんまつでは ARCore で カードを よめないので、カメラ＋センサーで あそぶよ", 4000); }catch(_){ } }, 400);
+    }, 0); });
 function lphCardClearEgg(){ const H=LPH.hatch; if(H && H.egg){ scene.remove(H.egg); H.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); H.egg=null; } }
 function lphCardScan(){   // かせきカードを よむ（はじめ／つぎの カード）。前の恐竜は消す
     if(!LPH.card) return;
@@ -12743,16 +13101,22 @@ function lphCardFinish(){   // まとめの OK：入る前のモデル・設定�
 function ldigOpen(){ if(!LITE.active || LDIG.on || !ldigBuddyKey()) return;   // 出土品は対象外
     ldigPaint(); lph$("lphDig").classList.add("on"); }   // 説明（さがしかたで変わる）は ldigPaint で書く
 function ldigClose(){ const d=lph$("lphDig"); if(d) d.classList.remove("on"); }
+function ldigArChoice(){ return !!(LITE.active && LITE.phone && !LITE.iar && (LDIG.style==="round" || LDIG.style==="dig" || LDIG.style==="card")); }   // ARの しくみ を選べる＝Android（ARで あそぶ が ARCore で動いている）の 案1・案2・案4
+function tabarCamOnly(sup){   // 案1・案2 を カメラ＋センサーで動かすか（iPhone・iPad／ARCore が無い／カメラ＋センサーを選んだ／ARCore でカードを読めなかった）
+    if(!(tabarRound() || tabarCard())) return false;
+    return !(sup && sup.webxr && LDIG.arMethod==="arcore" && LDIG.arRun!=="camera");
+}
 (function ldigWire(){
     const d=document.getElementById("lphDig"); if(!d) return;
     d.addEventListener("click", e=>e.stopPropagation());
     d.querySelectorAll("#lphDigMode button").forEach(b=>b.addEventListener("click",()=>{ LDIG.mode=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));
-    d.querySelectorAll("#lphDigStyle button").forEach(b=>b.addEventListener("click",()=>{ if(b.disabled) return; LDIG.style=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));   // さがしかた（準備中のものは押せない）
+    d.querySelectorAll("#lphDigStyle button").forEach(b=>b.addEventListener("click",()=>{ if(b.disabled) return; LDIG.style=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));
+    d.querySelectorAll("#lphDigAr button").forEach(b=>b.addEventListener("click",()=>{ LDIG.arMethod=b.dataset.v; try{ localStorage.setItem("tabarArMethod", LDIG.arMethod); }catch(_){ } ldigPaint(); try{ lphSnd(); }catch(_){ } }));   // ARの しくみ（覚える）   // さがしかた（準備中のものは押せない）
     d.querySelectorAll(".szrow button").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.k; LDIG[k]=Math.max(LDIG.min, Math.min(LDIG.max, LDIG[k]+(+b.dataset.d))); ldigPaint(); try{ lphSnd(); }catch(_){ } }));
     { const sb=document.getElementById("lphDigSrc"); if(sb) sb.addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;   // 発掘する恐竜の模様
         if(ldigSrcKind()==="nuri") LDIG.srcNuri=b.dataset.v; else LDIG.srcMv=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }); }
     document.getElementById("lphDigBack").addEventListener("click", ldigClose);
-    document.getElementById("lphDigGo").addEventListener("click", ()=>{ if(LDIG.style==="dig") lphCardBegin(); else ldigGo(); });   // ほって かえす：AR画面のまま、かせきカードを読む
+    document.getElementById("lphDigGo").addEventListener("click", ()=>{ if(LDIG.style==="dig") lphCardGo(); else ldigGo(); });   // ほって かえす：AR画面のまま、かせきカードを読む
     { const ex=document.getElementById("lphExplore"); if(ex) ex.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } ldigOpen(); }); }   // このきょうりゅうと たんけんする
 })();
 // ---- 「はじめる」：ARモデル画面の状態を覚えてから終える ----
@@ -12764,6 +13128,7 @@ function ldigGo(){
         buddy:ldigBuddyKey(), dig:(LITE.target==="dog") ? "artifact" : "dino",   // 表示中のモデル＝相棒。いぬ＝出土品を掘る／恐竜＝恐竜を掘る
         digSrc:(LITE.target==="dino") ? ldigSrcCur() : "plain",                  // 発掘する恐竜の模様（plain／sample／own）
         buddyPlain:!!(LITE.target==="dino" && LITE.mvPick && LITE.selPlain) };   // 「ARで みる」で ぬりえなしを選んでいた＝相棒も ぬりえなし
+    LDIG.arRun=null;   // この回の しくみ（ARCore でカードを読めない時だけ camera にする）
     LDIG.on=true; LDIG.leaving=true; window.__liteDigLeaving=true;   // ARモデル画面の終了後の画面（モデル表示・ぬりえ）を開かせない
     ldigClose();
     if(LITE.iar){ iarEnd(); return; }   // iPhone・iPad：その場で終わる（litephoneend）
@@ -12828,7 +13193,8 @@ function ldigCard(mode, msg){
     let c=document.getElementById("ldigCard");
     if(!c){ c=document.createElement("div"); c.id="ldigCard";
         c.innerHTML='<div class="box"><h3>⛏ はっくつ <span class="dev">🚧 かいはつちゅう</span></h3><p id="ldigMsg"></p>'+
-            '<button type="button" id="ldigBackAR">📱 ARの モデルに もどる</button><button type="button" id="ldigToMenu">メニューへ</button></div>';
+            '<button type="button" id="ldigBackAR">📱 ARの モデルに もどる</button><button type="button" id="ldigToMenu">メニューへ</button>'+
+            '<button type="button" id="ldigRetry" style="display:none">🔄 うまく いかない ときは、もういちど よみこむ</button></div>';
         document.body.appendChild(c);
         const st=document.createElement("style"); st.textContent=
             "#ldigCard{position:fixed;inset:0;z-index:100002;display:none;align-items:center;justify-content:center;background:rgba(8,5,18,.82);padding:16px}"+
@@ -12836,18 +13202,22 @@ function ldigCard(mode, msg){
             "#ldigCard h3{margin:0;color:#ffd86a;letter-spacing:2px}#ldigCard .dev{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:99px;background:#f7c948;color:#3a2600;font-size:11px;letter-spacing:0;vertical-align:3px}"+
             "#ldigCard p{margin:0;font-size:14px;line-height:1.7;color:#d8ccff;white-space:pre-line}"+
             "#ldigBackAR{padding:15px 0;border:none;border-radius:11px;font-weight:800;font-size:17px;font-family:inherit;color:#fff;background:linear-gradient(135deg,#0e7490,#1d4ed8);cursor:pointer}"+
+            "#ldigRetry{padding:11px 0;border:1px solid #c9bcff;border-radius:11px;background:#2a1f4f;color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer}"+
             "#ldigBackAR:disabled,#ldigToMenu:disabled{opacity:.4}#ldigToMenu{padding:11px 0;border:1px solid rgba(180,140,255,.35);border-radius:11px;background:rgba(18,12,40,.6);color:#c9bcff;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer}";
         document.head.appendChild(st);
         document.getElementById("ldigBackAR").addEventListener("click", ldigReturn);
+        document.getElementById("ldigRetry").addEventListener("click", ()=>{ location.reload(); });
         document.getElementById("ldigToMenu").addEventListener("click", ()=>{ ldigCardHide(); LDIG.on=false; LDIG.ret=null; try{ if(window.__nuriAfterDigMenu) window.__nuriAfterDigMenu(); }catch(_){ } });
     }
     const back=document.getElementById("ldigBackAR"), menuB=document.getElementById("ldigToMenu");
     back.style.display = (mode==="back") ? "" : "none"; menuB.style.display = (mode==="back") ? "" : "none";
+    ldigRetryShow(false);
     document.getElementById("ldigMsg").textContent=msg||"";
     c.classList.add("on");
     if(mode==="back") ldigWaitReady();
 }
 function ldigCardHide(){ const c=document.getElementById("ldigCard"); if(c) c.classList.remove("on"); clearTimeout(LDIG.waitT); }
+function ldigRetryShow(on){ const b=document.getElementById("ldigRetry"); if(b) b.style.display=on?"":"none"; }
 function ldigBusy(){ const b=document.body.classList; return b.contains("loading") || b.contains("preloading"); }
 function ldigWaitReady(){   // メイン画面の設定でモデルを作り直している間は押せない
     const back=document.getElementById("ldigBackAR"), menuB=document.getElementById("ldigToMenu"); if(!back) return;
@@ -12863,13 +13233,16 @@ function ldigAfterLiteEnd(){
     { const mm=document.getElementById("mvModal"); if(mm && mm.style.display && mm.style.display!=="none") mm.style.display="none"; }
     ldigSnapshot(); ldigApply();
     ldigCard("wait", "はっくつの じゅんびを しているよ…");
-    let clear=0; const t0=performance.now();
+    let clear=0;
     const step=()=>{
         if(!LDIG.on) return;
-        clear = ldigBusy() ? 0 : clear+1;
-        if(clear>=3 || performance.now()-t0>90000){   // 読み込みが落ち着いたら（念のため90秒で先へ。スマホはモデルの作り直しに20秒以上かかることがある）
+        const busy=ldigBusy(); clear = busy ? 0 : clear+1;
+        if(clear>=3){   // 読み込みが終わってから（時間で打ち切らない：準備が全部そろうまで必ず待つ）
+            ldigRetryShow(false);
             ldigPrepDig().then(()=>{ if(!LDIG.on) return; ldigCardHide(); ldigOpenPrep(); });   // 発掘する恐竜の模様・図鑑のカード・相棒の ぬりえなし を用意してから
             return; }
+        if(busy){ const m=document.getElementById("ldigMsg"); if(m) m.textContent="はっくつの じゅんびを しているよ… "+prePct()+"%"; }
+        ldigRetryShow(preStalled());   // 止まった時だけ「もういちど よみこむ」
         LDIG.waitT=setTimeout(step, 200);
     };
     LDIG.waitT=setTimeout(step, 300);
@@ -13614,13 +13987,12 @@ addEventListener("resize",()=>{
     });
     // ボタンは #menu 内にあるため、タイトルメニュー表示中だけ自然に表示される（プレイ中は #menu が非表示）
     // 初回オープンの重さ軽減：起動後（プリロード完了後）にGLTFExporter/焼き込みを一度だけ空回し（JITウォームアップ）
-    (function warmMvExporter(){ let tries=0;
-        const go=()=>{ try{
-            if(typeof PRELOAD_DONE!=="undefined" && !PRELOAD_DONE && tries++<200){ setTimeout(go,150); return; }
+    (function warmMvExporter(){   // 入る前の準備（追加の準備）から呼ぶ：モデル・カードができた後に一度だけ
+        let p=null;
+        window.__mvWarm=()=> p || (p=(async()=>{
             let obj=null; try{ obj=getObject("dino",0); }catch(_){ }
-            if(obj && typeof objToBlobUrl==="function"){ objToBlobUrl(obj,{scaleFactor:(typeof dinoFactor==="function"?dinoFactor(true,dinoSize):1),bakeVoxelColors:true}).then(u=>{ try{ URL.revokeObjectURL(u); }catch(_){ } }).catch(()=>{}); }
-        }catch(_){ } };
-        setTimeout(go, 900);
+            if(obj && typeof objToBlobUrl==="function"){ try{ const u=await objToBlobUrl(obj,{scaleFactor:(typeof dinoFactor==="function"?dinoFactor(true,dinoSize):1),bakeVoxelColors:true}); try{ URL.revokeObjectURL(u); }catch(_){ } }catch(_){ } }
+        })());
     })();
 })();
 /* =====================================================
@@ -13948,10 +14320,26 @@ const V_SMOOTH = VOX/6;                                  // makeDigDino の「�
 const dinoIdx = (key)=> (typeof DINOS!=="undefined")? DINOS.findIndex(d=>d.key===key) : -1;
 const sheetOf = (key)=> NURI.reg && NURI.reg.sheets.find(s=>s.key===key);
 
+const NURI_PRE={};   // 用紙の表（pix）：ファイル名 → 届いたままのバイト列（Promise）。入る前の準備で読み、読み取りの時はネットを使わない
+async function nuriFetchRaw(name){ const r=await fetch(NURI_CFG.dir+name,{cache:"no-cache"}); if(!r.ok) throw new Error(name+" "+r.status); return r.arrayBuffer(); }
+function nuriPreGet(name){ return NURI_PRE[name] || (NURI_PRE[name]=nuriFetchRaw(name).catch(e=>{ delete NURI_PRE[name]; throw e; })); }   // 同じ表を2回読まない（失敗した時は次に読み直す）
+async function nuriPrefetchPix(){   // 全部の恐竜の用紙の表（pix）を読んでおく（失敗した表は、使う時に読む）
+    await nuriLoadRegistry();
+    const keys=NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0); let n=0;
+    await Promise.all(keys.map(async k=>{
+        try{ const D=await nuriLoadFaces(k); await nuriPreGet(D.info.files.pix.name); }
+        catch(e){ console.warn("[ぬりえ] 用紙の表を先に読めませんでした", k, e); }
+        n++; try{ if(window.__preProg) window.__preProg("xPix", n, keys.length); }catch(_){ }
+    }));
+}
+window.__nuriPrefetchPix=nuriPrefetchPix;
 async function nuriFetch(name, type, bytes){
-    const r=await fetch(NURI_CFG.dir+name,{cache:"no-cache"}); if(!r.ok) throw new Error(name+" "+r.status);
-    if(type==="json") return r.json();
-    let buf=await r.arrayBuffer(); const h=new Uint8Array(buf,0,Math.min(2,buf.byteLength));
+    let buf;
+    if(type!=="json" && /_pix\./.test(name)) buf=(await nuriPreGet(name)).slice(0);   // 用紙の表：先に読んでおいたもの（元は残す）
+    else { const r=await fetch(NURI_CFG.dir+name,{cache:"no-cache"}); if(!r.ok) throw new Error(name+" "+r.status);
+        if(type==="json") return r.json();
+        buf=await r.arrayBuffer(); }
+    const h=new Uint8Array(buf,0,Math.min(2,buf.byteLength));
     if(h[0]===0x1f && h[1]===0x8b){                                                        // 表は gzip 圧縮（data/*.bin.gz）
         if(typeof DecompressionStream==="undefined") throw new Error("このブラウザは圧縮ファイルを開けません");
         buf=await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer(); }
@@ -13960,7 +14348,12 @@ async function nuriFetch(name, type, bytes){
     return buf;
 }
 async function nuriLoadRegistry(){ if(NURI.reg) return NURI.reg; NURI.reg=await nuriFetch(NURI_CFG.registry,"json"); return NURI.reg; }
-async function nuriLoadFaces(key){
+const _nuriFacesP={};   // 読み込み中の表（同じ恐竜を同時に2回読まない）
+function nuriLoadFaces(key){
+    if(NURI.maps[key]) return Promise.resolve(NURI.maps[key]);
+    return _nuriFacesP[key] || (_nuriFacesP[key]=nuriLoadFaces1(key).finally(()=>{ delete _nuriFacesP[key]; }));
+}
+async function nuriLoadFaces1(key){
     if(NURI.maps[key]) return NURI.maps[key];
     const sh=sheetOf(key); if(!sh) throw new Error("no sheet "+key);
     const info=await nuriFetch(sh.map,"json"); const fb=await nuriFetch(info.files.faces.name,"bin",info.files.faces.bytes);
@@ -14620,6 +15013,8 @@ function lphCardFrame(frame){
 }
 window.__nuriArCard={ start:lphCardStart, frame:lphCardFrame, stop:()=>{ LPH.cardScan=null; } };
 window.__nuriLoadLib=nuriLoadLib;   // たんけん「カードを さがす」もマーカーを読む
+window.__nuriLibUrls=()=>({ local:NURI_CFG.libLocal.map(f=>new URL(NURI_CFG.dir+f, location.href).href),
+    cdn:["cv.js","aruco.js","dictionaries/aruco_4x4_1000.js"].map(f=>NURI_CFG.libCdn+f) });   // カードの読み取り（別の処理）で使う部品の場所
 // かせきカードを いんさつ：はがき（A6たて）のカード8まい＝A4たてに4まい×2ページ。番号と「？」の かせき の絵（何が出るかは かえってからの お楽しみ）
 function cardMarkerSVG(id){   // ArUco 4x4（6×6マス：まわりは黒・中の1＝白）
     const code=new AR.Dictionary("ARUCO_4X4_1000").codeList[id]; let r='<rect x="0" y="0" width="6" height="6" fill="#000"/>';
@@ -14735,14 +15130,16 @@ function nuriSamplePreload(){
     if(NSMP.p) return NSMP.p;
     NSMP.state="load"; NSMP.err=""; nuriSamplePaintUI();
     NSMP.p=(async()=>{
-        const t0=performance.now();   // 起動の準備（モデル・カード）と ぬりえの復元が終わってから
-        while(!(typeof PRELOAD_DONE!=="undefined" && PRELOAD_DONE) && performance.now()-t0<120000) await new Promise(r=>setTimeout(r,500));
+        // 起動の準備（モデル・カード・相棒の複製＝PRELOAD_BASE）と ぬりえの復元が終わってから（入る前の準備の一つ。終わるまで入れない）
+        while(!(typeof PRELOAD_BASE!=="undefined" && PRELOAD_BASE)) await new Promise(r=>setTimeout(r,300));
         try{ if(window.EV_GAME) await window.EV_GAME.waitPaint(); }catch(_){ }   // ぬりえの復元を待つ
         await nuriLoadRegistry();
         const keys=NURI.reg.sheets.map(x=>x.key).filter(k=>dinoIdx(k)>=0), bad=[];
+        let n=0;
         for(const k of keys){
             try{ await nuriLoadFaces(k); const p=await digSampleLoad(k); if(!p) throw new Error("見本の模様がありません"); }
             catch(e){ console.warn("[見本] 用意できませんでした", k, e); bad.push((sheetOf(k)||{}).name||k); NSMP.err=(e && e.message)||String(e); }
+            n++; try{ if(window.__preProg) window.__preProg("xSmp", n, keys.length); }catch(_){ }
         }
         try{ nuriDropPix(); }catch(_){ }
         if(bad.length===keys.length) throw new Error(NSMP.err||"見本がありません");
@@ -14753,6 +15150,7 @@ function nuriSamplePreload(){
     return NSMP.p;
 }
 if(!CARD_ONLY_MODE) setTimeout(()=>{ try{ nuriSamplePreload(); }catch(e){ console.warn("[見本]", e); } }, 0);
+window.__nuriSamplePreload=()=>{ try{ return nuriSamplePreload() || Promise.resolve(); }catch(e){ return Promise.resolve(); } };   // 入る前の準備で待つ（用意ができた／読めなかった で終わる）
 document.addEventListener("click", e=>{   // 用意ができていない時は開かない（読めなかった時は、押すと読み直す）
     const sm=e.target && e.target.closest && e.target.closest("#nuriSample > summary"); if(!sm || NSMP.state==="ready") return;
     e.preventDefault(); if(NSMP.state==="error"){ const n=$("nuriSampleNote"); if(n) n.textContent=""; nuriSamplePreload(); } }, true);
@@ -18320,15 +18718,17 @@ function gcTexture(kind, key, label, paint){   // ホログラム・VR 用（同
     return s.t;
 }
 // 入室前のプリロード：しばいぬ（両方の名称）・犬種8（遺跡発掘カード）・恐竜8（恐竜発掘カード：ぬり絵なし＋ぬった恐竜はぬり絵ありも）
-async function gcPreload(labels){
+async function gcPreload(labels, onStep){   // onStep(できた数, ぜんぶの数)：入る前の準備の進み具合（％）
     const L=GC.labels=labels||{}, list=[];
     list.push(["dog","dog",L.artifact], ["dog","dog",L.dino]);
     (typeof DOGS!=="undefined"? DOGS : []).forEach(d=>list.push(["dog", d.key, L.artifact]));
     const dinos=(typeof DINOS!=="undefined"? DINOS : []).map(d=>d.key);
-    const one=async(k,key,lab,paint)=>{ if(!lab) return; try{ await gcEnsure(k,key,lab,paint); }catch(e){ console.warn("[カード] 作れませんでした", k, key, e); } };
+    let nDone=0, nAll=list.length+dinos.length; const tick=()=>{ nDone++; try{ if(onStep) onStep(nDone, nAll); }catch(_){ } };
+    const one=async(k,key,lab,paint)=>{ if(lab){ try{ await gcEnsure(k,key,lab,paint); }catch(e){ console.warn("[カード] 作れませんでした", k, key, e); } } tick(); };
     try{
         for(const [k,key,lab] of list) await one(k,key,lab,false);
         await tcWaitPaint();   // 恐竜は、保存してある ぬりえ の復元を待ってから
+        nAll+=dinos.filter(key=>gcPainted("dino",key)).length;
         for(const key of dinos) await one("dino",key,L.dino,false);                        // ぬり絵なし（図鑑・ホログラム）
         for(const key of dinos) if(gcPainted("dino",key)) await one("dino",key,L.dino,true); // ぬり絵あり（相棒えらび・獲得カード）
     } finally { GC.ready=true; tcDisposeRenderer(); }   // 撮影用の WebGL はいったん返す（作り直す時にまた作る）
