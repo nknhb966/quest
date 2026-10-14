@@ -10123,13 +10123,12 @@ function lphGrabCam(frame, maxLong){   // カメラ映像だけを読み出す�
 const IAR_CFG = {
     holdHeight: 1.1,      // カメラ＋ジャイロ：スマホを持つ高さ(m)＝床はこの下
     fovLongDeg: 67,       // カメラの視野（長辺）の初期値。ぬりえを読むと、ジャイロの向きと用紙から実際の値を求めて端末に覚える
-    diagDist: 0.4,        // 用紙と同じ大きさの恐竜で用紙の高さが分からない時：スマホから恐竜（足もとの中心）までの距離(m)。向きは画面の真ん中（showMinDeg〜showMaxDeg）
+    smallDist: 0.4,       // 用紙と同じ大きさの恐竜（ぬりえを よみこむ・ARで もういちど みる など）：スマホから恐竜の中心（足もと）までの水平の距離(m)。向き＝スマホの向き
+    smallHold: 0.35,      // 　その時の床＝スマホからこの高さ下(m)。読み取った用紙の高さが分かっている時（同じタブで読んだ後）は、その高さ
     showMinDeg: 15,       // 卵・モデルを出す向き（ななめ まえ）：スマホが見ている向きの下向きの角度がこの範囲に入ったら出す（度）
     showMaxDeg: 55,
     showHoldMs: 400,      // 　その範囲で、ほぼ止めたままこの時間たったら出す（ちらっと通っただけ・動かしている間は出さない）
     showSteadyDeg: 8,     // 　「ほぼ止めた」＝向きの動きがこの角度以内（度）
-    smallMinDist: 0.25,   // 用紙と同じ大きさの恐竜：用紙の高さが分かっている時、その面の上で画面の真ん中に当たる所までの距離をこの範囲に（m）
-    smallMaxDist: 0.9,
 };
 function iarPaperDropSave(d){ try{ if(d>0.12 && d<1.8) sessionStorage.setItem("iarPaperDrop", String(d)); }catch(_){ } }   // スマホから用紙（机など）までの高さ
 function iarPaperDropLoad(){ try{ const d=parseFloat(sessionStorage.getItem("iarPaperDrop")); return (d>0.12 && d<1.8) ? d : 0; }catch(_){ return 0; } }
@@ -10171,9 +10170,9 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     LITE.phone=true; LITE.nuri = (opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, small:!!opts.small, pick:!!opts.pick } : null;
     LITE.paperScale = (LITE.nuri && LITE.nuri.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;
     const _drop=(opts && opts.nuri && opts.small) ? iarPaperDropLoad() : 0;   // 「ARで もういちど みる」：さっきの用紙の高さを台にする（Androidで机が床として見つかるのと同じ見え方）
-    const _diag=!!(opts && opts.nuri && opts.small && !_drop);                  // 用紙の高さが分からない時：画面の真ん中の向きの 0.4m 先に出す（litePhonePlaceFront）
+    const _diag=!!(opts && opts.nuri && opts.small && !_drop);                  // 用紙の高さが分からない時：床＝スマホの0.35m下（litePhonePlaceFront。恐竜は水平0.4m先）
     LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, diag:_diag, drop:_drop, aimT:0,
-        hold:(_drop || (_diag ? IAR_CFG.diagDist*Math.sin(THREE.MathUtils.degToRad(IAR_CFG.showMinDeg)) : IAR_CFG.holdHeight)),
+        hold:(_drop || (_diag ? IAR_CFG.smallHold : IAR_CFG.holdHeight)),
         save:{ pPos:player.position.clone(), pQ:player.quaternion.clone(), pS:player.scale.clone(), cPos:camera.position.clone(), cQ:camera.quaternion.clone() } };   // リグとカメラは入る前の状態を保存
     // 3) モデル（Androidと同じ準備）
     liteSetPick(target, opts);   // 「ARで みる」：ぬりえ／ぬりえなし を選べる
@@ -10548,10 +10547,9 @@ function litePhonePlaceFront(){   // スマホに正対・足元は床。恐竜�
     if(LPH.paper){ litePhonePlacePaper(); return; }
     if(LITE.nuri && LITE.nuri.small){   // 「ARで もういちど みる」：用紙と同じ大きさで、床の0.5m先（恐竜の中心）
         let dist=LPH_CFG.smallDist;
-        if(LITE.iar){   // iPhone・iPad：画面の真ん中の向き（下向き a）の先に置く。用紙の高さが分かっていれば、その面に当たる所（0.25〜0.9m先）／分からなければ 0.4m先
-            const a=THREE.MathUtils.degToRad(THREE.MathUtils.clamp(iarLookDownDeg(), IAR_CFG.showMinDeg, IAR_CFG.showMaxDeg)), t=Math.tan(a);
-            dist = LITE.iar.drop ? THREE.MathUtils.clamp(LITE.iar.drop/t, IAR_CFG.smallMinDist, IAR_CFG.smallMaxDist) : IAR_CFG.diagDist*Math.cos(a);
-            LITE.iar.hold=dist*t; camera.position.y=LITE.iar.hold; camera.updateMatrixWorld(true);   // 床＝その点の高さ（スマホからの高さ）
+        if(LITE.iar){   // iPhone・iPad：スマホの向きの水平 0.4m 先（恐竜の中心）。床＝読み取った用紙の高さ（分からない時はスマホの0.35m下）
+            dist=IAR_CFG.smallDist;
+            LITE.iar.hold=LITE.iar.drop || IAR_CFG.smallHold; camera.position.y=LITE.iar.hold; camera.updateMatrixWorld(true);
         }
         placeYawFront(LITE.group, 0, dist);
         LITE.targetPos.copy(LITE.group.position); LITE.targetQuat.copy(LITE.group.quaternion); LPH.gKey="";
