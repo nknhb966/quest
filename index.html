@@ -701,7 +701,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <!-- ぬりえを いんさつ：もとに もどす の後。さいごに「ぜんぶの きょうりゅう」（8まいを まとめて いんさつ） -->
       <details id="nuriPrint"><summary>📄 ぬりえを いんさつ</summary><div id="nuriPrintList"></div></details>
       <!-- かせきカードを いんさつ：たんけん「ほって かえす」で使うカード（No.1〜8・A4に4まい×2ページ）。ぬりえを いんさつ と同じく、おすすめ設定オフだけ表示 -->
-      <details id="cardPrint"><summary>🦴 かせきカードを いんさつ</summary><div id="cardPrintList"><button type="button" id="cardPrintBtn" class="all">🦴 かせきカード 8まい（No.1〜8）</button></div></details>
+      <details id="cardPrint"><summary>🦴 かせきカードを いんさつ</summary><div id="cardPrintList"><button type="button" id="cardPrintBtn" class="all">🦴 かせきカード 8まい（No.1〜8・はがき）</button><button type="button" id="cardPrintBigBtn" class="all">🃏 おおきい カード 8まい（A4・カードを さがす 用）</button></div></details>
     </div>
 
   </div>
@@ -867,7 +867,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>🗺 たんけん（ARで あそぶ）</h3>
         <p>スマホ・タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。<b>「📱 ARで あそぶ」</b>のAR画面で、恐竜かいぬを表示して<b>「🗺 たんけん」</b>を押します（恐竜と→恐竜を、いぬと→出土品をさがします。出土品の表示中は出ません）。「たんけんの じゅんび」で<b>あそびかた</b>（3かい ちょうせん／じかんまで さがす（既定）／ぜんぶ みつける）と<b>さがす ばしょの ひろさ</b>（よこ・おく 3〜10m、既定5×5m）を選び、<b>「🗺 たんけんに いく」</b>→<b>「はじめる」</b>。あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここで はじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた かせきカードを手で掘り出し、AR画面のまま カードを映すと、その恐竜が卵から生まれます（卵の出方・大きさは「ARで おおきく みる」と同じ。時間なし・見つけた数を数え、「おわる」で見つけた恐竜の一覧を出してから元の画面に戻ります）。カードは メニューの「🦴 かせきカードを いんさつ」（おすすめ設定オフ）で印刷します（はがき大・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。「🃏 カードを さがす」は準備中です。</p>
+        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた かせきカードを手で掘り出し、AR画面のまま カードを映すと、その恐竜が卵から生まれます（卵の出方・大きさは「ARで おおきく みる」と同じ。時間なし・見つけた数を数え、「おわる」で見つけた恐竜の一覧を出してから元の画面に戻ります）。カードは メニューの「🦴 かせきカードを いんさつ」（おすすめ設定オフ）で印刷します（はがき大・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦴 かせきカードを いんさつ」の「おおきい カード（A4）」）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上に土のブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒の「きく」は「カードを さがしてね」と言い、スターブロックは出ません。</p>
         <p><b>フィールドが ずれたとき</b>：床に「まんなか」と「まえ」の印（テープなど）を付けておき、「ここで はじめる」は まんなかの印に立って まえの印の方を向いて押します。ずれたら、まんなかの印に立って まえの印の方を向き、画面下の<b>「📍 ずれを なおす」</b>→<b>「なおす」</b>。発掘ポイント・スコア・タイム・進み具合はそのままで、フィールドの位置と向きだけを合わせ直します（ゲームの途中でも使えます）。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「ちいさい こ 0.9m／こども 1.2m／おとな 1.5m」を選びます）。スタンバイ中は「やめる」→「ここで はじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
       </section>
@@ -1133,6 +1133,9 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         padding:12px 22px; border-radius:12px; background:#f7c948; color:#3a2600; font-weight:800; letter-spacing:1px;
         box-shadow:0 4px 0 #b8871c, 0 8px 22px rgba(0,0,0,.35); pointer-events:none; white-space:nowrap; }
     #tabarDig.show{ display:block; animation:tabarBob 1.1s ease-in-out infinite; }
+    #tabarCardMsg{ position:fixed; top:calc(env(safe-area-inset-top) + 150px); left:50%; transform:translateX(-50%); z-index:9996; display:none; max-width:90vw; text-align:center;
+        padding:8px 16px; border-radius:12px; background:rgba(10,7,26,.86); border:1px solid rgba(255,216,106,.6); color:#ffe6a6; font-weight:800; font-size:15px; letter-spacing:.5px; pointer-events:none; }
+    body.tabar #tabarCardMsg.show{ display:block; }
     @keyframes tabarBob{ 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-4px); } }
 
     #tabarWarn{ position:fixed; left:50%; top:40%; transform:translate(-50%,-50%); z-index:9999; display:none; max-width:88vw;
@@ -1192,6 +1195,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
 <div id="tabarTouch"></div>
 <div id="tabarRadar" data-lvl="0" aria-hidden="true"><span class="ic">🔍</span><i></i><i></i><i></i><i></i><i></i></div>
 <div id="tabarDig">ひかっている つちの ブロックを タッチして ほろう！</div>
+<div id="tabarCardMsg"></div>   <!-- たんけん「カードを さがす」：いま映っているカードのこと -->
 <div id="tabarWarn" role="alert"></div>
 <div id="tabarScan">
     <div class="tabar-card">
@@ -1462,7 +1466,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
                 <button type="button" data-v="walk">🚶<span>あるいて<br>さがす</span></button>
                 <button type="button" data-v="round">🔄<span>そのばで<br>ぐるっと</span></button>
                 <button type="button" data-v="dig">⛏<span>ほって<br>かえす</span></button>
-                <button type="button" data-v="card" disabled>🃏<span>カードを さがす<br>（じゅんびちゅう）</span></button>
+                <button type="button" data-v="card">🃏<span>カードを<br>さがす</span></button>
             </div>
             <div class="lbl" id="lphDigModeLbl">あそびかた</div>
             <div class="seg3" id="lphDigMode">
@@ -3943,6 +3947,9 @@ const TABAR_CFG = {
     roundR:        1.3, // たんけん「そのばで ぐるっと」：発掘ポイントを置く円の半径(m)。子どもは まんなかに立ったまま、まわりを見回して探す
     roundDogFwd:   2.1, //  同：相棒の前方距離(m)（円の外に立たせて、発掘ポイントを隠さない）
     roundDetectMul:0.6, //  同：探知の半径の倍率（8点が円の上に近く並ぶので狭める。向きが合うほど強く、点と点の間では弱くなる）
+    cardBlockFs:   0.38,// たんけん「カードを さがす」：土のブロックの大きさの倍率（0.8m×0.38＝約30cm。カードと同じくらい）
+    cardEvery:     120, //  同：カードを探す間隔(ms)
+    cardLostMs:    3000,// たんけん「カードを さがす」：見つけたカードが映らなくなってから、ブロックを消すまで（ms）。ほかの カードの所に 前の ブロックが 残らないように
     runSpeed:      1.4, // 移動の速さ(m/s)がこれを超え続けたら「ゆっくり歩こう」（webxr）
     runSteps:      4,   // 1.2秒あたりの歩数がこれ以上で「ゆっくり歩こう」（camera）
     stride:        0.45,// 1歩の歩幅(m)：年長児の目安（camera）
@@ -4016,6 +4023,7 @@ function roundSpots(n){
 }
 function regenerateCustomSpots(){
     if(!customWorldOn()){ GAME.customSpots=null; return; }   // サイト表示時はサイトの発掘点(ARTPOS)を使用
+    if(tabarCard()){ GAME.customSpots=[0,1,2,3,4,5,6,7].map(i=>tabarCardFar(i)); return; }   // カードを さがす：カードを映すまでは遠くに置く（反応しない・見えない）
     if(tabarRound()){   // そのばで ぐるっと：まわりの円の上に8点
         GAME.customSpots=roundSpots(8);
         if(GAME.active && TA.state==="run" && !GAME.starUsed && typeof planStarPosition==="function"){ planStarPosition(); spawnStarPoint(); }
@@ -4092,7 +4100,7 @@ function updateWorldAura(dt){
 let fieldBorder=null;
 const _fbPts=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
 function updateFieldBorder(){
-    const show = (typeof renderer!=="undefined") && worldScaleXR() && customWorldOn() && !tabarRound();   // そのばで ぐるっと：四角の線は出さない（足もとの わっか と 円を出す）
+    const show = (typeof renderer!=="undefined") && worldScaleXR() && customWorldOn() && !tabarRound() && !tabarCard();   // カードを さがす：線は出さない   // そのばで ぐるっと：四角の線は出さない（足もとの わっか と 円を出す）
     if(!show){ if(fieldBorder) fieldBorder.visible=false; return; }
     if(!fieldBorder){
         fieldBorder=new THREE.Group();
@@ -6438,9 +6446,9 @@ function spawnTarget(tier, forcedIdx=null){
         if(!GAME.siteSpots) regenerateSiteRandomSpots();
         const s=GAME.siteSpots && GAME.siteSpots[idx]; if(s) pos.copy(s);
     }
-    const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(fieldScale());
+    const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(tabarCard() ? TABAR_CFG.cardBlockFs : fieldScale());
     // ボクセルの「掘れるブロック」＋照準時の枠線
-    const fs=Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍。あたり判定もこのブロックで拡大
+    const fs=tabarCard() ? TABAR_CFG.cardBlockFs : Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍。あたり判定もこのブロックで拡大（カードを さがす：カードと同じくらい）
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0, depthWrite:false}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
@@ -6477,6 +6485,10 @@ function clearTargets(){
 // 全8ポイントを同時に出す（サイト表示/非表示に関わらず、どの順でも掘れる）
 function spawnAllTargets(){
     clearTargets();
+    if(GAME.challenge && GAME.ch && GAME.ch.turn===1 && tabarCard()){   // 1ターン目（カードを さがす）：5枚のカードだけ使う。最初は見つかっていない（カードを映して近づくと見つかる）
+        chTurn1Idxs().forEach(ix=>{ spawnTarget(ix, ix); });
+        return;
+    }
     if(GAME.challenge && GAME.ch && GAME.ch.turn===1 && tabarRound()){   // 1ターン目（そのばで ぐるっと）：まわりの円の上に5点・最初から発見済み
         const idxs=chTurn1Idxs(), P=roundSpots(idxs.length);
         idxs.forEach((ix,k)=>{ const t=spawnTarget(ix, ix); if(t){ moveTargetTo(t, P[k]); if(typeof discoverTarget==="function") discoverTarget(t, true); } });
@@ -7071,6 +7083,7 @@ function askDog(){
     if(typeof holo!=="undefined"&&holo&&holoFreezeTime) return;   // 図鑑カード表示中（止まる設定の時のみ抑制）は不可（暗転中）
     if(GAME.complete) return;   // コンプリート後は反応しない
     if(!GAME.active) return;
+    if(tabarCard() && !(GAME.mode==="time" && TA.state!=="run")){ sfxBark(); bubble.say("カードを さがしてね！ ちかくに いくと わかるよ", 2400); return; }   // カードを さがす：カードの場所は映すまで分からない
     // タイムアタックの計測中以外は「終わったよ」の反応にする
     if(GAME.mode==="time" && TA.state!=="run"){
         sfxBark();
@@ -8153,7 +8166,7 @@ function taStartRun(){
     GAME.endT = (GAME.mode==="time") ? performance.now()+TIME_LIMIT*1000 : Infinity;   // コレクションは時間無制限
     worldHud.hide();
     afterSite(()=>{ clearTargets(); spawnAllTargets();   // spawnAllTargets内で②の位置にスター表示
-        if(!GAME.challenge){   // タイムアタック／じっくりコレクション：スタート直後、プレイヤーに最も近い発掘ポイントを1つだけブロック表示
+        if(!GAME.challenge && !tabarCard()){   // タイムアタック／じっくりコレクション：スタート直後、プレイヤーに最も近い発掘ポイントを1つだけブロック表示（カードを さがす は カードを映して見つける）
             try{
                 const o=camera.getWorldPosition(new THREE.Vector3());
                 let best=null, bd=1e9;
@@ -8338,7 +8351,7 @@ function chTurn1DinoIdxs(){ const a=[]; const N=(typeof DINOS!=="undefined")?DIN
 function chTurn1Idxs(){ if(curTarget==="dino"){ const n=chTurn1DinoIdxs(); if(n.length>=5) return n.slice(0,5); if(n.length) return n; } return [0,1,2,3,4]; }
 function moveTargetTo(t, p){   // 生成済みターゲットを指定座標へ（1ターン目のプレイヤー近傍配置用）
     if(!t) return; t.pos.copy(p); if(t.marker) t.marker.position.copy(p);
-    const fs=t.fs||1; if(t.block){ t.block.position.set(p.x, GROUND_Y+DIG_BLOCK*0.35*fs, p.z); if(t.outline) t.outline.position.copy(t.block.position); }
+    const fs=t.fs||1; if(t.block){ t.block.position.set(p.x, GROUND_Y+DIG_BLOCK*0.35*fs*(t.block.scale.y||1), p.z); if(t.outline) t.outline.position.copy(t.block.position); }   // 掘りかけ（低くなった）ブロックは その高さのまま動かす
 }
 function chWeightedRarity(center){   // 中心60%・隣±20%（端は中心へ寄せる）でレア度を抽選
     const oi=RARITY_ORDER.indexOf(center); if(oi<0) return center;
@@ -8968,13 +8981,13 @@ function starFieldPos(){
 function clearStarPoint(){ if(GAME.star){ if(GAME.star.block)stage.remove(GAME.star.block); if(GAME.star.star)stage.remove(GAME.star.star); GAME.star=null; } }
 function planStarPosition(){        // ②カウントダウン中：位置だけ新しく決定（表示しない）
     clearStarPoint();
-    if(!starEnabled){ GAME.starPlanned=null; GAME.starUsed=true; return; }   // スターなし
+    if(!starEnabled || tabarCard()){ GAME.starPlanned=null; GAME.starUsed=true; return; }   // スターなし（カードを さがす：出さない）
     GAME.starPlanned = starFieldPos().clone();
     GAME.starUsed = false;
 }
 function spawnStarPoint(){          // ③プレイ開始：②で決めた位置に表示（無ければその場で決定）
     clearStarPoint();
-    if(!starEnabled){ return; }     // スターなし
+    if(!starEnabled || tabarCard()){ return; }     // スターなし（カードを さがす：出さない）
     const pos = (GAME.starPlanned ? GAME.starPlanned.clone() : starFieldPos());
     const fs=Math.min(1.0, fieldScale())*0.9;
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.9*fs, DIG_BLOCK*fs),
@@ -11722,11 +11735,12 @@ function tabarRefreshPrep(){
     const sup=TABAR.support;
     if(!sup || !tabarReady()){ tabarUI.startBtn.disabled=true; tabarPrepStatus("じゅんびしているよ…"); return; }
     if(!sup.secure){ tabarPrepStatus._final=true; tabarPrepStatus("カメラARは https:// で開いたページでだけ使えます。\nURLを確認してください。", true); return; }
-    const round=tabarRound();   // そのばで ぐるっと：どの端末もカメラ＋向きセンサー（ARCore は使わない）
-    if(round ? !(sup.camera && sup.orient) : (!sup.webxr && !(sup.camera && sup.orient))){ tabarPrepStatus._final=true; tabarPrepStatus(round ? "この端末・ブラウザでは「そのばで ぐるっと」を使えません。\nカメラと 向きセンサーが必要です。" : "この端末・ブラウザではカメラARを使えません。\nメニューの「画面操作で発掘する」で遊べます。", true); return; }
+    const round=tabarRound(), card=tabarCard(), camOnly=round||card;   // そのばで ぐるっと／カードを さがす：どの端末もカメラ＋向きセンサー（ARCore は使わない）
+    if(camOnly ? !(sup.camera && sup.orient) : (!sup.webxr && !(sup.camera && sup.orient))){ tabarPrepStatus._final=true; tabarPrepStatus(camOnly ? "この端末・ブラウザでは「"+(card?"カードを さがす":"そのばで ぐるっと")+"」を使えません。\nカメラと 向きセンサーが必要です。" : "この端末・ブラウザではカメラARを使えません。\nメニューの「画面操作で発掘する」で遊べます。", true); return; }
     tabarUI.startBtn.disabled=false;
-    document.getElementById("tabarHeightOpt").style.display = (sup.webxr && !round) ? "none" : "";   // 高さを実測できない方式のときだけ選ぶ
-    tabarPrepStatus(round ? "じゅんび できたよ！（そのばで まわりを みて さがすよ）"
+    document.getElementById("tabarHeightOpt").style.display = (sup.webxr && !camOnly) ? "none" : "";   // 高さを実測できない方式のときだけ選ぶ
+    tabarPrepStatus(card ? "じゅんび できたよ！（ゆかの カードを さがして あそぶよ）"
+        : round ? "じゅんび できたよ！（そのばで まわりを みて さがすよ）"
         : sup.webxr ? "じゅんび できたよ！"
         : "じゅんび できたよ！（カメラと うごきの センサーで あそぶよ）\n※"+tabarNoXRReason(sup).replace(/\n/g,""));
 }
@@ -11741,7 +11755,7 @@ async function tabarStart(){
     TABAR.starting=true; tabarUI.startBtn.disabled=true; unlockAudio();
     tabarPrepStatus("カメラを じゅんびしているよ…");
     const errs=[];   // 方式ごとの失敗理由（どちらで止まったか分かるように全て表示）
-    if(tabarRound()){ }   // そのばで ぐるっと：ARCore は使わず、カメラ＋向きセンサーだけ（下へ）
+    if(tabarRound() || tabarCard()){ }   // そのばで ぐるっと／カードを さがす：ARCore は使わず、カメラ＋向きセンサーだけ（下へ）
     else if(sup.webxr){
         const r=await tabarStartWebXR();   // requestSession はタップ直後に呼ぶ（ユーザー操作が必要）
         if(r===true){ TABAR.starting=false; return; }
@@ -12122,6 +12136,7 @@ function tabarOnMotion(e){
 }
 function tabarOnStep(t){
     if(tabarRound()) return;   // そのばで ぐるっと：歩いても進まない（その場に立ったまま見回す）
+    if(tabarCard()){ TABAR.step.times.push(t); return; }   // カードを さがす：歩いても進まない（場所はカードの見え方で決める）。走りすぎの判定には使う
     TABAR.step.times.push(t);
     TABAR.walk.addScaledVector(tabarForwardH(_taFw), TABAR_CFG.stride);
 }
@@ -12171,6 +12186,7 @@ function tabarEnterCommon(backend){
     tabarUI.warn.className=""; tabarUI.dig.classList.remove("show"); tabarUI.radar.classList.remove("on");
     tabarLock.reset();   // 床ロックの状態を消す
     TABAR.home=null; document.body.classList.remove("tabar-placed");   // ずれなおしの基準（フィールドを置いた時の位置・向き）
+    tabarCardReset();   // カードを さがす の状態
     tabarBuddyReset();   // 相棒の待機位置を消す
     kidStart();          // タブレットARの間は、画面のことばを幼児向け（ひらがな）に
 }
@@ -12229,7 +12245,7 @@ function tabarPlace(){
     stage.position.y=fy; worldYAdjust=fy;
     if(TABAR.backend==="webxr") tabarLock.onPlace(fy);   // 床ロック：床の高さを記録し、床にアンカーを打ち始める
     { const cw=camera.getWorldPosition(new THREE.Vector3()), f=tabarForwardH(new THREE.Vector3());   // ずれなおしの基準＝置いた時のタブレットの位置と向き（recenterFieldHere と同じ求め方）
-      TABAR.home={ x:cw.x, z:cw.z, yaw:Math.atan2(-f.x,-f.z) }; document.body.classList.add("tabar-placed"); }
+      TABAR.home={ x:cw.x, z:cw.z, yaw:Math.atan2(-f.x,-f.z) }; if(!tabarCard()) document.body.classList.add("tabar-placed"); }   // カードを さがす：場所はカードで決まるので「ずれを なおす」は出さない
     stage.visible=true;
     tabarReticle().visible=false;
     tabarUI.scan.classList.remove("open");
@@ -12326,7 +12342,7 @@ function tabarCleanup(){
     tabarRemoveSensorListeners();
     if(TABAR.stream){ try{ TABAR.stream.getTracks().forEach(t=>t.stop()); }catch(_){} TABAR.stream=null; }
     tabarUI.video.srcObject=null;
-    tabarRemoveSiteBorder(); TABAR.area=null; tabarRoundDecoRemove();
+    tabarRemoveSiteBorder(); TABAR.area=null; tabarRoundDecoRemove(); tabarCardReset();
     TABAR.home=null; document.body.classList.remove("tabar-placed");
     if(TABAR.reticle) TABAR.reticle.visible=false;
     const sv=TABAR.saved||{};
@@ -12382,6 +12398,73 @@ function tabarBuildSiteBorder(){   // カスタムワールドは既存の field
         ln.frustumCulled=false; g.add(ln);
     }
     stage.add(g); TABAR.siteBorder=g;
+}
+/* ---- たんけん「🃏 カードを さがす」（案2）----
+ *   床に置いた かせきカード（No.1〜8＝マーカー 20〜27。ほって かえす と同じカード）が発掘ポイントになる。
+ *   カメラ映像からカードを探し、見えたカードの場所＝「画面上のカードの向きの光線が床（持つ高さの下）に当たる所」に発掘ポイントを動かす。
+ *   歩いた距離は測らない（センサー方式）ので、カードが映るたびに場所を決め直す（ずれがたまらない）。映っていない まだ見つけていないポイントは遠くに置く（反応しない）。
+ *   そのほか（メーター・発見・掘る・卵・得点・リザルト）は今のたんけんと同じ。 */
+const TABAR_CARD_BASE=20;   // カードのマーカー番号 = 20 + No.−1（ぬりえの中の CARD_BASE と同じ値）
+function tabarCardFar(i){ return new THREE.Vector3(fieldCX+500+i*20, GROUND_Y, fieldCZ+500); }   // 映っていない まだ見つけていないポイントの置き場（遠く）
+function tabarCardReset(){ TABAR.card=null; const el=document.getElementById("tabarCardMsg"); if(el){ el.className=""; el.textContent=""; } }
+const _tcCv=document.createElement("canvas"), _tcD=new THREE.Vector3(), _tcQ=new THREE.Quaternion(), _tcP=new THREE.Vector3();
+function tabarCardTick(now){
+    if(TABAR.backend!=="camera") return;
+    const C=TABAR.card || (TABAR.card={ cards:[], det:null, loading:false, nextT:0, lastSeenT:0, msg:null });
+    if(!C.det){
+        if(!C.loading && window.__nuriLoadLib){ C.loading=true;   // マーカーを読む部品（ぬりえと同じ）
+            window.__nuriLoadLib().then(()=>{ if(TABAR.card===C) C.det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 }); })
+                .catch(e=>console.warn("[カードを さがす]", e)).finally(()=>{ C.loading=false; }); }
+        return;
+    }
+    if(now>=C.nextT){ C.nextT=now+TABAR_CFG.cardEvery; try{ tabarCardDetect(C, now); }catch(e){ console.warn("[カードを さがす]", e); } }
+    if(GAME.active) tabarCardSync(C, now);
+    tabarCardMsg(C, now);
+}
+function tabarCardDetect(C, now){   // カメラ映像からカードを探し、床の上の場所を求める
+    const v=tabarUI.video, vw=v.videoWidth, vh=v.videoHeight; if(!vw || !vh || v.readyState<2) return;
+    const sc=Math.min(1, 640/Math.max(vw,vh)), W=Math.max(2,Math.round(vw*sc)), H=Math.max(2,Math.round(vh*sc));
+    if(_tcCv.width!==W || _tcCv.height!==H){ _tcCv.width=W; _tcCv.height=H; }
+    const g=_tcCv.getContext("2d", { willReadFrequently:true }); g.drawImage(v, 0, 0, W, H);
+    let ms=[]; try{ ms=C.det.detectImage(W, H, g.getImageData(0,0,W,H).data)||[]; }catch(_){ ms=[]; }
+    if(!ms.length) return;
+    const f=0.5*Math.max(W,H)/Math.tan(TABAR_CFG.camLongFov*Math.PI/360);   // 映像の焦点距離（3Dの画角 tabarFitCameraFov と同じ考え方）
+    camera.updateMatrixWorld(true); const cp=camera.getWorldPosition(_tcP), q=camera.getWorldQuaternion(_tcQ), fy=GROUND_Y+(stage.position.y||0);
+    for(const m of ms){
+        const i=m.id-TABAR_CARD_BASE; if(!(i>=0 && i<8) || !m.corners || m.corners.length<4) continue;
+        let u=0, w=0; for(const p of m.corners){ u+=p.x; w+=p.y; } u/=4; w/=4;   // カードの まんなか（映像の上）
+        const d=_tcD.set((u-W/2)/f, -(w-H/2)/f, -1).normalize().applyQuaternion(q);
+        if(d.y>-0.05) continue;   // 床より上を向いた光線（床のカードではない）
+        const t=(fy-cp.y)/d.y; if(!(t>0)) continue;
+        const pos=new THREE.Vector3(cp.x+d.x*t, GROUND_Y, cp.z+d.z*t);
+        if(Math.hypot(pos.x-cp.x, pos.z-cp.z)>8) continue;
+        const c=C.cards[i];
+        if(c && now-c.t<600) c.pos.lerp(pos, 0.5); else C.cards[i]={ pos, t:now };   // 続けて見えている間は少しなめらかに
+        C.cards[i].t=now; C.lastSeenT=now;
+    }
+}
+function tabarCardSync(C, now){   // 発掘ポイントを、見えているカードの場所へ
+    for(const t of GAME.targets){
+        if(!t || t.done) continue;
+        const c=C.cards[t.idx], fresh=!!(c && now-c.t<900);
+        if(fresh){ if(!t._cardPos || t._cardPos.distanceToSquared(c.pos)>0.0004){ moveTargetTo(t, c.pos); t._cardPos=(t._cardPos||new THREE.Vector3()).copy(c.pos); } }
+        else if(t._cardPos && (!t.discovered || !c || now-c.t>TABAR_CFG.cardLostMs)){ moveTargetTo(t, tabarCardFar(t.idx)); t._cardPos=null; }   // 見失ったポイントは遠くへ（見つけたポイントは しばらく残す。掘りかけ・見つけた は そのまま＝また映すと すぐ出る）
+    }
+}
+function tabarCardMsg(C, now){   // いま映っているカードのことば（掘れる時は「ひかっている つちの ブロックを…」が出る）
+    let msg="";
+    if(GAME.active && gamePhase()==="play"){
+        const cp=camera.getWorldPosition(_tcP); let best=null;
+        for(let i=0;i<8;i++){ const c=C.cards[i]; if(c && now-c.t<500){ const d=Math.hypot(c.pos.x-cp.x, c.pos.z-cp.z); if(!best || d<best.d) best={ i, d }; } }
+        if(!best){ if(now-(C.lastSeenT||0)>1500) msg="🃏 カードを さがしてね"; }
+        else {
+            const t=GAME.targets.find(x=>x && x.idx===best.i && !x.done), no="No."+(best.i+1);
+            if(t){ if(!t.discovered) msg="🃏 "+no+" の カード！ ちかづいてね"; else if(!t.digReady) msg="もうすこし ちかづいてね"; }
+            else if(GAME.doneIdx && GAME.doneIdx.has(best.i)) msg=no+" は もう ほったよ";
+            else msg=no+" の カードには いないみたい";
+        }
+    }
+    if(msg!==C.msg){ C.msg=msg; const el=document.getElementById("tabarCardMsg"); if(el){ el.textContent=msg; el.className=msg? "show" : ""; } }
 }
 // たんけん「そのばで ぐるっと」：足もとの わっか（ここに立つ）と、発掘ポイントの円（うすく）。置いた時のまんなか（フィールドの中心）に出す
 function tabarRoundDeco(){
@@ -12481,7 +12564,7 @@ function tabarTick(dt, now){
     }
     if(fr) tabarLock.tick(dt, now, fr);   // 床ロック：アンカーから台（カメラの親）を求め直す（床さがし・判定より先に）
     if(TABAR.phase==="scan") tabarScanTick(fr);
-    else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); }
+    else if(TABAR.phase==="play"){ tabarSafety(dt, now); if(GAME.active) tabarFeedback(); if(tabarCard()) tabarCardTick(now); }
 }
 
 
@@ -12502,6 +12585,7 @@ const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, re
     srcMv:"plain" };       // 同：「ARで みる」（きょうりゅう）から入った時（既定＝ぬりえなし）
 function ldigPlaying(){ return !!LDIG.play; }
 function tabarRound(){ return !!(LDIG.play && LDIG.style==="round"); }   // たんけん「そのばで ぐるっと」で遊んでいる（準備画面〜終わるまで）
+function tabarCard(){ return !!(LDIG.play && LDIG.style==="card"); }     // たんけん「カードを さがす」で遊んでいる（準備画面〜終わるまで）
 // 発掘する恐竜の模様の選び方：ぬりえから入った時＝見本／じぶんで ぬった、「ARで みる」（きょうりゅう）＝ぬりえなし／見本／じぶんで ぬった
 function ldigSrcKind(){ if(LITE.target!=="dino") return null; if(LITE.nuri) return "nuri"; if(LITE.mvPick) return "mv"; return null; }
 function ldigOwnCount(){ try{ return (window.__nuriPaintedKeys ? window.__nuriPaintedKeys() : []).length; }catch(_){ return 0; } }
@@ -12530,14 +12614,14 @@ function ldigPaint(){
               b.addEventListener("click", e=>{ e.stopPropagation(); G.setBlankSmp(k, !G.blankSmp(k)); try{ lphSnd(); }catch(_){ } ldigPaint(); }); box.appendChild(b); }); } }
     document.querySelectorAll("#lphDigMode button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.mode));
     document.querySelectorAll("#lphDigStyle button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.style));
-    { const round=(LDIG.style==="round"), dig=(LDIG.style==="dig");   // そのばで ぐるっと：広さは選ばない（まわり1.3mの円の上）／ほって かえす：広さ・あそびかた は選ばない（時間なし）
-      const sl=lph$("lphDigSizeLbl"); if(sl) sl.style.display=(round||dig)? "none" : "";
-      document.querySelectorAll("#lphDig .szrow").forEach(r=>{ r.style.display=(round||dig)? "none" : ""; });
+    { const round=(LDIG.style==="round"), dig=(LDIG.style==="dig"), card=(LDIG.style==="card");   // そのばで ぐるっと：広さは選ばない（まわり1.3mの円の上）／ほって かえす：広さ・あそびかた は選ばない（時間なし）／カードを さがす：広さは選ばない（カードの所）
+      const sl=lph$("lphDigSizeLbl"); if(sl) sl.style.display=(round||dig||card)? "none" : "";
+      document.querySelectorAll("#lphDig .szrow").forEach(r=>{ r.style.display=(round||dig||card)? "none" : ""; });
       { const ml=lph$("lphDigModeLbl"), mb=lph$("lphDigMode"); if(ml) ml.style.display=dig? "none" : ""; if(mb) mb.style.display=dig? "none" : ""; }
       const lead=lph$("lphDigLead"), nm=(LITE.curName||"").replace(/^\S+\s*/,"");
       if(lead) lead.innerHTML = dig ? "「"+nm+"」と いっしょに きょうりゅうの かせきを さがそう！<br>かせきカードを ほりだして、うつすと たまごが かえるよ。"
           : (LITE.target==="dog" ? "「"+nm+"」と いっしょに しゅつどひんを さがそう！" : "「"+nm+"」と いっしょに きょうりゅうを さがそう！")
-            +"<br>"+(round ? "そのばに たったまま、まわりを ぐるっと みて さがすよ。" : "あるいて さがして、つちを ほって みつけるよ。");
+            +"<br>"+(round ? "そのばに たったまま、まわりを ぐるっと みて さがすよ。" : card ? "ゆかに おいた カードを みつけて、ちかづいて ほるよ。" : "あるいて さがして、つちを ほって みつけるよ。");
       const note=lph$("lphDigNote"), go=lph$("lphDigGo");
       if(note) note.innerHTML = dig ? "「はじめる」を おすと、かせきカードを よむ がめんに なるよ。<br>おわったら、この がめんに もどるよ。" : "「たんけんに いく」を おすと、たんけんの じゅんびに すすむよ。<br>おわったら、この がめんに もどれるよ。";
       if(go) go.textContent = dig ? "⛏ はじめる" : "🗺 たんけんに いく"; }
@@ -12703,7 +12787,7 @@ function ldigApply(){
     recoOn=true; segSelect("segReco","on");
     chosenMode=LDIG.mode; segSelect("segMode", LDIG.mode);
     segSelect("segDig", dig);
-    if(LDIG.style==="round"){ setWorldX(5, true); setWorldZ(5, true); }   // そのばで ぐるっと：広さは使わない（円の上に出す）。恐竜の大きさは既定の 5×5 と同じ
+    if(LDIG.style==="round" || LDIG.style==="card"){ setWorldX(5, true); setWorldZ(5, true); }   // そのばで ぐるっと／カードを さがす：広さは使わない。恐竜の大きさは既定の 5×5 と同じ
     else { setWorldX(LDIG.wx, true); setWorldZ(LDIG.wz, true); }
     onDigTargetChosen(dig);   // おすすめのプリセット（チャレンジはチャレンジ用）
     if(siteVisible){ setSiteVisible(false); syncSiteSeg(); updateWorldSizeUI(); }   // 出土品も、サイトモデルは出さずワールドの広さで遊ぶ
@@ -12914,6 +12998,8 @@ function ldigOpenPrep(){
       if(ul){ if(LDIG.rulesHTML==null) LDIG.rulesHTML=ul.innerHTML;
           ul.innerHTML = (LDIG.style==="round")
               ? "<li>🔄 そのばに たったまま、まわりを ぐるっと みて さがそう</li><li>🦶 あしもとの わっかから うごかないでね</li><li>👀 がめんだけで なく、まわりも よく みよう</li><li>🤲 タブレットは りょうてで もとう。ほる ときは かたてで もって、もう かたほうの てで つちを タッチ</li>"
+              : (LDIG.style==="card")
+              ? "<li>🃏 ゆかの カードを さがそう。はしらないでね</li><li>📷 カードを みつけたら、ちかづいて うつしてね</li><li>👀 がめんだけで なく、まわりも よく みよう</li><li>🤲 タブレットは りょうてで もとう。ほる ときは カードを うつした まま、つちを タッチ</li>"
               : LDIG.rulesHTML; } }
     tabarOpenPrep();
     if(TABAR.phase!=="prep"){ ldigFinish(); }   // 開けなかった → 戻る
@@ -14533,6 +14619,7 @@ function lphCardFrame(frame){
     else if(el>4) lphNCard("カードが みつからないよ","くろい しかくが ぜんぶ うつるように、すこし ちかづけてね");
 }
 window.__nuriArCard={ start:lphCardStart, frame:lphCardFrame, stop:()=>{ LPH.cardScan=null; } };
+window.__nuriLoadLib=nuriLoadLib;   // たんけん「カードを さがす」もマーカーを読む
 // かせきカードを いんさつ：はがき（A6たて）のカード8まい＝A4たてに4まい×2ページ。番号と「？」の かせき の絵（何が出るかは かえってからの お楽しみ）
 function cardMarkerSVG(id){   // ArUco 4x4（6×6マス：まわりは黒・中の1＝白）
     const code=new AR.Dictionary("ARUCO_4X4_1000").codeList[id]; let r='<rect x="0" y="0" width="6" height="6" fill="#000"/>';
@@ -14540,12 +14627,14 @@ function cardMarkerSVG(id){   // ArUco 4x4（6×6マス：まわりは黒・中�
     return '<svg class="mk" viewBox="0 0 6 6" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">'+r+'</svg>';
 }
 const CARD_BONE='<svg class="bone" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg"><g fill="#efe3c6" stroke="#8a6a3a" stroke-width="3"><circle cx="16" cy="15" r="12"/><circle cx="16" cy="35" r="12"/><circle cx="104" cy="15" r="12"/><circle cx="104" cy="35" r="12"/><rect x="16" y="15" width="88" height="20" rx="6"/></g><text x="60" y="34" text-anchor="middle" font-size="22" font-weight="900" fill="#8a6a3a">？</text></svg>';
-async function nuriCardPrint(){
+async function nuriCardPrint(big){   // big＝A4に1まい（カードを さがす 用：立ったまま遠くからでも読める大きさ）
     const w=window.open("", "_blank"); if(!w){ alert("あたらしい がめんを ひらけませんでした。ポップアップを ゆるして、もういちど おしてね"); return; }
     w.document.open(); w.document.write('<!doctype html><meta charset="utf-8"><p style="font-family:sans-serif">じゅんびしているよ…</p>'); w.document.close();
     try{ await nuriLoadLib(); }catch(e){ w.document.body.textContent="じゅんびが できませんでした。インターネットに つながっているか たしかめてください。"; return; }
     const card=(i)=>'<div class="cd"><div class="t">🦴 かせきカード</div><div class="no">No.'+(i+1)+'</div>'+cardMarkerSVG(CARD_BASE+i)+CARD_BONE+'<div class="s">なにが うまれるかな？</div></div>';
-    const pages=[]; for(let p=0;p<Math.ceil(DINOS.length/4);p++){ let h=''; for(let k=0;k<4;k++){ const i=p*4+k; h+= i<DINOS.length ? card(i) : '<div class="cd blank"></div>'; } pages.push('<div class="pg">'+h+'</div>'); }
+    const pages=[];
+    if(big){ for(let i=0;i<DINOS.length;i++) pages.push('<div class="pg big">'+card(i)+'</div>'); }
+    else for(let p=0;p<Math.ceil(DINOS.length/4);p++){ let h=''; for(let k=0;k<4;k++){ const i=p*4+k; h+= i<DINOS.length ? card(i) : '<div class="cd blank"></div>'; } pages.push('<div class="pg">'+h+'</div>'); }
     w.document.open();
     w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>かせきカード</title><style>'
         +'@page{ size:A4 portrait; margin:0; } html,body{ margin:0; padding:0; background:#fff; font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif; }'
@@ -14554,11 +14643,14 @@ async function nuriCardPrint(){
         +'.cd{ box-sizing:border-box; border:0.3mm dashed #999; display:flex; flex-direction:column; align-items:center; padding:7mm 6mm 5mm; }'
         +'.cd.blank{ border-color:transparent; } .t{ font-size:6mm; font-weight:900; color:#5a3d12; letter-spacing:0.5mm; } .no{ font-size:9mm; font-weight:900; color:#222; margin:1mm 0 3mm; }'
         +'.mk{ width:66mm; height:66mm; display:block; } .bone{ width:44mm; height:18mm; margin-top:5mm; } .s{ font-size:4.6mm; font-weight:800; color:#5a3d12; margin-top:2mm; }'
+        +'.pg.big{ display:block; } .pg.big .cd{ width:210mm; height:296mm; border:none; padding:16mm 12mm 10mm; } .pg.big .t{ font-size:12mm; } .pg.big .no{ font-size:22mm; margin:2mm 0 8mm; }'
+        +'.pg.big .mk{ width:170mm; height:170mm; } .pg.big .bone{ width:90mm; height:36mm; margin-top:8mm; } .pg.big .s{ font-size:9mm; margin-top:3mm; }'
         +'@media screen{ body{ background:#888; } .pg{ margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
         +'</style></head><body>'+pages.join("")+'</body></html>');
     w.document.close();
 }
-{ const b=document.getElementById("cardPrintBtn"); if(b) b.addEventListener("click", ()=>{ nuriCardPrint(); }); }
+{ const b=document.getElementById("cardPrintBtn"); if(b) b.addEventListener("click", ()=>{ nuriCardPrint(false); }); }
+{ const b=document.getElementById("cardPrintBigBtn"); if(b) b.addEventListener("click", ()=>{ nuriCardPrint(true); }); }   // おおきい カード（カードを さがす 用）
 
 async function nuriArSupported(){
     if(typeof litePhoneWanted!=="function" || !litePhoneWanted() || !navigator.xr || !navigator.xr.isSessionSupported) return false;
