@@ -11324,6 +11324,7 @@ renderer.setAnimationLoop((_t, _xrFrame)=>{
 
     renderer.render(scene,camera);
     if(_warmX) _warmXPost();
+    if(TABAR.capReq) tabarCardXRCapAfter();   // カードを さがす（ARCore）：描き終えた後にカメラ映像を写す
 
     if(_warmupTTL>0){
         _warmupTTL--;
@@ -12611,7 +12612,7 @@ function tabarBuildSiteBorder(){   // カスタムワールドは既存の field
  *   そのほか（メーター・発見・掘る・卵・得点・リザルト）は今のたんけんと同じ。 */
 const TABAR_CARD_BASE=20;   // カードのマーカー番号 = 20 + No.−1（ぬりえの中の CARD_BASE と同じ値）
 function tabarCardFar(i){ return new THREE.Vector3(fieldCX+500+i*20, GROUND_Y, fieldCZ+500); }   // 映っていない まだ見つけていないポイントの置き場（遠く）
-function tabarCardReset(){ TABAR.card=null; const el=document.getElementById("tabarCardMsg"); if(el){ el.className=""; el.textContent=""; } }
+function tabarCardReset(){ TABAR.card=null; TABAR.capReq=null; try{ tabarCamDrop(); }catch(_){ } const el=document.getElementById("tabarCardMsg"); if(el){ el.className=""; el.textContent=""; } }
 const _tcCv=document.createElement("canvas"), _tcD=new THREE.Vector3(), _tcQ=new THREE.Quaternion(), _tcP=new THREE.Vector3(), _tcO=new THREE.Vector3();
 /* カードの読み取りは「別の処理（ワーカー）」で行う：画面を動かす処理は、映像の1コマを渡すだけ（カクつかない）。
  *   ・カメラ＋センサー：ビデオの1コマを小さくして渡す（ワーカーの中で画素にする）
@@ -12670,8 +12671,14 @@ function cardWorkerDetect(msg, transfer){ return new Promise(res=>{ const seq=++
 function tabarCardTick(now, fr){
     const C=TABAR.card || (TABAR.card={ cards:[], det:null, nextT:0, lastSeenT:0, msg:null, busy:false, dugAt:{} });
     if(!C.inited){ C.inited=true; cardWorkerInit().catch(()=>{}); }
-    if(now>=C.nextT && !C.busy){
-        let src=null; try{ src = TABAR.backend==="camera" ? tabarCardGrabVideo() : TABAR.backend==="webxr" ? tabarCardGrabXR(fr) : null; }catch(e){ console.warn("[カードを さがす]", e); }
+    if(TABAR.backend==="webxr"){   // ARCore：写し始める → 次のフレーム以降に受け取って読む（待たない）
+        if(!C.busy){
+            let got=null; try{ got=tabarCardXRCollect(); }catch(e){ console.warn("[カードを さがす]", e); tabarCamDrop(); }
+            if(got) tabarCardRun(C, got);
+            else if(now>=C.nextT && !TCAM.pend && fr){ TABAR.capReq=fr; C.nextT=now+TABAR_CFG.cardEvery; }   // 写すのは、このフレームを描き終えた後（tabarCardXRCapAfter）
+        }
+    } else if(now>=C.nextT && !C.busy){
+        let src=null; try{ src = TABAR.backend==="camera" ? tabarCardGrabVideo() : null; }catch(e){ console.warn("[カードを さがす]", e); }
         if(src){ C.nextT=now+TABAR_CFG.cardEvery; tabarCardRun(C, src); }
     }
     if(GAME.active) tabarCardSync(C, now);
@@ -12690,28 +12697,70 @@ function tabarCardPixels(src){   // ビデオの1コマを画素に（ワーカ�
     const g=_tcCv.getContext("2d", { willReadFrequently:true }); g.drawImage(src.v, 0, 0, src.W, src.H);
     return g.getImageData(0,0,src.W,src.H).data;
 }
-function tabarCardGrabXR(fr){   // ARCore：カメラ映像（camera-access）を小さく読み出す（上下を直した画素）
-    if(!fr || !fr.vp || !TABAR.session) return null;
-    const view=fr.vp.views && fr.vp.views[0]; if(!view || !view.camera) return null;
-    const gl=renderer.getContext();
-    if(!TABAR.glbTried){ TABAR.glbTried=true; try{ if(window.XRWebGLBinding) TABAR.glb=new XRWebGLBinding(TABAR.session, gl); }catch(_){ TABAR.glb=null; } }
-    if(!TABAR.glb || !TABAR.glb.getCameraImage) return null;
-    let tex=null; try{ tex=TABAR.glb.getCameraImage(view.camera); }catch(_){ tex=null; } if(!tex) return null;
-    const cw=view.camera.width, ch=view.camera.height; if(!cw || !ch) return null;
-    const camM=new THREE.Matrix4().fromArray(view.transform.matrix).premultiply(player.matrixWorld), projInv=new THREE.Matrix4().fromArray(view.projectionMatrix).invert();   // 撮った瞬間のカメラ
-    const fs=Math.min(1, gl.drawingBufferWidth/cw, gl.drawingBufferHeight/ch), fullW=Math.floor(cw*fs), fullH=Math.floor(ch*fs);
-    const sc=Math.min(1, TABAR_CFG.cardLong/Math.max(fullW,fullH)), W=Math.max(2,Math.round(fullW*sc)), H=Math.max(2,Math.round(fullH*sc));
-    const px=new Uint8Array(W*H*4);
-    try{
-        gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H);
-        gl.disable(gl.SCISSOR_TEST); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.disable(gl.STENCIL_TEST); gl.colorMask(true,true,true,true);
-        lphEnsureProg(gl); gl.useProgram(LPH.prog); gl.bindVertexArray(LPH.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.uniform1i(LPH.uTex,0);
-        gl.drawArrays(gl.TRIANGLES,0,3); gl.bindVertexArray(null); gl.bindTexture(gl.TEXTURE_2D,null);
-        gl.readPixels(0,0,W,H,gl.RGBA,gl.UNSIGNED_BYTE,px);
-    } finally { renderer.resetState(); }
+/* ARCore のカメラ映像の読み出し（カードを さがす）
+ *   ・画面（キャンバス）には描かない：AR では画面の部品（DOM）が AR の上に重なって見えるので、キャンバスに描くと
+ *     「カメラ映像だけの絵」が恐竜・相棒・パネルの上にかぶって点滅して見える → 自分専用のフレームバッファに小さく写す
+ *   ・GPU が写し終わるのを待たない：読み出しは「GPU の後片付けが終わったら」次のフレーム以降に受け取る（AR の描画を遅らせない） */
+const TCAM={ gl:null, W:0, H:0, tex:null, fb:null, pbo:null, sync:null, pend:null, t:0 };
+function tabarCamCopyStart(gl, camTex, W, H, info){   // カメラ映像を自分のフレームバッファへ写し、読み出しを頼む（待たない）
+    if(TCAM.pend) return false;
+    if(TCAM.gl!==gl || TCAM.W!==W || TCAM.H!==H || !TCAM.fb){
+        tabarCamFree();
+        TCAM.gl=gl; TCAM.W=W; TCAM.H=H;
+        TCAM.tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, TCAM.tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        TCAM.fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, TCAM.fb);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, TCAM.tex, 0);
+        TCAM.pbo=gl.createBuffer(); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, TCAM.pbo); gl.bufferData(gl.PIXEL_PACK_BUFFER, W*H*4, gl.STREAM_READ); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, TCAM.fb); gl.viewport(0,0,W,H);
+    gl.disable(gl.SCISSOR_TEST); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.disable(gl.STENCIL_TEST); gl.colorMask(true,true,true,true);
+    lphEnsureProg(gl); gl.useProgram(LPH.prog); gl.bindVertexArray(LPH.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, camTex); gl.uniform1i(LPH.uTex, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3); gl.bindVertexArray(null); gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, TCAM.pbo); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, 0); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);   // GPU の中で読み出し（ここでは待たない）
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    TCAM.sync=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush();
+    TCAM.pend=info; TCAM.t=performance.now();
+    return true;
+}
+function tabarCamCopyCollect(gl){   // 読み出しが終わっていれば、画素（上下を直したもの）を受け取る。まだなら null（待たない）
+    if(!TCAM.pend || !TCAM.sync || TCAM.gl!==gl) return null;
+    const st=gl.clientWaitSync(TCAM.sync, 0, 0);
+    if(st===gl.TIMEOUT_EXPIRED){ if(performance.now()-TCAM.t>4000) tabarCamDrop(); return null; }   // 4秒たっても終わらない時は捨てる（ふつうは次の1〜2フレームで終わる）
+    if(st===gl.WAIT_FAILED){ tabarCamDrop(); return null; }
+    gl.deleteSync(TCAM.sync); TCAM.sync=null;
+    const W=TCAM.W, H=TCAM.H, px=new Uint8Array(W*H*4);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, TCAM.pbo); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, px); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
     const out=new Uint8ClampedArray(W*H*4), row=W*4;
     for(let y=0;y<H;y++) out.set(px.subarray((H-1-y)*row,(H-y)*row), y*row);   // 上から下へ
-    return { kind:"xr", W, H, px:out, snap:{ kind:"xr", camM, projInv } };
+    const info=TCAM.pend; TCAM.pend=null;
+    return { W, H, px:out, info };
+}
+function tabarCamDrop(){ if(TCAM.sync && TCAM.gl){ try{ TCAM.gl.deleteSync(TCAM.sync); }catch(_){ } } TCAM.sync=null; TCAM.pend=null; }
+function tabarCamFree(){ tabarCamDrop(); const gl=TCAM.gl; if(gl){ try{ if(TCAM.fb) gl.deleteFramebuffer(TCAM.fb); if(TCAM.tex) gl.deleteTexture(TCAM.tex); if(TCAM.pbo) gl.deleteBuffer(TCAM.pbo); }catch(_){ } } TCAM.fb=TCAM.tex=TCAM.pbo=null; TCAM.gl=null; TCAM.W=TCAM.H=0; }
+function tabarCardXRCapture(fr){   // ARCore：このフレームのカメラ映像を写し始める（撮った瞬間のカメラの向きも覚える）
+    if(!fr || !fr.vp || !TABAR.session || TCAM.pend) return false;
+    const view=fr.vp.views && fr.vp.views[0]; if(!view || !view.camera) return false;
+    const gl=renderer.getContext();
+    if(!TABAR.glbTried){ TABAR.glbTried=true; try{ if(window.XRWebGLBinding) TABAR.glb=new XRWebGLBinding(TABAR.session, gl); }catch(_){ TABAR.glb=null; } }
+    if(!TABAR.glb || !TABAR.glb.getCameraImage) return false;
+    let tex=null; try{ tex=TABAR.glb.getCameraImage(view.camera); }catch(_){ tex=null; } if(!tex) return false;
+    const cw=view.camera.width, ch=view.camera.height; if(!cw || !ch) return false;
+    const sc=Math.min(1, TABAR_CFG.cardLong/Math.max(cw,ch)), W=Math.max(2,Math.round(cw*sc)), H=Math.max(2,Math.round(ch*sc));
+    const camM=new THREE.Matrix4().fromArray(view.transform.matrix).premultiply(player.matrixWorld), projInv=new THREE.Matrix4().fromArray(view.projectionMatrix).invert();   // 撮った瞬間のカメラ
+    try{ return tabarCamCopyStart(gl, tex, W, H, { camM, projInv }); }
+    finally { renderer.resetState(); }   // three.js の覚えている GL の状態を元に戻す
+}
+function tabarCardXRCapAfter(){   // 描画ループ：AR の絵を描き終えた後に、カメラ映像を写し始める（AR の描画とまざらないように）
+    const fr=TABAR.capReq; TABAR.capReq=null;
+    if(!fr || !TABAR.on || TABAR.backend!=="webxr" || !tabarCard()) return;
+    try{ tabarCardXRCapture(fr); }catch(e){ console.warn("[カードを さがす]", e); }
+}
+function tabarCardXRCollect(){   // ARCore：読み出しが終わったコマ（無ければ null）
+    const gl=renderer.getContext(); const r=tabarCamCopyCollect(gl); if(!r) return null;
+    return { kind:"xr", W:r.W, H:r.H, px:r.px, snap:{ kind:"xr", camM:r.info.camM, projInv:r.info.projInv } };
 }
 async function tabarCardRun(C, src){   // 1コマを読む（終わるまで次のコマは渡さない）
     C.busy=true; const guard=setTimeout(()=>{ C.busy=false; }, 2500);   // 万一 返事が来ない時
