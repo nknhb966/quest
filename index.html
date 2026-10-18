@@ -1272,7 +1272,6 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #lphInfo{ flex:1 1 auto; min-width:0; min-height:48px; box-sizing:border-box; display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:14px;
         background:rgba(12,10,26,.84); border:1px solid rgba(210,180,120,.45); font-weight:800; font-size:15px; }
     #lphName{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#ffe6a6; }
-    #lphPct{ flex:0 0 auto; color:#8ff0ff; }
     .lph-round{ pointer-events:auto; flex:0 0 auto; min-width:64px; height:48px; padding:0 12px; border-radius:14px; border:1px solid rgba(180,140,255,.55);
         background:rgba(28,20,52,.92); color:#fff; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; }   /* 押しやすい大きさ・文字つき */
     #lphExit.lph-round{ background:#8a2a2a; border-color:#ffb3a1; }
@@ -1432,7 +1431,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     <div id="lphTouch"></div>
     <div id="lphLoad">📱 ARを じゅんびしているよ…</div>
     <div id="lphTop">
-        <div id="lphInfo"><span id="lphName"></span><span id="lphPct">100%</span></div>
+        <div id="lphInfo"><span id="lphName"></span></div>
         <button id="lphHelpBtn" class="lph-round" aria-label="そうさの しかた">？ そうさ</button>
         <button id="lphScanBack" class="lph-round" type="button" aria-label="よむのを やめて もどる">↩ もどる</button>   <!-- 「もういちど よむ」の読み取り中だけ：前の恐竜に戻る -->
         <button id="lphExit" class="lph-round" aria-label="ARを おわる">✕ おわる</button>
@@ -10335,8 +10334,6 @@ function lphPaintBtns(){
     lphBtnsLayout();
 }
 function litePhoneTick(){
-    const pct=Math.round(((LITE.group?LITE.group.scale.x:1)||1)*100);
-    if(pct!==LITE._phPct){ LITE._phPct=pct; const e=lph$("lphPct"); if(e) e.textContent=pct+"%"; }
     if(LPH.aim) lphAimTick();
     if(LPH.hatch) lphHatchTick();
     if(LPH.walk) lphWalkTick();
@@ -11142,7 +11139,7 @@ function lphMove(tt){
     const a=tt[0], b=tt[1], ddx=b.clientX-a.clientX, ddy=b.clientY-a.clientY;
     const cx=(a.clientX+b.clientX)/2, cy=(a.clientY+b.clientY)/2, dist=Math.max(24,Math.hypot(ddx,ddy)), ang=Math.atan2(ddy,ddx);
     // つまむ／ひろげる：大きさ（つまんだ比率そのまま）。用紙と同じ大きさの時（ぬりえを読んだ時・ぬりえを もういちど みる）は変えない
-    if((LITE.paperScale||0)>0){ if(!g.noScale && Math.abs(dist/g.baseDist-1)>0.2){ g.noScale=true; lphMsg("ぬりえと おなじ おおきさの ときは、おおきさは かえられないよ"); } }
+    if((LITE.paperScale||0)>0){ /* 大きさは変えない（メッセージは出さない） */ }
     else { const ns=Math.min(LPH_CFG.scaleMax, Math.max(LPH_CFG.scaleMin, g.baseScale*dist/g.baseDist)); LITE.targetScale.set(ns,ns,ns); }
     // ひねる：縦の軸で向きを変える（画面で時計回りにひねる＝上から見て時計回り）
     let da=ang-g.ang; if(da>Math.PI) da-=2*Math.PI; if(da<-Math.PI) da+=2*Math.PI;
