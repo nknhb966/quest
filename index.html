@@ -1271,6 +1271,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #lphTop{ position:absolute; top:calc(env(safe-area-inset-top) + 44px); left:10px; right:10px; display:flex; gap:8px; align-items:center; pointer-events:none; }   /* 上端からセーフエリア＋44px */
     #lphInfo{ flex:1 1 auto; min-width:0; min-height:48px; box-sizing:border-box; display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:14px;
         background:rgba(12,10,26,.84); border:1px solid rgba(210,180,120,.45); font-weight:800; font-size:15px; }
+    #lphPct{ flex:0 0 auto; color:#8ff0ff; }
     #lphName{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#ffe6a6; }
     .lph-round{ pointer-events:auto; flex:0 0 auto; min-width:64px; height:48px; padding:0 12px; border-radius:14px; border:1px solid rgba(180,140,255,.55);
         background:rgba(28,20,52,.92); color:#fff; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; }   /* 押しやすい大きさ・文字つき */
@@ -1431,7 +1432,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     <div id="lphTouch"></div>
     <div id="lphLoad">📱 ARを じゅんびしているよ…</div>
     <div id="lphTop">
-        <div id="lphInfo"><span id="lphName"></span></div>
+        <div id="lphInfo"><span id="lphName"></span><span id="lphPct">100%</span></div>
         <button id="lphHelpBtn" class="lph-round" aria-label="そうさの しかた">？ そうさ</button>
         <button id="lphScanBack" class="lph-round" type="button" aria-label="よむのを やめて もどる">↩ もどる</button>   <!-- 「もういちど よむ」の読み取り中だけ：前の恐竜に戻る -->
         <button id="lphExit" class="lph-round" aria-label="ARを おわる">✕ おわる</button>
@@ -10334,6 +10335,10 @@ function lphPaintBtns(){
     lphBtnsLayout();
 }
 function litePhoneTick(){
+    // ％表示：大きさを変えられない時（ぬりえと同じ大きさ＝ぬりえを読んだ時・もういちど みる時）は出さない
+    const fixed=(LITE.paperScale||0)>0;
+    const pct=fixed? -2 : Math.round(((LITE.group?LITE.group.scale.x:1)||1)*100);
+    if(pct!==LITE._phPct){ LITE._phPct=pct; const e=lph$("lphPct"); if(e){ e.style.display=fixed?"none":""; if(!fixed) e.textContent=pct+"%"; } }
     if(LPH.aim) lphAimTick();
     if(LPH.hatch) lphHatchTick();
     if(LPH.walk) lphWalkTick();
