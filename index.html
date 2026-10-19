@@ -10126,8 +10126,11 @@ controllers.forEach(c=>{
  * ・コントローラー（手）をモデルの近くですばやく動かす＝なでる → 喜ぶ（跳ねる／くるっと回る／しっぽを振る・セリフ・鳴き声・♥）
  *   ゲームの相棒をVRでなでる時と同じ判定（手の速さ 0.6m/秒 以上）。つかんでいる手は数えない */
 const _liteTP=new THREE.Vector3(), _lvA=new THREE.Vector3(), _lvBox=new THREE.Box3(), _lvH=new THREE.Vector3(), _lvHQ=new THREE.Quaternion(), _lvHN=new THREE.Vector3(), _lvC=new THREE.Vector3();
-const LVR={ t:0, say:null, sayUntil:0, sayTop:0.3, hearts:[], cool:0 };
+const LVR={ t:0, say:null, sayUntil:0, sayHalf:0.04, sayFont:0, sayK:1, sayBase:null, sayBox:null, sayS:null, sayEyeY:null, hearts:[], cool:0 };
 const LVR_SAY_SCALE=0.35;   // ヘッドセットの「ARで あそぶ」：恐竜・いぬの セリフ（ふきだし）の大きさ。モデルの高さで決めた大きさに この倍率（幅・高さ・文字を まとめて）
+const LVR_SAY_POS={ upDeg:20, minEye:0.45, pad:0.05, gap:0.03, inTau:0.6, outTau:0.08, eyeTau:0.5 };   // ふきだしの置き場所：体に隠れないよう プレイヤー側（手前）へ。見上げる角度は upDeg°まで／目から minEye m 以上はなす／体の箱の余白 pad m・手前に出す時の すきま gap m／手前へ outTau 秒・戻る inTau 秒でなめらかに／目の高さは eyeTau 秒でなめらかに
+const _lvsC=new THREE.Vector3(), _lvsE=new THREE.Vector3();
+const LVR_SAY_SEE={ min:0.012, max:0.025 };   // ふきだしの 見た目の大きさの 下限・上限（文字の高さを 1m先にあるとしたときの大きさ m に直した値）。大きさは モデルの高さで決め、この範囲を こえる時だけ 小さく／大きくする
 function liteVRHeld(){ return !LITE.phone && LITE.active && controllers.some(c=>c.userData && c.userData.liteHeld); }
 function liteVRResetHead(){
     const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null;
@@ -10154,8 +10157,56 @@ function liteVRSay(text, ms){   // セリフ：モデルの頭の上（スプラ
     const box=_lvBox.setFromObject(LITE.model), h=Math.max(0.05, box.max.y-box.min.y);
     const w=Math.max(0.22, Math.min(0.6, h*0.9))*LVR_SAY_SCALE;   // ふきだしの幅のもと：モデルの高さで決める（高さ・文字の大きさも同じ割合）
     const spr=makeLabelSprite(text, 0xffe6a6, w, 0); spr.renderOrder=3001;   // 深度テスト有効（makeLabelSprite の既定）
-    LVR.sayTop=box.max.y-LITE.group.position.y+0.04+w*96/256/2;   // 体のいちばん上より少し上（跳ねる高さは入れない）
+    LVR.sayHalf=w*96/256/2; LVR.sayFont=w*54/256; LVR.sayK=1; LVR.sayBase={ x:spr.scale.x, y:spr.scale.y };   // 文字の高さ＝ふきだしの高さ×54/96
+    LVR.sayBox=lvrSayLocalBox(); LVR.sayS=null; LVR.sayEyeY=null;
     scene.add(spr); LVR.say=spr; LVR.sayUntil=performance.now()+(ms||2000);
+    liteVRSayPlace(0);
+}
+function lvrSayLocalBox(){   // モデルの箱（LITE.group の中の座標＝位置・向き・拡大の前）
+    const g=LITE.group, p=g.position.clone(), q=g.quaternion.clone(), sc=g.scale.clone();
+    g.position.set(0,0,0); g.quaternion.identity(); g.scale.set(1,1,1); g.updateMatrixWorld(true);
+    const b=new THREE.Box3().setFromObject(LITE.model);
+    g.position.copy(p); g.quaternion.copy(q); g.scale.copy(sc); g.updateMatrixWorld(true);
+    return b.isEmpty() ? null : b;
+}
+// ふきだしの置き場所：ふだんは 頭の上（体のいちばん上より少し上）。
+// 目の高さが 体より低い（モデルが大きい）時は、目から ふきだしを見る線が 体に当たらない所まで プレイヤー側（手前）へ出す。
+// 見上げる角度が upDeg° をこえる時は 目の高さに近づけて下げ、その時は 体のいちばん手前の端より 手前に置く（深度テストは有効のまま）
+function liteVRSayPlace(dt){
+    const g=LITE.group, b=LVR.sayBox, spr=LVR.say, P=LVR_SAY_POS; if(!g || !spr) return;
+    camera.getWorldPosition(_lvsE);
+    const gx=g.position.x, gz=g.position.z;
+    let ux=_lvsE.x-gx, uz=_lvsE.z-gz; const D=Math.hypot(ux,uz);
+    if(D<1e-4){ ux=0; uz=1; } else { ux/=D; uz/=D; }
+    let e=0, top=0.3;
+    if(b){ e=-Infinity; top=-Infinity;   // 体の箱の 8つの角：プレイヤー向きの いちばん手前（e）と いちばん上（top：台の高さからの高さ）
+        for(let i=0;i<8;i++){
+            _lvsC.set(i&1?b.max.x:b.min.x, i&2?b.max.y:b.min.y, i&4?b.max.z:b.min.z).multiply(g.scale).applyQuaternion(g.quaternion);
+            e=Math.max(e, _lvsC.x*ux+_lvsC.z*uz); top=Math.max(top, _lvsC.y);
+        }
+    }
+    e+=P.pad;
+    const half=(LVR.sayHalf||0.04)*(LVR.sayK||1), topY=LITE.targetPos.y+top+0.02;
+    LVR.sayEyeY = (LVR.sayEyeY==null || !(dt>0)) ? _lvsE.y : LVR.sayEyeY+(_lvsE.y-LVR.sayEyeY)*Math.min(1, dt/P.eyeTau);
+    const Ey=LVR.sayEyeY, sPrev=(LVR.sayS==null)?0:LVR.sayS;
+    let y=LITE.targetPos.y+top+0.04+half;   // 体のいちばん上より少し上（跳ねる高さは入れない）
+    const yCap=Ey+Math.max(0.1, D-sPrev)*Math.tan(P.upDeg*Math.PI/180);
+    if(y>yCap) y=yCap;                      // 見上げすぎない
+    const yb=y-half, A=yb-Ey, B=yb-topY;    // ふきだしの下のふちと 目・体の上 との高さの差
+    let s;
+    if(B<=0) s=e+P.gap;                     // ふきだしが 体の上より低い：体のいちばん手前の端より 手前
+    else if(A<=B) s=0;                      // 目が 体より高い：真上のままで 体に隠れない
+    else s=(A*e-B*D)/(A-B);                 // 目からの線が 体の手前の端の上を 通る所まで 手前へ
+    s=Math.max(0, Math.min(s, D-P.minEye));
+    if(LVR.sayS==null || !(dt>0)) LVR.sayS=s;
+    else LVR.sayS+=(s-LVR.sayS)*Math.min(1, dt/(s>LVR.sayS?P.outTau:P.inTau));   // 手前へは すばやく・戻るのは ゆっくり
+    spr.position.set(gx+ux*LVR.sayS, y, gz+uz*LVR.sayS);
+    // 見た目の大きさ：目からの距離で 下限・上限の中に おさめる（ふだんは モデルの高さで決めた大きさのまま）
+    if(LVR.sayFont && LVR.sayBase){
+        const dist=Math.max(0.05, spr.position.distanceTo(_lvsE)), see=LVR.sayFont/dist;
+        const k=Math.min(LVR_SAY_SEE.max, Math.max(LVR_SAY_SEE.min, see))/see;
+        LVR.sayK=k; spr.scale.set(LVR.sayBase.x*k, LVR.sayBase.y*k, 1);
+    }
 }
 function liteVRHearts(n){
     if(!LITE.model) return; const box=_lvBox.setFromObject(LITE.model), c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
@@ -10280,7 +10331,7 @@ function liteVRTick(){
         if(S.acc>=LVR_PET.path){ for(const k in LVR.st) LVR.st[k].acc=0; liteVRJoy(); LVR.cool=now+LVR_PET.cool; break; }
     }
     // セリフ：頭の上についていく
-    if(LVR.say){ if(now>LVR.sayUntil || !LITE.group){ liteVRSayClear(); } else LVR.say.position.set(LITE.group.position.x, LITE.targetPos.y+LVR.sayTop, LITE.group.position.z); }   // 頭の上（深度テストは有効）
+    if(LVR.say){ if(now>LVR.sayUntil || !LITE.group){ liteVRSayClear(); } else liteVRSayPlace(dt); }   // 頭の上／モデルが大きい時は 体に隠れない手前（深度テストは有効）
     // ♥：ふわっと上がって消える
     for(let i=LVR.hearts.length-1;i>=0;i--){ const h=LVR.hearts[i], r=(now-h.t0)/1400;
         if(r<0){ h.spr.visible=false; continue; } h.spr.visible=true;
