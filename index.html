@@ -846,7 +846,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       </section>
       <section>
         <h3>🔍 モデルを みよう</h3>
-        <p><b>「🔍 かんたんAR」</b>で3Dモデルを回して見たり、<b>「📱 ARで あそぶ」</b>で目の前に置いて見たりできます。<b>しゅつどひん・いぬ・きょうりゅう</b>は、ボタンを押した後の画面の「モデル」で選びます。ぬりえをした恐竜は、その模様で表示されます。</p>
+        <p><b>「🔍 かんたんAR」</b>で3Dモデルを回して見たり、<b>「📱 ARで あそぶ」</b>で目の前に置いて見たりできます。<b>しゅつどひん・いぬ・きょうりゅう</b>は、ボタンを押した後の画面の「モデル」で選びます。きょうりゅうは、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と ぬりえなしの恐竜を えらべます。ぬりえをした恐竜は、その模様で表示されます。</p>
         <p class="k">iPhone・iPad では、AR画面を開いたら スマホ（タブレット）を<b>ななめ まえ</b>（下に15〜55°）に向けると、その先に卵が出て孵ります（「📱 ARで あそぶ」はモデルが現れます）。「🖍 ぬりえを よみこむ」で読み取ったときも、用紙の上ではなく、ななめ まえの床に出ます。</p>
         <p class="k">「📱 ARで あそぶ」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。いぬ・しゅつどひんの時は、使うボタンだけが出ます（いぬ＝たんけん・あるく→とまる→アニメオフ・しゃしん・どうが・リセット・しまう／しゅつどひん＝せつめい・しゃしん・どうが・リセット・しまう）。スマホ・タブレットの「きれい」は、画像を 4096（メモリが少ない端末は 2048）までに縮めて、表示している1点だけを読みます。AR画面の「🗺 たんけん」（いちばん左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
       </section>
@@ -1406,10 +1406,10 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #lphCardSum{ padding:12px; background:rgba(3,2,10,.92); }   /* はっくつずかん と同じ並び */
     #lphCardSum .dexbox{ max-height:92vh; } #lphCardSum .row{ display:flex; gap:8px; flex:0 0 auto; } #lphCardSum .row button{ flex:1; }
     #lphCardSumBack{ padding:13px 0; border:1px solid rgba(180,140,255,.5); border-radius:11px; background:rgba(18,12,40,.85); color:#e2d8ff; font-family:inherit; font-weight:800; font-size:16px; }
-    #lphDexView{ position:absolute; inset:0; z-index:40; display:none; align-items:center; justify-content:center; background:rgba(3,2,10,.9); pointer-events:auto; }
+    #lphDexView{ position:absolute; inset:0; z-index:40; display:none; align-items:center; justify-content:center; background:rgba(10,6,20,.72); backdrop-filter:blur(3px); padding:20px; pointer-events:auto; }   /* ふだんの図鑑の カード表示（#dexView）と同じ */
     #lphDexView.on{ display:flex; }
-    #lphDexView img{ height:70vh; max-height:70vh; max-width:88vw; aspect-ratio:1/1.5; object-fit:contain; border-radius:14px; box-shadow:0 14px 50px rgba(0,0,0,.6); background:#2a2416; }
-    #lphDexViewClose{ position:absolute; top:calc(env(safe-area-inset-top) + 16px); right:16px; width:48px; height:48px; border-radius:50%; border:1px solid rgba(255,255,255,.4); background:rgba(28,20,52,.92); color:#fff; font-size:22px; font-weight:800; }
+    #lphDexView img{ height:70vh; max-height:70vh; max-width:88vw; aspect-ratio:1/1.5; object-fit:contain; border-radius:14px; box-shadow:0 14px 50px rgba(0,0,0,.6); background:#2a2416; animation:dexpop .18s ease; }
+    #lphDexView .dexview-close{ top:calc(env(safe-area-inset-top) + 14px); }
     #lphCardSumOk{ padding:13px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; font-size:16px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; }
     #lphHelp{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(8,5,18,.6); }
     #lphHelp.on{ display:flex; }
@@ -1419,6 +1419,12 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #lphHelp ul{ list-style:none; margin:0 0 12px; padding:0; display:flex; flex-direction:column; gap:5px; }
     #lphHelp li{ font-size:13px; line-height:1.6; padding:6px 10px; border-radius:9px; background:rgba(143,240,255,.07); border-left:3px solid #8ff0ff; }
     #lphHelp li b{ color:#ffe6a6; }
+    /* ---- たんけんの パネル：ふだんの はっくつずかん と同じ見た目（枠・角丸・見出し・✕）。ボタンは「きめる＝黄色」「もどる・ほか＝わく」 ---- */
+    #lphDig, #lphHelp, #lphDex, #lphCardSum{ background:rgba(3,2,10,.86); }
+    #lphDig .card, #lphHelp .card, #lphDex .dexbox, #lphCardSum .dexbox, #ldigCard .box{ background:linear-gradient(150deg,#160f0a,#0c1024); border:1px solid rgba(210,180,120,.35); border-radius:16px; color:#efe6ff; }
+    #lphDig h3, #lphHelp h3, #ldigCard h3{ color:var(--gold); letter-spacing:3px; font-size:clamp(17px,2.4vw,21px); }
+    #lphDigGo, #lphHelpOk, #lphCardSumOk, #ldigBackPrep{ padding:14px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; font-size:17px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; cursor:pointer; }
+    #lphDigBack, #lphCardSumBack, #ldigBackAR, #ldigToMenu, #ldigRetry{ padding:11px 0; border:1px solid rgba(180,140,255,.4); border-radius:11px; background:rgba(18,12,40,.7); color:#d9cbf5; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; box-shadow:none; }
     #lphHelpOk{ width:100%; padding:13px 0; border:none; border-radius:11px; font-weight:800; font-size:16px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; }
     /* AR終了後：撮影した写真・動画の保存 */
     /* iPhone：カメラ映像（背景）。この上に three.js のキャンバス、さらに上に操作パネル */
@@ -1530,7 +1536,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         </div>
     </div>
     <div id="lphDex" role="dialog" aria-label="はっくつずかん"><div class="dexbox"><button class="dexclose" id="lphDexClose" type="button">×</button><h2>📖 はっくつずかん</h2><div class="dexbar"><i id="lphDexFill"></i></div><div class="dexbar-lbl" id="lphDexCount"></div><div class="dexgrid" id="lphDexGrid"></div></div></div>   <!-- たんけん「ほって かえす」：この回に みつけた きょうりゅう -->
-    <div id="lphDexView" role="dialog" aria-label="カード"><img id="lphDexViewImg" alt=""><button type="button" id="lphDexViewClose" aria-label="とじる">×</button></div>   <!-- はっくつずかん：えらんだ カード -->
+    <div id="lphDexView" role="dialog" aria-label="カード"><img id="lphDexViewImg" alt=""><button type="button" class="dexview-close" id="lphDexViewClose" aria-label="とじる">×</button></div>   <!-- はっくつずかん：えらんだ カード -->
     <div id="lphCardSum"><div class="dexbox" role="dialog" aria-label="みつけた きょうりゅう"><h2>🦕 みつけた きょうりゅう</h2><p id="lphCardSumN"></p><div class="dexbar"><i id="lphCardSumFill"></i></div><div class="dexbar-lbl" id="lphCardSumCount"></div><div id="lphCardSumList" class="dexgrid"></div><div class="row"><button type="button" id="lphCardSumBack">もどる</button><button type="button" id="lphCardSumOk">OK</button></div></div></div>   <!-- たんけん「ほって かえす」のまとめ -->
     <div id="lphHelp">
         <div class="card" role="dialog" aria-label="そうさの しかた">
@@ -7114,7 +7120,7 @@ function animateDigDinos(now, dt){
 //   とまる：いままでどおり（その場で ゆっくり回る・気づくと こちらを向く）＋ ときどき においを かぐ
 //   うごく：掘った場所のまわり（CARD_DINO.wanderR m）を歩き回る。ときどき止まって プレイヤーを見る・においを かぐ
 //   どちらも タッチすると よろこぶ（ほって かえす・ぬりえ と同じ：はねる／くるっと まわる／ゆれる＋セリフ＋ハート）
-const CARD_DINO={ wanderR:3.0, speed:0.45, sniffDeg:38, sniffMs:[1400,2200], sniffEvery:[4000,8000], lookMs:[1800,2800], pauseMs:[800,1800] };
+const CARD_DINO={ wanderR:3.0, speed:0.45, turn:0.9, sniffDeg:38, sniffMs:[1400,2200], sniffEvery:[4000,8000], lookMs:[1800,2800], pauseMs:[800,1800] };
 const _cdRnd=(a)=>a[0]+Math.random()*(a[1]-a[0]);
 function cardDinoTick(cont, m, now, dt, camW){
     const u=cont.userData; let S=u._cd;
@@ -7126,7 +7132,7 @@ function cardDinoTick(cont, m, now, dt, camW){
     if(LDIG.dinoMove!=="move" || u._joy) return out;   // とまる（よろこんでいる間も その場）
     out.noSpin=true;
     if(S.state==="pause" || S.state==="look"){
-        if(S.state==="look" && camW){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*2.5); }
+        if(S.state==="look" && camW){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn); }
         if(now>S.until && now>S.sniffUntil){   // つぎ：歩く（行き先＝掘った場所のまわり）
             const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*CARD_DINO.wanderR;
             S.gx=S.cx+Math.cos(a)*r; S.gz=S.cz+Math.sin(a)*r; S.state="walk"; }
@@ -7136,17 +7142,18 @@ function cardDinoTick(cont, m, now, dt, camW){
     const ox=u.origX??cont.position.x, oz=u.origZ??cont.position.z, dx=S.gx-ox, dz=S.gz-oz, dl=Math.hypot(dx,dz);
     const L=Math.max(0.6, u.bodyLen||1), v=CARD_DINO.speed*Math.min(2, Math.max(0.6, L/2));
     if(dl<0.08){ S.state=Math.random()<0.5 ? "look" : "pause"; S.until=now+_cdRnd(S.state==="look" ? CARD_DINO.lookMs : CARD_DINO.pauseMs); if(Math.random()<0.5){ S.sniffUntil=now+_cdRnd(CARD_DINO.sniffMs); } return out; }
-    const st=Math.min(dl, v*dt); u.origX=ox+dx/dl*st; u.origZ=oz+dz/dl*st;
-    let d=Math.atan2(dx, dz)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*3);
+    let d=Math.atan2(dx, dz)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn);   // ゆっくり向きを変える
+    if(Math.abs(d)<0.7){ const st=Math.min(dl, v*dt*(1-Math.abs(d)/0.7*0.7)); u.origX=ox+dx/dl*st; u.origZ=oz+dz/dl*st; }   // だいたい向いてから 歩き出す
     out.walking=true; return out;
 }
 function cardDinoJoyApply(cont, now){
     const J=cont.userData._joy; if(!J) return;
     const r=Math.min(1,(now-J.t0)/J.dur);
-    if(J.type==="hop") cont.position.y += J.h*Math.abs(Math.sin(Math.PI*2*r))*(1-0.35*r);
-    else if(J.type==="spin"){ cont.rotation.y = J.yaw0 + Math.PI*2*(r<0.5 ? 2*r*r : 1-2*(1-r)*(1-r)); cont.position.y += J.h*0.35*Math.sin(Math.PI*r); }
-    else { cont.rotation.z = Math.sin(r*Math.PI*6)*0.12*(1-r); }
-    if(r>=1){ cont.rotation.z=0; if(J.type==="spin") cont.rotation.y=J.yaw0; cont.userData._joy=null; }
+    if(J.face!=null){ let d=J.face-J.base; d=Math.atan2(Math.sin(d),Math.cos(d)); J.base+=d*0.08; }   // うごく：プレイヤーの方を向きながら よろこぶ
+    if(J.type==="hop"){ cont.position.y += J.h*Math.abs(Math.sin(Math.PI*2*r))*(1-0.35*r); if(J.face!=null) cont.rotation.y=J.base; }
+    else if(J.type==="spin"){ cont.rotation.y = J.base + Math.PI*2*(r<0.5 ? 2*r*r : 1-2*(1-r)*(1-r)); cont.position.y += J.h*0.35*Math.sin(Math.PI*r); }
+    else { cont.rotation.z = Math.sin(r*Math.PI*6)*0.12*(1-r); if(J.face!=null) cont.rotation.y=J.base; }
+    if(r>=1){ cont.rotation.z=0; cont.rotation.y=J.base; cont.userData._joy=null; }
 }
 function cardDinoJoyLine(key, type){   // ほって かえす・ぬりえ と同じ語尾（恐竜＝鳴き声、フクイ〜＝福井弁）
     let cry=""; try{ const pet=COMPANIONS[key]&&COMPANIONS[key].lines&&COMPANIONS[key].lines.pet; const mm=pet&&pet.match(/うれしい(?:ぞ|ざ〜)\s*(.+?)！/); if(mm) cry=mm[1]; }catch(_){ }
@@ -7163,8 +7170,10 @@ function cardDinoTap(ndcX, ndcY){   // 掘り出した恐竜を タッチ → �
     if(!best || best.userData._joy) return !!best;
     const u=best.userData, sz=new THREE.Box3().setFromObject(best).getSize(new THREE.Vector3());
     const types=["hop","spin","wiggle"].filter(t=>t!==u._lastJoy), type=types[Math.floor(Math.random()*types.length)]; u._lastJoy=type;
-    u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*1.5, type, yaw0:best.rotation.y, h:Math.max(0.02, sz.y*0.15) };
-    if(u._cd && u._cd.state==="walk"){ u._cd.state="look"; u._cd.until=performance.now()+2000; }
+    let face=null;   // うごく：プレイヤーの方を見て よろこぶ
+    if(LDIG.dinoMove==="move"){ const cw=camera.getWorldPosition(new THREE.Vector3()), x=u.homeX??best.position.x, z=u.homeZ??best.position.z; face=Math.atan2(cw.x-x, cw.z-z); }
+    u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*1.5, type, base:best.rotation.y, face, h:Math.max(0.02, sz.y*0.15) };
+    if(u._cd){ u._cd.state="look"; u._cd.until=performance.now()+Math.max(2600, u._joy.dur+800); u._cd.gx=u.origX??best.position.x; u._cd.gz=u.origZ??best.position.z; }   // 止まって こちらを見る
     try{ sfxCry(); }catch(_){ } try{ vibrate(60,0.5); }catch(_){ }
     const px=TABAR.tapPx||{ x:innerWidth/2, y:innerHeight/2 };
     cardDinoSay(cardDinoJoyLine(u.dinoKey, type), px);
@@ -11463,7 +11472,7 @@ function litePhoneExit(){
     { const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null; if(hd){ hd.rotation.x=0; hd.rotation.y=0; } }
     LPH.hatch=null; LPH.walk=null; LPH.aim=null; LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; { const bb=lph$("lphBubble"); if(bb) bb.classList.remove("on"); } LPH.scan=null; LPH.paper=null; LITE.paperScale=0; LPH.cardDeskY=null; LPH.floorGuess=false; try{ lphDirtClear(); }catch(_){ } if(LITE.model) LITE.model.visible=true;
     lph$("litePh").classList.remove("lph-scan","lph-ncard","lph-card","lph-card-done","lph-reread"); LPH.reread=null; LPH.floorSave=null;
-    if(LPH.card){ LPH.card=null; LITE.cardForce=null; try{ if(window.__nuriArCard) window.__nuriArCard.stop(); }catch(_){ } } { const cs=lph$("lphCardSum"); if(cs) cs.classList.remove("on"); }   // たんけん「ほって かえす」
+    if(LPH.card){ lphCardCardSrcClear(); LPH.card=null; LITE.cardForce=null; try{ if(window.__nuriArCard) window.__nuriArCard.stop(); }catch(_){ } } { const cs=lph$("lphCardSum"); if(cs) cs.classList.remove("on"); }   // たんけん「ほって かえす」
     LPH.hts.forEach(h=>{ try{ h.cancel(); }catch(_){ } }); LPH.hts=[]; LPH.floorFound=false; LPH.floorY=null; LPH.gpModel=null; LPH.gp=null; LPH.gKey="";
     if(LPH.shadow) LPH.shadow.visible=false; lph$("lphFloor").classList.remove("on");
     LPH.lines.forEach(([o,v])=>{ o.visible=v; }); LPH.lines=[];
@@ -13267,8 +13276,8 @@ const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, re
     arMethod:"arcore",     // ARの しくみ：選ばせない。ARCore が使える Android は ARCore、使えない（カードを読めない など）時は自動で カメラ＋センサー   // ARの しくみ（Android の 案1・案2・案4）：arcore（既定）／camera＝カメラ＋センサー。前回の選択を覚える
     arRun:null,            // この回だけの しくみ（ARCore でカードを読めない端末 → "camera"）
     play:false,            // たんけんの設定でゲーム中（リザルトはポイント・タイムだけ／相棒は固定）
-    srcNuri:"sample",      // 発掘する恐竜の模様：ぬりえから入った時（既定＝見本）。ページを開いている間は覚える
-    srcMv:"plain",         // 同：「ARで みる」（きょうりゅう）から入った時（既定＝ぬりえなし）
+    srcNuri:null,          // 発掘する恐竜の模様：ぬりえから入った時。null＝既定（じぶんで ぬった恐竜が1まいでもあれば じぶんで ぬった／なければ みほん）。選んだら ページを開いている間は覚える
+    srcMv:null,            // 同：「ARで みる」（きょうりゅう）から入った時
     dinoSize:"real",       // 掘り出す恐竜の大きさ（下）
     dinoMove:"stay" };     // カードを さがす：掘り出した恐竜の うごき（move＝歩き回る／stay＝その場。どちらも においを かぐ・タッチで よろこぶ）     // 掘り出す恐竜の大きさ：real＝実寸大（既定）／big＝ARで おおきく みる と同じ
 function ldigPlaying(){ try{ return !!LDIG.play; }catch(_){ return false; } }   // 毎フレーム呼ばれるので、準備前（LDIG の宣言前）でも落ちないように
@@ -13295,7 +13304,8 @@ function ldigSrcOpts(kind){
 function ldigSrcCur(){
     const k=ldigSrcKind(); if(!k) return "plain";
     const v=(k==="nuri")? LDIG.srcNuri : LDIG.srcMv;
-    return ldigSrcOpts(k).some(o=>o[0]===v) ? v : ldigSrcOpts(k)[0][0];   // じぶんで ぬった恐竜がない時は既定へ
+    const opts=ldigSrcOpts(k), def=(ldigOwnCount()>0 && opts.some(o=>o[0]==="own")) ? "own" : "sample";
+    return opts.some(o=>o[0]===v) ? v : def;   // 選んでいない・選べない時は既定（じぶんで ぬった／みほん）
 }
 function ldigPaint(){
     { const box=lph$("lphDigSrc"), lb=lph$("lphDigSrcLbl"), k=ldigSrcKind(), opts=ldigSrcOpts(k), cur=ldigSrcCur();
@@ -13305,7 +13315,7 @@ function ldigPaint(){
             opts.forEach(o=>{ const b=document.createElement("button"); b.type="button"; b.dataset.v=o[0]; b.innerHTML=o[1]+"<span>"+o[2]+"</span>"; box.appendChild(b); }); }
         box.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.v===cur)); } }
     { const box=lph$("lphDigBlank"), lb=lph$("lphDigBlankLbl"), cur=ldigSrcCur(), G=window.NURI_GAME;   // 見本の恐竜ごとの白い所（見本を使う恐竜だけ・おすすめ設定オフ）
-      const keys=(!recoOn && G && LITE.target==="dino" && (cur==="sample" || cur==="own"))? DINOS.map(d=>d.key).filter(k=>cur==="sample" || !(G.st.paint[k] && G.st.maps[k])) : [];
+      const keys=[];   // 出さない（おすすめ設定に関係なく）
       if(box && lb){ lb.style.display=box.style.display=keys.length? "" : "none"; box.innerHTML="";
           keys.forEach(k=>{ const i=DINOS.findIndex(d=>d.key===k), o=G.blankSmp(k), b=document.createElement("button"); b.type="button"; b.className=o? "orig" : "";
               b.innerHTML=((DINOS[i]&&DINOS[i].label)||k).replace(/^\S+\s*/,"")+"<br>"+(o? "🦖 もよう" : "⬜ しろ"); b.setAttribute("aria-pressed", String(o));
@@ -13332,9 +13342,11 @@ function ldigPaint(){
       document.querySelectorAll("#lphDig .szrow").forEach(r=>{ r.style.display=(round||dig||card)? "none" : ""; });
       { const one=ldigModes().length<2, ml=lph$("lphDigModeLbl"), mb=lph$("lphDigMode"); if(ml) ml.style.display=one? "none" : ""; if(mb) mb.style.display=one? "none" : ""; }   // そのばで ぐるっと・ほって かえす：あそびかたは1つ（ぜんぶ みつける）なので出さない
       const lead=lph$("lphDigLead"), nm=(LITE.curName||"").replace(/^\S+\s*/,"");
-      if(lead) lead.innerHTML = dig ? "「"+nm+"」と いっしょに きょうりゅうカードを さがそう！<br>カードを ほりだして うつすと、ブロックが でるよ。ほると たまごが かえるよ。"
-          : (LITE.target==="dog" ? "「"+nm+"」と いっしょに しゅつどひんを さがそう！" : "「"+nm+"」と いっしょに きょうりゅうを さがそう！")
-            +"<br>"+(round ? "そのばに たったまま、まわりを ぐるっと みて さがすよ。" : card ? "ゆかに おいた カードを みつけて、ちかづいて ほるよ。" : "あるいて さがして、つちを ほって みつけるよ。");
+      const what=(LITE.target==="dog") ? "しゅつどひん" : "きょうりゅう";   // 「〇〇と いっしょに」は 相棒と さがす「あるいて さがす」だけ
+      if(lead) lead.innerHTML = dig ? "きょうりゅうカードを ほりだして うつすと、ブロックが でるよ。<br>ほると たまごが かえるよ。"
+          : round ? what+"を さがそう！<br>そのばに たったまま、まわりを ぐるっと みて さがすよ。"
+          : card ? what+"を さがそう！<br>ゆかに おいた カードを みつけて、ちかづいて ほるよ。"
+          : "「"+nm+"」と いっしょに "+what+"を さがそう！<br>あるいて さがして、つちを ほって みつけるよ。";
       const note=lph$("lphDigNote"), go=lph$("lphDigGo");
       if(note) note.innerHTML = dig ? "「はじめる」を おすと、きょうりゅうカードを よむ がめんに なるよ。<br>おわったら、この がめんに もどるよ。" : "「たんけんに いく」を おすと、たんけんの じゅんびに すすむよ。<br>おわったら、この がめんに もどれるよ。";
       if(go) go.textContent = dig ? "⛏ はじめる" : "🗺 たんけんに いく"; }
@@ -13518,6 +13530,8 @@ async function lphCardFound(i, pose){   // カードが読めた（i＝恐竜の
     lphCardBar();
     let m=null; try{ m=await lphCardModel(i, C.src); }catch(e){ console.warn("[ほって かえす]", e); }
     if(LPH.card!==C || !LITE.active) return;
+    try{ await lphCardCardSrc(i, C.src); }catch(e){ console.warn("[ほって かえす] カードの模様", e); }   // ずかん・カードも この恐竜と同じ模様
+    if(LPH.card!==C || !LITE.active) return;
     LITE.cardForce=m||null; try{ liteSwitchModel(i); } finally { LITE.cardForce=null; }   // 恐竜を入れ替える（モデルは同期で入る）
     LPH.walk=null; LPH.gpModel=null; LPH.gKey=""; LPH.popY=0; LPH.joy=null; LPH.faceTurn=null;
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
@@ -13526,6 +13540,16 @@ async function lphCardFound(i, pose){   // カードが読めた（i＝恐竜の
     lphNCard("みつけた！ No."+(i+1)+" の カード", C.pose ? "カードの うえに ブロックが でるよ" : LITE.iar ? (iarDevName()+"を ななめ まえに むけてね。ブロックが でてくるよ") : "まえを むいてね。ブロックが でてくるよ");   // カードの位置が分からない時は 前の床
     litePhoneRefresh();
 }
+// ずかん・カードの模様を、掘り出した恐竜と同じにする（たんけんと同じ しくみ＝DIGP：ぬりえなし／みほん／じぶんで ぬった（ぬっていない恐竜は みほん））
+async function lphCardCardSrc(i, src){
+    const key=DINOS[i] && DINOS[i].key; if(!key) return;
+    const painted=!!(window.__dinoHasPaint && window.__dinoHasPaint(key));
+    let ds=null;
+    if(src==="own" && painted) ds="own";
+    else if(src==="sample" || src==="own"){ let p=DIGP.smp[key]; if(!p){ try{ p=await digSampleLoad(key); }catch(_){ p=null; } } if(p){ DIGP.smp[key]=p; ds="smp"; } }
+    DIGP.src[key]=ds; DIGP.on=true; if(LPH.card) LPH.card.digp=true;
+}
+function lphCardCardSrcClear(){ if(!(LPH.card && LPH.card.digp)) return; DIGP.on=false; DIGP.src={}; DIGP.smp={}; }
 function lphCardBar(){   // 上の帯：みつけた数・つぎの カード（恐竜が生まれた後）・おわる
     const C=LPH.card, r=lph$("litePh"); if(!r) return;
     r.classList.toggle("lph-card", !!C);
@@ -13581,6 +13605,7 @@ window.addEventListener("litephoneend", ()=>{ if(!LDIG.cardLeaving) return; setT
 function lphCardFinish(){   // まとめの OK：入る前のモデル・設定に戻す
     const C=LPH.card; lph$("lphCardSum").classList.remove("on"); if(!C) return;
     try{ if(window.__nuriArCard) window.__nuriArCard.stop(); }catch(_){ }
+    lphCardCardSrcClear();   // カードの模様を ふだんに もどす
     lphCardClearEgg(); LPH.hatch=null; LPH.card=null; LITE.cardForce=null; { const dx=lph$("lphDex"); if(dx) dx.classList.remove("on"); } lphDexViewClose();
     const s=C.save;
     LITE.target=s.target; LITE.intrinsic=s.intrinsic; LITE.nuri=s.nuri; LITE.mvPick=s.mvPick; LITE.selPlain=s.selPlain; LITE.paperScale=s.paperScale; LITE.isDino=s.isDino; LPH.paper=s.paper;
@@ -13601,7 +13626,8 @@ function lphCardFinish(){   // まとめの OK：入る前のモデル・設定�
     if(nx) nx.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardScan(); });
     if(en) en.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardEnd(); });
     if(ok) ok.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardQuit(); });   // きろくの OK → たんけんを おえた画面（A）
-    { const bk=document.getElementById("lphCardSumBack"); if(bk) bk.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lph$("lphCardSum").classList.remove("on"); lphDexViewClose(); }); }   // もどる：きろくを とじて、つづける
+    { const bk=document.getElementById("lphCardSumBack"); if(bk) bk.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lph$("lphCardSum").classList.remove("on"); lphDexViewClose();
+        if(LPH.hatch && LPH.hatch.phase==="scan" && window.__nuriArCard) window.__nuriArCard.start(); }); }   // もどる：きろくを とじて、つづける（カードを よむ画面なら、読み取りを また はじめる）
     { const cc=document.getElementById("lphCardCount"); if(cc) cc.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardDexOpen(false); }); }   // ずかん（あそんでいる途中）
     { const dx=document.getElementById("lphDex"); if(dx) dx.addEventListener("click", e=>e.stopPropagation()); }
     { const dc=document.getElementById("lphDexClose"); if(dc) dc.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardDexClose(); }); }
@@ -14096,7 +14122,7 @@ addEventListener("resize",()=>{
 
     // 「ARで みる」（きょうりゅう）：じぶんで ぬった恐竜（値＝100＋番号）と、ぬりえなしの8体（値＝番号）を選べる
     function curIdx(){ return (parseInt(sel.value,10)||0)%100; }
-    function curPlain(){ return !!window.__mvLiteMode && curDigTarget()==="dino" && (parseInt(sel.value,10)||0)<100; }   // ぬりえなしを選んでいる
+    function curPlain(){ return curDigTarget()==="dino" && (parseInt(sel.value,10)||0)<100; }   // ぬりえなしを選んでいる（Go・Lite とも）
 
     // GLTFExporter は必要時に動的import（失敗してもゲーム本体には影響しない）
     async function getExporter(){
@@ -14156,7 +14182,7 @@ addEventListener("resize",()=>{
         const n = isDino ? (typeof DINOS!=="undefined" ? DINOS.length : 8)
                 : isDog ? ((typeof DOGS!=="undefined" ? DOGS.length : 8)+1) : artCount();   // 出土品/恐竜=8点、犬=8犬種＋しばいぬ
         curList = []; sel.innerHTML = "";
-        if(isDino && window.__mvLiteMode && typeof DINOS!=="undefined"){   // 「ARで みる」：先に じぶんで ぬった恐竜（🖍 ○○（ぬりえ））
+        if(isDino && typeof DINOS!=="undefined"){   // Go・Lite とも：先に じぶんで ぬった恐竜（🖍 ○○（ぬりえ））、つぎに ぬりえなしの8体
             for(let i=0;i<n;i++){ const d=DINOS[i]; if(!(d && window.__dinoHasPaint && window.__dinoHasPaint(d.key))) continue;
                 const opt=document.createElement("option"); opt.value=String(100+i); opt.textContent="🖍 "+String(d.label||"").replace(/^\S+\s*/,"")+"（ぬりえ）";
                 sel.appendChild(opt); curList.push(100+i); }
@@ -15065,12 +15091,12 @@ function nuriPrintAll(){
     const esc=(t)=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
     w.document.open();
     w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ぬりえ（ぜんぶ）</title>'
-        +'<meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){ function fit(){ var z=Math.min(1,(innerWidth-8)/(297*96/25.4+16)); document.documentElement.style.setProperty("--z", String(z)); } addEventListener("resize",fit); fit(); })();<\/script>'
+        +'<meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){ var W=297*96/25.4; function fit(){ var cw=document.documentElement.clientWidth||innerWidth||W; var z=Math.min(1,(cw*0.96)/W); document.documentElement.style.setProperty("--z", String(z)); } addEventListener("resize",fit); addEventListener("orientationchange",fit); addEventListener("DOMContentLoaded",fit); addEventListener("load",fit); fit(); setTimeout(fit,100); setTimeout(fit,500); })();<\/script>'
         +'<style>'
         +'@page{ size:A4 landscape; margin:0; } html,body{ margin:0; padding:0; background:#fff; }'
         +'.pg{ width:297mm; height:209mm; display:flex; align-items:center; justify-content:center; break-after:page; page-break-after:always; overflow:hidden; }'
         +'.pg:last-child{ break-after:auto; page-break-after:auto; } .pg img{ width:297mm; height:209mm; object-fit:contain; display:block; }'
-        +'@media screen{ html{ background:#888; } body{ background:#888; padding:1px 0; } .pg{ zoom:var(--z,1); margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
+        +'@media screen{ html{ background:#888; overflow-x:hidden; } body{ background:#888; padding:1px 0; display:flex; flex-direction:column; align-items:center; } .pg{ zoom:var(--z,1); margin:8px 0; flex:0 0 auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
         +'</style></head><body>'
         +list.map(s=>'<div class="pg"><img src="'+esc(base+s.svg)+'" alt="'+esc(s.name)+'"></div>').join("")
         +'</body></html>');
@@ -15582,7 +15608,7 @@ async function nuriCardPrint(big){   // big＝A4に1まい（カードを さが
     else for(let p=0;p<Math.ceil(DINOS.length/4);p++){ let h=''; for(let k=0;k<4;k++){ const i=p*4+k; h+= i<DINOS.length ? card(i) : '<div class="cd blank"></div>'; } pages.push('<div class="pg">'+h+'</div>'); }
     w.document.open();
     w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>きょうりゅうカード</title>'
-        +'<meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){ function fit(){ var z=Math.min(1,(innerWidth-8)/(210*96/25.4+16)); document.documentElement.style.setProperty("--z", String(z)); } addEventListener("resize",fit); fit(); })();<\/script>'
+        +'<meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){ var W=210*96/25.4; function fit(){ var cw=document.documentElement.clientWidth||innerWidth||W; var z=Math.min(1,(cw*0.96)/W); document.documentElement.style.setProperty("--z", String(z)); } addEventListener("resize",fit); addEventListener("orientationchange",fit); addEventListener("DOMContentLoaded",fit); addEventListener("load",fit); fit(); setTimeout(fit,100); setTimeout(fit,500); })();<\/script>'
         +'<style>'
         +'@page{ size:A4 portrait; margin:0; } html,body{ margin:0; padding:0; background:#fff; font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif; }'
         +'.pg{ width:210mm; height:296mm; display:grid; grid-template-columns:105mm 105mm; grid-template-rows:148mm 148mm; break-after:page; page-break-after:always; overflow:hidden; }'
@@ -15592,7 +15618,7 @@ async function nuriCardPrint(big){   // big＝A4に1まい（カードを さが
         +'.mk{ width:66mm; height:66mm; display:block; } .bone{ width:44mm; height:18mm; margin-top:5mm; } .s{ font-size:4.6mm; font-weight:800; color:#5a3d12; margin-top:7mm; }'
         +'.pg.big{ display:block; } .pg.big .cd{ width:210mm; height:296mm; border:none; padding:16mm 12mm 10mm; } .pg.big .t{ font-size:12mm; } .pg.big .no{ font-size:22mm; margin:2mm 0 8mm; }'
         +'.pg.big .mk{ width:170mm; height:170mm; } .pg.big .bone{ width:90mm; height:36mm; margin-top:8mm; } .pg.big .s{ font-size:9mm; margin-top:16mm; }'
-        +'@media screen{ html{ background:#888; } body{ background:#888; padding:1px 0; } .pg{ zoom:var(--z,1); margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
+        +'@media screen{ html{ background:#888; overflow-x:hidden; } body{ background:#888; padding:1px 0; display:flex; flex-direction:column; align-items:center; } .pg{ zoom:var(--z,1); margin:8px 0; flex:0 0 auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
         +'</style></head><body>'+pages.join("")+'</body></html>');
     w.document.close();
 }
