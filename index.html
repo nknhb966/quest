@@ -10127,10 +10127,10 @@ controllers.forEach(c=>{
  *   ゲームの相棒をVRでなでる時と同じ判定（手の速さ 0.6m/秒 以上）。つかんでいる手は数えない */
 const _liteTP=new THREE.Vector3(), _lvA=new THREE.Vector3(), _lvBox=new THREE.Box3(), _lvH=new THREE.Vector3(), _lvHQ=new THREE.Quaternion(), _lvHN=new THREE.Vector3(), _lvC=new THREE.Vector3();
 const LVR={ t:0, say:null, sayUntil:0, sayHalf:0.04, sayFont:0, sayK:1, sayBase:null, sayBox:null, sayS:null, sayEyeY:null, hearts:[], cool:0 };
-const LVR_SAY_SCALE=0.35;   // ヘッドセットの「ARで あそぶ」：恐竜・いぬの セリフ（ふきだし）の大きさ。モデルの高さで決めた大きさに この倍率（幅・高さ・文字を まとめて）
+const LVR_SAY_SCALE=0.5;   // ヘッドセットの「ARで あそぶ」：恐竜・いぬの セリフ（ふきだし）の大きさ。モデルの高さで決めた大きさに この倍率（幅・高さ・文字を まとめて）
 const LVR_SAY_POS={ upDeg:20, minEye:0.45, pad:0.05, gap:0.03, inTau:0.6, outTau:0.08, eyeTau:0.5 };   // ふきだしの置き場所：体に隠れないよう プレイヤー側（手前）へ。見上げる角度は upDeg°まで／目から minEye m 以上はなす／体の箱の余白 pad m・手前に出す時の すきま gap m／手前へ outTau 秒・戻る inTau 秒でなめらかに／目の高さは eyeTau 秒でなめらかに
 const _lvsC=new THREE.Vector3(), _lvsE=new THREE.Vector3();
-const LVR_SAY_SEE={ min:0.012, max:0.025 };   // ふきだしの 見た目の大きさの 下限・上限（文字の高さを 1m先にあるとしたときの大きさ m に直した値）。大きさは モデルの高さで決め、この範囲を こえる時だけ 小さく／大きくする
+const LVR_SAY_SEE={ min:0.017, max:0.036 };   // ふきだしの 見た目の大きさの 下限・上限（文字の高さを 1m先にあるとしたときの大きさ m に直した値）。大きさは モデルの高さで決め、この範囲を こえる時だけ 小さく／大きくする
 function liteVRHeld(){ return !LITE.phone && LITE.active && controllers.some(c=>c.userData && c.userData.liteHeld); }
 function liteVRResetHead(){
     const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null;
