@@ -10127,8 +10127,7 @@ controllers.forEach(c=>{
  *   ゲームの相棒をVRでなでる時と同じ判定（手の速さ 0.6m/秒 以上）。つかんでいる手は数えない */
 const _liteTP=new THREE.Vector3(), _lvA=new THREE.Vector3(), _lvBox=new THREE.Box3(), _lvH=new THREE.Vector3(), _lvHQ=new THREE.Quaternion(), _lvHN=new THREE.Vector3(), _lvC=new THREE.Vector3();
 const LVR={ t:0, say:null, sayUntil:0, sayTop:0.3, hearts:[], cool:0 };
-const LVR_SAY_MATCH={ fontM:0.0754, distM:1.0 };   // ヘッドセットの「ARで あそぶ」：セリフの見た目を「ほんかくはっくつ」の相棒と そろえる（相棒の文字の高さ fontM(m) を distM(m) 先で見た時と同じ）
-//   相棒（ヘッドセット）：前方 0.6m（DOG_FWD）の相棒の 0.35m 後ろ・床から約1.16m の ふきだし → 目（床から約1.5m）から 約1.0m
+const LVR_SAY_SCALE=0.35;   // ヘッドセットの「ARで あそぶ」：恐竜・いぬの セリフ（ふきだし）の大きさ。モデルの高さで決めた大きさに この倍率（幅・高さ・文字を まとめて）
 function liteVRHeld(){ return !LITE.phone && LITE.active && controllers.some(c=>c.userData && c.userData.liteHeld); }
 function liteVRResetHead(){
     const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null;
@@ -10153,12 +10152,7 @@ function liteVRSayClear(){ if(LVR.say){ scene.remove(LVR.say); try{ LVR.say.mate
 function liteVRSay(text, ms){   // セリフ：モデルの頭の上（スプライト）
     liteVRSayClear(); if(!LITE.model || !LITE.group) return;
     const box=_lvBox.setFromObject(LITE.model), h=Math.max(0.05, box.max.y-box.min.y);
-    // 見た目の大きさを「VR・ARで ほんかくはっくつ」の相棒の セリフと そろえる：
-    //   相棒の文字（約7.5cm）を 約1.0m先で見た時と、同じ見た目の大きさになるよう、いまの距離から 文字の大きさを決める（出した時の距離で決め、出ている間は変えない）
-    //   （makeLabelSprite：文字の高さ＝ふきだしの高さ×54/96、ふきだしの高さ＝w×96/256）
-    const _sp=_lvA.set(LITE.group.position.x, box.max.y+0.05, LITE.group.position.z), _cd=camera.getWorldPosition(_lvC).distanceTo(_sp);
-    const _font=Math.max(0.3, _cd)*LVR_SAY_MATCH.fontM/LVR_SAY_MATCH.distM;   // この距離での 文字の高さ(m)
-    const w=Math.max(0.03, Math.min(2.4, _font/((54/96)*(96/256))));   // ふきだしの幅のもと（高さ・文字は この割合で決まる）
+    const w=Math.max(0.22, Math.min(0.6, h*0.9))*LVR_SAY_SCALE;   // ふきだしの幅のもと：モデルの高さで決める（高さ・文字の大きさも同じ割合）
     const spr=makeLabelSprite(text, 0xffe6a6, w, 0); spr.renderOrder=3001;   // 深度テスト有効（makeLabelSprite の既定）
     LVR.sayTop=box.max.y-LITE.group.position.y+0.04+w*96/256/2;   // 体のいちばん上より少し上（跳ねる高さは入れない）
     scene.add(spr); LVR.say=spr; LVR.sayUntil=performance.now()+(ms||2000);
