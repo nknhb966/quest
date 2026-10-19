@@ -789,13 +789,13 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       </section>
       <section>
         <h3>🔎 探す</h3>
-        <p>遺跡を歩いて、埋まった反応をたどります。発掘ポイントに近いほど<b>振動と音のパルスが速く</b>なります（金属探知のイメージ）。反応をたどって<b>近づくと発掘ポイントが見つかり</b>、土のブロックが現れます。どのくらい近づけば見つかるかは、相棒の<b>「はっけん」</b>で変わります。相棒に「聞く」と、見つける手助けもしてくれます。</p>
+        <p>遺跡を歩いて、埋まった反応をたどります。発掘ポイントに近いほど<b>振動と音のパルスが速く</b>なります（金属探知のイメージ）。反応をたどって<b>近づくと発掘ポイントが見つかり</b>、ブロックが現れます。どのくらい近づけば見つかるかは、相棒の<b>「はっけん」</b>で変わります。相棒に「聞く」と、見つける手助けもしてくれます。</p>
         <p class="k"><b>タイムアタック・じっくりコレクション</b>はスタート直後に<b>最も近い1か所</b>が見えます。<b>発掘チャレンジ1ターン目</b>は近くの<b>5か所</b>が最初から見えます。それ以外は歩いて発見します。</p>
         <p class="k">VR：歩きながらコントローラーを左右に振る／PC・スマホ：歩くと自動で探知</p>
       </section>
       <section>
         <h3>⛏ 掘る</h3>
-        <p>反応が強い場所で<b>土のブロック</b>が現れ、掘れる距離と向きが整うと<b>脈打つように光ります</b>。光っている間にブロックを掘ると土が削れ、出土すると消えます。<b>番号が小さい（レアな）ものほど</b>掘る回数が多く、相棒の<b>「ちから」</b>が高いほど1回で多く掘り進めます。</p>
+        <p>反応が強い場所で<b>ブロック</b>が現れ、掘れる距離と向きが整うと<b>脈打つように光ります</b>。光っている間にブロックを掘ると土が削れ、出土すると消えます。<b>番号が小さい（レアな）ものほど</b>掘る回数が多く、相棒の<b>「ちから」</b>が高いほど1回で多く掘り進めます。</p>
         <p class="k">スマホ：<b>光るブロックをタップ</b>／PC：狙って左クリック／VR：狙って手（道具）を振る</p>
       </section>
       <section>
@@ -865,8 +865,8 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>🗺 たんけん（ARで あそぶ）</h3>
         <p>スマホ・タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。<b>「📱 ARで あそぶ」</b>のAR画面で、恐竜かいぬを表示して<b>「🗺 たんけん」</b>を押します（恐竜と→恐竜を、いぬと→出土品をさがします。出土品の表示中は出ません）。「たんけんの じゅんび」で<b>あそびかた</b>（3かい ちょうせん／じかんまで さがす（既定）／ぜんぶ みつける。「そのばで ぐるっと」「ほって かえす」は ぜんぶ みつける だけ、「カードを さがす」は 3かい ちょうせん なし）と<b>さがす ばしょの ひろさ</b>（よこ・おく 3〜10m、既定5×5m）を選び、恐竜を掘る時は<b>ほりだす きょうりゅうの おおきさ</b>（ほんものの おおきさ＝実寸大（既定）／ARで おおきく みる と同じ）も選んで、<b>「🗺 たんけんに いく」</b>→<b>「はじめる」</b>。あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここで はじめる」</b>でフィールドを置きます。</p>
-        <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いて土のブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた きょうりゅうカードを手で掘り出し、AR画面のまま カードを映すと、カードの上（机の上なら その机の上）に土のブロックが出ます。ブロックをタップして掘ると破片が飛び散り、卵から恐竜が生まれて床に とびおります（iPhone・iPad は カードの位置を測れないので、ななめ前の床に出ます）。あそびかたは「ぜんぶ みつける」だけで、8しゅるい見つけると かかった時間と一覧、はっくつずかんを出して終わります。上の「📖 ずかん」で途中の はっくつずかんを見られ、「✕ おわる」で途中でも終われます。終わると「たんけんの じゅんびに もどる／ARの モデルに もどる／メニューに もどる」を選べます。カードは メニューの「🦕 きょうりゅうカードを いんさつ」（おすすめ設定オフ）で印刷します（A4・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦕 きょうりゅうカードを いんさつ」で印刷する A4 の カード）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上に土のブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒の「きく」は「カードを さがしてね」と言い、スターブロックは出ません（「そのばで ぐるっと」も スターブロックは出ません）。掘ったカードの「もう ほったよ」は、カードが一度 画面から外れて また映った時に出ます（卵から恐竜が出る間は、カードのことばは出ません）。</p>
+        <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いてブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
+        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた きょうりゅうカードを手で掘り出し、AR画面のまま カードを映すと、カードの上（机の上なら その机の上）にブロックが出ます。ブロックをタップして掘ると破片が飛び散り、卵から恐竜が生まれて床に とびおります（iPhone・iPad は カードの位置を測れないので、ななめ前の床に出ます）。あそびかたは「ぜんぶ みつける」だけで、8しゅるい見つけると かかった時間と一覧、はっくつずかんを出して終わります。上の「📖 ずかん」で途中の はっくつずかんを見られ、「✕ おわる」で途中でも終われます。終わると「たんけんの じゅんびに もどる／ARの モデルに もどる／メニューに もどる」を選べます。カードは メニューの「🦕 きょうりゅうカードを いんさつ」（おすすめ設定オフ）で印刷します（A4・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦕 きょうりゅうカードを いんさつ」で印刷する A4 の カード）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上にブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒とスターブロックは出ません（「そのばで ぐるっと」も 相棒・スターブロックは出ません）。掘り出した恐竜は、「たんけんの じゅんび」の「ほりだした きょうりゅうの うごき」で「うごく」（掘った場所のまわり約3mを歩き回り、ときどき プレイヤーを見たり においを かいだりする）か「とまる」（その場で においを かぐ）を選べ、タッチすると よろこびます。掘ったカードの「もう ほったよ」は、カードが一度 画面から外れて また映った時に出ます（卵から恐竜が出る間は、カードのことばは出ません）。</p>
         <p><b>ARの しくみ（Android）</b>：「そのばで ぐるっと」「ほって かえす」「カードを さがす」は、ARCore が使える Android では ARCore で動きます（ARCore が使えない端末と iPhone・iPad は カメラ＋センサー。選ぶ必要は ありません）。ARCore の「そのばで ぐるっと」は足もとの わっかから1m はなれると「わっかに もどろう」と出ます。ARCore の「カードを さがす」は、一度見つけたカードの場所を ARCore が覚えるので、画面から外れても そのままです。ARCore でカードを読むにはカメラ映像の許可（camera-access）が必要で、もらえない端末では自動で カメラ＋センサーに切り替えて続けます（「ほって かえす」は iPhone と同じ方式の AR 画面になります）。</p>
         <p><b>フィールドが ずれたとき</b>：床に「まんなか」と「まえ」の印（テープなど）を付けておき、「ここで はじめる」は まんなかの印に立って まえの印の方を向いて押します。ずれたら、まんなかの印に立って まえの印の方を向き、画面下の<b>「📍 ずれを なおす」</b>→<b>「なおす」</b>。発掘ポイント・スコア・タイム・進み具合はそのままで、フィールドの位置と向きだけを合わせ直します（ゲームの途中でも使えます）。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「ちいさい こ 0.9m／こども 1.2m／おとな 1.5m」を選びます）。スタンバイ中は「やめる」→「ここで はじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
@@ -1203,7 +1203,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
 <video id="tabarVideo" playsinline muted autoplay></video>
 <div id="tabarTouch"></div>
 <div id="tabarRadar" data-lvl="0" aria-hidden="true"><span class="ic">🔍</span><i></i><i></i><i></i><i></i><i></i></div>
-<div id="tabarDig">ひかっている つちの ブロックを タッチして ほろう！</div>
+<div id="tabarDig">ひかっている ブロックを タッチして ほろう！</div>
 <div id="tabarCardMsg"></div>   <!-- たんけん「カードを さがす」：いま映っているカードのこと -->
 <div id="tabarWarn" role="alert"></div>
 <div id="tabarScan">
@@ -1403,8 +1403,9 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #lphCardSum .card{ width:min(420px,92vw); max-height:84vh; overflow-y:auto; padding:16px; border-radius:14px; background:#140e24; border:1px solid rgba(210,180,120,.55); color:#efe6ff; display:flex; flex-direction:column; gap:8px; }
     #lphCardSum h3{ margin:0; text-align:center; color:#ffd86a; letter-spacing:2px; font-size:18px; }
     #lphCardSumN{ margin:0; text-align:center; font-weight:800; color:#8ff0ff; }
-    #lphCardSumList{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; overflow:visible; padding:0; flex:0 0 auto; }   /* はっくつずかんの カード（4まい×2だん） */
-    #lphCardSumList .dexcard{ padding:4px; border-radius:9px; gap:2px; } #lphCardSumList .dexcard .no{ font-size:10px; letter-spacing:1px; } #lphCardSumList .dexcard .stamp{ font-size:9px; } #lphCardSumList .dexcard .art .q{ font-size:28px; }
+    #lphCardSum{ padding:12px; background:rgba(3,2,10,.92); }   /* はっくつずかん と同じ並び */
+    #lphCardSum .dexbox{ max-height:92vh; } #lphCardSum .row{ display:flex; gap:8px; flex:0 0 auto; } #lphCardSum .row button{ flex:1; }
+    #lphCardSumBack{ padding:13px 0; border:1px solid rgba(180,140,255,.5); border-radius:11px; background:rgba(18,12,40,.85); color:#e2d8ff; font-family:inherit; font-weight:800; font-size:16px; }
     #lphDexView{ position:absolute; inset:0; z-index:40; display:none; align-items:center; justify-content:center; background:rgba(3,2,10,.9); pointer-events:auto; }
     #lphDexView.on{ display:flex; }
     #lphDexView img{ height:70vh; max-height:70vh; max-width:88vw; aspect-ratio:1/1.5; object-fit:contain; border-radius:14px; box-shadow:0 14px 50px rgba(0,0,0,.6); background:#2a2416; }
@@ -1514,6 +1515,11 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
                 <button type="button" data-v="big">📱<span>ARで<br>おおきく みる</span></button>
             </div>
             <p class="note" id="lphDigDsNote" style="display:none"></p>
+            <div class="lbl" id="lphDigMoveLbl" style="display:none">ほりだした きょうりゅうの うごき</div>   <!-- カードを さがす だけ -->
+            <div class="seg3" id="lphDigMove" style="display:none;grid-template-columns:repeat(2,1fr)">
+                <button type="button" data-v="move">🦖<span>うごく</span></button>
+                <button type="button" data-v="stay">🧍<span>とまる</span></button>
+            </div>
             <div class="lbl" id="lphDigSrcLbl" style="display:none">はっくつする きょうりゅう</div>
             <div class="seg3" id="lphDigSrc" style="display:none"></div>
             <div class="lbl" id="lphDigBlankLbl" style="display:none">みほんの ぬっていない しろい ところ（おすと かわるよ）</div>
@@ -1525,7 +1531,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     </div>
     <div id="lphDex" role="dialog" aria-label="はっくつずかん"><div class="dexbox"><button class="dexclose" id="lphDexClose" type="button">×</button><h2>📖 はっくつずかん</h2><div class="dexbar"><i id="lphDexFill"></i></div><div class="dexbar-lbl" id="lphDexCount"></div><div class="dexgrid" id="lphDexGrid"></div></div></div>   <!-- たんけん「ほって かえす」：この回に みつけた きょうりゅう -->
     <div id="lphDexView" role="dialog" aria-label="カード"><img id="lphDexViewImg" alt=""><button type="button" id="lphDexViewClose" aria-label="とじる">×</button></div>   <!-- はっくつずかん：えらんだ カード -->
-    <div id="lphCardSum"><div class="card" role="dialog" aria-label="みつけた きょうりゅう"><h3>🦕 みつけた きょうりゅう</h3><p id="lphCardSumN"></p><div id="lphCardSumList" class="dexgrid"></div><button type="button" id="lphCardSumOk">OK</button></div></div>   <!-- たんけん「ほって かえす」のまとめ -->
+    <div id="lphCardSum"><div class="dexbox" role="dialog" aria-label="みつけた きょうりゅう"><h2>🦕 みつけた きょうりゅう</h2><p id="lphCardSumN"></p><div class="dexbar"><i id="lphCardSumFill"></i></div><div class="dexbar-lbl" id="lphCardSumCount"></div><div id="lphCardSumList" class="dexgrid"></div><div class="row"><button type="button" id="lphCardSumBack">もどる</button><button type="button" id="lphCardSumOk">OK</button></div></div></div>   <!-- たんけん「ほって かえす」のまとめ -->
     <div id="lphHelp">
         <div class="card" role="dialog" aria-label="そうさの しかた">
             <h3>📱 そうさの しかた</h3>
@@ -3987,7 +3993,8 @@ const TABAR_CFG = {
     roundDogFwd:   2.1, //  同：相棒の前方距離(m)（円の外に立たせて、発掘ポイントを隠さない）
     roundLeaveR:   1.0, // そのばで ぐるっと（ARCore）：まんなかから これより はなれたら「わっかに もどろう」(m)
     roundDetectMul:0.6, //  同：探知の半径の倍率（8点が円の上に近く並ぶので狭める。向きが合うほど強く、点と点の間では弱くなる）
-    cardBlockFs:   0.38,// たんけん「カードを さがす」：土のブロックの大きさの倍率（0.8m×0.38＝約30cm。カードと同じくらい）
+    digBlockFs:    0.9, // たんけん中の ブロックの大きさの倍率（0.8m×0.9。「そのばで ぐるっと」と同じ。ほって かえす も同じ）
+    cardBlockFs:   0.38,// たんけん「カードを さがす」：ブロックの大きさの倍率（0.8m×0.38＝約30cm。カードと同じくらい）
     cardEvery:     120, //  同：カードを探す間隔(ms)。読み取りは別の処理（ワーカー）で行い、前のコマを読み終わるまでは次を渡さない
     cardLong:      640, //  同：読み取りに使う映像の長い辺(px)
     cardRelookMs:  1000,// たんけん「カードを さがす」：これより長く映らなかったカードが また映ったら「また見えた」（掘ったカードの「もう ほったよ」を出す）
@@ -6510,9 +6517,9 @@ function spawnTarget(tier, forcedIdx=null){
         if(!GAME.siteSpots) regenerateSiteRandomSpots();
         const s=GAME.siteSpots && GAME.siteSpots[idx]; if(s) pos.copy(s);
     }
-    const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(tabarCard() ? TABAR_CFG.cardBlockFs : fieldScale());
+    const marker = makeMarker(); marker.position.copy(pos); marker.scale.multiplyScalar(ldigPlaying() ? 1 : fieldScale());   // たんけん中は どの さがしかたも同じ大きさ
     // ボクセルの「掘れるブロック」＋照準時の枠線
-    const fs=tabarCard() ? TABAR_CFG.cardBlockFs : Math.min(1.0, fieldScale())*0.9;    // ブロックの一辺を1.5倍。あたり判定もこのブロックで拡大（カードを さがす：カードと同じくらい）
+    const fs=ldigPlaying() ? TABAR_CFG.digBlockFs : Math.min(1.0, fieldScale())*0.9;   // たんけん中は「そのばで ぐるっと」と同じ大きさ（さがす ばしょの ひろさで変えない）    // ブロックの一辺を1.5倍。あたり判定もこのブロックで拡大（カードを さがす：カードと同じくらい）
     const block=new THREE.Mesh(new THREE.BoxGeometry(DIG_BLOCK*fs, DIG_BLOCK*0.7*fs, DIG_BLOCK*fs),
         new THREE.MeshStandardMaterial({color:0x6b5236, roughness:1, transparent:true, opacity:0, depthWrite:false}));
     block.position.set(pos.x, GROUND_Y+DIG_BLOCK*0.35*fs, pos.z); stage.add(block);
@@ -7003,12 +7010,14 @@ function animateDigDinos(now, dt){
         faceAmt += (target-faceAmt)*Math.min(1, dt*DINO_FACE.turnEase);
         cont.userData._faceAmt=faceAmt;
 
+        // ── カードを さがす：においを かぐ・歩き回る・タッチで よろこぶ ──
+        const _cb = tabarCard() && cont.userData.settled ? cardDinoTick(cont, m, now, dt, camW) : null;
         // ── 展示回転：対面度が上がるほど止める ──
-        const spin = 0.004*(1-faceAmt);
+        const spin = _cb && _cb.noSpin ? 0 : 0.004*(1-faceAmt);
         cont.rotation.y += spin;
 
         // ── 対面時：body向きをプレイヤーへ補間（faceAmtで寄せる）──
-        if(camW && faceAmt>0.01){
+        if(camW && faceAmt>0.01 && !(_cb && _cb.walking)){   // 歩いている間は 行き先を向く（cardDinoTick）
             const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
             const desired=Math.atan2(camW.x-cx, camW.z-cz);   // +Zをプレイヤーへ
             let d=desired-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
@@ -7084,6 +7093,7 @@ function animateDigDinos(now, dt){
                     want=0;
                 } else peek=Math.min(want, maxPeek)*faceAmt;                // 上限クランプ＋対面度で寄せる
             }
+            if(_cb && _cb.sniff>0) peek = Math.max(peek, _cb.sniff);   // においを かぐ：頭を下げる
             m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
         }
         digDinoBodyUp(cont, m, bodyUp, dt);   // 体の前側を起こす（見上げていない時は0へ戻る）
@@ -7097,7 +7107,82 @@ function animateDigDinos(now, dt){
             if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(sph*0.006*spd))*0.045;
         }
         if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003*spd + (cont.userData.tailPhase||0))*0.28;
+        if(_cb) cardDinoJoyApply(cont, now);   // タッチで よろこぶ（はねる・まわる・ゆれる）
     });
+}
+// ---- たんけん「カードを さがす」：掘り出した恐竜 ----
+//   とまる：いままでどおり（その場で ゆっくり回る・気づくと こちらを向く）＋ ときどき においを かぐ
+//   うごく：掘った場所のまわり（CARD_DINO.wanderR m）を歩き回る。ときどき止まって プレイヤーを見る・においを かぐ
+//   どちらも タッチすると よろこぶ（ほって かえす・ぬりえ と同じ：はねる／くるっと まわる／ゆれる＋セリフ＋ハート）
+const CARD_DINO={ wanderR:3.0, speed:0.45, sniffDeg:38, sniffMs:[1400,2200], sniffEvery:[4000,8000], lookMs:[1800,2800], pauseMs:[800,1800] };
+const _cdRnd=(a)=>a[0]+Math.random()*(a[1]-a[0]);
+function cardDinoTick(cont, m, now, dt, camW){
+    const u=cont.userData; let S=u._cd;
+    if(!S){ S=u._cd={ cx:u.origX??cont.position.x, cz:u.origZ??cont.position.z, sniffUntil:0, nextSniff:now+_cdRnd(CARD_DINO.sniffEvery), state:"pause", until:now+1500, gx:0, gz:0 }; }
+    const out={ sniff:0, walking:false, noSpin:false };
+    // においを かぐ（両方）
+    if(now>S.nextSniff && !(S.state==="walk")){ S.sniffUntil=now+_cdRnd(CARD_DINO.sniffMs); S.nextSniff=S.sniffUntil+_cdRnd(CARD_DINO.sniffEvery); }
+    if(now<S.sniffUntil){ const k=Math.sin(Math.min(1,(S.sniffUntil-now)/400)*Math.PI/2); out.sniff=THREE.MathUtils.degToRad(CARD_DINO.sniffDeg)*k + Math.sin(now*0.025)*0.05; }
+    if(LDIG.dinoMove!=="move" || u._joy) return out;   // とまる（よろこんでいる間も その場）
+    out.noSpin=true;
+    if(S.state==="pause" || S.state==="look"){
+        if(S.state==="look" && camW){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*2.5); }
+        if(now>S.until && now>S.sniffUntil){   // つぎ：歩く（行き先＝掘った場所のまわり）
+            const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*CARD_DINO.wanderR;
+            S.gx=S.cx+Math.cos(a)*r; S.gz=S.cz+Math.sin(a)*r; S.state="walk"; }
+        return out;
+    }
+    // 歩く：行き先へ（origX/Z を少しずつ進め、ふだんの追いかけで体がついてくる）
+    const ox=u.origX??cont.position.x, oz=u.origZ??cont.position.z, dx=S.gx-ox, dz=S.gz-oz, dl=Math.hypot(dx,dz);
+    const L=Math.max(0.6, u.bodyLen||1), v=CARD_DINO.speed*Math.min(2, Math.max(0.6, L/2));
+    if(dl<0.08){ S.state=Math.random()<0.5 ? "look" : "pause"; S.until=now+_cdRnd(S.state==="look" ? CARD_DINO.lookMs : CARD_DINO.pauseMs); if(Math.random()<0.5){ S.sniffUntil=now+_cdRnd(CARD_DINO.sniffMs); } return out; }
+    const st=Math.min(dl, v*dt); u.origX=ox+dx/dl*st; u.origZ=oz+dz/dl*st;
+    let d=Math.atan2(dx, dz)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*3);
+    out.walking=true; return out;
+}
+function cardDinoJoyApply(cont, now){
+    const J=cont.userData._joy; if(!J) return;
+    const r=Math.min(1,(now-J.t0)/J.dur);
+    if(J.type==="hop") cont.position.y += J.h*Math.abs(Math.sin(Math.PI*2*r))*(1-0.35*r);
+    else if(J.type==="spin"){ cont.rotation.y = J.yaw0 + Math.PI*2*(r<0.5 ? 2*r*r : 1-2*(1-r)*(1-r)); cont.position.y += J.h*0.35*Math.sin(Math.PI*r); }
+    else { cont.rotation.z = Math.sin(r*Math.PI*6)*0.12*(1-r); }
+    if(r>=1){ cont.rotation.z=0; if(J.type==="spin") cont.rotation.y=J.yaw0; cont.userData._joy=null; }
+}
+function cardDinoJoyLine(key, type){   // ほって かえす・ぬりえ と同じ語尾（恐竜＝鳴き声、フクイ〜＝福井弁）
+    let cry=""; try{ const pet=COMPANIONS[key]&&COMPANIONS[key].lines&&COMPANIONS[key].lines.pet; const mm=pet&&pet.match(/うれしい(?:ぞ|ざ〜)\s*(.+?)！/); if(mm) cry=mm[1]; }catch(_){ }
+    if(!cry){ try{ const d=DINOS.find(x=>x.key===key); cry=(d&&d.cry)||"ガオー"; }catch(_){ cry="ガオー"; } }
+    return /^fukui/.test(key||"") ? { hop:`うれしいざ〜 ${cry}！`, spin:`くるっと まわるざ ${cry}！`, wiggle:`なでなで だいすきやざ ${cry}！` }[type]
+                                  : { hop:`うれしいぞ ${cry}！`, spin:`くるっと まわるぞ ${cry}！`, wiggle:`なでなで だいすきだぞ ${cry}！` }[type];
+}
+function cardDinoTap(ndcX, ndcY){   // 掘り出した恐竜を タッチ → よろこぶ
+    if(!tabarCard()) return false;
+    const list=dinoDigModels.filter(c=>c && c.visible && c.userData && c.userData.settled); if(!list.length) return false;
+    _aimRay.setFromCamera({x:ndcX, y:ndcY}, camera); _aimRay.far=30;
+    let best=null, bd=Infinity;
+    for(const c of list){ const h=_aimRay.intersectObject(c, true); if(h.length && h[0].distance<bd){ bd=h[0].distance; best=c; } }
+    if(!best || best.userData._joy) return !!best;
+    const u=best.userData, sz=new THREE.Box3().setFromObject(best).getSize(new THREE.Vector3());
+    const types=["hop","spin","wiggle"].filter(t=>t!==u._lastJoy), type=types[Math.floor(Math.random()*types.length)]; u._lastJoy=type;
+    u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*1.5, type, yaw0:best.rotation.y, h:Math.max(0.02, sz.y*0.15) };
+    if(u._cd && u._cd.state==="walk"){ u._cd.state="look"; u._cd.until=performance.now()+2000; }
+    try{ sfxCry(); }catch(_){ } try{ vibrate(60,0.5); }catch(_){ }
+    const px=TABAR.tapPx||{ x:innerWidth/2, y:innerHeight/2 };
+    cardDinoSay(cardDinoJoyLine(u.dinoKey, type), px);
+    for(let k=0;k<5;k++){ const h=document.createElement("span"); h.className="tabar-heart"; h.textContent="♥";
+        h.style.left=(px.x+(Math.random()*60-30))+"px"; h.style.top=(px.y-10)+"px"; h.style.animationDelay=(k*0.12)+"s"; h.style.fontSize=(18+Math.random()*14)+"px";
+        document.body.appendChild(h); setTimeout(()=>h.remove(), 1700); }
+    return true;
+}
+function cardDinoSay(text, px){
+    let b=document.getElementById("tabarDinoSay");
+    if(!b){ b=document.createElement("div"); b.id="tabarDinoSay"; document.body.appendChild(b);
+        const st=document.createElement("style"); st.textContent=
+            "#tabarDinoSay{position:fixed;z-index:100003;display:none;width:min(250px,76vw);box-sizing:border-box;padding:9px 12px;border-radius:16px;background:#fff;color:#3a2600;font-size:15px;font-weight:800;line-height:1.45;text-align:center;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.35);transform:translate(-50%,-100%)}"+
+            "#tabarDinoSay::after{content:'';position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);border:9px solid transparent;border-bottom:0;border-top-color:#fff}#tabarDinoSay.on{display:block}"+
+            ".tabar-heart{position:fixed;z-index:100003;color:#ff5c8a;pointer-events:none;text-shadow:0 0 6px rgba(255,255,255,.7);animation:lphHeart 1.4s ease-out forwards;opacity:0}";
+        document.head.appendChild(st); }
+    b.textContent=text; b.style.left=Math.max(130, Math.min(innerWidth-130, px.x))+"px"; b.style.top=Math.max(70, px.y-40)+"px"; b.classList.add("on");
+    clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove("on"), 2200);
 }
 function clearDinoReveal(){
     eggHatch.forEach(e=>{ if(e.egg) stage.remove(e.egg); }); eggHatch.length=0;
@@ -7871,7 +7956,7 @@ function startGame(desktop){
     menu.style.display="none";
     updateGoal(); updateToolLabel(); refreshToolModel(); dexPanel.draw(); updateTAButton();
     bubble.say(line("start"), 2600);
-    if(TABAR.on){ showCenterHint("あるいて はっくつ ポイントを さがそう\nひかっている つちの ブロックを タッチで ほる・あいぼうを タッチで なでる", 4600); }
+    if(TABAR.on){ showCenterHint(tabarNoBuddy() ? "ひかっている ブロックを タッチで ほる" : "あるいて はっくつ ポイントを さがそう\nひかっている ブロックを タッチで ほる・あいぼうを タッチで なでる", 4600); }
     else if(IS_TOUCH && desktop){ showCenterHint("左で移動／右をなぞって見回す／ブロックをタップで発掘・相棒をタップでなでる", 4600); }
     if(typeof updateBuddyStandbyUI==="function") updateBuddyStandbyUI();
     unlockAudio();
@@ -8809,7 +8894,7 @@ function updateHudButtons(){
     const _k=ph+"|"+toolSwapAllowed; if(updateHudButtons._k===_k) return; updateHudButtons._k=_k;   // フェーズ/設定が変わった時だけ更新（毎フレームのgetElementById×7＋style書換を回避）
     const set=(id,show)=>{ const e=document.getElementById(id); if(e && e.id!=="dTA" && e.id!=="taCardBtn") e.style.display = show ? "" : "none"; };
     // ①：図鑑・リセット・記録・やめる／②：リセット・記録・やめる／③：聞く・道具（持ち替える時）・全て発掘・図鑑・リセット・記録・やめる／④⑤：聞く・図鑑・リセット・記録・やめる
-    set("dAsk",  ph==="result" || ph==="play" || ph==="review");   // ⑤reviewは④resultと同じ
+    set("dAsk",  (ph==="result" || ph==="play" || ph==="review") && !tabarNoBuddy());   // 相棒を出さない たんけんでは「きく」なし   // ⑤reviewは④resultと同じ
     set("dTool", ph==="play" && toolSwapAllowed);        // 道具切替ボタンは③プレイ中かつ「持ち替える」時のみ
     set("dDex",  ph!=="count");        // 図鑑は①③④で表示（②カウントダウンのみ非表示）
     set("dShowAll", ph==="play" && !tabarCard());     // 全て発掘は③プレイのみ（④リザルトでは非表示）。たんけん「カードを さがす」は出さない
@@ -9452,14 +9537,16 @@ function tapAt(ndcX, ndcY){
                 if(t){ doDig(t); return true; }
             }
         }
+        if(cardDinoTap(ndcX, ndcY)) return true;   // カードを さがす：掘り出した恐竜（ブロックでなければ）
         return false;   // 発光中は相棒をなでない
     }
 
+    if(cardDinoTap(ndcX, ndcY)) return true;   // カードを さがす：掘り出した恐竜を タッチ → よろこぶ
     // 発光しているブロックが無いときだけ、相棒をなでられる
     for(const [ox,oy] of offsets){
         _aimRay.setFromCamera({x:ndcX+ox, y:ndcY+oy}, camera);
         _aimRay.far=PET_REACH;
-        if(_aimRay.intersectObject(dog, true).length){ petDog(); return true; }
+        if(dog.visible && _aimRay.intersectObject(dog, true).length){ petDog(); return true; }
     }
     return false;
 }
@@ -10402,7 +10489,8 @@ function lphHatchTick(){
         let fx=LITE.targetPos.x-_lphCamP.x, fz=LITE.targetPos.z-_lphCamP.z; const fl=Math.hypot(fx,fz)||1; fx/=fl; fz/=fl;
         const near=LPH_CFG.placeDist;   // 卵は恐竜の手前の端の位置（ゲーム：卵＝発掘ポイント、恐竜は奥へ）
         const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
-        const egg=build_egg(); makeFit(egg, Math.min(0.6, Math.max(sz.y*0.35, sz.length()*0.18, 0.12*(LITE.paperScale||1)))); scene.add(egg);   // 卵は60cmまで（たんけんの実寸大の恐竜でも大きくなりすぎない）
+        const _cardEgg=(LITE.nuri && LITE.nuri.card) ? lphCardEggSize() : 0;   // ほって かえす：たんけんの ほかの さがしかたと同じ大きさ
+        const egg=build_egg(); makeFit(egg, _cardEgg || Math.min(0.6, Math.max(sz.y*0.35, sz.length()*0.18, 0.12*(LITE.paperScale||1)))); scene.add(egg);   // 卵は60cmまで（たんけんの実寸大の恐竜でも大きくなりすぎない）
         const eggH=new THREE.Box3().setFromObject(egg).getSize(new THREE.Vector3()).y;
         if(LPH.paper) egg.position.set(LPH.paper.center.x, lphFloorY(), LPH.paper.center.z);   // 用紙モード：卵は用紙の中央
         else if(LITE.nuri && LITE.nuri.small) egg.position.set(LITE.targetPos.x, lphFloorY(), LITE.targetPos.z);   // 目の前：恐竜の中心
@@ -11873,6 +11961,8 @@ let _dogWalkPhase = 0;
 let _dogInit = false;
 const _udPlayer=new THREE.Vector3(),_udVel=new THREE.Vector3(),_udGoal=new THREE.Vector3(),_udTo=new THREE.Vector3(),_udS=new THREE.Vector3(),_udF=new THREE.Vector3(),_udFace=new THREE.Vector3(),_udW1=new THREE.Vector3(),_udW2=new THREE.Vector3(),_udW3=new THREE.Vector3(),_hkA=new THREE.Vector3(),_hkB=new THREE.Vector3();   // updateDog用スクラッチ（毎フレームVector3生成を排除）＋頭注視用スクラッチ
 function updateDog(dt, now){
+    if(tabarNoBuddy()){ dog.visible=false; return; }   // 相棒を出さない
+    if(TABAR.on && !dog.visible && !(typeof LITE!=="undefined" && LITE.active)) dog.visible=true;
     const camWorld=camera.getWorldPosition(tmpV);
     const playerPos=_udPlayer.set(camWorld.x,0,camWorld.z);
     if(!_dogInit){ _playerPrev.copy(playerPos); _dogInit=true; }
@@ -12101,7 +12191,7 @@ if(typeof neckSwayEnabled==="function" && neckSwayEnabled(companionKind) && (mov
  * ゲーム進行は既存のタッチ経路（GAME.desktop=true）をそのまま使い、入力と表示だけを置き換える。
  *   見る向き・位置 … ARトラッキング（スティック／なぞり見回しは使わない＝実際に歩いて探す）
  *   背景           … カメラ映像
- *   発掘           … 光っている土のブロックを直接タップ（既存の tapAt）
+ *   発掘           … 光っているブロックを直接タップ（既存の tapAt）
  *   大きさ・高さ   … Quest と同じ（worldScaleXR）
  * バックエンド（端末の対応状況で自動選択）
  *   "webxr"  … WebXR immersive-ar（Android Chrome＋ARCore）。6DoF追跡＋床のヒットテスト＋DOMオーバーレイ
@@ -12758,6 +12848,7 @@ function tabarFinishXREnd(){
 }
 function tabarCleanup(){
     if(!TABAR.on) return;
+    try{ dog.visible=true; }catch(_){ }   // 相棒を出さない たんけんの後：もとに戻す
     if(GAME.active) endGame(false);
     tabarLock.cleanup(); TABAR.hitSource=null;   // 床ロック：アンカー・ヒットテストを片付ける
     TABAR.session=null;
@@ -13033,7 +13124,7 @@ function tabarCardSync(C, now){   // 発掘ポイントを、見えているカ�
         else if(TABAR.backend!=="webxr" && t._cardPos && (!t.discovered || !c || now-c.t>TABAR_CFG.cardLostMs)){ moveTargetTo(t, tabarCardFar(t.idx)); t._cardPos=null; }   // 見失ったポイントは遠くへ（見つけたポイントは しばらく残す。掘りかけ・見つけた は そのまま＝また映すと すぐ出る）。ARCore は場所を覚えているので そのまま
     }
 }
-function tabarCardMsg(C, now){   // いま映っているカードのことば（掘れる時は「ひかっている つちの ブロックを…」が出る）
+function tabarCardMsg(C, now){   // いま映っているカードのことば（掘れる時は「ひかっている ブロックを…」が出る）
     let msg="";
     C.dugAt=C.dugAt||{};
     if(GAME.doneIdx) GAME.doneIdx.forEach(i=>{ if(C.dugAt[i]==null) C.dugAt[i]=now; });   // 掘り終わった時刻
@@ -13178,8 +13269,9 @@ const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, re
     play:false,            // たんけんの設定でゲーム中（リザルトはポイント・タイムだけ／相棒は固定）
     srcNuri:"sample",      // 発掘する恐竜の模様：ぬりえから入った時（既定＝見本）。ページを開いている間は覚える
     srcMv:"plain",         // 同：「ARで みる」（きょうりゅう）から入った時（既定＝ぬりえなし）
-    dinoSize:"real" };     // 掘り出す恐竜の大きさ：real＝実寸大（既定）／big＝ARで おおきく みる と同じ
-function ldigPlaying(){ return !!LDIG.play; }
+    dinoSize:"real",       // 掘り出す恐竜の大きさ（下）
+    dinoMove:"stay" };     // カードを さがす：掘り出した恐竜の うごき（move＝歩き回る／stay＝その場。どちらも においを かぐ・タッチで よろこぶ）     // 掘り出す恐竜の大きさ：real＝実寸大（既定）／big＝ARで おおきく みる と同じ
+function ldigPlaying(){ try{ return !!LDIG.play; }catch(_){ return false; } }   // 毎フレーム呼ばれるので、準備前（LDIG の宣言前）でも落ちないように
 // さがしかた ごとの あそびかた：そのばで ぐるっと・ほって かえす＝ぜんぶ みつける だけ／カードを さがす＝じかんまで さがす・ぜんぶ みつける／あるいて さがす＝3つ
 function ldigModes(){ const st=LDIG.style; return (st==="round" || st==="dig") ? ["collect"] : st==="card" ? ["time","collect"] : ["challenge","time","collect"]; }
 function ldigModeCur(){ const a=ldigModes(); return a.includes(LDIG.mode) ? LDIG.mode : (a.includes("time") ? "time" : a[0]); }
@@ -13189,8 +13281,9 @@ function tabarCardCamFallback(){   // ARCore でカードを読めない端末�
     console.warn("[カードを さがす] この端末では ARCore のカメラ映像をもらえないので、カメラ＋センサーに切り替えます");
     tabarExit();
 }
-function tabarRound(){ return !!(LDIG.play && LDIG.style==="round"); }   // たんけん「そのばで ぐるっと」で遊んでいる（準備画面〜終わるまで）
-function tabarCard(){ return !!(LDIG.play && LDIG.style==="card"); }     // たんけん「カードを さがす」で遊んでいる（準備画面〜終わるまで）
+function tabarRound(){ try{ return !!(LDIG.play && LDIG.style==="round"); }catch(_){ return false; } }
+function tabarNoBuddy(){ try{ return !!(TABAR.on && (tabarRound() || tabarCard())); }catch(_){ return false; } }   // そのばで ぐるっと・カードを さがす：相棒は出さない（きく・なでる・セリフも なし）   // たんけん「そのばで ぐるっと」で遊んでいる（準備画面〜終わるまで）
+function tabarCard(){ try{ return !!(LDIG.play && LDIG.style==="card"); }catch(_){ return false; } }     // たんけん「カードを さがす」で遊んでいる（準備画面〜終わるまで）
 // 発掘する恐竜の模様の選び方：ぬりえから入った時＝見本／じぶんで ぬった、「ARで みる」（きょうりゅう）＝ぬりえなし／見本／じぶんで ぬった
 function ldigSrcKind(){ if(LITE.target!=="dino") return null; if(LITE.mvPick) return "mv"; if(LITE.nuri) return "nuri"; return null; }
 function ldigOwnCount(){ try{ return (window.__nuriPaintedKeys ? window.__nuriPaintedKeys() : []).length; }catch(_){ return 0; } }
@@ -13228,6 +13321,9 @@ function ldigPaint(){
       if(box){ box.style.gridTemplateColumns = "repeat(2,1fr)";
           box.querySelectorAll("button").forEach(b=>{ b.classList.toggle("on", b.dataset.v===cur); }); }
       if(nt) nt.textContent = cur==="real" ? "ほんものと おなじ おおきさ（ティラノサウルスは たかさ 4m）" : "「ARで おおきく みる」と おなじ おおきさ"; }
+    { const show=(LDIG.style==="card" && LITE.target==="dino"), lb=lph$("lphDigMoveLbl"), box=lph$("lphDigMove");   // カードを さがす（恐竜を掘る時）：うごく／とまる
+      if(lb) lb.style.display=show? "" : "none"; if(box) box.style.display=show? "" : "none";
+      document.querySelectorAll("#lphDigMove button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.dinoMove)); }
     { const show=ldigArChoice(), lb=lph$("lphDigArLbl"), box=lph$("lphDigAr");   // ARの しくみ（Android の 案1・案2・案4 だけ）
       if(lb) lb.style.display=show? "" : "none"; if(box) box.style.display=show? "" : "none";
       document.querySelectorAll("#lphDigAr button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.arMethod)); }
@@ -13236,7 +13332,7 @@ function ldigPaint(){
       document.querySelectorAll("#lphDig .szrow").forEach(r=>{ r.style.display=(round||dig||card)? "none" : ""; });
       { const one=ldigModes().length<2, ml=lph$("lphDigModeLbl"), mb=lph$("lphDigMode"); if(ml) ml.style.display=one? "none" : ""; if(mb) mb.style.display=one? "none" : ""; }   // そのばで ぐるっと・ほって かえす：あそびかたは1つ（ぜんぶ みつける）なので出さない
       const lead=lph$("lphDigLead"), nm=(LITE.curName||"").replace(/^\S+\s*/,"");
-      if(lead) lead.innerHTML = dig ? "「"+nm+"」と いっしょに きょうりゅうカードを さがそう！<br>カードを ほりだして うつすと、つちの ブロックが でるよ。ほると たまごが かえるよ。"
+      if(lead) lead.innerHTML = dig ? "「"+nm+"」と いっしょに きょうりゅうカードを さがそう！<br>カードを ほりだして うつすと、ブロックが でるよ。ほると たまごが かえるよ。"
           : (LITE.target==="dog" ? "「"+nm+"」と いっしょに しゅつどひんを さがそう！" : "「"+nm+"」と いっしょに きょうりゅうを さがそう！")
             +"<br>"+(round ? "そのばに たったまま、まわりを ぐるっと みて さがすよ。" : card ? "ゆかに おいた カードを みつけて、ちかづいて ほるよ。" : "あるいて さがして、つちを ほって みつけるよ。");
       const note=lph$("lphDigNote"), go=lph$("lphDigGo");
@@ -13330,17 +13426,17 @@ function lphCardDesk(pose){
 function lphCardClearEgg(){ const H=LPH.hatch; if(H && H.egg){ scene.remove(H.egg); H.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); H.egg=null; } lphCardBlockClear(H); lphDirtClear(); }
 // ---- ほって かえす：卵の前の 土の ブロック（タップ LPH_CFG.cardDigN 回で ほれて、卵が でてくる）----
 function lphCardBlockMake(H){
-    const bs=Math.min(0.7, Math.max(0.3, (H.eggH||0.3)*1.3));
-    const mat=new THREE.MeshStandardMaterial({ color:0x8a6a42, roughness:1, emissive:0x000000 });
-    const b=new THREE.Mesh(new THREE.BoxGeometry(bs, bs*0.8, bs), mat);
+    const bs=DIG_BLOCK*TABAR_CFG.digBlockFs;   // たんけんの ほかの さがしかたと同じ大きさ
+    const mat=new THREE.MeshStandardMaterial({ color:0x6b5236, roughness:1, emissive:0x000000 });
+    const b=new THREE.Mesh(new THREE.BoxGeometry(bs, bs*0.7, bs), mat);
     const ln=new THREE.LineSegments(new THREE.EdgesGeometry(b.geometry), new THREE.LineBasicMaterial({ color:0x2a1a08 })); b.add(ln);
     H.eggPos=H.egg.position.clone(); const by=(H.baseY!=null)? H.baseY : lphFloorY();
-    b.position.set(H.egg.position.x, by+bs*0.4, H.egg.position.z); b.rotation.y=H.egg.rotation.y;
+    b.position.set(H.egg.position.x, by+bs*0.35, H.egg.position.z); b.rotation.y=H.egg.rotation.y;
     if(LPH.card && LPH.card.pose){ const ax=LPH.card.pose.xAxis; b.rotation.y=Math.atan2(ax.x, ax.z)-Math.PI/2; }   // カードの向きに そろえる
     scene.add(b); H.egg.visible=false;
     Object.assign(H, { phase:"block", block:b, bs, hits:0, hitT:0 });
     lph$("litePh").classList.add("lph-ncard");
-    lphNCard("つちの ブロックを ほろう！", "ブロックを タップして ほってね（"+LPH_CFG.cardDigN+"かい）");
+    lphNCard("ブロックを ほろう！", "ブロックを タップして ほってね（"+LPH_CFG.cardDigN+"かい）");
 }
 // ---- 破片（ほかの体験の spawnDirt と同じ見た目：土色の小さな箱が とびちって 落ちる）----
 const _lphDirt=[]; let _lphDirtMat=null, _lphDirtT=0;
@@ -13366,18 +13462,23 @@ function lphDirtTick(){
         if(d.life<=0){ d.alive=false; d.mesh.visible=false; } }
 }
 function lphDirtClear(){ for(const d of _lphDirt){ d.alive=false; d.mesh.visible=false; } }
+function lphCardEggSize(){   // たんけんの卵（eggSize）と同じ：実寸大＝0.55m／ARで おおきく みる＝その倍率
+    const hs=Object.keys(REAL_H).map(k=>REAL_H[k]).sort((a,b)=>a-b), med=(hs[3]+hs[4])/2;
+    const S=(LDIG.dinoSize==="big") ? dinoBigK() : 1;
+    return Math.min(0.55, med*S*0.3);
+}
 function lphCardBlockClear(H){ if(H && H.block){ scene.remove(H.block); H.block.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); H.block=null; } }
 function lphCardDigTap(x,y){   // ブロックを タップ → けずれる → さいごに 卵
     const H=LPH.hatch; if(!H || H.phase!=="block" || !H.block) return;
     const r=lphScreenRay(x,y); _lphRay.set(r.o, r.d);
     let hit=false; try{ hit=_lphRay.intersectObject(H.block, false).length>0; }catch(_){ }
-    if(!hit){ lphMsg("つちの ブロックを タップしてね"); return; }
+    if(!hit){ lphMsg("ブロックを タップしてね"); return; }
     H.hits++; H.hitT=performance.now();
     try{ sfxDig(); }catch(_){ } try{ vibrate(60,0.5); }catch(_){ }
     const left=Math.max(0, 1-H.hits/LPH_CFG.cardDigN), sc=0.45+0.55*left, sy=Math.max(0.25, left), by=(H.baseY!=null)? H.baseY : lphFloorY();
     lphDirtBurst(H.block.position, H.bs, H.hits>=LPH_CFG.cardDigN ? 22 : 9);   // 破片が とびちる（ほかの体験と同じ）
-    H.block.scale.set(sc, sy, sc); H.block.position.y=by+H.bs*0.4*sy;
-    if(H.hits<LPH_CFG.cardDigN){ lphNCard("つちの ブロックを ほろう！", "あと "+(LPH_CFG.cardDigN-H.hits)+"かい"); return; }
+    H.block.scale.set(sc, sy, sc); H.block.position.y=by+H.bs*0.35*sy;
+    if(H.hits<LPH_CFG.cardDigN){ lphNCard("ブロックを ほろう！", "あと "+(LPH_CFG.cardDigN-H.hits)+"かい"); return; }
     lphCardBlockClear(H);   // ほれた → 卵の演出（いまの「たまごが でてくる」と同じ）
     try{ chord([523,659,784],0.06,"triangle",0.4); }catch(_){ }
     H.egg.visible=true; const now=performance.now(); H.phase="egg"; H.t1=now; H.last=now; H.wob=0;
@@ -13422,7 +13523,7 @@ async function lphCardFound(i, pose){   // カードが読めた（i＝恐竜の
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
     if(LITE.model) LITE.model.visible=false;
     LPH.hatch={ phase:"wait", t0:performance.now(), egg:null };
-    lphNCard("みつけた！ No."+(i+1)+" の カード", C.pose ? "カードの うえに つちの ブロックが でるよ" : LITE.iar ? (iarDevName()+"を ななめ まえに むけてね。つちの ブロックが でてくるよ") : "まえを むいてね。つちの ブロックが でてくるよ");   // カードの位置が分からない時は 前の床
+    lphNCard("みつけた！ No."+(i+1)+" の カード", C.pose ? "カードの うえに ブロックが でるよ" : LITE.iar ? (iarDevName()+"を ななめ まえに むけてね。ブロックが でてくるよ") : "まえを むいてね。ブロックが でてくるよ");   // カードの位置が分からない時は 前の床
     litePhoneRefresh();
 }
 function lphCardBar(){   // 上の帯：みつけた数・つぎの カード（恐竜が生まれた後）・おわる
@@ -13439,6 +13540,7 @@ function lphCardEnd(){   // 「おわる」→ まとめ
     lph$("lphCardSumN").textContent = C.t1 ? ("ぜんぶ みつけたよ！ じかん "+_tm)
         : C.found.length ? (DINOS.length+"しゅるいの うち "+C.found.length+"しゅるい みつけたよ！（じかん "+_tm+"）") : "まだ みつけて いないよ";
     lphCardDexFill(lph$("lphCardSumList"), C);   // No.1〜8：はっくつずかんの カード
+    lph$("lphCardSumCount").textContent=C.found.length+" / "+DINOS.length+" はっくつ"; lph$("lphCardSumFill").style.width=(C.found.length/DINOS.length*100)+"%";
     lph$("lphCardSum").classList.add("on");
 }
 // ---- はっくつずかん（この回に みつけた きょうりゅう。みつけていないのは ？）----
@@ -13499,6 +13601,7 @@ function lphCardFinish(){   // まとめの OK：入る前のモデル・設定�
     if(nx) nx.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardScan(); });
     if(en) en.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardEnd(); });
     if(ok) ok.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardQuit(); });   // きろくの OK → たんけんを おえた画面（A）
+    { const bk=document.getElementById("lphCardSumBack"); if(bk) bk.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lph$("lphCardSum").classList.remove("on"); lphDexViewClose(); }); }   // もどる：きろくを とじて、つづける
     { const cc=document.getElementById("lphCardCount"); if(cc) cc.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardDexOpen(false); }); }   // ずかん（あそんでいる途中）
     { const dx=document.getElementById("lphDex"); if(dx) dx.addEventListener("click", e=>e.stopPropagation()); }
     { const dc=document.getElementById("lphDexClose"); if(dc) dc.addEventListener("click", e=>{ e.stopPropagation(); try{ lphSnd(); }catch(_){ } lphCardDexClose(); }); }
@@ -13517,6 +13620,7 @@ function tabarCamOnly(sup){   // 案1・案2 を カメラ＋センサーで動�
     const d=document.getElementById("lphDig"); if(!d) return;
     d.addEventListener("click", e=>e.stopPropagation());
     d.querySelectorAll("#lphDigMode button").forEach(b=>b.addEventListener("click",()=>{ if(ldigModes().length<2) return; LDIG.mode=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));
+    d.querySelectorAll("#lphDigMove button").forEach(b=>b.addEventListener("click",()=>{ LDIG.dinoMove=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));   // 恐竜の うごき
     d.querySelectorAll("#lphDigDs button").forEach(b=>b.addEventListener("click",()=>{ LDIG.dinoSize=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));   // 掘り出す恐竜の大きさ
     d.querySelectorAll("#lphDigStyle button").forEach(b=>b.addEventListener("click",()=>{ if(b.disabled) return; LDIG.style=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));
     d.querySelectorAll("#lphDigAr button").forEach(b=>b.addEventListener("click",()=>{ LDIG.arMethod=b.dataset.v; try{ localStorage.setItem("tabarArMethod", LDIG.arMethod); }catch(_){ } ldigPaint(); try{ lphSnd(); }catch(_){ } }));   // ARの しくみ（覚える）   // さがしかた（準備中のものは押せない）
@@ -13786,8 +13890,6 @@ function ldigOpenPrep(){
               : (LDIG.style==="card")
               ? "<li>🃏 ゆかの カードを さがそう。はしらないでね</li><li>📷 カードを みつけたら、ちかづいて うつしてね</li><li>👀 がめんだけで なく、まわりも よく みよう</li><li>🤲 タブレットは りょうてで もとう。ほる ときは カードを うつした まま、つちを タッチ</li>"
               : LDIG.rulesHTML; } }
-    { const td=document.getElementById("tabarDig");   // 掘れる時の ことば（カードを さがす：「つちの」を はぶく。終わったら戻す）
-      if(td){ if(LDIG.digTxt==null) LDIG.digTxt=td.textContent; td.textContent = (LDIG.style==="card") ? "ひかっている ブロックを タッチして ほろう！" : LDIG.digTxt; } }
     tabarOpenPrep();
     if(TABAR.phase!=="prep"){ ldigFinish(); }   // 開けなかった → 戻る
 }
@@ -13796,7 +13898,6 @@ function ldigFinish(){
     if(!LDIG.on) return;
     const h=document.querySelector("#tabarPrep h2"); if(h && LDIG.prepTitle!=null){ h.textContent=LDIG.prepTitle; LDIG.prepTitle=null; }
     { const ul=document.getElementById("tabarRules"); if(ul && LDIG.rulesHTML!=null) ul.innerHTML=LDIG.rulesHTML; }
-    { const td=document.getElementById("tabarDig"); if(td && LDIG.digTxt!=null) td.textContent=LDIG.digTxt; }
     ldigRestore();
     if(!LDIG.ret){ LDIG.on=false; return; }
     ldigCard("back", "おつかれさま！\nつぎは どうする？");
@@ -13862,9 +13963,10 @@ tabarUI.touch.addEventListener("pointerup", e=>{
     const p=TABAR.pointers.get(e.pointerId); TABAR.pointers.delete(e.pointerId);
     if(!p || !GAME.active || TABAR.phase!=="play") return;
     if(Math.hypot(e.clientX-p.x, e.clientY-p.y)>28 || performance.now()-p.t>600) return;   // 子どもの指に合わせて、ずれ・長押しを広めに許容
+    TABAR.tapPx={ x:e.clientX, y:e.clientY };   // カードを さがす：恐竜の セリフ・ハートを出す場所
     const hit=tapAt((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1);
     if(!hit && gamePhase()==="play" && GAME.targets.some(t=>t.discovered) && performance.now()-TABAR.tapHintT>3000){
-        TABAR.tapHintT=performance.now(); showToast("つちの ブロックの そばまで あるいて、ひかったら タッチしよう", 2600);
+        TABAR.tapHintT=performance.now(); showToast("ブロックの そばまで あるいて、ひかったら タッチしよう", 2600);
     }
 });
 tabarUI.touch.addEventListener("pointercancel", e=>{ TABAR.pointers.delete(e.pointerId); });
@@ -14968,7 +15070,7 @@ function nuriPrintAll(){
         +'@page{ size:A4 landscape; margin:0; } html,body{ margin:0; padding:0; background:#fff; }'
         +'.pg{ width:297mm; height:209mm; display:flex; align-items:center; justify-content:center; break-after:page; page-break-after:always; overflow:hidden; }'
         +'.pg:last-child{ break-after:auto; page-break-after:auto; } .pg img{ width:297mm; height:209mm; object-fit:contain; display:block; }'
-        +'@media screen{ html{ background:#888; } body{ background:#888; zoom:var(--z,1); padding:1px 0; } .pg{ margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
+        +'@media screen{ html{ background:#888; } body{ background:#888; padding:1px 0; } .pg{ zoom:var(--z,1); margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
         +'</style></head><body>'
         +list.map(s=>'<div class="pg"><img src="'+esc(base+s.svg)+'" alt="'+esc(s.name)+'"></div>').join("")
         +'</body></html>');
@@ -15487,10 +15589,10 @@ async function nuriCardPrint(big){   // big＝A4に1まい（カードを さが
         +'.pg:last-child{ break-after:auto; page-break-after:auto; }'
         +'.cd{ box-sizing:border-box; border:0.3mm dashed #999; display:flex; flex-direction:column; align-items:center; padding:7mm 6mm 5mm; }'
         +'.cd.blank{ border-color:transparent; } .t{ font-size:6mm; font-weight:900; color:#5a3d12; letter-spacing:0.5mm; } .no{ font-size:9mm; font-weight:900; color:#222; margin:1mm 0 3mm; }'
-        +'.mk{ width:66mm; height:66mm; display:block; } .bone{ width:44mm; height:18mm; margin-top:5mm; } .s{ font-size:4.6mm; font-weight:800; color:#5a3d12; margin-top:2mm; }'
+        +'.mk{ width:66mm; height:66mm; display:block; } .bone{ width:44mm; height:18mm; margin-top:5mm; } .s{ font-size:4.6mm; font-weight:800; color:#5a3d12; margin-top:7mm; }'
         +'.pg.big{ display:block; } .pg.big .cd{ width:210mm; height:296mm; border:none; padding:16mm 12mm 10mm; } .pg.big .t{ font-size:12mm; } .pg.big .no{ font-size:22mm; margin:2mm 0 8mm; }'
-        +'.pg.big .mk{ width:170mm; height:170mm; } .pg.big .bone{ width:90mm; height:36mm; margin-top:8mm; } .pg.big .s{ font-size:9mm; margin-top:3mm; }'
-        +'@media screen{ html{ background:#888; } body{ background:#888; zoom:var(--z,1); padding:1px 0; } .pg{ margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
+        +'.pg.big .mk{ width:170mm; height:170mm; } .pg.big .bone{ width:90mm; height:36mm; margin-top:8mm; } .pg.big .s{ font-size:9mm; margin-top:16mm; }'
+        +'@media screen{ html{ background:#888; } body{ background:#888; padding:1px 0; } .pg{ zoom:var(--z,1); margin:8px auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
         +'</style></head><body>'+pages.join("")+'</body></html>');
     w.document.close();
 }
