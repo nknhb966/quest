@@ -10057,10 +10057,10 @@ function litePlaceHandUI(){   // ①②を左手のワールド位置に追従�
     if(LITE.ui.parent!==scene){ if(LITE.ui.parent) LITE.ui.parent.remove(LITE.ui); scene.add(LITE.ui); }
     _liteOff.set(0, 0.02, 0).applyQuaternion(_liteFaceQ); LITE.ui.position.copy(_liteHP).add(_liteOff); LITE.ui.quaternion.copy(_liteFaceQ);
     LITE.ui.visible=true;
-    // 手のひら＝開いて全表示／手の甲＝閉じて名称倍率だけ残す（誤作動防止のため0.5秒維持で確定）
+    // 手のひら＝開いて全表示／手の甲＝閉じて名称倍率だけ残す（誤作動防止のため2秒維持で確定）
     const raw=litePalmFacing(); const _pnow=performance.now();
     if(raw!==LITE._palmRaw){ LITE._palmRaw=raw; LITE._palmSince=_pnow; }   // 生の状態が変わったら計測開始
-    if(raw!==LITE.palmOpen && (_pnow-(LITE._palmSince||0))>=500){          // 0.5秒維持したら開閉を確定
+    if(raw!==LITE.palmOpen && (_pnow-(LITE._palmSince||0))>=LITE_PALM_HOLD_MS){   // LITE_PALM_HOLD_MS（2秒）維持したら開閉を確定
         LITE.palmOpen=raw;
         try{ if(raw) chord([131,165,196],0.06,"sine",0.4); else chord([196,165,131],0.06,"sine",0.4); }catch(_){ }   // 開く/閉じる音
     }
@@ -10258,6 +10258,7 @@ function liteVRTick(){
 // ①③④ パネル（カメラ固定HUD）。右手レイで①ボタンを操作
 const LITE_DENS=3200, LITE_FPX=42;   // canvas解像度(px/m・高解像度で鮮明)／全パネル共通の文字px（≒1.2倍・世界高0.013m）
 const LITE_UI=1.3;                    // 操作パネル群の寸法倍率（1.3倍）
+const LITE_PALM_HOLD_MS=2000;   // 手のひらの上下で パネルを開け閉めする時、その向きを これ(ms)続けたら 切り替える
 const LITE_PALM_AXIS=new THREE.Vector3(0,-1,0), LITE_PALM_THRESH=0.2;   // 左手ローカルの手のひら法線・表示閾値（実機で微調整）
 function liteMakePanel(w,h){
     const cw=Math.max(8,Math.round(w*LITE_DENS)), ch=Math.max(8,Math.round(h*LITE_DENS));   // 平面と同アスペクト＝文字の伸縮なし
@@ -10289,6 +10290,11 @@ function liteBuildUI(){
         const wkb=liteMakePanel(bw,bh); wkb.position.set(colL, walkY, 0); wkb.userData.kind="btn"; wkb.userData.act="walk"; LITE.ui.add(wkb); LITE.buttons.push(wkb);
         _lastBtnY=walkY;
     }
+    if(LITE.target==="dino"){   // 恐竜：しろは しろ／しろは もよう（じぶんで ぬった恐竜の時だけ押せる。スマホ・タブレットと同じ）
+        const blY=_lastBtnY-(bh+gap);
+        const blb=liteMakePanel(bw,bh); blb.position.set(colL, blY, 0); blb.userData.kind="btn"; blb.userData.act="blank"; LITE.ui.add(blb); LITE.buttons.push(blb);
+        _lastBtnY=blY;
+    }
     { const resetY=_lastBtnY-(bh+gap);
       const rb=liteMakePanel(bw,bh); rb.position.set(colL, resetY, 0); rb.userData.kind="btn"; rb.userData.act="reset"; LITE.ui.add(rb); LITE.buttons.push(rb);
       _lastBtnY=resetY; }
@@ -10300,7 +10306,9 @@ function liteBuildUI(){
     liteDrawButtons(); liteRebuildDesc(); liteDrawInfo();
 }
 function liteDrawButtons(){
-    const st={reset:{t:"サイズ＋回転リセット",bg:"#333",fg:"#fff"},
+    const _bk=lphBlankKey(), _bo=_bk ? window.NURI_GAME.blankOwn(_bk) : false;
+    const st={reset:{t:(LITE.target==="dino") ? "リセット" : "サイズ＋回転リセット",bg:"#333",fg:"#fff"},   // 恐竜：大きさ・向き・場所を もどす／ほか：大きさ・向き
+              blank:!_bk ? {t:"しろは しろ", bg:"#3a3550", fg:"rgba(255,255,255,.35)"} : _bo ? {t:"しろは もよう", bg:"#16a34a", fg:"#fff"} : {t:"しろは しろ", bg:"#f3f0ff", fg:"#3a2f6b"},   // ぬりえの恐竜でない時は 押せない（灰色）
               op:{t:LITE.opEnabled?"モデル操作可能":"モデル操作不可", bg:LITE.opEnabled?"#e0533a":"#f3d3cc", fg:LITE.opEnabled?"#fff":"#8a2a17"},
               walk:{ walk:{t:"あるく", bg:"#b45309", fg:"#fff"}, stop:{t:"とまる", bg:"#f6e3c4", fg:"#7a3d06"}, off:{t:"アニメ オフ", bg:"#dfeee5", fg:"#245a38"} }[lphWalkState()] };   // 今の状態（押すと あるく → とまる → アニメオフ）
     LITE.buttons.forEach(b=>{ const s=st[b.userData.act]; if(!s) return; _liteText(b,(ctx,cw,ch)=>{ ctx.fillStyle=s.bg; _liteRound(ctx,3,3,cw-6,ch-6,18); ctx.fill(); ctx.fillStyle=s.fg; ctx.font="bold "+LITE_FPX+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(s.t,cw/2,ch/2); }); });
@@ -10328,7 +10336,17 @@ function liteDrawInfo(){
         ctx.fillStyle="#8ff0ff"; ctx.textAlign="right"; ctx.fillText(pct+"%",cw-14,ch/2); });
 }
 function liteUpdateUI(){ if(!LITE.ui) return; const pct=Math.round((LITE.group.scale.x||1)*100); if(pct!==LITE._uiScale){ LITE._uiScale=pct; liteDrawInfo(); }   // 倍率が変わった時だけ③再描画
-    const bk=lphWalkState(); if(bk!==LITE._btnKey){ LITE._btnKey=bk; liteDrawButtons(); } }   // あるく・とまる・アニメオフ が変わったらボタンを描き直す
+    const _blk=lphBlankKey(), bk=lphWalkState()+"|"+(_blk||"")+"|"+(_blk ? window.NURI_GAME.blankOwn(_blk) : ""); if(bk!==LITE._btnKey){ LITE._btnKey=bk; liteDrawButtons(); } }   // あるく・とまる・アニメオフ／しろは しろ・もよう が変わったらボタンを描き直す
+// ヘッドセット：リセット。大きさ＝100%・向き＝プレイヤーの いまの向きに正対（傾きも消す）。恐竜は 場所も（入った時と同じ 目の前）
+//   あるく・とまる の時も効くように、歩く処理に「置き直した」と知らせる（新しい場所・向きから また歩く）
+function liteVRReset(){
+    LITE.targetScale.set(1,1,1);
+    LPH.joy=null; LPH.faceTurn=null; LPH.popY=0;
+    if(LITE.target==="dino"){ LITE.placeFrames=4; }   // 場所と向き：入った時と同じ（目の前・プレイヤーに正対）
+    else { const cq=camera.getWorldQuaternion(_liteRQ), f=_liteRD.set(0,0,-1).applyQuaternion(cq); f.y=0; if(f.lengthSq()<1e-6) f.set(0,0,-1); f.normalize();
+        LITE.targetQuat.setFromAxisAngle(_lphUp, Math.atan2(-f.x, -f.z)); }   // 向き：プレイヤーの いまの向きに正対（場所は そのまま）
+    if(LPH.walk){ LPH.walk.held=true; LPH.walk.state="pause"; LPH.walk.until=performance.now()+800; }
+}
 function litePickAny(){   // 右手レイで①ボタン・②セルを判定（可視のもののみ）。当たれば実行し true
     if(!LITE.active || !LITE.ui || !rightCtrl) return false;
     rightCtrl.getWorldPosition(_liteRO); _liteRD.set(0,0,-1).applyQuaternion(rightCtrl.getWorldQuaternion(_liteRQ)).normalize();
@@ -10336,7 +10354,12 @@ function litePickAny(){   // 右手レイで①ボタン・②セルを判定（
     const targets=[]; LITE.buttons.forEach(b=>{ if(b.visible) targets.push(b); }); LITE.selPanels.forEach(c=>{ if(c.visible) targets.push(c); });
     const hit=_liteRay.intersectObjects(targets,false)[0]; if(!hit) return false;
     const o=hit.object;
-    if(o.userData.act==="reset"){ LITE.targetScale.set(1,1,1); LITE.targetQuat.identity(); try{ chord([784,523,392],0.05,"triangle",0.45); }catch(_){ } }
+    if(o.userData.act==="reset"){ liteVRReset(); try{ chord([784,523,392],0.05,"triangle",0.45); }catch(_){ } }
+    else if(o.userData.act==="blank"){   // しろは しろ／しろは もよう（スマホ・タブレットと同じ）
+        const k=lphBlankKey(); if(!k){ try{ beep(220,0.08,0.25,"square"); }catch(_){ } return true; }
+        const on=!window.NURI_GAME.blankOwn(k); window.NURI_GAME.setBlankOwn(k, on);
+        liteDrawButtons(); liteVRSay(on? "ぬっていない ところを、もとの もように したよ" : "ぬっていない ところを、しろの ままに したよ", 2200);
+        try{ beep(on?660:440,0.09,0.3,"square"); }catch(_){ } }
     else if(o.userData.act==="op"){ LITE.opEnabled=!LITE.opEnabled; liteDrawButtons(); try{ beep(LITE.opEnabled?660:330,0.09,0.3,"square"); }catch(_){ } }
     else if(o.userData.act==="walk"){   // あるく → とまる → アニメオフ（スマホ・タブレットと同じ）
         const st=lphWalkCycle(t=>liteVRSay(t, 1500));
