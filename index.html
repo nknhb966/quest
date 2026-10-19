@@ -6888,7 +6888,8 @@ function revealDino(idx, pos, color){
     const egg=build_egg(); makeFit(egg, eggSize()); stage.add(egg);
     egg.position.set(pos.x, GROUND_Y, pos.z);   // 卵は発掘ポイントに出現
     const _eggDrop=(typeof renderer!=="undefined" && renderer.xr && worldScaleXR())?0.25:0;   // VR/ARのみ卵の最高点・最終位置を25cm下げる（恐竜の高さは変えない）
-    popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:ARTIFACT_POP_Y-0.15-_eggDrop, endY:popY()-0.25-_eggDrop, t:0, dur:0.7, spin:true });
+    const _eggFloor=(typeof TABAR!=="undefined" && TABAR.on);   // たんけん（タブレットAR）：卵も 床の上（とびだして、床に おりる）
+    popAnims.push({ obj:egg, x:pos.x, z:pos.z, startY:GROUND_Y, peakY:_eggFloor ? GROUND_Y+Math.max(0.25, eggSize()*0.8) : ARTIFACT_POP_Y-0.15-_eggDrop, endY:_eggFloor ? GROUND_Y : popY()-0.25-_eggDrop, t:0, dur:0.7, spin:true });
     // 卵出現直前のプレイヤー位置から「奥方向」を一度だけ確定（Player→発掘ポイントの水平単位ベクトル）
     let backDir=null;
     try{ const cp=camera.getWorldPosition(new THREE.Vector3());
@@ -6911,8 +6912,16 @@ function tickHatch(now, dt){
             m.scale.setScalar(dinoCurScale()/(m.userData.builtScale||1));   // スケール確定（実寸モードは実寸倍率で補正）
             // 前後長（ローカル+Z＝鼻先方向）を回転前に測る
             let depth=1.0, height=1.0;
-            { m.rotation.set(0,0,0); m.position.set(0,0,0); m.updateMatrixWorld(true);
-              const bb=_thBox.setFromObject(m); depth=Math.max(0.001, bb.max.z-bb.min.z); height=Math.max(0.001, bb.max.y-bb.min.y); }
+            { m.rotation.set(0,0,0); m.position.set(0,0,0);
+              const _pv=m.userData.model, _lg=(_pv&&_pv.userData&&_pv.userData.legs)||[], _lr=_lg.map(l=>l?l.rotation.x:0);
+              _lg.forEach(l=>{ if(l) l.rotation.x=0; }); if(_pv && _pv.userData && _pv.userData.head) _pv.userData.head.rotation.set(0,0,0);   // 足は まっすぐ（中立）で測る
+              m.updateMatrixWorld(true);
+              let bb=_thBox.setFromObject(m);
+              if(typeof TABAR!=="undefined" && TABAR.on && _pv && isFinite(bb.min.y)){   // たんけん：足の裏を コンテナの原点（＝床）に そろえ直す（模様を貼った後の形でも 浮かない・もぐらない）
+                  const off=bb.min.y - m.getWorldPosition(_thCp).y;   // コンテナの原点（床）から 足の裏までの高さ（stage の高さは のぞく）
+                  if(Math.abs(off)>0.005){ _pv.position.y -= off/(m.scale.y||1); m.updateMatrixWorld(true); bb=_thBox.setFromObject(m); } }
+              _lg.forEach((l,k)=>{ if(l) l.rotation.x=_lr[k]; });
+              depth=Math.max(0.001, bb.max.z-bb.min.z); height=Math.max(0.001, bb.max.y-bb.min.y); }
             // 向き：鼻先(+Z)をプレイヤーへ
             { const cp=camera.getWorldPosition(_thCp); m.rotation.set(0, Math.atan2(cp.x-e.pos.x, cp.z-e.pos.z), 0); }
             // 本体中心Cを発掘ポイントから奥へ(前後長/3)ずらす
@@ -6995,10 +7004,30 @@ function digCamSmooth(raw, dt){
     if(!_adCamInit || _adCamS.distanceTo(raw)>DIG_CAM_SMOOTH.jump){ _adCamS.copy(raw); _adCamInit=true; return _adCamS; }
     return _adCamS.lerp(raw, 1-Math.exp(-Math.max(0,dt)/DIG_CAM_SMOOTH.tau));
 }
-function digTooNear(cont, camW){   // プレイヤーが 体の中心の すぐ近く（向きが定まらない）
+function digTooNear(cont, camW){   // プレイヤーが 体の中心の すぐ近く、または 頭の近く（向きが定まらない）
+    if(cont.userData._nearHead) return true;
     const fp=digDinoFootprint(cont), sc=cont.scale.x||1, half=fp ? Math.min(fp.x1-fp.x0, fp.z1-fp.z0)*sc*0.5 : 0.3;
     const x=cont.userData.homeX??cont.position.x, z=cont.userData.homeZ??cont.position.z;
     return Math.hypot(camW.x-x, camW.z-z) < half+DIG_CAM_SMOOTH.nearR;
+}
+// 頭の近く：カメラ（タブレット・ヘッドセット）が恐竜の頭に近いと、頭→カメラの向きが少し動くだけで大きく変わり、首と体が ふるえる
+//   → 頭の大きさ×headMul（最低 minR m）より近い間は、首の向きを そのまま止める（少しはなれたら また追う）
+//   → 頭から bodyR m（または 頭の大きさ×bodyMul）より近い間は、体を回さない（体を回すと頭が動いて、また向きが変わる…を くり返さない）
+const DIG_HEAD_NEAR={ headMul:1.3, minR:0.35, bodyMul:2.5, bodyR:1.0, hys:1.2, maxRate:2.5 };   // maxRate＝首の回る速さの上限(rad/秒)
+const _dhnB=new THREE.Box3(), _dhnS=new THREE.Vector3(), _dhnP=new THREE.Vector3();
+function digHeadNear(head){   // 頭の大きさ（ワールド）から「近い」の半径
+    const u=head.userData;
+    if(u._hsLocal==null){ _dhnB.setFromObject(head); const sz=_dhnB.getSize(_dhnS); head.getWorldScale(_dhnP); u._hsLocal=Math.max(sz.x,sz.y,sz.z)/Math.max(1e-6, _dhnP.x); }
+    head.getWorldScale(_dhnP);
+    return Math.max(DIG_HEAD_NEAR.minR, u._hsLocal*_dhnP.x*DIG_HEAD_NEAR.headMul);
+}
+function digHeadNearUpdate(cont, m, camW){   // このフレームの「頭が近い」状態（入る／出るで 少し差をつけて ちらつかない）
+    const u=cont.userData, head=m && m.userData ? m.userData.head : null;
+    if(!head || !camW){ u._hFrozen=false; u._nearHead=false; return; }
+    const d=head.getWorldPosition(_dhnP).distanceTo(camW), r=digHeadNear(head);
+    u._hFrozen = d < r*(u._hFrozen ? DIG_HEAD_NEAR.hys : 1);
+    const rb=Math.max(DIG_HEAD_NEAR.bodyR, r*DIG_HEAD_NEAR.bodyMul/DIG_HEAD_NEAR.headMul);
+    u._nearHead = d < rb*(u._nearHead ? DIG_HEAD_NEAR.hys : 1);
 }
 // 出てきた恐竜のアイドル動作（足踏み＝個体ごとにバラす／尻尾ふり／ゆっくり回転）
 const _adCam=new THREE.Vector3(),_adFwd=new THREE.Vector3(),_adAxis=new THREE.Vector3(),_adToP=new THREE.Vector3(),_adHp1=new THREE.Vector3(),_adHp2=new THREE.Vector3();   // animateDigDinos用スクラッチ
@@ -7006,6 +7035,7 @@ function animateDigDinos(now, dt){
     const camW=(typeof camera!=="undefined")? digCamSmooth(camera.getWorldPosition(_adCam), dt) : null;   // プレイヤーの位置は なめらかにして使う（手ぶれ・首の小さな動きで 恐竜が ふるえないように）
     dinoDigModels.forEach(cont=>{ if(!cont||!cont.visible) return;
         const m=cont.userData.model; if(!m) return;
+        digHeadNearUpdate(cont, m, camW);   // カメラが 頭の近くか（ふるえ防止）
         const spd=cont.userData.animSpeed||1, off=cont.userData.animPhase||0, ph=now*0.006*spd + off;
         const sph = (now - (cont.userData.settleAt||now));
 
@@ -7054,7 +7084,7 @@ function animateDigDinos(now, dt){
             let goalX=ox, goalZ=oz;
             const sinceSettle = now - (cont.userData.settleAt||now);
             const canMove = cont.userData.settled && sinceSettle>=5000;   // 出現後5秒は移動しない
-            if(questXR() && camW && faceAmt>0.01 && m.userData.head && canMove){   // 近づくのはヘッドセットの時だけ（スマホ・タブレットは その場）
+            if(questXR() && camW && faceAmt>0.01 && m.userData.head && canMove && !cont.userData._nearHead){   // 近づくのはヘッドセットの時だけ（スマホ・タブレットは その場）。頭の近くでは 寄らない（ふるえ防止）
                 const L=Math.max(0.6, cont.userData.bodyLen||2);
                 const hp=m.userData.head.getWorldPosition(_adHp1);
                 const pmul=m.userData.peekMul||1;
@@ -7104,7 +7134,7 @@ function animateDigDinos(now, dt){
             let peek=0;
             const _gz = (typeof TABAR!=="undefined" && TABAR.on && camW && !cont.userData._joy && (faceAmt>0.01 || (_cb && _cb.look)));   // タブレットAR：顔（目）をプレイヤーの目に合わせる（ほって かえす と同じ計算）
             let _gy=0;
-            if(_gz){ const g=liteGaze(m.userData.head, m), w=(_cb && _cb.look) ? 1 : faceAmt; peek=g.x*w; _gy=g.y*w; }
+            if(_gz){ const g=liteGaze(m.userData.head, m, camW), w=(_cb && _cb.look) ? 1 : faceAmt; peek=g.x*w; _gy=g.y*w; }   // なめらかにした プレイヤーの位置で
             else if(_isXR && camW && faceAmt>0.01 && longNeck){   // 長首：首の付け根ではなく顔（目）からプレイヤーを見る（付け根から測ると、高い所にある顔がプレイヤーの上を見てしまう）
                 const th=longNeckGaze(m.userData.head, camW);
                 peek=Math.max(-THREE.MathUtils.degToRad(DINO_FACE.lookUpHeadDeg), Math.min(maxPeek, th))*faceAmt;   // 見上げは頭だけ（体は起こさない）
@@ -7122,8 +7152,12 @@ function animateDigDinos(now, dt){
                 } else peek=Math.min(want, maxPeek)*faceAmt;                // 上限クランプ＋対面度で寄せる
             }
             if(_cb && _cb.sniff>0){ peek = Math.max(peek, _cb.sniff); _gy=0; }   // においを かぐ：頭を下げる
-            m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
-            m.userData.head.rotation.y += (_gy - m.userData.head.rotation.y)*Math.min(1, dt*DINO_FACE.turnEase);   // 左右（見ていない時は 0 へ）
+            { const u=cont.userData;   // 頭の近く：首の向きを そのまま止める（ふるえ防止）
+              if(u._hFrozen && u._peekLast!=null){ peek=u._peekLast; _gy=u._gyLast; bodyUp=u._bodyUpLast||0; }
+              else { u._peekLast=peek; u._gyLast=_gy; u._bodyUpLast=bodyUp; } }
+            { const mx=DIG_HEAD_NEAR.maxRate*dt, hd=m.userData.head;   // 首の回る速さに上限（急に向きを変えない）
+              const dx=(peek-hd.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase), dy=(_gy-hd.rotation.y)*Math.min(1, dt*DINO_FACE.turnEase);
+              hd.rotation.x += Math.max(-mx, Math.min(mx, dx)); hd.rotation.y += Math.max(-mx, Math.min(mx, dy)); }   // 左右（見ていない時は 0 へ）
         }
         digDinoBodyUp(cont, m, bodyUp, dt);   // 体の前側を起こす（見上げていない時は0へ戻る）
 
@@ -11083,7 +11117,7 @@ function lphWalkTick(){
             // 体をプレイヤーの方へ向けながら、頭の左右・上下で目（顔）をプレイヤーに合わせる
             //   （大きさ・回転・移動・リセットの後も、実際の頭の位置と向きから毎回計算する）
             //   ヘッドセットの「とまる」でモデルを傾けている時は、体は回さず頭だけ向ける（傾きを消さない）
-            const turnBody = !W.off || LITE.phone || lphUpright();
+            const turnBody = (!W.off || LITE.phone || lphUpright()) && !(head && head.userData._lgNear);   // 頭の すぐ近くでは 体を回さない（ふるえ防止）
             const left = turnBody ? lphTurn(W, lphFaceCamYaw(), LPH_CFG.turnDegLook, dt) : 0;
             if(!W.lookFaced && (left<THREE.MathUtils.degToRad(10) || now-(W.lookT0||now)>3000)){ W.lookFaced=true; W.until=now+2200+Math.random()*1200; }
             if(head){ const g=liteGaze(head, pv); wantX=g.x; wantY=g.y; }
@@ -11099,11 +11133,14 @@ function lphWalkTick(){
 }
 // 頭（首）をプレイヤーの目に向ける角度：左右＝頭の付け根から見た向き、上下＝顔（目）から見た俯角（長首の計算と同じ）
 //   モデルの大きさ・回転・位置はすべて実際の行列から読むので、手で動かした後やリセット後もそのまま合う
-const _lgC=new THREE.Vector3(), _lgL=new THREE.Vector3();
-function liteGaze(head, pv){
+const _lgC=new THREE.Vector3(), _lgL=new THREE.Vector3(), _lgH=new THREE.Vector3();
+function liteGaze(head, pv, camPos){   // camPos：使う プレイヤーの位置（省略＝いまのカメラ）
     const par=head.parent; if(!par) return { x:0, y:0 };
     head.rotation.order="YXZ";   // 左右に向けてから、その向きで上下（首らしい回り方）
-    const cam=camera.getWorldPosition(_lgC);
+    const cam=camPos ? _lgC.copy(camPos) : camera.getWorldPosition(_lgC);
+    { const u=head.userData, d=head.getWorldPosition(_lgH).distanceTo(cam), r=digHeadNear(head);   // 頭の すぐ近く：向きが定まらないので、前の向きのまま（ふるえ防止）
+      u._lgNear = d < r*(u._lgNear ? DIG_HEAD_NEAR.hys : 1);
+      if(u._lgNear && u._lgLast) return u._lgLast; }
     par.updateWorldMatrix(true, false);
     const loc=par.worldToLocal(_lgL.copy(cam)).sub(head.position);
     const yaw=THREE.MathUtils.clamp(Math.atan2(loc.x, loc.z), -0.8, 0.8);   // 左右は ±約45°まで（残りは体を向けて合わせる）
@@ -11112,7 +11149,7 @@ function liteGaze(head, pv){
     head.rotation.y=sy; head.updateMatrixWorld(true);
     const longNeck=!!(pv && pv.userData && pv.userData.longNeck);
     pitch=THREE.MathUtils.clamp(pitch, -0.7, longNeck?1.3:0.7);   // ＋＝下
-    return { x:pitch, y:yaw };
+    return (head.userData._lgLast={ x:pitch, y:yaw });
 }
 // ---- さわると喜ぶ（ゲームのなでなでの応用：鳴き声・ぴょんぴょん・しっぽ・♡） ----
 function lphJoyLine(type){   // ゲームの相棒と同じ語尾（恐竜＝鳴き声、フクイ〜＝福井弁、犬＝ワン）
