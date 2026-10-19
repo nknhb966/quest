@@ -5827,7 +5827,7 @@ function updateBuddyStandbyUI(){
     el.innerHTML="";
     if(BUDDY_LOCK && COMPANIONS[BUDDY_LOCK]){   // 相棒の固定中（たんけん）：相棒えらびは出さない
         if(companionKind!==BUDDY_LOCK) setCompanion(BUDDY_LOCK);
-        const lab=document.createElement("div"); lab.textContent="相棒："+(COMPANIONS[BUDDY_LOCK].label||BUDDY_LOCK); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab);
+        if(!tabarNoBuddy()){ const lab=document.createElement("div"); lab.textContent="相棒："+(COMPANIONS[BUDDY_LOCK].label||BUDDY_LOCK); lab.style.cssText="color:#e6c26a;font:bold 14px sans-serif;width:100%;text-align:center;"; el.appendChild(lab); }   // 相棒を出さない たんけんでは「相棒：〇〇」も出さない
         const start=document.createElement("button"); start.textContent="▶ スタート";
         start.style.cssText="font:bold 14px sans-serif;padding:8px 18px;border-radius:10px;border:2px solid #ffd86a;background:#4a3d17;color:#fff;cursor:pointer;width:100%;margin-top:8px;";
         start.onclick=()=>{ taAdvance(); };
@@ -7066,10 +7066,11 @@ function animateDigDinos(now, dt){
             const nx=cxNow+(goalX-cxNow)*k, nz=czNow+(goalZ-czNow)*k;
             cont.position.x=nx; cont.position.z=nz;
             cont.userData.homeX=nx; cont.userData.homeZ=nz;   // 回転中心も移動後Cに追従
+            if(typeof TABAR!=="undefined" && TABAR.on && camW && cont.userData.settled) digDinoKeepAway(cont, camW, dt);   // たんけん：プレイヤーが からだの中に入らないよう、少し はなれる
             // 名称パネルも恐竜について動く（寄ってきた体の下に残って隠れない）。タブレットARは体の手前（プレイヤー側）に出す
             const lb=cont.userData.nameLabel;
-            if(lb){ let lx=nx, lz=nz;
-                if(typeof TABAR!=="undefined" && TABAR.on && camW){ const ddx=camW.x-nx, ddz=camW.z-nz, dl=Math.hypot(ddx,ddz);
+            if(lb){ let lx=cont.position.x, lz=cont.position.z; const nx2=lx, nz2=lz;
+                if(typeof TABAR!=="undefined" && TABAR.on && camW){ const ddx=camW.x-nx2, ddz=camW.z-nz2, dl=Math.hypot(ddx,ddz);
                     if(dl>1e-3){ const off=Math.min(dl*0.6, (cont.userData.bodyLen||0.5)*0.5+0.05); lx+=ddx/dl*off; lz+=ddz/dl*off; } }
                 lb.position.x=lx; lb.position.z=lz; }
         }
@@ -7083,7 +7084,10 @@ function animateDigDinos(now, dt){
             const maxDeg = longNeck ? 88 : (DINO_FACE.pitchDeg+(DINO_FACE.pitchBias||0))*pmul;
             const maxPeek = THREE.MathUtils.degToRad(maxDeg);
             let peek=0;
-            if(_isXR && camW && faceAmt>0.01 && longNeck){   // 長首：首の付け根ではなく顔（目）からプレイヤーを見る（付け根から測ると、高い所にある顔がプレイヤーの上を見てしまう）
+            const _gz = (typeof TABAR!=="undefined" && TABAR.on && camW && !cont.userData._joy && (faceAmt>0.01 || (_cb && _cb.look)));   // タブレットAR：顔（目）をプレイヤーの目に合わせる（ほって かえす と同じ計算）
+            let _gy=0;
+            if(_gz){ const g=liteGaze(m.userData.head, m), w=(_cb && _cb.look) ? 1 : faceAmt; peek=g.x*w; _gy=g.y*w; }
+            else if(_isXR && camW && faceAmt>0.01 && longNeck){   // 長首：首の付け根ではなく顔（目）からプレイヤーを見る（付け根から測ると、高い所にある顔がプレイヤーの上を見てしまう）
                 const th=longNeckGaze(m.userData.head, camW);
                 peek=Math.max(-THREE.MathUtils.degToRad(DINO_FACE.lookUpHeadDeg), Math.min(maxPeek, th))*faceAmt;   // 見上げは頭だけ（体は起こさない）
             } else if(_isXR && camW && faceAmt>0.01){
@@ -7099,8 +7103,9 @@ function animateDigDinos(now, dt){
                     want=0;
                 } else peek=Math.min(want, maxPeek)*faceAmt;                // 上限クランプ＋対面度で寄せる
             }
-            if(_cb && _cb.sniff>0) peek = Math.max(peek, _cb.sniff);   // においを かぐ：頭を下げる
+            if(_cb && _cb.sniff>0){ peek = Math.max(peek, _cb.sniff); _gy=0; }   // においを かぐ：頭を下げる
             m.userData.head.rotation.x += (peek - m.userData.head.rotation.x)*Math.min(1, dt*DINO_FACE.turnEase);
+            m.userData.head.rotation.y += (_gy - m.userData.head.rotation.y)*Math.min(1, dt*DINO_FACE.turnEase);   // 左右（見ていない時は 0 へ）
         }
         digDinoBodyUp(cont, m, bodyUp, dt);   // 体の前側を起こす（見上げていない時は0へ戻る）
 
@@ -7113,8 +7118,42 @@ function animateDigDinos(now, dt){
             if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(sph*0.006*spd))*0.045;
         }
         if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003*spd + (cont.userData.tailPhase||0))*0.28;
-        if(_cb) cardDinoJoyApply(cont, now);   // タッチで よろこぶ（はねる・まわる・ゆれる）
+        if(_cb) cardDinoJoyApply(cont, now, dt, camW);   // タッチで よろこぶ（ほって かえす と同じ：はねる・くるっと まわる・ふりふり）
     });
+}
+// ---- たんけん共通：プレイヤーが恐竜の からだの中に入らないようにする ----
+//   恐竜の足もとの四角（体の向きに合わせた 長さ×はば）＋ KEEP_AWAY.margin の中にプレイヤーがいたら、
+//   いちばん近い へり の外まで、恐竜の方が ゆっくり はなれる（おしり・あたま・よこ のうち 近い方）
+const KEEP_AWAY={ margin:0.35, extra:0.15, speed:2.0 };   // margin＝プレイヤーの体の半径(m)／extra＝少し よけいに はなれる(m)／speed＝はなれる速さ
+const _kaB=new THREE.Box3(), _kaM=new THREE.Matrix4(), _kaR=new THREE.Matrix4();
+function digDinoFootprint(cont){   // 恐竜の足もとの四角（コンテナの向き・大きさを除いた座標）。いちど測ったら覚える
+    const u=cont.userData; if(u._fp) return u._fp;
+    const m=u.model||cont; cont.updateMatrixWorld(true);
+    const inv=_kaM.copy(cont.matrixWorld).invert(), box=new THREE.Box3();
+    m.traverse(o=>{ if(!o.isMesh) return; let bb=null;
+        if(o.isInstancedMesh){ if(!o.boundingBox && o.computeBoundingBox) o.computeBoundingBox(); bb=o.boundingBox; }
+        else if(o.geometry){ if(!o.geometry.boundingBox) o.geometry.computeBoundingBox(); bb=o.geometry.boundingBox; }
+        if(bb) box.union(_kaB.copy(bb).applyMatrix4(_kaR.multiplyMatrices(inv, o.matrixWorld))); });
+    if(box.isEmpty()) return null;
+    return (u._fp={ x0:box.min.x, x1:box.max.x, z0:box.min.z, z1:box.max.z });
+}
+function keepAwayDisp(px, pz, cx, cz, ry, fp, sc){   // プレイヤー(px,pz)が 四角の中 → 恐竜を動かす量（ワールド）。外なら null
+    const c=Math.cos(ry), s=Math.sin(ry), dx=px-cx, dz=pz-cz;
+    const lx=c*dx-s*dz, lz=s*dx+c*dz, M=KEEP_AWAY.margin;
+    const x0=fp.x0*sc-M, x1=fp.x1*sc+M, z0=fp.z0*sc-M, z1=fp.z1*sc+M;
+    if(!(lx>x0 && lx<x1 && lz>z0 && lz<z1)) return null;
+    const pen=[lx-x0, x1-lx, lz-z0, z1-lz]; let k=0; for(let i=1;i<4;i++) if(pen[i]<pen[k]) k=i;
+    const d=pen[k]+KEEP_AWAY.extra, dlx=(k===0? d : k===1? -d : 0), dlz=(k===2? d : k===3? -d : 0);   // プレイヤーが こちら側に出られるよう、恐竜は反対へ
+    return { x:c*dlx+s*dlz, z:-s*dlx+c*dlz };
+}
+function digDinoKeepAway(cont, camW, dt){
+    const fp=digDinoFootprint(cont); if(!fp) return;
+    const u=cont.userData, D=keepAwayDisp(camW.x, camW.z, cont.position.x, cont.position.z, cont.rotation.y, fp, cont.scale.x||1); if(!D) return;
+    const k=Math.min(1, dt*KEEP_AWAY.speed), mx=D.x*k, mz=D.z*k;
+    cont.position.x+=mx; cont.position.z+=mz;
+    u.homeX=(u.homeX??cont.position.x)+mx; u.homeZ=(u.homeZ??cont.position.z)+mz;
+    u.origX=(u.origX??cont.position.x)+mx; u.origZ=(u.origZ??cont.position.z)+mz;   // もどってこないように、定位置も ずらす
+    if(u._cd && u._cd.state==="walk"){ u._cd.gx+=mx; u._cd.gz+=mz; }
 }
 // ---- たんけん「カードを さがす」：掘り出した恐竜 ----
 //   とまる：いままでどおり（その場で ゆっくり回る・気づくと こちらを向く）＋ ときどき においを かぐ
@@ -7125,7 +7164,7 @@ const _cdRnd=(a)=>a[0]+Math.random()*(a[1]-a[0]);
 function cardDinoTick(cont, m, now, dt, camW){
     const u=cont.userData; let S=u._cd;
     if(!S){ S=u._cd={ cx:u.origX??cont.position.x, cz:u.origZ??cont.position.z, sniffUntil:0, nextSniff:now+_cdRnd(CARD_DINO.sniffEvery), state:"pause", until:now+1500, gx:0, gz:0 }; }
-    const out={ sniff:0, walking:false, noSpin:false };
+    const out={ sniff:0, walking:false, noSpin:false, look:(S.state==="look") };
     // においを かぐ（両方）
     if(now>S.nextSniff && !(S.state==="walk")){ S.sniffUntil=now+_cdRnd(CARD_DINO.sniffMs); S.nextSniff=S.sniffUntil+_cdRnd(CARD_DINO.sniffEvery); }
     if(now<S.sniffUntil){ const k=Math.sin(Math.min(1,(S.sniffUntil-now)/400)*Math.PI/2); out.sniff=THREE.MathUtils.degToRad(CARD_DINO.sniffDeg)*k + Math.sin(now*0.025)*0.05; }
@@ -7134,8 +7173,11 @@ function cardDinoTick(cont, m, now, dt, camW){
     if(S.state==="pause" || S.state==="look"){
         if(S.state==="look" && camW){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn); }
         if(now>S.until && now>S.sniffUntil){   // つぎ：歩く（行き先＝掘った場所のまわり）
-            const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*CARD_DINO.wanderR;
-            S.gx=S.cx+Math.cos(a)*r; S.gz=S.cz+Math.sin(a)*r; S.state="walk"; }
+            const fp=digDinoFootprint(cont), sc=cont.scale.x||1, L=fp ? Math.max(fp.x1-fp.x0, fp.z1-fp.z0)*sc*0.5 : 1;
+            for(let n=0;n<6;n++){ const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*CARD_DINO.wanderR;
+                S.gx=S.cx+Math.cos(a)*r; S.gz=S.cz+Math.sin(a)*r;
+                if(!camW || Math.hypot(S.gx-camW.x, S.gz-camW.z)>L+KEEP_AWAY.margin+0.4) break; }   // プレイヤーの近く（からだが重なる所）は えらばない
+            S.state="walk"; }
         return out;
     }
     // 歩く：行き先へ（origX/Z を少しずつ進め、ふだんの追いかけで体がついてくる）
@@ -7146,14 +7188,22 @@ function cardDinoTick(cont, m, now, dt, camW){
     if(Math.abs(d)<0.7){ const st=Math.min(dl, v*dt*(1-Math.abs(d)/0.7*0.7)); u.origX=ox+dx/dl*st; u.origZ=oz+dz/dl*st; }   // だいたい向いてから 歩き出す
     out.walking=true; return out;
 }
-function cardDinoJoyApply(cont, now){
+function cardDinoJoyApply(cont, now, dt, camW){   // ほって かえす（lphWalkTick の LPH.joy）と同じ動き：プレイヤーの方を向いて よろこぶ
     const J=cont.userData._joy; if(!J) return;
-    const r=Math.min(1,(now-J.t0)/J.dur);
-    if(J.face!=null){ let d=J.face-J.base; d=Math.atan2(Math.sin(d),Math.cos(d)); J.base+=d*0.08; }   // うごく：プレイヤーの方を向きながら よろこぶ
-    if(J.type==="hop"){ cont.position.y += J.h*Math.abs(Math.sin(Math.PI*2*r))*(1-0.35*r); if(J.face!=null) cont.rotation.y=J.base; }
-    else if(J.type==="spin"){ cont.rotation.y = J.base + Math.PI*2*(r<0.5 ? 2*r*r : 1-2*(1-r)*(1-r)); cont.position.y += J.h*0.35*Math.sin(Math.PI*r); }
-    else { cont.rotation.z = Math.sin(r*Math.PI*6)*0.12*(1-r); if(J.face!=null) cont.rotation.y=J.base; }
-    if(r>=1){ cont.rotation.z=0; cont.rotation.y=J.base; cont.userData._joy=null; }
+    const r=Math.min(1,(now-J.t0)/J.dur), slow=LPH_CFG.joySlow, m=cont.userData.model, tail=m && m.userData ? m.userData.tail : null;
+    if(camW){ const x=cont.userData.homeX??cont.position.x, z=cont.userData.homeZ??cont.position.z; J.yaw0=Math.atan2(camW.x-x, camW.z-z); }   // プレイヤーの方
+    { let d=J.yaw0-J.base; d=Math.atan2(Math.sin(d),Math.cos(d));   // 体の向きを プレイヤーへ（ほって かえす：喜ぶ時の向き直りの速さ）
+      const mx=THREE.MathUtils.degToRad(LPH_CFG.turnDegJoy/slow)*dt; J.base+=Math.max(-mx, Math.min(mx, d)); }
+    if(J.type==="spin"){   // くるっと1回転
+        const e=(1-Math.cos(Math.PI*r))/2; cont.rotation.y=J.base+Math.PI*2*e; cont.position.y += J.h*0.35*Math.sin(Math.PI*r);
+    } else if(J.type==="wiggle"){   // しっぽを大きく振って、体をふりふり
+        cont.rotation.y=J.base+Math.sin(now*0.025/slow)*0.28*(1-r);
+        if(tail) tail.rotation.y=Math.sin(now*0.04/slow)*0.8;
+    } else {   // ぴょんぴょん はねる
+        cont.rotation.y=J.base; cont.position.y += J.h*Math.abs(Math.sin(Math.PI*2*r))*(1-0.35*r);
+        if(tail) tail.rotation.y=Math.sin(now*0.03/slow)*0.65;
+    }
+    if(r>=1){ cont.rotation.y=J.base; cont.userData._joy=null; }
 }
 function cardDinoJoyLine(key, type){   // ほって かえす・ぬりえ と同じ語尾（恐竜＝鳴き声、フクイ〜＝福井弁）
     let cry=""; try{ const pet=COMPANIONS[key]&&COMPANIONS[key].lines&&COMPANIONS[key].lines.pet; const mm=pet&&pet.match(/うれしい(?:ぞ|ざ〜)\s*(.+?)！/); if(mm) cry=mm[1]; }catch(_){ }
@@ -7170,9 +7220,7 @@ function cardDinoTap(ndcX, ndcY){   // 掘り出した恐竜を タッチ → �
     if(!best || best.userData._joy) return !!best;
     const u=best.userData, sz=new THREE.Box3().setFromObject(best).getSize(new THREE.Vector3());
     const types=["hop","spin","wiggle"].filter(t=>t!==u._lastJoy), type=types[Math.floor(Math.random()*types.length)]; u._lastJoy=type;
-    let face=null;   // うごく：プレイヤーの方を見て よろこぶ
-    if(LDIG.dinoMove==="move"){ const cw=camera.getWorldPosition(new THREE.Vector3()), x=u.homeX??best.position.x, z=u.homeZ??best.position.z; face=Math.atan2(cw.x-x, cw.z-z); }
-    u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*1.5, type, base:best.rotation.y, face, h:Math.max(0.02, sz.y*0.15) };
+    u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*LPH_CFG.joySlow, type, base:best.rotation.y, yaw0:best.rotation.y, h:Math.max(0.01, sz.y*0.15) };   // ほって かえす と同じ長さ・高さ
     if(u._cd){ u._cd.state="look"; u._cd.until=performance.now()+Math.max(2600, u._joy.dur+800); u._cd.gx=u.origX??best.position.x; u._cd.gz=u.origZ??best.position.z; }   // 止まって こちらを見る
     try{ sfxCry(); }catch(_){ } try{ vibrate(60,0.5); }catch(_){ }
     const px=TABAR.tapPx||{ x:innerWidth/2, y:innerHeight/2 };
@@ -10453,8 +10501,21 @@ function litePhoneTick(){
     if(LPH.aim) lphAimTick();
     if(LPH.hatch) lphHatchTick();
     if(LPH.walk) lphWalkTick();
+    lphKeepAway();   // たんけん「ほって かえす」：プレイヤーが からだの中に入らないよう、少し はなれる（たんけん共通）
     lphBubbleTick();
     lphGround();
+}
+function lphKeepAway(){
+    const now=performance.now(), dt=Math.min(0.05, (now-(LPH.kaT||now))/1000); LPH.kaT=now;
+    if(!LPH.card || LITE.iar || !LITE.model || !LITE.model.visible || !(LPH.hatch && LPH.hatch.phase==="done") || LPH.g) return;   // iPhone・iPad は歩いても近づかない（恐竜も一緒に動く）
+    if(LPH.gpModel!==LITE.model) lphBuildGroundPts();
+    const P=LPH.gp; if(!P || !P.length) return;
+    if(LPH.kaModel!==LITE.model){ let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity; for(let i=0;i<P.length;i+=3){ const x=P[i], z=P[i+2]; if(x<x0)x0=x; if(x>x1)x1=x; if(z<z0)z0=z; if(z>z1)z1=z; } LPH.kaFp={x0,x1,z0,z1}; LPH.kaModel=LITE.model; }
+    camera.getWorldPosition(_lphCamP);
+    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1); if(!D) return;
+    const k=Math.min(1, dt*KEEP_AWAY.speed), mx=D.x*k, mz=D.z*k;
+    LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
+    const W=LPH.walk; if(W){ W.home.x+=mx; W.home.z+=mz; W.target.x+=mx; W.target.z+=mz; }   // 歩く先も いっしょに ずらす（もどってこない）
 }
 // ---- iPhone・iPad（卵なし：ARで あそぶ など）：ななめ まえに向けたら、その向きでモデルを出す ----
 function lphAimTick(){
@@ -13956,8 +14017,21 @@ const KID={ on:false, dict:{"確認": "かくにん", "発掘中": "はっくつ
     if(P){ for(const f of ["fillText","strokeText"]){ const o=P[f]; P[f]=function(t, ...a){ return o.call(this, KID.on ? kidText(t) : t, ...a); }; }
         const mt=P.measureText; P.measureText=function(t){ return mt.call(this, KID.on ? kidText(t) : t); }; }
 })();
+function kidKeepRe(){   // 出土品の名前（models.csv）：ひらがなに しない（土師器 → 「つち師器」に ならないように）
+    const rows=(typeof mvArtifactRows==="function") ? mvArtifactRows() : [];
+    if(KID.keepN===rows.length) return KID.keepRe; KID.keepN=rows.length;
+    const names=[...new Set(rows.map(r=>(r.name||"").trim()).filter(n=>/[一-龥々]/.test(n)))].sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+    KID.keepRe = names.length ? new RegExp("("+names.join("|")+")") : null;
+    return KID.keepRe;
+}
 function kidText(t){
     if(typeof t!=="string" || !/[一-龥々]/.test(t)) return t;
+    const kr=kidKeepRe();
+    if(kr && kr.test(t)) return t.split(kr).map((x,i)=> i%2 ? x : kidTextConv(x)).join("");   // 出土品の名前の所は そのまま
+    return kidTextConv(t);
+}
+function kidTextConv(t){
+    if(!t || !/[一-龥々]/.test(t)) return t;
     return t.replace(/超激レア/g,"ちょうげきレア").replace(/激レア/g,"げきレア").replace(KID.re, m=>KID.dict[m]||m)
         .replace(/かくとく/g,"ゲット").replace(/([ァ-ヴー])中/g,"$1ちゅう");   // 「獲得」は「ゲット」に。カタカナの後の「中」は「ちゅう」
 }
