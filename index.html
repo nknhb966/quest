@@ -6922,7 +6922,7 @@ function tickHatch(now, dt){
             const footY=dinoFootY();   // 恐竜の足元（VR/ARは床から1.6m）
             const flying=!!m.userData.flying;
             const _tabarLow=(typeof TABAR!=="undefined" && TABAR.on);   // タブレットARは床の近くに出す
-            const baseY = _tabarLow ? (flying ? 0.5 : 0.3) : footY + (flying ? height : 0);   // タブレットAR：足元を床から0.3m（プテラノドン0.5m）／それ以外は足元の高さ（飛行種は自分の高さ1つ分だけ上）
+            const baseY = _tabarLow ? GROUND_Y + (flying ? 0.5 : 0) : footY + (flying ? height : 0);   // たんけん（タブレットAR）：足元は床の上（プテラノドンだけ0.5m 浮く。ぬりえ などと同じ）／それ以外は足元の高さ（飛行種は自分の高さ1つ分だけ上）
             m.userData.baseY=baseY; m.userData.settled=false;
             m.userData.homeX=cX; m.userData.homeZ=cZ;   // アイドル回転の中心＝C（毎フレーム更新）
             m.userData.origX=cX; m.userData.origZ=cZ;   // 気づく前の定位置（離れたら戻る先）
@@ -6988,10 +6988,22 @@ function digDinoBodyUp(cont, m, want, dt){
     m.rotation.x=-b;   // -＝前を上げる
     m.position.copy(_dbuV.copy(ud._bodyBase).sub(P).applyAxisAngle(_dbuX, -b).add(P));
 }
+// プレイヤーの位置（なめらか）：近くにいる時、タブレットの手ぶれや首の小さな動きで 向き・寄る量が毎フレーム変わり、恐竜が ふるえて見えるのを防ぐ
+const DIG_CAM_SMOOTH={ tau:0.35, jump:1.5, nearR:0.5, turnDead:0.04 };   // tau＝なめらかさ(秒)／jump＝これ(m)以上 一度に動いたら そのまま（置き直し）／nearR＝体のはば＋これ(m)より近い時は 体を回さない／turnDead＝これ(rad)より小さい向きの差は回さない
+const _adCamS=new THREE.Vector3(); let _adCamInit=false;
+function digCamSmooth(raw, dt){
+    if(!_adCamInit || _adCamS.distanceTo(raw)>DIG_CAM_SMOOTH.jump){ _adCamS.copy(raw); _adCamInit=true; return _adCamS; }
+    return _adCamS.lerp(raw, 1-Math.exp(-Math.max(0,dt)/DIG_CAM_SMOOTH.tau));
+}
+function digTooNear(cont, camW){   // プレイヤーが 体の中心の すぐ近く（向きが定まらない）
+    const fp=digDinoFootprint(cont), sc=cont.scale.x||1, half=fp ? Math.min(fp.x1-fp.x0, fp.z1-fp.z0)*sc*0.5 : 0.3;
+    const x=cont.userData.homeX??cont.position.x, z=cont.userData.homeZ??cont.position.z;
+    return Math.hypot(camW.x-x, camW.z-z) < half+DIG_CAM_SMOOTH.nearR;
+}
 // 出てきた恐竜のアイドル動作（足踏み＝個体ごとにバラす／尻尾ふり／ゆっくり回転）
 const _adCam=new THREE.Vector3(),_adFwd=new THREE.Vector3(),_adAxis=new THREE.Vector3(),_adToP=new THREE.Vector3(),_adHp1=new THREE.Vector3(),_adHp2=new THREE.Vector3();   // animateDigDinos用スクラッチ
 function animateDigDinos(now, dt){
-    const camW=(typeof camera!=="undefined")? camera.getWorldPosition(_adCam) : null;
+    const camW=(typeof camera!=="undefined")? digCamSmooth(camera.getWorldPosition(_adCam), dt) : null;   // プレイヤーの位置は なめらかにして使う（手ぶれ・首の小さな動きで 恐竜が ふるえないように）
     dinoDigModels.forEach(cont=>{ if(!cont||!cont.visible) return;
         const m=cont.userData.model; if(!m) return;
         const spd=cont.userData.animSpeed||1, off=cont.userData.animPhase||0, ph=now*0.006*spd + off;
@@ -7029,11 +7041,11 @@ function animateDigDinos(now, dt){
         cont.rotation.y += spin;
 
         // ── 対面時：body向きをプレイヤーへ補間（faceAmtで寄せる）──
-        if(camW && faceAmt>0.01 && !(_cb && _cb.walking)){   // 歩いている間は 行き先を向く（cardDinoTick）
+        if(camW && faceAmt>0.01 && !(_cb && _cb.walking) && !(now<(cont.userData._kaUntil||0)) && !digTooNear(cont, camW)){   // 歩いている間は 行き先を向く（cardDinoTick）。はなれている途中・近すぎる時は 回さない（ふるえ防止）
             const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
             const desired=Math.atan2(camW.x-cx, camW.z-cz);   // +Zをプレイヤーへ
             let d=desired-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
-            cont.rotation.y += d*Math.min(1, dt*DINO_FACE.turnEase)*faceAmt;
+            if(Math.abs(d)>DIG_CAM_SMOOTH.turnDead) cont.rotation.y += d*Math.min(1, dt*DINO_FACE.turnEase)*faceAmt;
         }
 
         // ── 気づいたらプレイヤーへ寄る（後退なし・最大俯角で頭打ち・出現後5秒は移動しない）──
@@ -7058,7 +7070,7 @@ function animateDigDinos(now, dt){
                 if(longNeck){ idealDxz += 0.3*L; }
                 const headDxz=Math.hypot(camW.x-hp.x, camW.z-hp.z);   // 頭とプレイヤーの現在水平距離
                 const dx=camW.x-ox, dz=camW.z-oz; const dd=Math.hypot(dx,dz);
-                if(dd>1e-3){
+                if(dd>0.3){   // 近すぎる時は 寄る向きが定まらない（ふるえ防止）
                     const ux=dx/dd, uz=dz/dd;   // C→プレイヤー方向
                     let s=(headDxz - idealDxz);   // 頭が理想より遠ければ寄る（近すぎても引かない）
                     const R=L*(DINO_FACE.approachMul||0.4);
@@ -7121,7 +7133,7 @@ function animateDigDinos(now, dt){
             if(cont.userData.settled) cont.position.y = cont.userData.baseY + (1-Math.cos(sph*0.0016*spd))*0.09;
         } else {
             if(m.userData.legs) m.userData.legs.forEach(p=>{ p.rotation.x = Math.sin(ph + p.userData.phase)*0.32; });
-            if(cont.userData.settled) cont.position.y = cont.userData.baseY + Math.abs(Math.sin(sph*0.006*spd))*0.045;
+            if(cont.userData.settled) cont.position.y = cont.userData.baseY + ((typeof TABAR!=="undefined" && TABAR.on) ? 0 : Math.abs(Math.sin(sph*0.006*spd))*0.045);   // たんけん：上下に はねない（いつも 床の上）
         }
         if(m.userData.tail) m.userData.tail.rotation.y = Math.sin(now*0.003*spd + (cont.userData.tailPhase||0))*0.28;
         if(_cb) cardDinoJoyApply(cont, now, dt, camW);   // タッチで よろこぶ（ほって かえす と同じ：はねる・くるっと まわる・ふりふり）
@@ -7145,14 +7157,15 @@ function digDinoFootprint(cont){   // 恐竜の足もとの四角（コンテナ
     if(box.isEmpty()) return null;
     return (u._fp={ x0:box.min.x, x1:box.max.x, z0:box.min.z, z1:box.max.z });
 }
-function keepAwayDisp(px, pz, cx, cz, ry, fp, sc){   // プレイヤー(px,pz)が 四角の中 → 恐竜を動かす量（ワールド）。外なら null
+function keepAwayDisp(px, pz, cx, cz, ry, fp, sc, prevK){   // プレイヤー(px,pz)が 四角の中 → 恐竜を動かす量（ワールド）。外なら null。prevK＝前の はなれる向き（急に変えない）
     const c=Math.cos(ry), s=Math.sin(ry), dx=px-cx, dz=pz-cz;
     const lx=c*dx-s*dz, lz=s*dx+c*dz, M=KEEP_AWAY.margin;
     const x0=fp.x0*sc-M, x1=fp.x1*sc+M, z0=fp.z0*sc-M, z1=fp.z1*sc+M;
     if(!(lx>x0 && lx<x1 && lz>z0 && lz<z1)) return null;
     const pen=[lx-x0, x1-lx, lz-z0, z1-lz]; let k=0; for(let i=1;i<4;i++) if(pen[i]<pen[k]) k=i;
+    if(prevK!=null && prevK!==k && pen[prevK] < pen[k]*1.6) k=prevK;   // 前の向きと あまり変わらなければ、前の向きのまま（向きが行ったり来たりして ふるえないように）
     const d=pen[k]+KEEP_AWAY.extra, dlx=(k===0? d : k===1? -d : 0), dlz=(k===2? d : k===3? -d : 0);   // プレイヤーが こちら側に出られるよう、恐竜は反対へ
-    return { x:c*dlx+s*dlz, z:-s*dlx+c*dlz };
+    return { x:c*dlx+s*dlz, z:-s*dlx+c*dlz, k };
 }
 // 恐竜どうし：足もとの四角（体の向きつき）が重なったら、重なりが いちばん小さい向きへ おたがいに 少しずつ はなれる
 function digDinoMove(cont, mx, mz){
@@ -7192,7 +7205,8 @@ function digDinoSeparate(dt){
 }
 function digDinoKeepAway(cont, camW, dt){
     const fp=digDinoFootprint(cont); if(!fp) return;
-    const u=cont.userData, D=keepAwayDisp(camW.x, camW.z, cont.position.x, cont.position.z, cont.rotation.y, fp, cont.scale.x||1); if(!D) return;
+    const u=cont.userData, D=keepAwayDisp(camW.x, camW.z, cont.position.x, cont.position.z, cont.rotation.y, fp, cont.scale.x||1, u._kaK); if(!D){ u._kaK=null; return; }
+    u._kaK=D.k; u._kaUntil=performance.now()+600;   // はなれている間（と少しのあいだ）は、体を回さない（四角の向きが変わって ふるえないように）
     const k=Math.min(1, dt*KEEP_AWAY.speed);
     digDinoMove(cont, D.x*k, D.z*k);   // もどってこないように、定位置も ずらす
 }
@@ -7216,7 +7230,7 @@ function cardDinoTick(cont, m, now, dt, camW){
     if(u._noticeAt && u._noticeAt!==S.seenNotice){ S.seenNotice=u._noticeAt;   // 視界に プレイヤーが入った → 止まって プレイヤーを見る（間隔を あける・向き直り中は しない）
         if(S.state!=="look" && !(S.state==="walk" && S.turning) && now>=(S.lookCool||0)){ S.state="look"; S.until=now+_cdRnd(CARD_DINO.lookMs); S.sniffUntil=0; out.sniff=0; out.look=true; S.lookCool=now+3600000; } }
     if(S.state==="pause" || S.state==="look"){
-        if(S.state==="look" && camW){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn); }
+        if(S.state==="look" && camW && !(now<(u._kaUntil||0)) && !digTooNear(cont, camW)){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); if(Math.abs(d)>DIG_CAM_SMOOTH.turnDead) cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn); }
         if(now>S.until && now>S.sniffUntil){   // つぎ：歩く（行き先＝掘った場所のまわり）
             if(S.state==="look") S.lookCool=now+NOTICE_LOOK.cooldownMs;   // 見終わった：しばらくは 止まって見ない
             const fp=digDinoFootprint(cont), sc=cont.scale.x||1, L=fp ? Math.max(fp.x1-fp.x0, fp.z1-fp.z0)*sc*0.5 : 1;
@@ -7241,7 +7255,7 @@ function cardDinoTick(cont, m, now, dt, camW){
 function cardDinoJoyApply(cont, now, dt, camW){   // ほって かえす（lphWalkTick の LPH.joy）と同じ動き：プレイヤーの方を向いて よろこぶ
     const J=cont.userData._joy; if(!J) return;
     const r=Math.min(1,(now-J.t0)/J.dur), slow=LPH_CFG.joySlow, m=cont.userData.model, tail=m && m.userData ? m.userData.tail : null;
-    if(camW){ const x=cont.userData.homeX??cont.position.x, z=cont.userData.homeZ??cont.position.z; J.yaw0=Math.atan2(camW.x-x, camW.z-z); }   // プレイヤーの方
+    if(camW && !digTooNear(cont, camW)){ const x=cont.userData.homeX??cont.position.x, z=cont.userData.homeZ??cont.position.z; J.yaw0=Math.atan2(camW.x-x, camW.z-z); }   // プレイヤーの方（近すぎる時は 今の向きのまま）
     { let d=J.yaw0-J.base; d=Math.atan2(Math.sin(d),Math.cos(d));   // 体の向きを プレイヤーへ（ほって かえす：喜ぶ時の向き直りの速さ）
       const mx=THREE.MathUtils.degToRad(LPH_CFG.turnDegJoy/slow)*dt; J.base+=Math.max(-mx, Math.min(mx, d)); }
     if(J.type==="spin"){   // くるっと1回転
@@ -10590,7 +10604,8 @@ function lphKeepAway(){
     const P=LPH.gp; if(!P || !P.length) return;
     if(LPH.kaModel!==LITE.model){ let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity; for(let i=0;i<P.length;i+=3){ const x=P[i], z=P[i+2]; if(x<x0)x0=x; if(x>x1)x1=x; if(z<z0)z0=z; if(z>z1)z1=z; } LPH.kaFp={x0,x1,z0,z1}; LPH.kaModel=LITE.model; }
     camera.getWorldPosition(_lphCamP);
-    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1); if(!D) return;
+    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1, LPH.kaK); if(!D){ LPH.kaK=null; return; }
+    LPH.kaK=D.k;
     const k=Math.min(1, dt*KEEP_AWAY.speed), mx=D.x*k, mz=D.z*k;
     LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
     const W=LPH.walk; if(W){ W.home.x+=mx; W.home.z+=mz; W.target.x+=mx; W.target.z+=mz; }   // 歩く先も いっしょに ずらす（もどってこない）
