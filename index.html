@@ -10127,6 +10127,7 @@ controllers.forEach(c=>{
  *   ゲームの相棒をVRでなでる時と同じ判定（手の速さ 0.6m/秒 以上）。つかんでいる手は数えない */
 const _liteTP=new THREE.Vector3(), _lvA=new THREE.Vector3(), _lvBox=new THREE.Box3(), _lvH=new THREE.Vector3(), _lvHQ=new THREE.Quaternion(), _lvHN=new THREE.Vector3(), _lvC=new THREE.Vector3();
 const LVR={ t:0, say:null, sayUntil:0, sayTop:0.3, hearts:[], cool:0 };
+const LVR_SAY_SCALE=0.5;   // ヘッドセットの「ARで あそぶ」：恐竜・いぬの セリフ（ふきだし）の大きさ（幅・高さ・文字を まとめて この倍率）
 function liteVRHeld(){ return !LITE.phone && LITE.active && controllers.some(c=>c.userData && c.userData.liteHeld); }
 function liteVRResetHead(){
     const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null;
@@ -10151,7 +10152,7 @@ function liteVRSayClear(){ if(LVR.say){ scene.remove(LVR.say); try{ LVR.say.mate
 function liteVRSay(text, ms){   // セリフ：モデルの頭の上（スプライト）
     liteVRSayClear(); if(!LITE.model || !LITE.group) return;
     const box=_lvBox.setFromObject(LITE.model), h=Math.max(0.05, box.max.y-box.min.y);
-    const w=Math.max(0.22, Math.min(0.6, h*0.9));
+    const w=Math.max(0.22, Math.min(0.6, h*0.9))*LVR_SAY_SCALE;   // ふきだしの幅（高さ・文字の大きさも同じ割合で小さくなる）
     const spr=makeLabelSprite(text, 0xffe6a6, w, 0); spr.renderOrder=3001;   // 深度テスト有効（makeLabelSprite の既定）
     LVR.sayTop=box.max.y-LITE.group.position.y+0.04+w*96/256/2;   // 体のいちばん上より少し上（跳ねる高さは入れない）
     scene.add(spr); LVR.say=spr; LVR.sayUntil=performance.now()+(ms||2000);
