@@ -5229,6 +5229,11 @@ Chunk.prototype.buildGeo=function(){   // 粒 → 面（形）。保存した形
 };
 voxCacheLoad();   // 起動してすぐ読み始める（プリロードは読み終わるのを少し待つ）
 
+// ===== 「あるく」：視界に入ったら 止まって見る の間隔と境目（ぬりえ・ARで あそぶ・たんけん 共通）=====
+//   ・一度 見たら、見終わってから cooldownMs のあいだは 止まらない（顔を向けるのは つづける）
+//   ・体を回している途中では 反応しない（行き先へ向き直る時に プレイヤーの方を横切っても 止まらない）
+//   ・境目で ちらつかない：入る＝前 左右 DINO_FACE.frontDeg°・体長×noticeMul 以内／出る＝exitDeg° か 距離×exitDistMul を こえた時
+const NOTICE_LOOK={ cooldownMs:10000, exitDeg:110, exitDistMul:1.15 };
 // ===== 恐竜「気づく→対面→覗き込む→戻る」パラメータ（調整しやすく定数化）=====
 const DINO_FACE = {
     noticeMul: 1.6,     // 気づく距離＝体長×これ
@@ -7003,7 +7008,9 @@ function animateDigDinos(now, dt){
             const fwd=_adFwd.set(0,0,1).applyAxisAngle(_adAxis.set(0,1,0), cont.rotation.y);
             const toP=_adToP.set(dx,0,dz); const pd=toP.length();
             let ang=999; if(pd>1e-3){ toP.normalize(); ang=Math.acos(THREE.MathUtils.clamp(fwd.dot(toP),-1,1))*180/Math.PI; }
-            facing = (dist<=notice) && (ang<=DINO_FACE.frontDeg);
+            facing = cont.userData._noticed   // 境目で ちらつかないよう、気づいている間は 少し広い範囲を「まだ見えている」とする
+                ? (dist<=notice*NOTICE_LOOK.exitDistMul) && (ang<=NOTICE_LOOK.exitDeg)
+                : (dist<=notice) && (ang<=DINO_FACE.frontDeg);
         }
         // 対面度合いを補間（0=展示 / 1=対面）
         const target = facing?1:0;
@@ -7206,11 +7213,12 @@ function cardDinoTick(cont, m, now, dt, camW){
     if(now<S.sniffUntil){ const k=Math.sin(Math.min(1,(S.sniffUntil-now)/400)*Math.PI/2); out.sniff=THREE.MathUtils.degToRad(CARD_DINO.sniffDeg)*k + Math.sin(now*0.025)*0.05; }
     if(LDIG.dinoMove!=="move" || u._joy) return out;   // とまる（よろこんでいる間も その場）
     out.noSpin=true;
-    if(u._noticeAt && u._noticeAt!==S.seenNotice){ S.seenNotice=u._noticeAt;   // 視界に プレイヤーが入った → 止まって プレイヤーを見る
-        if(S.state!=="look"){ S.state="look"; S.until=now+_cdRnd(CARD_DINO.lookMs); S.sniffUntil=0; out.sniff=0; out.look=true; } }
+    if(u._noticeAt && u._noticeAt!==S.seenNotice){ S.seenNotice=u._noticeAt;   // 視界に プレイヤーが入った → 止まって プレイヤーを見る（間隔を あける・向き直り中は しない）
+        if(S.state!=="look" && !(S.state==="walk" && S.turning) && now>=(S.lookCool||0)){ S.state="look"; S.until=now+_cdRnd(CARD_DINO.lookMs); S.sniffUntil=0; out.sniff=0; out.look=true; S.lookCool=now+3600000; } }
     if(S.state==="pause" || S.state==="look"){
         if(S.state==="look" && camW){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn); }
         if(now>S.until && now>S.sniffUntil){   // つぎ：歩く（行き先＝掘った場所のまわり）
+            if(S.state==="look") S.lookCool=now+NOTICE_LOOK.cooldownMs;   // 見終わった：しばらくは 止まって見ない
             const fp=digDinoFootprint(cont), sc=cont.scale.x||1, L=fp ? Math.max(fp.x1-fp.x0, fp.z1-fp.z0)*sc*0.5 : 1;
             for(let n=0;n<6;n++){ const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*CARD_DINO.wanderR;
                 S.gx=S.cx+Math.cos(a)*r; S.gz=S.cz+Math.sin(a)*r;
@@ -7226,6 +7234,7 @@ function cardDinoTick(cont, m, now, dt, camW){
     const L=Math.max(0.6, u.bodyLen||1), v=CARD_DINO.speed*Math.min(2, Math.max(0.6, L/2));
     if(dl<0.08){ S.state=Math.random()<0.5 ? "look" : "pause"; S.until=now+_cdRnd(S.state==="look" ? CARD_DINO.lookMs : CARD_DINO.pauseMs); return out; }
     let d=Math.atan2(dx, dz)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn);   // ゆっくり向きを変える
+    S.turning = Math.abs(d)>0.35;   // 向き直り中（このあいだは 視界に入っても 止まらない）
     if(Math.abs(d)<0.7){ const st=Math.min(dl, v*dt*(1-Math.abs(d)/0.7*0.7)); u.origX=ox+dx/dl*st; u.origZ=oz+dz/dl*st; }   // だいたい向いてから 歩き出す
     out.walking=true; return out;
 }
@@ -7263,7 +7272,7 @@ function cardDinoTap(ndcX, ndcY, maxD){   // 掘り出した恐竜を タッチ 
     const u=best.userData, sz=new THREE.Box3().setFromObject(best).getSize(new THREE.Vector3());
     const types=["hop","spin","wiggle"].filter(t=>t!==u._lastJoy), type=types[Math.floor(Math.random()*types.length)]; u._lastJoy=type;
     u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*LPH_CFG.joySlow, type, base:best.rotation.y, yaw0:best.rotation.y, h:Math.max(0.01, sz.y*0.15) };   // ほって かえす と同じ長さ・高さ
-    if(u._cd){ u._cd.state="look"; u._cd.until=performance.now()+Math.max(2600, u._joy.dur+800); u._cd.gx=u.origX??best.position.x; u._cd.gz=u.origZ??best.position.z; }   // 止まって こちらを見る
+    if(u._cd){ u._cd.state="look"; u._cd.lookCool=performance.now()+3600000; u._cd.until=performance.now()+Math.max(2600, u._joy.dur+800); u._cd.gx=u.origX??best.position.x; u._cd.gz=u.origZ??best.position.z; }   // 止まって こちらを見る
     try{ sfxCry(); }catch(_){ } try{ vibrate(60,0.5); }catch(_){ }
     const px=TABAR.tapPx||{ x:innerWidth/2, y:innerHeight/2 };
     cardDinoSay(cardDinoJoyLine(u.dinoKey, type), px);
@@ -10566,8 +10575,10 @@ function lphWalkNotice(W, now){   // 恐竜の視界（前 左右90°・体長×
     const dx=_lphCamP.x-LITE.targetPos.x, dz=_lphCamP.z-LITE.targetPos.z, dist=Math.hypot(dx,dz);
     const L=lphBodyLen(), notice=L*DINO_FACE.noticeMul*(_lphIsPtera(LITE.model)?3:1);
     let ang=999; if(dist>1e-3){ const fx=Math.sin(W.yaw), fz=Math.cos(W.yaw); ang=Math.acos(Math.max(-1,Math.min(1,(fx*dx+fz*dz)/dist)))*180/Math.PI; }
-    const seen=(dist<=notice && ang<=DINO_FACE.frontDeg);
-    if(seen && !W.noticed && (W.state==="pause" || W.state==="turn" || W.state==="walk")){ W.state="look"; W.lookFaced=false; W.lookT0=now; W.until=now+60000; }
+    const seen = W.noticed   // 境目で ちらつかないよう、見えている間は 少し広い範囲を「まだ見えている」とする
+        ? (dist<=notice*NOTICE_LOOK.exitDistMul && ang<=NOTICE_LOOK.exitDeg)
+        : (dist<=notice && ang<=DINO_FACE.frontDeg);
+    if(seen && !W.noticed && (W.state==="pause" || W.state==="walk") && now>=(W.lookCool||0)){ W.state="look"; W.lookFaced=false; W.lookT0=now; W.until=now+60000; }   // 向き直り中（turn）・見終わってすぐ は 止まらない
     W.noticed=seen;
 }
 function lphKeepAway(){
@@ -11061,7 +11072,7 @@ function lphWalkTick(){
             const left = turnBody ? lphTurn(W, lphFaceCamYaw(), LPH_CFG.turnDegLook, dt) : 0;
             if(!W.lookFaced && (left<THREE.MathUtils.degToRad(10) || now-(W.lookT0||now)>3000)){ W.lookFaced=true; W.until=now+2200+Math.random()*1200; }
             if(head){ const g=liteGaze(head, pv); wantX=g.x; wantY=g.y; }
-            if(W.lookFaced && now>=W.until){ W.state="pause"; W.until=now+(W.off ? 1200+Math.random()*1800 : 200); }
+            if(W.lookFaced && now>=W.until){ W.state="pause"; W.until=now+(W.off ? 1200+Math.random()*1800 : 200); W.lookCool=now+NOTICE_LOOK.cooldownMs; }   // 見終わった：しばらくは 止まって見ない
         } else if(W.state==="sniff"){
             wantX=THREE.MathUtils.degToRad(38)+Math.sin(now*0.0096)*0.075;   // 鼻先を下げて嗅ぐ（ゲームの相棒と同じ。「とまる」だけ）
             if(now>=W.until){ W.state="pause"; W.until=now+(W.off ? 1200+Math.random()*1800 : 200); }
