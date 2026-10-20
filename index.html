@@ -7180,7 +7180,7 @@ function tankenDino(){ try{ return !!(TABAR.on && ldigPlaying()); }catch(_){ ret
 // ---- たんけん共通：プレイヤーが恐竜の からだの中に入らないようにする ----
 //   恐竜の足もとの四角（体の向きに合わせた 長さ×はば）＋ KEEP_AWAY.margin の中にプレイヤーがいたら、
 //   いちばん近い へり の外まで、恐竜の方が ゆっくり はなれる（おしり・あたま・よこ のうち 近い方）
-const KEEP_AWAY={ margin:0.35, extra:0.15, speed:2.0 };   // margin＝プレイヤーの体の半径(m)／extra＝少し よけいに はなれる(m)／speed＝はなれる速さ
+const KEEP_AWAY={ margin:0.35, marginVR:0.10, extra:0.15, speed:2.0 };   // margin＝プレイヤーの体の半径(m)（スマホ・タブレット・たんけん）／marginVR＝ヘッドセットの「ARで あそぶ」：頭（ヘッドセット）から体の四角までの距離(m)。体の中に入らないだけで、なるべく近づける／extra＝線から早く抜けるための上乗せ(m)／speed＝はなれる速さ
 const _kaB=new THREE.Box3(), _kaM=new THREE.Matrix4(), _kaR=new THREE.Matrix4();
 function digDinoFootprint(cont){   // 恐竜の足もとの四角（コンテナの向き・大きさを除いた座標）。いちど測ったら覚える
     const u=cont.userData; if(u._fp) return u._fp;
@@ -7193,9 +7193,9 @@ function digDinoFootprint(cont){   // 恐竜の足もとの四角（コンテナ
     if(box.isEmpty()) return null;
     return (u._fp={ x0:box.min.x, x1:box.max.x, z0:box.min.z, z1:box.max.z });
 }
-function keepAwayDisp(px, pz, cx, cz, ry, fp, sc, prevK){   // プレイヤー(px,pz)が 四角の中 → 恐竜を動かす量（ワールド）。外なら null。prevK＝前の はなれる向き（急に変えない）
+function keepAwayDisp(px, pz, cx, cz, ry, fp, sc, prevK, margin){   // プレイヤー(px,pz)が 四角の中 → 恐竜を動かす量（ワールド）。外なら null。prevK＝前の はなれる向き（急に変えない）／margin＝四角を広げる量（省略＝KEEP_AWAY.margin）
     const c=Math.cos(ry), s=Math.sin(ry), dx=px-cx, dz=pz-cz;
-    const lx=c*dx-s*dz, lz=s*dx+c*dz, M=KEEP_AWAY.margin;
+    const lx=c*dx-s*dz, lz=s*dx+c*dz, M=(margin!=null) ? margin : KEEP_AWAY.margin;
     const x0=fp.x0*sc-M, x1=fp.x1*sc+M, z0=fp.z0*sc-M, z1=fp.z1*sc+M;
     if(!(lx>x0 && lx<x1 && lz>z0 && lz<z1)) return null;
     const pen=[lx-x0, x1-lx, lz-z0, z1-lz]; let k=0; for(let i=1;i<4;i++) if(pen[i]<pen[k]) k=i;
@@ -10780,7 +10780,7 @@ function lphKeepAway(){
     const P=LPH.gp; if(!P || !P.length) return;
     if(LPH.kaModel!==LITE.model){ let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity; for(let i=0;i<P.length;i+=3){ const x=P[i], z=P[i+2]; if(x<x0)x0=x; if(x>x1)x1=x; if(z<z0)z0=z; if(z>z1)z1=z; } LPH.kaFp={x0,x1,z0,z1}; LPH.kaModel=LITE.model; }
     camera.getWorldPosition(_lphCamP);
-    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1, LPH.kaK); if(!D){ LPH.kaK=null; return; }
+    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1, LPH.kaK, LITE.phone ? KEEP_AWAY.margin : KEEP_AWAY.marginVR); if(!D){ LPH.kaK=null; return; }   // ヘッドセット：頭から10cm（体の中に入らないだけ）
     LPH.kaK=D.k;
     const k=Math.min(1, dt*KEEP_AWAY.speed), mx=D.x*k, mz=D.z*k;
     LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
