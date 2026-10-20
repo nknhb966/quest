@@ -818,7 +818,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>⛏ 掘る</h3>
         <p>反応が強い場所で<b>ブロック</b>が現れ、掘れる距離と向きが整うと<b>脈打つように光ります</b>。光っている間にブロックを掘ると土が削れ、出土すると消えます。<b>番号が小さい（レアな）ものほど</b>掘る回数が多く、相棒の<b>「ちから」</b>が高いほど1回で多く掘り進めます。</p>
         <p class="k">スマホ：<b>光るブロックをタップ</b>／PC：狙って左クリック／VR：狙って手（道具）を振る</p>
-        <p class="k">恐竜を掘ると、卵から恐竜が生まれて こちらを向きます。そのあとの動きは<b>「🚶 あるく」</b>（おすすめ。掘った場所を中心に、体長の2倍の円の中を歩き回り、ときどき こちらを見る。視界にプレイヤーが入ると止まって こちらを向き、のぞき込みながら少し近づいてくる。見おわると その場所から また歩き、歩きながらも顔をこちらに向ける）か<b>「🧍 とまる」</b>（その場で じっとしたり、ゆっくり向きを変えたり、においをかいだりする。視界にプレイヤーが入ると こちらを向いて のぞき込み、少し近づいてくる。しばらく見ると においをかいだり よそを向いたりして、また見る）です。見ている間は、プレイヤーが横や後ろへ回っても、体ごと ゆっくり向きを変えて見つづけます（歩きながら見ている時に、顔を向けきれない向きになったら、立ち止まって見ます）。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。VR・ARでも画面操作で発掘するときも同じで、おすすめ設定オフのときにメニューの「掘り出した恐竜の動き」で選べます。恐竜どうしは重ならず、プレイヤーに近づきすぎると はなれます（VR・AR＝ヘッドセットが恐竜の目から15cm／画面操作＝体のまわり35cm）。画面操作で発掘するときは、掘り出した恐竜を<b>タップ（PCは狙って左クリック）</b>すると よろこびます。</p>
+        <p class="k">恐竜を掘ると、卵から恐竜が生まれて こちらを向きます。そのあとの動きは<b>「🚶 あるく」</b>（おすすめ。掘った場所を中心に、体長の2倍の円の中を歩き回り、ときどき こちらを見る。視界にプレイヤーが入ると止まって こちらを向き、のぞき込みながら少し近づいてくる。見おわると その場所から また歩き、歩きながらも顔をこちらに向ける）か<b>「🧍 とまる」</b>（その場で じっとしたり、ゆっくり向きを変えたり、においをかいだりする。視界にプレイヤーが入ると こちらを向いて のぞき込み、少し近づいてくる。しばらく見ると においをかいだり よそを向いたりして、また見る）です。見ている間は、プレイヤーが横や後ろへ回っても、体ごと ゆっくり向きを変えて見つづけます（歩きながら見ている時に、顔を向けきれない向きになったら、立ち止まって見ます）。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。VR・ARでも画面操作で発掘するときも同じで、おすすめ設定オフのときにメニューの「掘り出した恐竜の動き」で選べます。恐竜どうしは重ならず、プレイヤーに近づきすぎると すーっと なめらかに はなれます（VR・AR＝ヘッドセットが恐竜の目から15cm／画面操作＝体のまわり35cm）。顔の目の前にいる間は、体の向きも ゆっくり変えます。画面操作で発掘するときは、掘り出した恐竜を<b>タップ（PCは狙って左クリック）</b>すると よろこびます。</p>
       </section>
       <section>
         <h3>🐶 相棒（聞く・なでる）</h3>
@@ -5314,7 +5314,7 @@ voxCacheLoad();   // 起動してすぐ読み始める（プリロードは読�
 //   ・体を回している途中では 反応しない（行き先へ向き直る時に プレイヤーの方を横切っても 止まらない）
 //   ・境目で ちらつかない：入る＝前 左右 DINO_FACE.frontDeg°・体長×noticeMul 以内／出る＝exitDeg° か 距離×exitDistMul を こえた時
 const NOTICE_LOOK={ cooldownMs:5000, exitDeg:110, exitDistMul:1.15 };
-const LOOK_TURN={ maxDeg:60, slowDeg:30, deadNear:0.3, done:0.05 };   // 掘り出した恐竜が 見ている間に 体を向ける：いちばん速く(°/秒)／すぐ近く・はなれる途中(°/秒)／その時 これ(rad)より小さい差は回さない／ここ(rad)まで向いたら止める
+const LOOK_TURN={ maxDeg:60, slowDeg:30, deadNear:0.3, done:0.05, faceR:0.8, faceSweep:0.25 };   // 掘り出した恐竜が 見ている間に 体を向ける：いちばん速く(°/秒)／すぐ近く・はなれる途中(°/秒)／その時 これ(rad)より小さい差は回さない／ここ(rad)まで向いたら止める／faceR＝プレイヤーが 目から これ(m)以内の時は、体を回して 頭が 横に動く速さを faceSweep(m/秒)までにする（体を回すと 頭が プレイヤーの顔に ぶつかるように 寄ってくるので）
 const LOOK_FREQ={ walkArrive:0.9, cardArrive:1.0, stopLook:0.8, stopRestMs:[600,1500] };   // プレイヤーを見る 回数：あるく（ARで あそぶ・ぬりえ）で 行き先に着いた時に見る割合／たんけんの あるく で着いた時に見る割合／とまる で見る割合と 見た後・かいだ後の休み(ms)
 // ===== 恐竜「気づく→対面→覗き込む→戻る」パラメータ（調整しやすく定数化）=====
 const DINO_FACE = {
@@ -7065,7 +7065,7 @@ function tickHatch(now, dt){
             const _tabarLow=(typeof TABAR!=="undefined" && TABAR.on);   // タブレットARは床の近くに出す
             const baseY = _tabarLow ? GROUND_Y + (flying ? 0.5 : 0) : footY + (flying ? height : 0);   // たんけん（タブレットAR）：足元は床の上（プテラノドンだけ0.5m 浮く。ぬりえ などと同じ）／それ以外は足元の高さ（飛行種は自分の高さ1つ分だけ上）
             m.userData.baseY=baseY; m.userData.settled=false;
-            { const u=m.userData; u._cd=null; u._joy=null; u._noticed=false; u._noticeAt=0; u._faceAmt=0; u._kaK=null; u._kaUntil=0; u._apS=0; u._apCap=null; u._pushUntil=0; }   // 前に出た時の 歩き回る中心・見る・よろこぶ などは 消す（同じ恐竜を また掘った時に、前の場所へ もどらないように）
+            { const u=m.userData; u._cd=null; u._joy=null; u._noticed=false; u._noticeAt=0; u._faceAmt=0; u._kaK=null; u._kaUntil=0; u._apS=0; u._apCap=null; u._pushUntil=0; u._awVx=0; u._awVz=0; u._awWx=0; u._awWz=0; }   // 前に出た時の 歩き回る中心・見る・よろこぶ などは 消す（同じ恐竜を また掘った時に、前の場所へ もどらないように）
             m.userData.homeX=cX; m.userData.homeZ=cZ;   // アイドル回転の中心＝C（毎フレーム更新）
             m.userData.origX=cX; m.userData.origZ=cZ;   // 気づく前の定位置（離れたら戻る先）
             m.userData.bodyLen=depth;   // 体長（前後長・スケール反映済み）＝対面判定の基準
@@ -7221,7 +7221,7 @@ function animateDigDinos(now, dt){
                 if(Math.abs(d) > (near ? LOOK_TURN.deadNear : DIG_CAM_SMOOTH.turnDead)) u._turnCatch=true;   // ずれたら 向き直る（向き終わるまで）
                 if(u._turnCatch){
                     if(Math.abs(d) < LOOK_TURN.done) u._turnCatch=false;
-                    else { const w=look ? 1 : faceAmt, mx=THREE.MathUtils.degToRad(near ? LOOK_TURN.slowDeg : LOOK_TURN.maxDeg)*dt;
+                    else { const w=look ? 1 : faceAmt, mx=Math.min(THREE.MathUtils.degToRad(near ? LOOK_TURN.slowDeg : LOOK_TURN.maxDeg)*dt, digFaceTurnMax(cont, m, camW, dt));   // 顔の目の前では、頭が 横に動く速さを おさえる
                         cont.rotation.y += Math.max(-mx, Math.min(mx, d*Math.min(1, dt*DINO_FACE.turnEase)*w)); }
                 }
             } else u._turnCatch=false;
@@ -7275,7 +7275,8 @@ function animateDigDinos(now, dt){
             cont.position.x=nx; cont.position.z=nz;
             cont.userData.homeX=nx; cont.userData.homeZ=nz;   // 回転中心も移動後Cに追従
             if(typeof TABAR!=="undefined" && TABAR.on && camW && cont.userData.settled) digDinoKeepAway(cont, camW, dt);   // たんけん：プレイヤーが からだの中に入らないよう、少し はなれる
-            else if(_mainDig && cont.userData.settled) digDinoKeepAwayGame(cont, dt);   // ヘッドセット：目と15cm（ARで あそぶ と同じ）／画面操作で発掘する：体のまわり35cm（たんけん と同じ）より近づかない
+            else if(_mainDig && cont.userData.settled) digDinoKeepAwayGame(cont, dt);
+            if(cont.userData.settled) digDinoAwayStep(cont, dt);   // はなれる動き（プレイヤーから・恐竜どうし）：なめらかに   // ヘッドセット：目と15cm（ARで あそぶ と同じ）／画面操作で発掘する：体のまわり35cm（たんけん と同じ）より近づかない
             // 名称パネルも恐竜について動く（寄ってきた体の下に残って隠れない）。タブレットARは体の手前（プレイヤー側）に出す
             const lb=cont.userData.nameLabel;
             if(lb){ let lx=cont.position.x, lz=cont.position.z; const nx2=lx, nz2=lz;
@@ -7343,7 +7344,9 @@ function digMoveMode(){   // 掘り出した恐竜の動き：たんけん（タ
 // ---- たんけん共通：プレイヤーが恐竜の からだの中に入らないようにする ----
 //   恐竜の足もとの四角（体の向きに合わせた 長さ×はば）＋ KEEP_AWAY.margin の中にプレイヤーがいたら、
 //   いちばん近い へり の外まで、恐竜の方が ゆっくり はなれる（おしり・あたま・よこ のうち 近い方）
-const KEEP_AWAY={ margin:0.35, eyeVR:0.15, marginVR:0, extra:0.15, speed:2.0, speedGame:8.0, speedGameVR:3.0 };   // speedGameVR＝ゲームのヘッドセット（目から15cm）で はなれる速さ（急に はねて ふるえないように ゆっくり）   // speedGame＝たんけん以外の発掘（ヘッドセット・画面操作で発掘する）で はなれる速さ（スティック・キーで歩く速さでも 体に入らない）   // margin＝プレイヤーの体の半径(m)（スマホ・タブレット・たんけん）／eyeVR＝ヘッドセットの「ARで あそぶ」：ヘッドセットと モデルの目の 距離(m)。これより近づくと はなれる／marginVR＝同：目が見つからない モデルの時だけ、ヘッドセットから 体の四角までの距離(m)／extra＝線から早く抜けるための上乗せ(m)／speed＝はなれる速さ
+const KEEP_AWAY={ margin:0.35, eyeVR:0.15, marginVR:0, extra:0.15, speed:2.0, speedGame:8.0, speedEye:6.0, smooth:12, stopV:0.01, eyeBlend:0.05 };   // margin＝プレイヤーの体の半径(m)（スマホ・タブレット・たんけん）／eyeVR＝ヘッドセット：ヘッドセットと モデルの目の 距離(m)。これより近づくと はなれる／marginVR＝同：目が見つからない モデルの時だけ、ヘッドセットから 体の四角までの距離(m)／extra＝線から早く抜けるための上乗せ(m)
+//   はなれる速さ（＝入りこんだ量＋extra に かける数／秒）：speed＝スマホ・タブレット・たんけん・恐竜どうし／speedGame＝画面操作で発掘する（スティック・キーで歩く速さでも 体に入らない）／speedEye＝ヘッドセット（目から15cm。ゲーム・ARで あそぶ）
+//   eyeBlend＝ヘッドセット：はなれる向きを 決める時に 足し合わせる目の 範囲（eyeVR＋これ(m)より近い目）／smooth＝はなれる速さを なめらかに 上げ下げする速さ(/秒)。入ったコマだけ 大きく動くと「動く・止まる」が1コマおきになって ふるえて見えるので、ほしい速さを なめらかに 追いかけて すーっと 下がる／stopV＝これ(m/秒)より おそくなったら 止める
 const _kaB=new THREE.Box3(), _kaM=new THREE.Matrix4(), _kaR=new THREE.Matrix4();
 function digDinoFootprint(cont){   // 恐竜の足もとの四角（コンテナの向き・大きさを除いた座標）。いちど測ったら覚える
     const u=cont.userData; if(u._fp) return u._fp;
@@ -7393,25 +7396,44 @@ function rectOverlap(A, B){   // 2つの四角（向きつき）の重なり：�
     }
     return best;
 }
-function digDinoSeparate(dt){
+// プレイヤーが 顔（目）の目の前（LOOK_TURN.faceR 以内）にいる時：体を回す 1フレームの上限(rad)。頭が 横に動く速さを LOOK_TURN.faceSweep(m/秒)までにする（ほかは Infinity＝制限なし）
+//   体を回すと 体から遠い頭は 速く 横に動き、目の前のプレイヤーの顔に ぶつかるように 寄ってくる（はなれる動きが 間に合わない）
+function digFaceTurnMax(cont, m, camW, dt){
+    if(!camW || !m) return Infinity;
+    const E=lphModelEyes(m); if(!E.length) return Infinity;
+    let ed=Infinity, ex=0, ez=0; for(const e of E){ ed=Math.min(ed, e.distanceTo(camW)); ex+=e.x; ez+=e.z; }
+    if(ed>=LOOK_TURN.faceR) return Infinity;
+    const u=cont.userData, rh=Math.hypot(ex/E.length-(u.homeX??cont.position.x), ez/E.length-(u.homeZ??cont.position.z));
+    return rh>0.05 ? LOOK_TURN.faceSweep/rh*dt : Infinity;
+}
+// ---- はなれる動き（プレイヤーから・恐竜どうし）：このフレームの「ほしい速さ」を ためて、なめらかに 追いかけて 動く ----
+//   入ったフレームだけ 大きく動かすと、「動く・止まる」が1コマおきになって ふるえて見える。速さを なめらかに 上げ下げして すーっと 下がる
+function digDinoAwayAdd(cont, vx, vz){ const u=cont.userData; u._awWx=(u._awWx||0)+vx; u._awWz=(u._awWz||0)+vz; }   // ほしい速さ(m/秒)を 足す
+function digDinoAwayStep(cont, dt){   // 毎フレーム：ためた ほしい速さへ なめらかに 近づけて 動かす
+    const u=cont.userData, a=Math.min(1, dt*KEEP_AWAY.smooth), wx=u._awWx||0, wz=u._awWz||0; u._awWx=0; u._awWz=0;
+    u._awVx=(u._awVx||0)+(wx-(u._awVx||0))*a; u._awVz=(u._awVz||0)+(wz-(u._awVz||0))*a;
+    if(Math.hypot(u._awVx, u._awVz)<KEEP_AWAY.stopV){ u._awVx=0; u._awVz=0; return; }
+    digDinoMove(cont, u._awVx*dt, u._awVz*dt); digDinoPushed(cont);   // もどってこないように、定位置も ずらす
+}
+function digDinoSeparate(dt){   // 恐竜どうし：重なったら はなれる（ほしい速さを 足す。動くのは digDinoAwayStep）
     const list=dinoDigModels.filter(o=>o && o.visible && o.userData && o.userData.settled);
     if(list.length<2) return;
-    const R_=list.map(dinoRect), k=Math.min(1, dt*KEEP_AWAY.speed);
+    const R_=list.map(dinoRect), now=performance.now();
     for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++){
         const A=R_[i], B=R_[j]; if(!A || !B) continue;
         const o=rectOverlap(A, B); if(!o) continue;
-        const h=(o.d+KEEP_AWAY.extra)*0.5*k;   // 半分ずつ
-        digDinoMove(list[i], -o.n[0]*h, -o.n[1]*h); digDinoMove(list[j], o.n[0]*h, o.n[1]*h);
-        digDinoPushed(list[i]); digDinoPushed(list[j]);   // 歩いている恐竜は 立ち止まる（ほかの恐竜に 歩いてぶつかり続けて ふるえないように：cardDinoTick）
-        R_[i]=dinoRect(list[i]); R_[j]=dinoRect(list[j]);
+        const v=(o.d+KEEP_AWAY.extra)*KEEP_AWAY.speed;
+        const pi=now<(list[i].userData._kaUntil||0), pj=now<(list[j].userData._kaUntil||0);   // プレイヤーから はなれている最中か
+        const si = (pi && !pj) ? 0 : (pj && !pi) ? 1 : 0.5;   // プレイヤーに 押されている恐竜は 押し返さない（後ろの恐竜が よける。はさまれて 行ったり来たり しないように）
+        if(si>0) digDinoAwayAdd(list[i], -o.n[0]*v*si, -o.n[1]*v*si);
+        if(si<1) digDinoAwayAdd(list[j], o.n[0]*v*(1-si), o.n[1]*v*(1-si));
     }
 }
-function digDinoKeepAway(cont, camW, dt){
+function digDinoKeepAway(cont, camW, dt){   // たんけん：体の四角＋35cm に入ったら はなれる
     const fp=digDinoFootprint(cont); if(!fp) return;
     const u=cont.userData, D=keepAwayDisp(camW.x, camW.z, cont.position.x, cont.position.z, cont.rotation.y, fp, cont.scale.x||1, u._kaK); if(!D){ u._kaK=null; return; }
     u._kaK=D.k; u._kaUntil=performance.now()+600;   // はなれている間（と少しのあいだ）は、体を回さない（四角の向きが変わって ふるえないように）
-    const k=Math.min(1, dt*KEEP_AWAY.speed);
-    digDinoMove(cont, D.x*k, D.z*k); digDinoPushed(cont);   // もどってこないように、定位置も ずらす
+    digDinoAwayAdd(cont, D.x*KEEP_AWAY.speed, D.z*KEEP_AWAY.speed);
 }
 // ---- たんけん以外の発掘（ヘッドセットのVR/AR・画面操作で発掘する）：恐竜が プレイヤーに 近づきすぎない ----
 //   ヘッドセット＝「ARで あそぶ」と同じ：ヘッドセットと 恐竜の目の距離が KEEP_AWAY.eyeVR(15cm) より近いと はなれる（目が見つからない恐竜は 体の四角＋KEEP_AWAY.marginVR）
@@ -7420,25 +7442,34 @@ function digDinoKeepAway(cont, camW, dt){
 const _kaGameC=new THREE.Vector3();
 function digDinoKeepAwayGame(cont, dt){
     if(typeof camera==="undefined") return;
-    const vr=questXR(), u=cont.userData, cam=camera.getWorldPosition(_kaGameC), k=Math.min(1, dt*(vr ? KEEP_AWAY.speedGameVR : KEEP_AWAY.speedGame));
+    const vr=questXR(), u=cont.userData, cam=camera.getWorldPosition(_kaGameC);
     if(vr){
-        const eyes=lphModelEyes(u.model||cont);
-        if(eyes.length){
-            let bd=Infinity, be=null; for(const e of eyes){ const d=e.distanceTo(cam); if(d<bd){ bd=d; be=e; } }
-            u._kaK=null; if(bd>=KEEP_AWAY.eyeVR) return;
-            let fx=be.x-cam.x, fz=be.z-cam.z, fl=Math.hypot(fx,fz);   // はなれる向き：ヘッドセット → 目（水平）
-            if(fl<1e-4){ fx=cont.position.x-cam.x; fz=cont.position.z-cam.z; fl=Math.hypot(fx,fz)||1; }   // 真上・真下の時は ヘッドセット → 体の中心
-            fx/=fl; fz/=fl;
-            const need=(KEEP_AWAY.eyeVR-bd)+KEEP_AWAY.extra;
+        const eyes=lphModelEyes(u.model||cont), E=eyeAwayDir(eyes, cam, cont.position);
+        if(E){
+            u._kaK=null; if(E.d>=KEEP_AWAY.eyeVR) return;
+            const v=((KEEP_AWAY.eyeVR-E.d)+KEEP_AWAY.extra)*KEEP_AWAY.speedEye;
             u._kaUntil=performance.now()+600;   // はなれている間は 体を回さない（目の位置が動いて ふるえないように）
-            digDinoMove(cont, fx*need*k, fz*need*k); digDinoPushed(cont);   // もどってこないように、定位置も ずらす
+            digDinoAwayAdd(cont, E.x*v, E.z*v);
             return;
         }
     }
     const fp=digDinoFootprint(cont); if(!fp) return;
     const D=keepAwayDisp(cam.x, cam.z, cont.position.x, cont.position.z, cont.rotation.y, fp, cont.scale.x||1, u._kaK, vr ? KEEP_AWAY.marginVR : KEEP_AWAY.margin); if(!D){ u._kaK=null; return; }
     u._kaK=D.k; u._kaUntil=performance.now()+600;
-    digDinoMove(cont, D.x*k, D.z*k); digDinoPushed(cont);
+    const sp=vr ? KEEP_AWAY.speedEye : KEEP_AWAY.speedGame; digDinoAwayAdd(cont, D.x*sp, D.z*sp);
+}
+// ヘッドセット：はなれる向きと 目までの距離。距離＝近い方の目まで／向き＝近い目ほど 重く、ヘッドセット → 目（水平）を 足し合わせた向き
+//   近い方の目 だけへ向けると、顔の正面では 左右の目が 毎フレーム 入れかわって 右ななめ・左ななめに 交互に動き、ふるえて見える。
+//   足し合わせると 向きが なめらかに 変わる（顔の正面では 両目の まん中へ、片方の目の横では その目から はなれる向き）。真上・真下に近い目は 向きが定まらないので 軽く
+function eyeAwayDir(eyes, cam, center){
+    if(!eyes || !eyes.length) return null;
+    let d=Infinity; for(const e of eyes) d=Math.min(d, e.distanceTo(cam));
+    const R=KEEP_AWAY.eyeVR+KEEP_AWAY.eyeBlend; let x=0, z=0;
+    for(const e of eyes){ const de=e.distanceTo(cam), hx=e.x-cam.x, hz=e.z-cam.z, hl=Math.hypot(hx,hz); if(de>=R || hl<1e-4) continue;
+        const w=(R-de)*(hl/Math.max(de,1e-4)); x+=hx/hl*w; z+=hz/hl*w; }
+    let l=Math.hypot(x,z);
+    if(l<1e-5){ x=center.x-cam.x; z=center.z-cam.z; l=Math.hypot(x,z)||1; }   // 向きが定まらない時（真上・真下）は ヘッドセット → 体の中心
+    return { d, x:x/l, z:z/l };
 }
 // ---- 掘り出した恐竜の うごき（たんけん・ヘッドセットのVR/AR・画面操作で発掘する 共通）----
 //   （すべての たんけん：あるいて さがす・そのばで ぐるっと・カードを さがす／ゲーム：ヘッドセット・画面操作で発掘する）
@@ -7495,7 +7526,8 @@ function cardDinoTick(cont, m, now, dt, camW){
     const ox=u.origX??cont.position.x, oz=u.origZ??cont.position.z, dx=S.gx-ox, dz=S.gz-oz, dl=Math.hypot(dx,dz);
     const L=Math.max(0.6, u.bodyLen||1), v=CARD_DINO.speed*Math.min(2, Math.max(0.6, L/2));
     if(dl<0.08){ S.state=Math.random()<LOOK_FREQ.cardArrive ? "look" : "pause"; S.until=now+_cdRnd(S.state==="look" ? CARD_DINO.lookMs : CARD_DINO.pauseMs); out.look=(S.state==="look"); return out; }
-    let d=Math.atan2(dx, dz)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn);   // ゆっくり向きを変える
+    let d=Math.atan2(dx, dz)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
+    { const lim=digFaceTurnMax(cont, m, camW, dt), st=d*Math.min(1, dt*CARD_DINO.turn); cont.rotation.y+=Math.max(-lim, Math.min(lim, st)); }   // ゆっくり向きを変える（顔の目の前では もっと ゆっくり）
     S.turning = Math.abs(d)>0.35;   // 向き直り中（このあいだは 視界に入っても 止まらない）
     if(Math.abs(d)<0.7){ const st=Math.min(dl, v*dt*(1-Math.abs(d)/0.7*0.7)); u.origX=ox+dx/dl*st; u.origZ=oz+dz/dl*st; }   // だいたい向いてから 歩き出す
     out.walking=true; return out;
@@ -7512,7 +7544,7 @@ function cardDinoStay(cont, u, S, out, now, dt, camW){
     }
     if(S.state==="turn"){   // ゆっくり向きを変える（1秒に turnSpeed°）
         let d=S.turnTo-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
-        const st=THREE.MathUtils.degToRad(CARD_DINO.turnSpeed)*dt; cont.rotation.y+=Math.max(-st, Math.min(st, d));
+        const st=Math.min(THREE.MathUtils.degToRad(CARD_DINO.turnSpeed)*dt, digFaceTurnMax(cont, u.model, camW, dt)); cont.rotation.y+=Math.max(-st, Math.min(st, d));   // 顔の目の前では もっと ゆっくり
         if(Math.abs(d)<0.02 || now>=S.until){ S.state="rest"; S.until=now+_cdRnd(CARD_DINO.restMs); }
     } else if(S.state==="sniff"){
         if(now>=S.until){ S.state="rest"; S.until=now+_cdRnd(CARD_DINO.restMs); S.sniffUntil=0; }
@@ -11043,34 +11075,37 @@ function lphModelEyes(model){
     for(const m of ms){ for(const e of m.userData.eyes){ const v=_lphEyeV[n]||(_lphEyeV[n]=new THREE.Vector3()); v.set(e[0],e[1],e[2]).applyMatrix4(m.matrixWorld); _lphEyes.push(v); n++; } }
     return _lphEyes;
 }
-function lphKeepAway(){
+function lphKeepAway(){   // ほしい速さ（lphKeepAwayWant）を なめらかに 追いかけて はなれる（入ったフレームだけ 大きく動かすと ふるえて見える）
     const now=performance.now(), dt=Math.min(0.05, (now-(LPH.kaT||now))/1000); LPH.kaT=now;
+    const want=lphKeepAwayWant();
+    if(want===false){ LPH.kaVx=0; LPH.kaVz=0; return; }   // はなれる動きを しない時：すぐ止める
+    const a=Math.min(1, dt*KEEP_AWAY.smooth), wx=want ? want.x : 0, wz=want ? want.z : 0;
+    LPH.kaVx=(LPH.kaVx||0)+(wx-(LPH.kaVx||0))*a; LPH.kaVz=(LPH.kaVz||0)+(wz-(LPH.kaVz||0))*a;
+    if(Math.hypot(LPH.kaVx, LPH.kaVz)<KEEP_AWAY.stopV){ LPH.kaVx=0; LPH.kaVz=0; return; }
+    const mx=LPH.kaVx*dt, mz=LPH.kaVz*dt;
+    LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
+    const W=LPH.walk; if(W){ W.home.x+=mx; W.home.z+=mz; W.target.x+=mx; W.target.z+=mz; lphWalkBlocked(W, now); }   // 歩く先も いっしょに ずらす（もどってこない）
+}
+function lphKeepAwayWant(){   // はなれたい速さ {x,z}(m/秒)／近すぎない時は null／はなれる動きを しない時は false
     const walking=!!(LPH.walk && !LPH.walk.off);   // ぬりえ・ARで あそぶ など：「あるく」の時／ほって かえす：いつも
-    if(!(LPH.card || walking) || LITE.iar || !LITE.model || !LITE.model.visible || (LPH.hatch && LPH.hatch.phase!=="done") || LPH.g) return;   // iPhone・iPad は歩いても近づかない（恐竜も一緒に動く）
-    if((LITE.paperScale||0)>0 || LPH.paper) return;   // ぬりえと同じ大きさ（机の上の小さな恐竜）：からだが重なることはない
+    if(!(LPH.card || walking) || LITE.iar || !LITE.model || !LITE.model.visible || (LPH.hatch && LPH.hatch.phase!=="done") || LPH.g) return false;   // iPhone・iPad は歩いても近づかない（恐竜も一緒に動く）
+    if((LITE.paperScale||0)>0 || LPH.paper) return false;   // ぬりえと同じ大きさ（机の上の小さな恐竜）：からだが重なることはない
     if(LPH.gpModel!==LITE.model) lphBuildGroundPts();
-    const P=LPH.gp; if(!P || !P.length) return;
+    const P=LPH.gp; if(!P || !P.length) return false;
     if(LPH.kaModel!==LITE.model){ let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity; for(let i=0;i<P.length;i+=3){ const x=P[i], z=P[i+2]; if(x<x0)x0=x; if(x>x1)x1=x; if(z<z0)z0=z; if(z>z1)z1=z; } LPH.kaFp={x0,x1,z0,z1}; LPH.kaModel=LITE.model; }
     camera.getWorldPosition(_lphCamP);
     if(!LITE.phone){   // ヘッドセット：ヘッドセットと モデルの目の 距離で はかる（目が見つからない モデルは 下の 体の四角＝0cm）
-        const eyes=lphModelEyes(LITE.model);
-        if(eyes.length){
-            let bd=Infinity, be=null; for(const e of eyes){ const d=e.distanceTo(_lphCamP); if(d<bd){ bd=d; be=e; } }
-            LPH.kaK=null; if(bd>=KEEP_AWAY.eyeVR) return;
-            let fx=be.x-_lphCamP.x, fz=be.z-_lphCamP.z, fl=Math.hypot(fx,fz);   // はなれる向き：ヘッドセット → 目（水平）
-            if(fl<1e-4){ fx=LITE.targetPos.x-_lphCamP.x; fz=LITE.targetPos.z-_lphCamP.z; fl=Math.hypot(fx,fz)||1; }   // 真上・真下の時は ヘッドセット → 体の中心
-            fx/=fl; fz/=fl;
-            const need=(KEEP_AWAY.eyeVR-bd)+KEEP_AWAY.extra, k=Math.min(1, dt*KEEP_AWAY.speed), mx=fx*need*k, mz=fz*need*k;
-            LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
-            const W=LPH.walk; if(W){ W.home.x+=mx; W.home.z+=mz; W.target.x+=mx; W.target.z+=mz; lphWalkBlocked(W, now); }
-            return;
+        const E=eyeAwayDir(lphModelEyes(LITE.model), _lphCamP, LITE.targetPos);
+        if(E){
+            LPH.kaK=null; if(E.d>=KEEP_AWAY.eyeVR) return null;
+            const v=((KEEP_AWAY.eyeVR-E.d)+KEEP_AWAY.extra)*KEEP_AWAY.speedEye;
+            return { x:E.x*v, z:E.z*v };
         }
     }
-    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1, LPH.kaK, LITE.phone ? KEEP_AWAY.margin : KEEP_AWAY.marginVR); if(!D){ LPH.kaK=null; return; }   // スマホ・タブレット：35cm／ヘッドセット（目が見つからない時）：0cm
+    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1, LPH.kaK, LITE.phone ? KEEP_AWAY.margin : KEEP_AWAY.marginVR); if(!D){ LPH.kaK=null; return null; }   // スマホ・タブレット：35cm／ヘッドセット（目が見つからない時）：体の四角
     LPH.kaK=D.k;
-    const k=Math.min(1, dt*KEEP_AWAY.speed), mx=D.x*k, mz=D.z*k;
-    LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
-    const W=LPH.walk; if(W){ W.home.x+=mx; W.home.z+=mz; W.target.x+=mx; W.target.z+=mz; lphWalkBlocked(W, now); }   // 歩く先も いっしょに ずらす（もどってこない）
+    const sp=LITE.phone ? KEEP_AWAY.speed : KEEP_AWAY.speedEye;
+    return { x:D.x*sp, z:D.z*sp };
 }
 function lphWalkBlocked(W, now){   // 歩いている時に プレイヤーに ふさがれた（はなれる動きが起きた）→ 立ち止まって プレイヤーを見る（歩きつづけて 押し返されるのを くり返して ふるえないように）
     if(W.off || !(W.state==="walk" || W.state==="turn")) return;
