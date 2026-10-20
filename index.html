@@ -7183,7 +7183,7 @@ function tankenDino(){ try{ return !!(TABAR.on && ldigPlaying()); }catch(_){ ret
 // ---- たんけん共通：プレイヤーが恐竜の からだの中に入らないようにする ----
 //   恐竜の足もとの四角（体の向きに合わせた 長さ×はば）＋ KEEP_AWAY.margin の中にプレイヤーがいたら、
 //   いちばん近い へり の外まで、恐竜の方が ゆっくり はなれる（おしり・あたま・よこ のうち 近い方）
-const KEEP_AWAY={ margin:0.35, eyeVR:0.03, marginVR:0, extra:0.15, speed:2.0 };   // margin＝プレイヤーの体の半径(m)（スマホ・タブレット・たんけん）／eyeVR＝ヘッドセットの「ARで あそぶ」：ヘッドセットと モデルの目の 距離(m)。これより近づくと はなれる／marginVR＝同：目が見つからない モデルの時だけ、ヘッドセットから 体の四角までの距離(m)／extra＝線から早く抜けるための上乗せ(m)／speed＝はなれる速さ
+const KEEP_AWAY={ margin:0.35, eyeVR:0.15, marginVR:0, extra:0.15, speed:2.0 };   // margin＝プレイヤーの体の半径(m)（スマホ・タブレット・たんけん）／eyeVR＝ヘッドセットの「ARで あそぶ」：ヘッドセットと モデルの目の 距離(m)。これより近づくと はなれる／marginVR＝同：目が見つからない モデルの時だけ、ヘッドセットから 体の四角までの距離(m)／extra＝線から早く抜けるための上乗せ(m)／speed＝はなれる速さ
 const _kaB=new THREE.Box3(), _kaM=new THREE.Matrix4(), _kaR=new THREE.Matrix4();
 function digDinoFootprint(cont){   // 恐竜の足もとの四角（コンテナの向き・大きさを除いた座標）。いちど測ったら覚える
     const u=cont.userData; if(u._fp) return u._fp;
