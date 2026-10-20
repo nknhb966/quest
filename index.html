@@ -4292,7 +4292,7 @@ const YEAR_CONFIG = {
     challengeTimes:   [30, 60, 0],     // 発掘チャレンジ各ターンの制限時間(秒)。3ターン目=0はユーザー指定(defaultTimeLimit/スライダー)
     defaultTimeLimit: 90,              // タイムアタック/3ターン目の既定制限時間(秒)。スライダー範囲は60〜180
     artTargetH:       0.55,            // 出土品モデルを高さ約this(m)に自動フィット
-    dinoSmallH:       0.30,            // 恐竜「小さい」：ティラノをこの高さ(m)に（他種は比率維持）
+    dinoSmallH:       0.25,            // 恐竜「小さい」：ティラノをこの高さ(m)に（他種は比率維持）
     dinoMidH:         1.2,             // 恐竜「普通」：ティラノをこの高さ(m)に（他種は比率維持）
     collectRarityThresholds: { chogeki:60, geki:90, rare:120, petit:180 } // じっくりコレクション：クリア秒が各値以内→超激/激/レア/プチレア（超えるとノーマル）
 };
@@ -5020,6 +5020,7 @@ Chunk.prototype.eye=function(x,y,z,r){
   const izmin=Math.round((z-0.4)/this.vox), izmax=Math.round((z+0.12)/this.vox);
   const front=(ix,iy)=>{ for(let iz=izmax;iz>=izmin;iz--){ if(this.v.has(ix+"|"+iy+"|"+iz)) return iz; } return null; };
   const refIz=front(cix, Math.round(y/this.vox));   // 目の中心の頭表面の奥行き（基準）
+  (this.eyes||(this.eyes=[])).push([cix*this.vox, y, (refIz!==null ? (refIz+0.5)*this.vox : z)]);   // 目の中心（頭の表面）：ヘッドセットの「ARで あそぶ」で、目からの距離に使う
   const FWD_TOL=3;                                   // これ以上前方に突き出た面（口先/くちばし）には塗らない＝目のはみ出し（黒い線）防止
   for(let ix=ix0;ix<=ix1;ix++) for(let iy=iy0;iy<=iy1;iy++){
     const fz=front(ix,iy);
@@ -5201,11 +5202,12 @@ function voxCacheSaveSoon(){
   }, 4000);
 }
 Chunk.prototype.build=function(){
+  const tagEyes=m=>{ if(this.eyes && this.eyes.length) m.userData.eyes=this.eyes.map(a=>a.slice()); return m; };   // 目の位置（この形の中の座標）
   const sig=(VOXC.on && VOXC.algo)? voxChunkSig(this) : null;   // 保存した形があれば、面づくりをしない
-  if(sig){ const r=VOXC.map.get(sig); if(r){ VOXC.used.add(sig); return new THREE.Mesh(voxGeoFromRec(r), _voxMat); } }
+  if(sig){ const r=VOXC.map.get(sig); if(r){ VOXC.used.add(sig); return tagEyes(new THREE.Mesh(voxGeoFromRec(r), _voxMat)); } }
   const geo0=this.buildGeo();
   if(sig){ const r=voxRecFromGeo(geo0); VOXC.map.set(sig,r); VOXC.used.add(sig); VOXC.dirty.set(sig,r); voxCacheSaveSoon(); }
-  return new THREE.Mesh(geo0,_voxMat);
+  return tagEyes(new THREE.Mesh(geo0,_voxMat));
 };
 Chunk.prototype.buildGeo=function(){   // 粒 → 面（形）。保存した形が無い時だけ
   const v=this.v, S=new VoxFaceSet(this.vox);
@@ -5437,7 +5439,7 @@ function _dogEyes(parent, exx, eyY, frontZ, ox, oy, oz){   // 目＋ハイライ
     let maxIz=-1e9; for(const k of E.v.keys()){ const iz=+k.split("|")[2]; if(iz>maxIz) maxIz=iz; }
     const vox=E.vox, hx0=Math.round(-0.026/vox), hy0=Math.round((eyY+0.016)/vox);
     for(let dx=0;dx<2;dx++) for(let dy=0;dy<2;dy++) E.set(hx0+dx, hy0+dy, maxIz, 0xf2f0f6);
-    const m=E.build(); m.position.set(exx-ox, -oy, -oz); parent.add(m);
+    const m=E.build(); m.userData.eyes=[[0, eyY, frontZ+0.016]]; m.position.set(exx-ox, -oy, -oz); parent.add(m);   // 目の中心（前の面）
     const m2=m.clone(); m2.position.set(-exx-ox, -oy, -oz); parent.add(m2);
 }
 function build_dog(P){
@@ -6637,7 +6639,8 @@ function dinoRealScale(){   // 表示倍率 S（表示高さ＝実寸×S）。re
 }
 function dinoCurScale(){ return dinoRealScale(); }
 function dinoTargetHeight(key){ return realH(key) * dinoRealScale() * (DIG_DINO_SIZE==="big" ? dinoDeformKey(key) : 1); }        // 生成時の目標高さ（m）
-function dinoHoloH(idx){ return realH((DINOS[idx]||{}).key)/REAL_H_MAX*0.6; }  // ホログラムは実寸の高さ比（最大種→0.6m）
+const HOLO_TREX_H=0.25;   // ホログラム（図鑑）：ティラノサウルスの高さ(m)。ほかの恐竜は実寸の高さの比（ほんものどおり）
+function dinoHoloH(idx){ return realH((DINOS[idx]||{}).key)/realH("trex")*HOLO_TREX_H; }
 function eggSize(){   // 卵の直径＝実寸身長の中央値(3.5m)×倍率×0.3（上限0.55）
     const hs=Object.keys(REAL_H).map(k=>REAL_H[k]).sort((a,b)=>a-b);
     const med=(hs[3]+hs[4])/2;
@@ -7180,7 +7183,7 @@ function tankenDino(){ try{ return !!(TABAR.on && ldigPlaying()); }catch(_){ ret
 // ---- たんけん共通：プレイヤーが恐竜の からだの中に入らないようにする ----
 //   恐竜の足もとの四角（体の向きに合わせた 長さ×はば）＋ KEEP_AWAY.margin の中にプレイヤーがいたら、
 //   いちばん近い へり の外まで、恐竜の方が ゆっくり はなれる（おしり・あたま・よこ のうち 近い方）
-const KEEP_AWAY={ margin:0.35, marginVR:0.10, extra:0.15, speed:2.0 };   // margin＝プレイヤーの体の半径(m)（スマホ・タブレット・たんけん）／marginVR＝ヘッドセットの「ARで あそぶ」：頭（ヘッドセット）から体の四角までの距離(m)。体の中に入らないだけで、なるべく近づける／extra＝線から早く抜けるための上乗せ(m)／speed＝はなれる速さ
+const KEEP_AWAY={ margin:0.35, eyeVR:0.03, marginVR:0, extra:0.15, speed:2.0 };   // margin＝プレイヤーの体の半径(m)（スマホ・タブレット・たんけん）／eyeVR＝ヘッドセットの「ARで あそぶ」：ヘッドセットと モデルの目の 距離(m)。これより近づくと はなれる／marginVR＝同：目が見つからない モデルの時だけ、ヘッドセットから 体の四角までの距離(m)／extra＝線から早く抜けるための上乗せ(m)／speed＝はなれる速さ
 const _kaB=new THREE.Box3(), _kaM=new THREE.Matrix4(), _kaR=new THREE.Matrix4();
 function digDinoFootprint(cont){   // 恐竜の足もとの四角（コンテナの向き・大きさを除いた座標）。いちど測ったら覚える
     const u=cont.userData; if(u._fp) return u._fp;
@@ -9899,9 +9902,9 @@ async function liteArtSwitchAsync(idx){
 // Liteの恐竜の100%＝全種共通の倍率（恐竜モデルどうしの大きさの比＝実寸の比をそのまま保つ）
 //   ヘッドセット：ティラノサウルスの高さ 1.2m（ほかの恐竜は実寸の比のまま）
 //   スマホ・タブレット（ARで おおきく みる・ARで あそぶ）：ティラノサウルスの高さ 1.2m。ほかの恐竜は 恐竜ごとのデフォルメ（dinoDeform＝実寸の比の平方根）
-//   用紙と同じ大きさ（ぬりえを読んだ時・ぬりえを もういちど みる）：基準のプテラノドンの翼幅 paperPteraW（＝phonePteraW×paperScale）。大きさは前と同じ
-const LITE_DINO_REF = { headsetTrexH: 1.2, phoneTrexH: 1.2, phonePteraW: 1.2, paperPteraW: 0.15 };   // phonePteraW：用紙と同じ大きさの割合（paperScale＝paperPteraW/phonePteraW）の基準だけに使う
-let _liteDinoK = { hs:0, ph:0, pt:0 };
+//   ぬりえの おおきさ（ぬりえを読んだ時・ぬりえを もういちど みる）：ティラノサウルスの高さ paperTrexH（＝phoneTrexH×paperScale）。ほかの恐竜は スマホ・タブレットと同じデフォルメ
+const LITE_DINO_REF = { headsetTrexH: 1.2, phoneTrexH: 1.2, paperTrexH: 0.15 };   // paperScale＝paperTrexH/phoneTrexH（プテラノドンの浮く高さ・卵の大きさにも この割合を使う）
+let _liteDinoK = { hs:0, ph:0 };
 function _liteMeasureDino(key, axis){   // 基準の恐竜をLiteと同じ姿勢（中立）・倍率1で測る。状態は元に戻す
     const i=(typeof DINOS!=="undefined")?DINOS.findIndex(d=>d && d.key===key):-1; if(i<0) return 0;
     const m=_liteDinoBuild(i); if(!m) return 0;
@@ -9926,8 +9929,7 @@ function liteDinoScale(m){   // Liteの恐竜の倍率
     return liteDinoK()*(LITE.phone?dinoDeform(LITE.curIdx):1);   // きみの おおきさ（ふだん。「ほって かえす」の きみの おおきさ も）
 }
 function liteDinoK(){
-    if(LITE.phone && (LITE.paperScale||0)>0){ if(!_liteDinoK.pt){ const w=_liteMeasureDino("ptera","x"); _liteDinoK.pt = w>1e-6 ? LITE_DINO_REF.phonePteraW/w : 1; } return _liteDinoK.pt*LITE.paperScale; }   // 用紙と同じ大きさ：基準のプテラノドンの翼幅15cm（前と同じ）
-    if(LITE.phone){ if(!_liteDinoK.ph){ const h=_liteMeasureDino("trex","y"); _liteDinoK.ph = h>1e-6 ? LITE_DINO_REF.phoneTrexH/h : 1; } return _liteDinoK.ph; }   // ふだん：ティラノサウルスの高さ 1.2m
+    if(LITE.phone){ if(!_liteDinoK.ph){ const h=_liteMeasureDino("trex","y"); _liteDinoK.ph = h>1e-6 ? LITE_DINO_REF.phoneTrexH/h : 1; } return _liteDinoK.ph*(LITE.paperScale||1); }   // きみの おおきさ：ティラノサウルスの高さ 1.2m／ぬりえの おおきさ：×paperScale＝15cm
     if(!_liteDinoK.hs){ const h=_liteMeasureDino("trex","y"); _liteDinoK.hs = h>1e-6 ? LITE_DINO_REF.headsetTrexH/h : 1; } return _liteDinoK.hs;
 }
 // 恐竜の大きさの比をデフォルメ（スマホ・タブレットの「モデルを みる」「ARで みる」「ぬりえ」だけ。ゲーム・パソコン・ヘッドセットは実寸の比のまま）
@@ -10566,7 +10568,7 @@ async function enterLiteAR(target, idx, quality, intrinsicScale, opts){   // opt
     LITE.realSize=false;   // 恐竜の大きさ：はじめは きみの おおきさ
     LITE.origin=liteOrigin(opts);   // 入った所（ぬりえ／ARで あそぶ）＝「✕ おわる」の後に戻る画面
     LITE.nuri = (LITE.phone && opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, pick:!!opts.pick } : null;
-    LITE.paperScale = (LITE.nuri && opts && opts.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;   // 用紙と同じ大きさ（「ARで もういちど みる」）。用紙モードはAR内でぬりえを読めた時
+    LITE.paperScale = (LITE.nuri && opts && opts.small) ? LITE_DINO_REF.paperTrexH/LITE_DINO_REF.phoneTrexH : 0;   // 用紙と同じ大きさ（「ARで もういちど みる」）。用紙モードはAR内でぬりえを読めた時
     if(LITE.nuri) LITE.nuri.small=!!(opts && opts.small);   // ぬりえから：（AR内で読み取り→）卵→孵化→左右に歩く
     if(_phone && !LITE.phone) litePhoneShow(false);
     liteSetPick(target, opts);   // 「ARで みる」：ぬりえ／ぬりえなし を選べる
@@ -10771,6 +10773,16 @@ function lphWalkNotice(W, now){   // 恐竜の視界（前 左右90°・体長×
     if(seen && !W.noticed && (W.state==="pause" || W.state==="walk") && now>=(W.lookCool||0)){ W.state="look"; W.lookFaced=false; W.lookT0=now; W.until=now+60000; }   // 向き直り中（turn）・見終わってすぐ は 止まらない
     W.noticed=seen;
 }
+// モデルの目（ワールド座標）：作る時に記録した 目の中心（Chunk.eye／_dogEyes）を、いまの頭の向き・大きさで求める（頭の動きにも ついていく）
+const _lphEyes=[], _lphEyeV=[], _lphEyeMeshes=new WeakMap();   // モデル → 目を持つ形（userData には入れない＝複製の時に困らないように）
+function lphModelEyes(model){
+    _lphEyes.length=0; if(!model) return _lphEyes;
+    let ms=_lphEyeMeshes.get(model);
+    if(!ms){ ms=[]; model.traverse(o=>{ if(o.userData && Array.isArray(o.userData.eyes) && o.userData.eyes.length) ms.push(o); }); _lphEyeMeshes.set(model, ms); }
+    let n=0;
+    for(const m of ms){ for(const e of m.userData.eyes){ const v=_lphEyeV[n]||(_lphEyeV[n]=new THREE.Vector3()); v.set(e[0],e[1],e[2]).applyMatrix4(m.matrixWorld); _lphEyes.push(v); n++; } }
+    return _lphEyes;
+}
 function lphKeepAway(){
     const now=performance.now(), dt=Math.min(0.05, (now-(LPH.kaT||now))/1000); LPH.kaT=now;
     const walking=!!(LPH.walk && !LPH.walk.off);   // ぬりえ・ARで あそぶ など：「あるく」の時／ほって かえす：いつも
@@ -10780,7 +10792,21 @@ function lphKeepAway(){
     const P=LPH.gp; if(!P || !P.length) return;
     if(LPH.kaModel!==LITE.model){ let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity; for(let i=0;i<P.length;i+=3){ const x=P[i], z=P[i+2]; if(x<x0)x0=x; if(x>x1)x1=x; if(z<z0)z0=z; if(z>z1)z1=z; } LPH.kaFp={x0,x1,z0,z1}; LPH.kaModel=LITE.model; }
     camera.getWorldPosition(_lphCamP);
-    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1, LPH.kaK, LITE.phone ? KEEP_AWAY.margin : KEEP_AWAY.marginVR); if(!D){ LPH.kaK=null; return; }   // ヘッドセット：頭から10cm（体の中に入らないだけ）
+    if(!LITE.phone){   // ヘッドセット：ヘッドセットと モデルの目の 距離で はかる（目が見つからない モデルは 下の 体の四角＝0cm）
+        const eyes=lphModelEyes(LITE.model);
+        if(eyes.length){
+            let bd=Infinity, be=null; for(const e of eyes){ const d=e.distanceTo(_lphCamP); if(d<bd){ bd=d; be=e; } }
+            LPH.kaK=null; if(bd>=KEEP_AWAY.eyeVR) return;
+            let fx=be.x-_lphCamP.x, fz=be.z-_lphCamP.z, fl=Math.hypot(fx,fz);   // はなれる向き：ヘッドセット → 目（水平）
+            if(fl<1e-4){ fx=LITE.targetPos.x-_lphCamP.x; fz=LITE.targetPos.z-_lphCamP.z; fl=Math.hypot(fx,fz)||1; }   // 真上・真下の時は ヘッドセット → 体の中心
+            fx/=fl; fz/=fl;
+            const need=(KEEP_AWAY.eyeVR-bd)+KEEP_AWAY.extra, k=Math.min(1, dt*KEEP_AWAY.speed), mx=fx*need*k, mz=fz*need*k;
+            LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
+            const W=LPH.walk; if(W){ W.home.x+=mx; W.home.z+=mz; W.target.x+=mx; W.target.z+=mz; }
+            return;
+        }
+    }
+    const D=keepAwayDisp(_lphCamP.x, _lphCamP.z, LITE.targetPos.x, LITE.targetPos.z, lphYawOf(LITE.targetQuat), LPH.kaFp, LITE.targetScale.x||1, LPH.kaK, LITE.phone ? KEEP_AWAY.margin : KEEP_AWAY.marginVR); if(!D){ LPH.kaK=null; return; }   // スマホ・タブレット：35cm／ヘッドセット（目が見つからない時）：0cm
     LPH.kaK=D.k;
     const k=Math.min(1, dt*KEEP_AWAY.speed), mx=D.x*k, mz=D.z*k;
     LITE.targetPos.x+=mx; LITE.targetPos.z+=mz;
@@ -10957,7 +10983,7 @@ function lphGoPaper(){
     LITE.target="dino"; LITE.isDino=true;
     LITE.nuri={ egg:true, scan:false, small:true, pick:true };   // メイン画面の「ぬりえを もういちど みる」と同じ（ぬった恐竜を選べる）
     LITE.mvPick=false; LITE.selPlain=false; LITE.realSize=false;
-    LITE.paperScale=LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW;
+    LITE.paperScale=LITE_DINO_REF.paperTrexH/LITE_DINO_REF.phoneTrexH;
     if(LITE.iar){ const d=iarPaperDropLoad(); if(d) LITE.iar.drop=d; LITE.iar.aimT=0; }   // 床の高さは litePhonePlaceFront（用紙と同じ大きさ）で決める
     lphNuriRepick(i); lphSnd();
 }
@@ -11068,7 +11094,7 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     litePhoneShow(true);
     LITE.origin=liteOrigin(opts);   // 入った所（ぬりえ／ARで あそぶ）＝「✕ おわる」の後に戻る画面
     LITE.phone=true; LITE.realSize=false; LITE.nuri = (opts && opts.nuri) ? { egg:!!opts.egg, scan:!!opts.scan, small:!!opts.small, pick:!!opts.pick } : null;   // 恐竜の大きさ：はじめは きみの おおきさ
-    LITE.paperScale = (LITE.nuri && LITE.nuri.small) ? LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW : 0;
+    LITE.paperScale = (LITE.nuri && LITE.nuri.small) ? LITE_DINO_REF.paperTrexH/LITE_DINO_REF.phoneTrexH : 0;
     const _drop=(opts && opts.nuri && opts.small) ? iarPaperDropLoad() : 0;   // 「ARで もういちど みる」：さっきの用紙の高さを台にする（Androidで机が床として見つかるのと同じ見え方）
     const _diag=!!(opts && opts.nuri && opts.small && !_drop);                  // 用紙の高さが分からない時：床＝スマホの0.35m下（litePhonePlaceFront。恐竜は水平0.4m先）
     LITE.iar={ stream, video:v, f:0, ori:null, t0:performance.now(), shown:false, stableT:0, diag:_diag, drop:_drop, aimT:0,
@@ -14585,7 +14611,7 @@ addEventListener("resize",()=>{
         if(m){ try{ m.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(m); const s=b.getSize(new THREE.Vector3()); if(isFinite(s.y)) h=s.y; }catch(_){ } }
         _dinoTrexHCache[key]=h; return h;
     }
-    function dinoFactor(smooth, mode){   // mode: fit(小さい=trex0.3m)/mid(普通=trex1.2m)/raw(大きい=trex実寸)。全て共通倍率
+    function dinoFactor(smooth, mode){   // mode: fit(小さい=trex0.25m)/mid(普通=trex1.2m)/raw(大きい=trex実寸)。全て共通倍率
         const th = dinoTrexHeight(smooth) || 1;
         const trexReal = (typeof REAL_H!=="undefined" && REAL_H.trex) ? REAL_H.trex : 4.0;
         const target = (mode==="mid") ? DINO_MID_H : (mode==="raw") ? trexReal : DINO_SMALL_H;
@@ -15880,13 +15906,13 @@ function lphScanDone(key, pose){   // 読めた → その恐竜にして、用�
     if(okPose && LITE.iar){   // iPhone・iPad：用紙の上ではなく、ななめ まえに向けた先の床に出す（「ARで もういちど みる」と同じ。大きさは用紙サイズ）
         camera.getWorldPosition(_lphCamP); const dr=_lphCamP.y-pose.center.y;
         LPH.paper=null; LITE.nuri.small=true; LITE.iar.drop=(dr>0.12 && dr<1.8) ? dr : 0; LITE.iar.aimT=0;
-        LITE.paperScale=LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW;   // プテラノドンの翼幅15cm
+        LITE.paperScale=LITE_DINO_REF.paperTrexH/LITE_DINO_REF.phoneTrexH;   // ぬりえの おおきさ（ティラノサウルスの高さ15cm）
         LPH.floorFound=true; LPH.floorY=0; lph$("lphFloor").classList.remove("on");
     } else if(okPose){
         const _ax=pose.xAxis.clone(); _ax.y=0; if(_ax.lengthSq()<1e-6) _ax.set(1,0,0); _ax.normalize();
         if(!LPH.paper) LPH.floorSave={ found:LPH.floorFound, y:LPH.floorY };   // 本当の床を覚えておく（「ARで おおきく みる」などで用紙の上から戻る時に使う）
         LPH.paper={ center:pose.center.clone(), normal:pose.normal.clone(), xAxis:_ax };   // xAxis＝用紙の横（長い辺）の向き（歩ける範囲に使う）
-        LITE.paperScale=LITE_DINO_REF.paperPteraW/LITE_DINO_REF.phonePteraW;   // 用紙と同じ大きさ（基準のプテラノドンの翼幅15cm）
+        LITE.paperScale=LITE_DINO_REF.paperTrexH/LITE_DINO_REF.phoneTrexH;   // ぬりえの おおきさ（ティラノサウルスの高さ15cm）
         LPH.floorFound=true; LPH.floorY=pose.center.y; lph$("lphFloor").classList.remove("on");   // 床＝用紙の面
     } else { LPH.paper=null; LITE.paperScale=0; }
     const i=dinoIdx(key);
