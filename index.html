@@ -628,6 +628,11 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
           <input id="saSlider" type="range" min="0" max="90" step="5" value="0" style="flex:1;">
           <input id="saNum" type="number" min="0" max="90" step="5" value="0" style="width:64px;">
         </div>
+        <div class="lbl" style="margin-top:12px">プレイヤーのまわりを透過しない半径（m）</div>   <!-- 足もとの円（水平）の中のサイトは 透過率0。外側の約20cmで だんだん透ける。0＝使わない -->
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="srSlider" type="range" min="0" max="3" step="0.1" value="0" style="flex:1;">
+          <input id="srNum" type="number" min="0" max="3" step="0.1" value="0" style="width:64px;">
+        </div>
       </div>
       <div class="opt wide" id="optDigPos" style="display:none">
         <div class="lbl">発掘場所</div>
@@ -872,12 +877,12 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <p class="k"><b>発掘する対象</b>：出土品／恐竜。<b>出土品の説明パネル</b>：出土品の説明パネルを出すか。<b>発掘道具の持ち替え</b>：幅広ブラシと細ピックを持ち替えるか。<b>図鑑カード表示中の時間</b>：止まる／止まらない。<b>恐竜の最大サイズ</b>（本物の大きさまで／上限なし。おすすめ設定オンでは本物の大きさまで）<b>・恐竜が実寸になるフィールド短辺</b>：恐竜を出す大きさ。<b>掘り出した恐竜の動き</b>（恐竜のとき）：あるく／とまる（おすすめ設定オンでは「あるく」）。</p>
         <p class="k"><b>モード</b>・<b>制限時間</b>（60〜180秒）。<b>獲得カードの表示</b>：カード表示／カード非表示。<b>カードのレア度</b>：レア度あり／なし。</p>
         <p class="k"><b>相棒の決め方</b>：しばいぬのみ（相棒はしばいぬだけ）／えらぶ（スタンバイで選ぶ）／ランダム（スタンバイで「カードをひく」）。<b>しばいぬのレベル</b>（しばいぬのみのとき）：固定型＝ステータスは2・2・2のまま／アップ型＝1・1・1から始まり、成績で上がる。<b>相棒の候補</b>：獲得した相棒（しばいぬ＋仲間になった相棒）／全ての相棒。</p>
-        <p class="k"><b>スターブロック</b>：スターあり／なし。<b>サイトモデル</b>（遺跡3D）：表示／非表示と大きさ・透過率（0〜90%。サイトを表示しているとき）。<b>発掘場所</b>：ランダム／固定。<b>ワールドの広さ</b>（サイト非表示のとき）。広さや大きさを変えたときは、上に出る<b>「🔄 まとめて更新」</b>で読み込み直します。</p>
+        <p class="k"><b>スターブロック</b>：スターあり／なし。<b>サイトモデル</b>（遺跡3D）：表示／非表示と大きさ・透過率（0〜90%。サイトを表示しているとき）。透過率の下の「プレイヤーのまわりを透過しない半径」（0〜3m）で、足もとの円の中だけ透過しないようにできます（外側の約20cmで だんだん透けます。0＝使わない）。<b>発掘場所</b>：ランダム／固定。<b>ワールドの広さ</b>（サイト非表示のとき）。広さや大きさを変えたときは、上に出る<b>「🔄 まとめて更新」</b>で読み込み直します。</p>
         <p class="k">発掘チャレンジでは、多くの設定が自動で決まります（獲得カード表示・レア度あり・相棒はえらぶ／獲得した相棒・しばいぬは固定型・スターあり）。おすすめ設定オンでは発掘する対象と広さだけ、オフではさらに<b>3ターン目の制限時間・発掘道具の持ち替え・サイトモデル・恐竜の最大サイズ・実寸になるフィールド短辺・掘り出した恐竜の動き</b>を変えられます。</p>
       </section>
       <section>
         <h3>🎮 操作・移動</h3>
-        <p class="k">VR/AR：左スティックで歩く／右スティックでスナップ回転。右手中指グリップ＋右スティック上下＝視点の高さ（上に倒すと上がる。地面すれすれから、ブラキオサウルスの高さの1.5倍まで）。<br>PC：WASD＋マウス（クリックで視点固定）<br>スマホ：画面左半分でスティック／右半分をなぞって見回す</p>
+        <p class="k">VR/AR：左スティックで歩く／右スティックでスナップ回転。右手中指グリップ＋右スティック上下＝視点の高さ（上に倒すと上がる。地面すれすれから、ブラキオサウルスの高さの1.5倍まで）。<br>PC：WASD＋マウス（クリックで視点固定。見上げられるのは 恐竜で60°・出土品で20°まで。スマホも同じ）<br>スマホ：画面左半分でスティック／右半分をなぞって見回す</p>
       </section>
       <section>
         <h3>🗺 たんけん（ARで あそぶ）</h3>
@@ -4794,25 +4799,47 @@ function updateSiteVis(){
     fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
 }
 function setSiteVisible(v){ siteVisible=!!v; updateSiteVis(); }
-// サイトモデルの透過率（%）：0＝透過なし。材質の不透明度を下げる（元の値は覚えておく）。半透明のサイトは ほかの半透明の物より先に描く（名札・オーラが うすくならない）
-let siteAlphaPct=0;
+// サイトモデルの透過率（%）：0＝透過なし。半透明のサイトは ほかの半透明の物より先に描く（名札・オーラが うすくならない）
+//   プレイヤーの足もとの円（水平の半径 siteSolidR m）の中は 透過率0（外側 SITE_ALPHA_U.uSiteF.value m で だんだん透ける）。
+//   不透明度は 材質の元の値のまま、シェーダーで 円の外だけ 掛ける（SITE_ALPHA_U：全部の材質で共通の値）
+let siteAlphaPct=0, siteSolidR=0;
+const SITE_ALPHA_U={ uSiteP:{ value:new THREE.Vector3() }, uSiteR:{ value:0 }, uSiteA:{ value:1 }, uSiteF:{ value:0.2 } };
+function siteAlphaShader(sh){
+    sh.uniforms.uSiteP=SITE_ALPHA_U.uSiteP; sh.uniforms.uSiteR=SITE_ALPHA_U.uSiteR; sh.uniforms.uSiteA=SITE_ALPHA_U.uSiteA; sh.uniforms.uSiteF=SITE_ALPHA_U.uSiteF;
+    sh.vertexShader=sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vSiteW;")
+        .replace("#include <project_vertex>", "#include <project_vertex>\nvSiteW=(modelMatrix*vec4(transformed,1.0)).xyz;");
+    const f="\n{ float sd=length(vSiteW.xz-uSiteP.xz); float sk=(uSiteR>0.0)?smoothstep(uSiteR, uSiteR+uSiteF, sd):1.0; diffuseColor.a*=mix(1.0, uSiteA, sk); }\n";
+    let fs=sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vSiteW; uniform vec3 uSiteP; uniform float uSiteR; uniform float uSiteA; uniform float uSiteF;");
+    if(fs.indexOf("#include <opaque_fragment>")>=0) fs=fs.replace("#include <opaque_fragment>", f+"#include <opaque_fragment>");
+    else if(fs.indexOf("#include <output_fragment>")>=0) fs=fs.replace("#include <output_fragment>", f+"#include <output_fragment>");
+    else fs=fs.replace(/}\s*$/, f.replace("diffuseColor.a","gl_FragColor.a")+"}");
+    sh.fragmentShader=fs;
+}
 function applySiteAlpha(){
+    SITE_ALPHA_U.uSiteA.value=1-Math.max(0, Math.min(90, siteAlphaPct))/100;
+    SITE_ALPHA_U.uSiteR.value=Math.max(0, Math.min(3, siteSolidR));
     if(!siteRoot) return;
-    const a=1-Math.max(0, Math.min(90, siteAlphaPct))/100;
+    const a=SITE_ALPHA_U.uSiteA.value;
     siteRoot.traverse(o=>{ if(!o.isMesh || !o.material) return;
         if(o.userData._saRO==null) o.userData._saRO=o.renderOrder;
         o.renderOrder = a<1 ? -1 : o.userData._saRO;
         (Array.isArray(o.material) ? o.material : [o.material]).forEach(mt=>{
-            if(!mt.userData._sa0) mt.userData._sa0={ t:mt.transparent, o:mt.opacity, dw:mt.depthWrite };
+            if(!mt.userData._sa0){ mt.userData._sa0={ t:mt.transparent, o:mt.opacity, dw:mt.depthWrite }; mt.onBeforeCompile=siteAlphaShader; mt.customProgramCacheKey=()=>"siteAlpha1"; mt.needsUpdate=true; }
             const b=mt.userData._sa0, tr=(a<1) || b.t;
             if(mt.transparent!==tr) mt.needsUpdate=true;
-            mt.transparent=tr; mt.opacity=b.o*a; mt.depthWrite = (a<1) ? true : b.dw;
+            mt.transparent=tr; mt.opacity=b.o; mt.depthWrite = (a<1) ? true : b.dw;
         }); });
+}
+function siteAlphaTick(){ if(siteRoot && siteAlphaPct>0 && siteSolidR>0 && typeof camera!=="undefined") camera.getWorldPosition(SITE_ALPHA_U.uSiteP.value); }   // 毎フレーム：プレイヤーの位置（足もとの円の中心）
+function setSiteSolidR(v){
+    v=Math.max(0, Math.min(3, Math.round((+v||0)*10)/10)); siteSolidR=v;
+    const sl=document.getElementById("srSlider"), n=document.getElementById("srNum"); if(sl) sl.value=v; if(n) n.value=v;
+    applySiteAlpha(); siteAlphaTick(); if(typeof requestTitleDraw==="function") requestTitleDraw(600);
 }
 function setSiteAlpha(v){
     v=Math.max(0, Math.min(90, Math.round((+v||0)/5)*5)); siteAlphaPct=v;
     const sl=document.getElementById("saSlider"), n=document.getElementById("saNum"); if(sl) sl.value=v; if(n) n.value=v;
-    applySiteAlpha(); if(typeof requestTitleDraw==="function") requestTitleDraw(600);   // メニューの裏の景色にも すぐ出す
+    applySiteAlpha(); siteAlphaTick(); if(typeof requestTitleDraw==="function") requestTitleDraw(600);   // メニューの裏の景色にも すぐ出す
 }
 let _sitePhs=null, siteMode=1;   // siteMode: 倍率1〜5（1倍=原寸）。既定1倍
 if(!CARD_ONLY_MODE) gltfLoader.load(SITE_GLB, (gltf)=>{   // カードだけの画面では遺跡を読まない（恐竜の事前生成もしない）
@@ -8012,7 +8039,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optRealShort",false); if(typeof setRealRefShort==="function") setRealRefShort(20);   // オンは非表示＝実寸基準20m固定
         show("optRealCap",false); realCapToActual=true; segSelect("segRealCap","on");   // オンは非表示＝本物の大きさまで
         show("optDinoMove",false); setDigDinoMove("move");   // オンは非表示＝あるく
-        show("siteAlphaOpt",false); if(siteAlphaPct) setSiteAlpha(0);   // オンは非表示＝透過なし
+        show("siteAlphaOpt",false); if(siteAlphaPct) setSiteAlpha(0); if(siteSolidR) setSiteSolidR(0);   // オンは非表示＝透過なし
         setTimeLimit(90);   // おすすめオンは90秒固定
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
@@ -8037,7 +8064,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
     }
     if(isChallenge){   // 発掘チャレンジ：必須6項目は常にロック。5項目はおすすめオンで非表示／オフで表示・変更可
         ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar","optDogLevel","optDigPos","optArtLine"].forEach(id=>show(id,false));
-        if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDinoMove","siteAlphaOpt"].forEach(id=>show(id,false)); if(siteAlphaPct) setSiteAlpha(0); }
+        if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDinoMove","siteAlphaOpt"].forEach(id=>show(id,false)); if(siteAlphaPct) setSiteAlpha(0); if(siteSolidR) setSiteSolidR(0); }
         else {
             show("optTimeLimit",true);   // 3ターン目の制限時間
             show("optToolSwap",true);
@@ -8146,7 +8173,9 @@ function setSiteMode(v, apply){
     loadBarRefresh();
 }
 { const s=document.getElementById("saSlider"), n=document.getElementById("saNum");   // サイトモデルの透過率（すぐ反映。読み込み直しは いらない）
-  if(s) s.oninput=()=>setSiteAlpha(+s.value); if(n) n.onchange=()=>setSiteAlpha(+n.value); }
+  if(s) s.oninput=()=>setSiteAlpha(+s.value); if(n) n.onchange=()=>setSiteAlpha(+n.value);
+  const rs=document.getElementById("srSlider"), rn=document.getElementById("srNum");   // プレイヤーのまわりを透過しない半径
+  if(rs) rs.oninput=()=>setSiteSolidR(+rs.value); if(rn) rn.onchange=()=>setSiteSolidR(+rn.value); }
 { const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum");
   if(s){ s.oninput=()=>setSiteMode(+s.value,false); s.onchange=()=>setSiteMode(+s.value,true); }   // ドラッグ中は表示のみ、離したら反映（メニューでは「まとめて更新」まで読み込みを保留）
   if(n) n.onchange=()=>setSiteMode(+n.value,true);
@@ -9385,12 +9414,13 @@ renderer.domElement.addEventListener("click", ()=>{
     desktopDig();
 });
 let yaw=0, pitch=0;
-const DESK_PITCH_UP=THREE.MathUtils.degToRad(60);   // 画面操作で発掘する：見上げられる角度の上限（下は45度まで）
+const DESK_PITCH_UP={ dino:THREE.MathUtils.degToRad(60), artifact:THREE.MathUtils.degToRad(20) };   // 画面操作で発掘する：見上げられる角度の上限（恐竜＝60度／出土品＝20度。下は45度まで）
+function deskPitchUp(){ return (GAME.digTarget==="dino") ? DESK_PITCH_UP.dino : DESK_PITCH_UP.artifact; }
 addEventListener("mousemove",e=>{
     if(!GAME.desktop || !document.pointerLockElement) return;
     yaw   -= e.movementX*0.0022;
     pitch -= e.movementY*0.0022;
-    pitch = Math.max(-Math.PI/4, Math.min(DESK_PITCH_UP, pitch));   // 下45度・上60度
+    pitch = Math.max(-Math.PI/4, Math.min(deskPitchUp(), pitch));   // 下45度・上60度（恐竜）／20度（出土品）
 });
 
 /* ===================================================== * タッチ操作（スマホ） * 左半分＝バーチャルスティックで移動 / 右半分ドラッグ＝見回す / 「掘る」ボタン＝発掘 * ===================================================== */
@@ -9424,7 +9454,7 @@ function tMove(e){
             joyKnob.style.transform=`translate(${dx}px,${dy}px)`;
         } else if(t.identifier===touchLook.id){
             yaw   -= (t.clientX-touchLook.lx)*0.005;
-            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/4,Math.min(DESK_PITCH_UP,pitch));   // 下45度・上60度
+            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/4,Math.min(deskPitchUp(),pitch));   // 下45度・上60度（恐竜）／20度（出土品）
             touchLook.lx=t.clientX; touchLook.ly=t.clientY;
         }
     }
@@ -12226,6 +12256,7 @@ renderer.setAnimationLoop((_t, _xrFrame)=>{
     if(_warmupTTL>0){ for(const m of _warmupModels){ if(m){ m.visible=true; m.position.set(0,-100000,0); } } }
     if(_warmX) _warmXPre();   // 追加の準備：ARで あそぶ のモデル・相棒・見本を画面の外で描く
 
+    siteAlphaTick();   // サイトの透過：プレイヤーの足もとの円の位置
     renderer.render(scene,camera);
     if(_warmX) _warmXPost();
     if(TABAR.capReq) tabarCardXRCapAfter();   // カードを さがす（ARCore）：描き終えた後にカメラ映像を写す
@@ -14281,7 +14312,7 @@ window.addEventListener("litephoneend", ()=>{ if(!LDIG.leaving) return; LDIG.lea
 function ldigSnapshot(){
     LDIG.snap={
         v:{ recoOn, chosenMode, chosenDigTarget, chosenTool, TIME_LIMIT, cardShown, buddyRandom, dogOnly, starEnabled, toolSwapAllowed, holoFreezeTime,
-            rarityOn, buddyMode, showArtInfo, siteVisible, digPosRandom, realCapToActual, realRefShort, dogLevelUp, WORLD_X, WORLD_Z, siteMode, companionKind, dugDinoMove, siteAlphaPct },
+            rarityOn, buddyMode, showArtInfo, siteVisible, digPosRandom, realCapToActual, realRefShort, dogLevelUp, WORLD_X, WORLD_Z, siteMode, companionKind, dugDinoMove, siteAlphaPct, siteSolidR },
         seg:[...document.querySelectorAll("#menu .seg button")].map(b=>[b, b.classList.contains("on")]),
         inp:[...document.querySelectorAll("#menu input")].map(e=>[e, e.value, e.checked]),
         disp:[...document.querySelectorAll("#menu .opt, #worldSizeOpt, #siteSizeOpt")].map(e=>[e, e.style.display]) };
@@ -14308,6 +14339,7 @@ function ldigSetVars(v){
     showArtInfo=v.showArtInfo; digPosRandom=v.digPosRandom; realCapToActual=v.realCapToActual; dogLevelUp=v.dogLevelUp;
     if(v.dugDinoMove) dugDinoMove=v.dugDinoMove;   // 掘り出した恐竜の動き（ボタンの表示は seg の復元で戻る）
     if(v.siteAlphaPct!=null && v.siteAlphaPct!==siteAlphaPct) setSiteAlpha(v.siteAlphaPct);   // サイトモデルの透過率
+    if(v.siteSolidR!=null && v.siteSolidR!==siteSolidR) setSiteSolidR(v.siteSolidR);     // プレイヤーのまわりを透過しない半径
     if(chosenDigTarget!==v.chosenDigTarget || curTarget!==(v.chosenDigTarget==="dino"?"dino":"artifact")) setDigTarget(v.chosenDigTarget);
     chosenDigTarget=v.chosenDigTarget;
     if(siteVisible!==v.siteVisible) setSiteVisible(v.siteVisible);
