@@ -621,6 +621,14 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         </div>
         <div id="ssPendNote" class="pendNote"></div>
       </div>
+      <!-- サイトモデルの透過率（%）：サイトを表示している時・おすすめ設定オフの時だけ。0＝透過なし（おすすめ）〜90％ -->
+      <div class="opt wide" id="siteAlphaOpt" style="display:none">
+        <div class="lbl">サイトモデルの透過率（%）</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="saSlider" type="range" min="0" max="90" step="5" value="0" style="flex:1;">
+          <input id="saNum" type="number" min="0" max="90" step="5" value="0" style="width:64px;">
+        </div>
+      </div>
       <div class="opt wide" id="optDigPos" style="display:none">
         <div class="lbl">発掘場所</div>
         <div class="seg" id="segDigPos">
@@ -805,7 +813,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>⛏ 掘る</h3>
         <p>反応が強い場所で<b>ブロック</b>が現れ、掘れる距離と向きが整うと<b>脈打つように光ります</b>。光っている間にブロックを掘ると土が削れ、出土すると消えます。<b>番号が小さい（レアな）ものほど</b>掘る回数が多く、相棒の<b>「ちから」</b>が高いほど1回で多く掘り進めます。</p>
         <p class="k">スマホ：<b>光るブロックをタップ</b>／PC：狙って左クリック／VR：狙って手（道具）を振る</p>
-        <p class="k">恐竜を掘ると、卵から恐竜が生まれて こちらを向きます。そのあとの動きは<b>「🚶 あるく」</b>（おすすめ。掘った場所を中心に、体長の2倍の円の中を歩き回り、ときどき こちらを見る。視界にプレイヤーが入ると止まって こちらを向き、のぞき込みながら少し近づいてくる。見おわると その場所から また歩き、歩きながらも顔をこちらに向ける）か<b>「🧍 とまる」</b>（その場で じっとしたり、ゆっくり向きを変えたり、においをかいだりする。視界にプレイヤーが入ると こちらを向いて のぞき込み、少し近づいてくる。しばらく見ると においをかいだり よそを向いたりして、また見る）です。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。VR・ARでも画面操作で発掘するときも同じで、おすすめ設定オフのときにメニューの「掘り出した恐竜の動き」で選べます。恐竜どうしは重ならず、プレイヤーに近づきすぎると はなれます（VR・AR＝ヘッドセットが恐竜の目から15cm／画面操作＝体のまわり35cm）。画面操作で発掘するときは、掘り出した恐竜を<b>タップ（PCは狙って左クリック）</b>すると よろこびます。</p>
+        <p class="k">恐竜を掘ると、卵から恐竜が生まれて こちらを向きます。そのあとの動きは<b>「🚶 あるく」</b>（おすすめ。掘った場所を中心に、体長の2倍の円の中を歩き回り、ときどき こちらを見る。視界にプレイヤーが入ると止まって こちらを向き、のぞき込みながら少し近づいてくる。見おわると その場所から また歩き、歩きながらも顔をこちらに向ける）か<b>「🧍 とまる」</b>（その場で じっとしたり、ゆっくり向きを変えたり、においをかいだりする。視界にプレイヤーが入ると こちらを向いて のぞき込み、少し近づいてくる。しばらく見ると においをかいだり よそを向いたりして、また見る）です。見ている間は、プレイヤーが横や後ろへ回っても、体ごと ゆっくり向きを変えて見つづけます（歩きながら見ている時に、顔を向けきれない向きになったら、立ち止まって見ます）。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。VR・ARでも画面操作で発掘するときも同じで、おすすめ設定オフのときにメニューの「掘り出した恐竜の動き」で選べます。恐竜どうしは重ならず、プレイヤーに近づきすぎると はなれます（VR・AR＝ヘッドセットが恐竜の目から15cm／画面操作＝体のまわり35cm）。画面操作で発掘するときは、掘り出した恐竜を<b>タップ（PCは狙って左クリック）</b>すると よろこびます。</p>
       </section>
       <section>
         <h3>🐶 相棒（聞く・なでる）</h3>
@@ -842,7 +850,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>📖 発掘図鑑</h3>
         <p>発掘するとシルエットが解除され、日付が記録されます（全8種）。②カウントダウン開始で、その回の図鑑はリフレッシュされます。図鑑の恐竜カードは、<b>ぬりえをしていない元の姿</b>（元のステータス）のカードです。</p>
-        <p class="k">VR：左手の<b>手のひらを自分に向けて約2秒で開き、裏返すと閉じます</b>（はじめは閉じています。残り時間などの表示は閉じていても出ます）。カードを選ぶと、カードと3Dモデルが目の前に浮かびます（設定「図鑑カード表示中の時間」で、その間に時間を止めるか選べます）／PC・スマホ：「図鑑」ボタン。カードを選ぶと大きく表示されます。</p>
+        <p class="k">VR：左手の<b>手のひらを上（自分の方）に向けて約2秒で開き、裏返すと閉じます</b>。スタンバイの「相棒えらび」「カードをひく」も いっしょに開け閉めします（はじめは閉じています。閉じている間は、左手に「手のひらを上に向けると〇〇が開きます」と出ます。残り時間などの表示は閉じていても出ます）。カードを選ぶと、カードと3Dモデルが目の前に浮かびます（設定「図鑑カード表示中の時間」で、その間に時間を止めるか選べます）／PC・スマホ：「図鑑」ボタン。カードを選ぶと大きく表示されます。</p>
       </section>
       <section>
         <h3>🖍 ぬりえで じぶんの きょうりゅう</h3>
@@ -864,7 +872,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <p class="k"><b>発掘する対象</b>：出土品／恐竜。<b>出土品の説明パネル</b>：出土品の説明パネルを出すか。<b>発掘道具の持ち替え</b>：幅広ブラシと細ピックを持ち替えるか。<b>図鑑カード表示中の時間</b>：止まる／止まらない。<b>恐竜の最大サイズ</b>（本物の大きさまで／上限なし。おすすめ設定オンでは本物の大きさまで）<b>・恐竜が実寸になるフィールド短辺</b>：恐竜を出す大きさ。<b>掘り出した恐竜の動き</b>（恐竜のとき）：あるく／とまる（おすすめ設定オンでは「あるく」）。</p>
         <p class="k"><b>モード</b>・<b>制限時間</b>（60〜180秒）。<b>獲得カードの表示</b>：カード表示／カード非表示。<b>カードのレア度</b>：レア度あり／なし。</p>
         <p class="k"><b>相棒の決め方</b>：しばいぬのみ（相棒はしばいぬだけ）／えらぶ（スタンバイで選ぶ）／ランダム（スタンバイで「カードをひく」）。<b>しばいぬのレベル</b>（しばいぬのみのとき）：固定型＝ステータスは2・2・2のまま／アップ型＝1・1・1から始まり、成績で上がる。<b>相棒の候補</b>：獲得した相棒（しばいぬ＋仲間になった相棒）／全ての相棒。</p>
-        <p class="k"><b>スターブロック</b>：スターあり／なし。<b>サイトモデル</b>（遺跡3D）：表示／非表示と大きさ。<b>発掘場所</b>：ランダム／固定。<b>ワールドの広さ</b>（サイト非表示のとき）。広さや大きさを変えたときは、上に出る<b>「🔄 まとめて更新」</b>で読み込み直します。</p>
+        <p class="k"><b>スターブロック</b>：スターあり／なし。<b>サイトモデル</b>（遺跡3D）：表示／非表示と大きさ・透過率（0〜90%。サイトを表示しているとき）。<b>発掘場所</b>：ランダム／固定。<b>ワールドの広さ</b>（サイト非表示のとき）。広さや大きさを変えたときは、上に出る<b>「🔄 まとめて更新」</b>で読み込み直します。</p>
         <p class="k">発掘チャレンジでは、多くの設定が自動で決まります（獲得カード表示・レア度あり・相棒はえらぶ／獲得した相棒・しばいぬは固定型・スターあり）。おすすめ設定オンでは発掘する対象と広さだけ、オフではさらに<b>3ターン目の制限時間・発掘道具の持ち替え・サイトモデル・恐竜の最大サイズ・実寸になるフィールド短辺・掘り出した恐竜の動き</b>を変えられます。</p>
       </section>
       <section>
@@ -875,7 +883,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>🗺 たんけん（ARで あそぶ）</h3>
         <p>スマホ・タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。<b>「📱 ARで あそぶ」</b>のAR画面で、恐竜かいぬを表示して<b>「🗺 たんけん」</b>を押します（恐竜と→恐竜を、いぬと→出土品をさがします。出土品の表示中は出ません）。「たんけんの じゅんび」で<b>あそびかた</b>（3かい ちょうせん／じかんまで さがす（既定）／ぜんぶ みつける。「そのばで ぐるっと」「ほって かえす」は ぜんぶ みつける だけ、「カードを さがす」は 3かい ちょうせん なし）と<b>さがす ばしょの ひろさ</b>（よこ・おく 3〜10m、既定5×5m）を選び、恐竜を掘る時は<b>ほりだす きょうりゅうの おおきさ</b>（<b>ほんものの おおきさ</b>＝実物と同じ大きさ（既定）／<b>きみの おおきさ</b>＝ARで おおきく みる と同じ大きさ）も選んで、<b>「🗺 たんけんに いく」</b>→<b>「はじめる」</b>。あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここで はじめる」</b>でフィールドを置きます。</p>
         <p>実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いてブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた きょうりゅうカードを手で掘り出し、AR画面のまま カードを映すと、カードの上（机の上なら その机の上）にブロックが出ます。ブロックをタップして掘ると破片が飛び散り、卵から恐竜が生まれて床に とびおります（iPhone・iPad は カードの位置を測れないので、ななめ前の床に出ます）。あそびかたは「ぜんぶ みつける」だけで、8しゅるい見つけると かかった時間と一覧、はっくつずかんを出して終わります。上の「📖 ずかん」で途中の はっくつずかんを見られ、「✕ おわる」で途中でも終われます。終わると「たんけんの じゅんびに もどる／ARの モデルに もどる／メニューに もどる」を選べます。カードは メニューの「🦕 きょうりゅうカードを いんさつ」（おすすめ設定オフ）で印刷します（A4・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦕 きょうりゅうカードを いんさつ」で印刷する A4 の カード）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上にブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒とスターブロックは出ません（「そのばで ぐるっと」も 相棒・スターブロックは出ません）。掘り出した恐竜は（「あるいて さがす」「そのばで ぐるっと」も）、「たんけんの じゅんび」の「ほりだした きょうりゅうの うごき」で「あるく」（既定。掘った場所を中心に 体長の2倍の円の中を歩き回り、ときどき プレイヤーを見る。視界に プレイヤーが入ると 止まって見て、そのあと歩きながらも 顔を こちらに向ける）か「とまる」（その場で じっとしたり、ゆっくり向きを変えたり、においを かいだりする。視界に プレイヤーが入ると こちらを向いて見て、しばらくすると においを かいだり よそを向いたりして、また見る）を選べ、タッチすると よろこびます。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。恐竜は、プレイヤーや ほかの恐竜と からだが重ならないよう、少し はなれます。掘ったカードの「もう ほったよ」は、カードが一度 画面から外れて また映った時に出ます（卵から恐竜が出る間は、カードのことばは出ません）。</p>
+        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた きょうりゅうカードを手で掘り出し、AR画面のまま カードを映すと、カードの上（机の上なら その机の上）にブロックが出ます。ブロックをタップして掘ると破片が飛び散り、卵から恐竜が生まれて床に とびおります（iPhone・iPad は カードの位置を測れないので、ななめ前の床に出ます）。あそびかたは「ぜんぶ みつける」だけで、8しゅるい見つけると かかった時間と一覧、はっくつずかんを出して終わります。上の「📖 ずかん」で途中の はっくつずかんを見られ、「✕ おわる」で途中でも終われます。終わると「たんけんの じゅんびに もどる／ARの モデルに もどる／メニューに もどる」を選べます。カードは メニューの「🦕 きょうりゅうカードを いんさつ」（おすすめ設定オフ）で印刷します（A4・No.1〜8＝ぬりえの No.と同じ恐竜）。カードは机などに置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦕 きょうりゅうカードを いんさつ」で印刷する A4 の カード）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上にブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒とスターブロックは出ません（「そのばで ぐるっと」も 相棒・スターブロックは出ません）。掘り出した恐竜は（「あるいて さがす」「そのばで ぐるっと」も）、「たんけんの じゅんび」の「ほりだした きょうりゅうの うごき」で「あるく」（既定。掘った場所を中心に 体長の2倍の円の中を歩き回り、ときどき プレイヤーを見る。視界に プレイヤーが入ると 止まって見て、そのあと歩きながらも 顔を こちらに向ける）か「とまる」（その場で じっとしたり、ゆっくり向きを変えたり、においを かいだりする。視界に プレイヤーが入ると こちらを向いて見て、しばらくすると においを かいだり よそを向いたりして、また見る）を選べ、タッチすると よろこびます。見ている間は、プレイヤーが横や後ろへ回っても、体ごと ゆっくり向きを変えて見つづけます。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。恐竜は、プレイヤーや ほかの恐竜と からだが重ならないよう、少し はなれます。掘ったカードの「もう ほったよ」は、カードが一度 画面から外れて また映った時に出ます（卵から恐竜が出る間は、カードのことばは出ません）。</p>
         <p><b>ARの しくみ（Android）</b>：「そのばで ぐるっと」「ほって かえす」「カードを さがす」は、ARCore が使える Android では ARCore で動きます（ARCore が使えない端末と iPhone・iPad は カメラ＋センサー。選ぶ必要は ありません）。ARCore の「そのばで ぐるっと」は足もとの わっかから1m はなれると「わっかに もどろう」と出ます。ARCore の「カードを さがす」は、一度見つけたカードの場所を ARCore が覚えるので、画面から外れても そのままです。ARCore でカードを読むにはカメラ映像の許可（camera-access）が必要で、もらえない端末では自動で カメラ＋センサーに切り替えて続けます（「ほって かえす」は iPhone と同じ方式の AR 画面になります）。</p>
         <p><b>フィールドが ずれたとき</b>：床に「まんなか」と「まえ」の印（テープなど）を付けておき、「ここで はじめる」は まんなかの印に立って まえの印の方を向いて押します。ずれたら、まんなかの印に立って まえの印の方を向き、画面下の<b>「📍 ずれを なおす」</b>→<b>「なおす」</b>。発掘ポイント・スコア・タイム・進み具合はそのままで、フィールドの位置と向きだけを合わせ直します（ゲームの途中でも使えます）。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「ちいさい こ 0.9m／こども 1.2m／おとな 1.5m」を選びます）。スタンバイ中は「やめる」→「ここで はじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
@@ -4786,6 +4794,26 @@ function updateSiteVis(){
     fallbackGround.visible = (!siteVisible) && !inAR;            // 非表示かつ非ARのときだけ代替地面
 }
 function setSiteVisible(v){ siteVisible=!!v; updateSiteVis(); }
+// サイトモデルの透過率（%）：0＝透過なし。材質の不透明度を下げる（元の値は覚えておく）。半透明のサイトは ほかの半透明の物より先に描く（名札・オーラが うすくならない）
+let siteAlphaPct=0;
+function applySiteAlpha(){
+    if(!siteRoot) return;
+    const a=1-Math.max(0, Math.min(90, siteAlphaPct))/100;
+    siteRoot.traverse(o=>{ if(!o.isMesh || !o.material) return;
+        if(o.userData._saRO==null) o.userData._saRO=o.renderOrder;
+        o.renderOrder = a<1 ? -1 : o.userData._saRO;
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(mt=>{
+            if(!mt.userData._sa0) mt.userData._sa0={ t:mt.transparent, o:mt.opacity, dw:mt.depthWrite };
+            const b=mt.userData._sa0, tr=(a<1) || b.t;
+            if(mt.transparent!==tr) mt.needsUpdate=true;
+            mt.transparent=tr; mt.opacity=b.o*a; mt.depthWrite = (a<1) ? true : b.dw;
+        }); });
+}
+function setSiteAlpha(v){
+    v=Math.max(0, Math.min(90, Math.round((+v||0)/5)*5)); siteAlphaPct=v;
+    const sl=document.getElementById("saSlider"), n=document.getElementById("saNum"); if(sl) sl.value=v; if(n) n.value=v;
+    applySiteAlpha(); if(typeof requestTitleDraw==="function") requestTitleDraw(600);   // メニューの裏の景色にも すぐ出す
+}
 let _sitePhs=null, siteMode=1;   // siteMode: 倍率1〜5（1倍=原寸）。既定1倍
 if(!CARD_ONLY_MODE) gltfLoader.load(SITE_GLB, (gltf)=>{   // カードだけの画面では遺跡を読まない（恐竜の事前生成もしない）
     siteRoot = gltf.scene;
@@ -4793,7 +4821,7 @@ if(!CARD_ONLY_MODE) gltfLoader.load(SITE_GLB, (gltf)=>{   // カードだけの�
     world.add(siteRoot);
     _sitePhs = ART_ORIG.map(([x,z])=>{ const o=new THREE.Object3D(); o.position.set(x,0,z); world.add(o); return o; });
     rescaleSite();   // 倍率に応じてフィット
-    siteReady=true; updateSiteVis(); requestTitleDraw(1000);   // 遺跡が出たのでタイトルの裏を描き直す
+    siteReady=true; updateSiteVis(); applySiteAlpha(); requestTitleDraw(1000);   // 遺跡が出たのでタイトルの裏を描き直す（透過率も当てる）
     preloadEverything(()=>{ document.body.classList.remove("loading"); });   // 恐竜①②③を事前生成し終えてから開始可能に
 }, undefined, (e)=>{ console.warn("site load failed", e); _siteFailed=true; siteVisible=false;
     { const d=Math.max(3,Math.min(50,(siteMode||3)*10)); if(typeof setWorldX==="function"){ setWorldX(d); setWorldZ(d); } else { WORLD_X=d; WORLD_Z=d; } }   // 表示倍率×10mの矩形に
@@ -5259,6 +5287,7 @@ voxCacheLoad();   // 起動してすぐ読み始める（プリロードは読�
 //   ・体を回している途中では 反応しない（行き先へ向き直る時に プレイヤーの方を横切っても 止まらない）
 //   ・境目で ちらつかない：入る＝前 左右 DINO_FACE.frontDeg°・体長×noticeMul 以内／出る＝exitDeg° か 距離×exitDistMul を こえた時
 const NOTICE_LOOK={ cooldownMs:5000, exitDeg:110, exitDistMul:1.15 };
+const LOOK_TURN={ maxDeg:60, slowDeg:30, deadNear:0.3, done:0.05 };   // 掘り出した恐竜が 見ている間に 体を向ける：いちばん速く(°/秒)／すぐ近く・はなれる途中(°/秒)／その時 これ(rad)より小さい差は回さない／ここ(rad)まで向いたら止める
 const LOOK_FREQ={ walkArrive:0.9, cardArrive:1.0, stopLook:0.8, stopRestMs:[600,1500] };   // プレイヤーを見る 回数：あるく（ARで あそぶ・ぬりえ）で 行き先に着いた時に見る割合／たんけんの あるく で着いた時に見る割合／とまる で見る割合と 見た後・かいだ後の休み(ms)
 // ===== 恐竜「気づく→対面→覗き込む→戻る」パラメータ（調整しやすく定数化）=====
 const DINO_FACE = {
@@ -6012,9 +6041,12 @@ function makeBuddyRandomBtnTex(){
     g.fillStyle="#fff"; g.font="bold 34px sans-serif"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("カードをひく",128,48);
     return new THREE.CanvasTexture(cv);
 }
-function updateBuddyRandomBtn(){
+function buddyRandomWanted(){   // 「カードをひく」を出す場面（手のひらの開け閉めは のぞく）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = questXR() && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // ランダムモードのみ・選択パネルの直下／TA・コレクションで候補が犬だけ／暗転中は非表示
+    return questXR() && inStandby && (typeof buddyRandom!=="undefined" && buddyRandom) && !dogOnly && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // ランダムモードのみ・選択パネルの直下／TA・コレクションで候補が犬だけ／暗転中は非表示
+}
+function updateBuddyRandomBtn(){
+    const show = buddyRandomWanted() && DEX_PALM.open;   // 手のひらで開け閉め（図鑑と同じ）
     if(!show){ if(_buddyRandomBtn) _buddyRandomBtn.visible=false; return; }
     if(!_buddyRandomBtn){ _buddyRandomBtn=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.1125), new THREE.MeshBasicMaterial({map:makeBuddyRandomBtnTex(),transparent:true,depthTest:true})); _buddyRandomBtn.renderOrder=1000; scene.add(_buddyRandomBtn); _buddyRandomBtn.scale.setScalar(1.0); }   // 幅=図鑑と同じ0.30。位置/向きは placeBuddyPanels で毎フレーム設定
     _buddyRandomBtn.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
@@ -6098,10 +6130,13 @@ function placeBuddyPanels(){   // 「カードをひく」「相棒えらび」�
     if(typeof _buddyRandomBtn!=="undefined" && _buddyRandomBtn && _buddyRandomBtn.visible) place(_buddyRandomBtn, 0.60, 0.20);   // 上段＝カードをひく（縦に揃える）
     if(typeof chRoundPanel!=="undefined" && chRoundPanel.mesh.visible) place(chRoundPanel.mesh, 0.60, 0.166);   // 相棒えらびの上（同じ挙動・スタンバイ〜カウントダウン中）
 }
-function updateBuddyGridVR(){
+function buddyGridWanted(){   // 「相棒えらび」を出す場面（手のひらの開け閉めは のぞく）
     // スタンバイのみ（リザルト→スタンバイでも正しく判定。DOM相棒UIと同じ gamePhase を使用）
     const inStandby = (typeof gamePhase==="function" && gamePhase()==="standby");
-    const show = questXR() && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy) && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // チャレンジ1ターン目は犬固定／TA・コレクションで候補が犬だけ／暗転中は非表示
+    return questXR() && inStandby && !dogOnly && !(GAME.challenge && GAME.chLockBuddy) && !(!GAME.challenge && onlyDogBuddy()) && !(typeof _sceneDimmed!=="undefined" && _sceneDimmed);   // チャレンジ1ターン目は犬固定／TA・コレクションで候補が犬だけ／暗転中は非表示
+}
+function updateBuddyGridVR(){
+    const show = buddyGridWanted() && DEX_PALM.open;   // 手のひらで開け閉め（図鑑と同じ）
     if(!show){ buddyGridVR.mesh.visible=false; return; }
     buddyGridVR.mesh.visible=true;   // 位置/スケールは生成時に左手(dexHolder)基準で固定済み
     const key=(companionKind||"")+"|"+((typeof buddyMode!=="undefined")?buddyMode:"")+"|"+((typeof buddyCandidates==="function")?buddyCandidates().join(","):"");
@@ -6330,6 +6365,28 @@ function updateChRoundPanel(){
 //   はじめは閉じている。ホログラム（図鑑カード）を出している間は、左手の向きでモデルを回すので 開け閉めしない。残り時間などの表示（taClock）は 閉じていても出す
 const DEX_PALM={ open:false, raw:null, since:0 };
 function dexPalmReset(){ DEX_PALM.open=false; DEX_PALM.raw=null; DEX_PALM.since=0; }
+// 閉じている間の案内（左手の 図鑑の所）：「手のひらを上に向けると 図鑑（と相棒えらび）が開きます」
+const dexHint=(function(){
+    const W=640, H=150, cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+    const ctx=cv.getContext("2d"), tex=new THREE.CanvasTexture(cv);
+    try{ tex.colorSpace=THREE.SRGBColorSpace; }catch(_){ try{ tex.encoding=THREE.sRGBEncoding; }catch(__){} }
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.30*H/W), new THREE.MeshBasicMaterial({ map:tex, transparent:true, side:THREE.DoubleSide, depthTest:true }));
+    mesh.position.set(0,0.10,-0.06); mesh.renderOrder=1100; mesh.visible=false; dexHolder.add(mesh);
+    let last="";
+    function draw(what){
+        if(what===last) return; last=what;
+        ctx.clearRect(0,0,W,H);
+        ctx.fillStyle="rgba(18,12,32,0.86)"; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(6,6,W-12,H-12,26); else ctx.rect(6,6,W-12,H-12); ctx.fill();
+        ctx.strokeStyle="#d8b46a"; ctx.lineWidth=4; ctx.stroke();
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillStyle="#ffffff"; ctx.font="bold 40px sans-serif"; ctx.fillText("✋ 手のひらを上に向けると", W/2, 52);
+        ctx.fillStyle="#ffe066"; let fs=40; ctx.font="bold "+fs+"px sans-serif"; const t2=what+"が開きます";
+        while(ctx.measureText(t2).width>W-40 && fs>24){ fs-=2; ctx.font="bold "+fs+"px sans-serif"; }
+        ctx.fillText(t2, W/2, 104);
+        tex.needsUpdate=true;
+    }
+    return { mesh, draw };
+})();
 function updateDexPanel(){
     if(!questXR() || !leftCtrl){ dexHolder.visible=false; return; }
     dexHolder.visible = true;
@@ -6342,7 +6399,12 @@ function updateDexPanel(){
         }
     } else DEX_PALM.raw=null;   // ホログラムを閉じたら 測り直す
     dexPanel.mesh.visible=DEX_PALM.open;
-    dexPanel.mesh.lookAt(camera.getWorldPosition(new THREE.Vector3()));
+    const _cw=camera.getWorldPosition(new THREE.Vector3());
+    dexPanel.mesh.lookAt(_cw);
+    // 閉じている間は「手のひらを上に向けると 〇〇が開きます」（相棒えらび・カードをひく が出せる時は いっしょに）
+    const hint=!DEX_PALM.open && !holo;
+    dexHint.mesh.visible=hint;
+    if(hint){ dexHint.draw((buddyGridWanted() || buddyRandomWanted()) ? "図鑑と相棒えらび" : "図鑑"); dexHint.mesh.lookAt(_cw); }
 }
 /* 右手のレイで図鑑カードを指す → 右トリガーで「トレカ＋モデル」をホログラム風に宙へ表示 */
 const _dexRay=new THREE.Raycaster();
@@ -7097,8 +7159,9 @@ function animateDigDinos(now, dt){
             const fwd=_adFwd.set(0,0,1).applyAxisAngle(_adAxis.set(0,1,0), cont.rotation.y);
             const toP=_adToP.set(dx,0,dz); const pd=toP.length();
             let ang=999; if(pd>1e-3){ toP.normalize(); ang=Math.acos(THREE.MathUtils.clamp(fwd.dot(toP),-1,1))*180/Math.PI; }
+            const _lookNow=!!(cont.userData._cd && cont.userData._cd.state==="look");   // 見ている間（あるく・とまる）：プレイヤーが横や後ろへ回っても 見つづける（遠くへ はなれた時だけ やめる）
             facing = cont.userData._noticed   // 境目で ちらつかないよう、気づいている間は 少し広い範囲を「まだ見えている」とする
-                ? (dist<=notice*NOTICE_LOOK.exitDistMul) && (ang<=NOTICE_LOOK.exitDeg)
+                ? (dist<=notice*NOTICE_LOOK.exitDistMul) && (_lookNow || ang<=NOTICE_LOOK.exitDeg)
                 : (dist<=notice) && (ang<=DINO_FACE.frontDeg);
         }
         const wasNoticed = cont.userData._noticed||false;
@@ -7117,12 +7180,23 @@ function animateDigDinos(now, dt){
         const spin = _cb && _cb.noSpin ? 0 : 0.004*(1-faceAmt);
         cont.rotation.y += spin;
 
-        // ── 対面時：body向きをプレイヤーへ補間（faceAmtで寄せる）──
-        if(camW && faceAmt>0.01 && !(_cb && (_cb.walking || !_cb.attend)) && !(now<(cont.userData._kaUntil||0)) && !digTooNear(cont, camW)){   // 歩いている間は 行き先を向く（cardDinoTick）。とまる の においを かぐ・よそを向く 間は 回さない。はなれている途中・近すぎる時は 回さない（ふるえ防止）
-            const cx=cont.userData.homeX??cont.position.x, cz=cont.userData.homeZ??cont.position.z;
-            const desired=Math.atan2(camW.x-cx, camW.z-cz);   // +Zをプレイヤーへ
-            let d=desired-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
-            if(Math.abs(d)>DIG_CAM_SMOOTH.turnDead) cont.rotation.y += d*Math.min(1, dt*DINO_FACE.turnEase)*faceAmt;
+        // ── 見ている間：体をプレイヤーへ ゆっくり向ける（プレイヤーが横・後ろへ回っても 見つづける）──
+        //   歩いている間は 行き先を向く（cardDinoTick）。とまる の においを かぐ・よそを向く 間は 回さない
+        //   すぐ近く・頭の近く・はなれている途中も 止めずに、もっと ゆっくり（LOOK_TURN.slowDeg）・小さい差は回さない（LOOK_TURN.deadNear）で回す（ふるえ防止）
+        {   const u=cont.userData, look=!!(_cb && _cb.look);
+            const want = camW && (_cb ? (!_cb.walking && (look || (_cb.attend && faceAmt>0.01))) : faceAmt>0.01);
+            if(want){
+                const cx=u.homeX??cont.position.x, cz=u.homeZ??cont.position.z;
+                const desired=Math.atan2(camW.x-cx, camW.z-cz);   // +Zをプレイヤーへ
+                let d=desired-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
+                const near = (now<(u._kaUntil||0)) || digTooNear(cont, camW);
+                if(Math.abs(d) > (near ? LOOK_TURN.deadNear : DIG_CAM_SMOOTH.turnDead)) u._turnCatch=true;   // ずれたら 向き直る（向き終わるまで）
+                if(u._turnCatch){
+                    if(Math.abs(d) < LOOK_TURN.done) u._turnCatch=false;
+                    else { const w=look ? 1 : faceAmt, mx=THREE.MathUtils.degToRad(near ? LOOK_TURN.slowDeg : LOOK_TURN.maxDeg)*dt;
+                        cont.rotation.y += Math.max(-mx, Math.min(mx, d*Math.min(1, dt*DINO_FACE.turnEase)*w)); }
+                }
+            } else u._turnCatch=false;
         }
 
         // ── 気づいたらプレイヤーへ寄る（後退なし・最大俯角で頭打ち・出現後5秒は移動しない）──
@@ -7340,7 +7414,9 @@ const CARD_DINO={ walkBL:2.0, speed:0.45, turn:0.9, sniffDeg:38, sniffDegVR:62, 
     lookMsLong:[4000,7000],   // 気づいて見る時間（とまる・ゲームの あるく：こちらを向いて のぞき込む／近づく）(ms)
     breakMs:[3000,5000],      // とまる：見おわってから また見るまで（においを かぐ・よそを向く）(ms)
     restMs:[1200,3000],       // とまる：じっとしている時間(ms)
-    turnDeg:[35,110], turnSpeed:25 };   // とまる：ゆっくり向きを変える角度(°)と速さ(°/秒)
+    turnDeg:[35,110], turnSpeed:25,   // とまる：ゆっくり向きを変える角度(°)と速さ(°/秒)
+    gazeYaw:0.75,             // あるく：歩きながら 顔を向けられる左右の角度(rad)。これより横・後ろへ回ったら 立ち止まって 体ごと向く
+    walkFreeMs:2000 };        // あるく：見おわって 歩きはじめてから これ(ms)の間は 立ち止まらない
 const _cdRnd=(a)=>a[0]+Math.random()*(a[1]-a[0]);
 function cardDinoTick(cont, m, now, dt, camW){
     const u=cont.userData; let S=u._cd;
@@ -7352,10 +7428,13 @@ function cardDinoTick(cont, m, now, dt, camW){
     { let seen=false; if(u._noticeAt && u._noticeAt!==S.seenNotice){ S.seenNotice=u._noticeAt; seen=true; }   // 視界に プレイヤーが入った → 止まって プレイヤーを見る（間隔を あける・向き直り中は しない）
       if(!TABAR.on && u._noticed) seen=true;   // ゲーム：視界に いる間は、間隔を あけて また止まって見る（たんけんは 入った時だけ）
       if(seen && S.state!=="look" && !(S.state==="walk" && S.turning) && now>=(S.lookCool||0)){ S.state="look"; S.until=now+_cdRnd(TABAR.on ? CARD_DINO.lookMs : CARD_DINO.lookMsLong); S.sniffUntil=0; out.look=true; S.lookCool=now+3600000; } }   // ゲーム：近づいて のぞき込むので 長めに見る
-    if(S.state==="pause" || S.state==="look"){
-        if(S.state==="look" && camW && !(now<(u._kaUntil||0)) && !digTooNear(cont, camW)){ const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); if(Math.abs(d)>DIG_CAM_SMOOTH.turnDead) cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn); }
+    if(S.state==="walk" && !S.turning && camW && u._noticed && (u._faceAmt||0)>0.5 && now>=(S.walkFree||0)){   // 歩きながら見ている時、顔を向けきれない向き（左右 gazeYaw より外）になったら、立ち止まって 体ごと向いて見る
+        const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
+        if(Math.abs(d)>CARD_DINO.gazeYaw){ S.state="look"; S.until=now+_cdRnd(TABAR.on ? CARD_DINO.lookMs : CARD_DINO.lookMsLong); S.sniffUntil=0; out.look=true; S.lookCool=now+3600000; }
+    }
+    if(S.state==="pause" || S.state==="look"){   // 見ている間の 体の向き直りは animateDigDinos（見ている間は プレイヤーを 見つづける）
         if(now>S.until && now>S.sniffUntil){   // つぎ：歩く（行き先＝掘った場所のまわり）
-            if(S.state==="look") S.lookCool=now+NOTICE_LOOK.cooldownMs;   // 見終わった：しばらくは 止まって見ない
+            if(S.state==="look"){ S.lookCool=now+NOTICE_LOOK.cooldownMs; S.walkFree=now+CARD_DINO.walkFreeMs; }   // 見終わった：しばらくは 止まって見ない（歩きはじめてすぐは 立ち止まらない）
             const fp=digDinoFootprint(cont), sc=cont.scale.x||1, L=fp ? Math.max(fp.x1-fp.x0, fp.z1-fp.z0)*sc*0.5 : 1;
             const WR=Math.max(0.6, u.bodyLen||1)*CARD_DINO.walkBL;   // 歩く範囲：掘った場所を中心に 体長×2.0 の円
             for(let n=0;n<6;n++){ const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*WR;
@@ -7378,17 +7457,14 @@ function cardDinoTick(cont, m, now, dt, camW){
     out.walking=true; return out;
 }
 // とまる：rest（じっとする）→ sniff（においを かぐ）／turn（ゆっくり向きを変える）→ rest … をくり返す。
-//   視界に プレイヤーがいて、見おわってから breakMs たっていたら → look（こちらを向いて のぞき込む。ゲームは 近づく）。視界から出たら すぐ やめる
+//   視界に プレイヤーがいて、見おわってから breakMs たっていたら → look（こちらを向いて のぞき込む。ゲームは 近づく）。見ている間は 横・後ろへ回っても 見つづけ、遠くへ はなれたら やめる
 function cardDinoStay(cont, u, S, out, now, dt, camW){
     if(!S.stay){ S.stay=true; S.state="rest"; S.until=now+_cdRnd(CARD_DINO.restMs); S.sniffUntil=0; }
     if(u._joy){ out.look=(S.state==="look"); out.attend=true; return; }   // よろこんでいる間は そのまま（プレイヤーの方を向く）
     const seen=!!u._noticed;   // いま 視界に プレイヤーがいる
     if(S.state!=="look" && seen && now>=(S.lookCool||0)){ S.state="look"; S.until=now+_cdRnd(CARD_DINO.lookMsLong); S.sniffUntil=0; }
-    if(S.state==="look"){
-        if(!seen || now>=S.until){ S.lookCool=now+_cdRnd(CARD_DINO.breakMs); cardDinoStayNext(cont, S, now); }   // 見おわった（視界から出た）→ においを かぐ／よそを向く
-        else if(camW && !(now<(u._kaUntil||0)) && !digTooNear(cont, camW)){   // こちらへ 向き直る
-            const x=u.homeX??cont.position.x, z=u.homeZ??cont.position.z; let d=Math.atan2(camW.x-x, camW.z-z)-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
-            if(Math.abs(d)>DIG_CAM_SMOOTH.turnDead) cont.rotation.y+=d*Math.min(1, dt*CARD_DINO.turn); }
+    if(S.state==="look"){   // こちらへの 向き直りは animateDigDinos（見ている間は 横・後ろへ回っても 見つづける）
+        if(!seen || now>=S.until){ S.lookCool=now+_cdRnd(CARD_DINO.breakMs); cardDinoStayNext(cont, S, now); }   // 見おわった（遠くへ はなれた）→ においを かぐ／よそを向く
     }
     if(S.state==="turn"){   // ゆっくり向きを変える（1秒に turnSpeed°）
         let d=S.turnTo-cont.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
@@ -7936,6 +8012,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optRealShort",false); if(typeof setRealRefShort==="function") setRealRefShort(20);   // オンは非表示＝実寸基準20m固定
         show("optRealCap",false); realCapToActual=true; segSelect("segRealCap","on");   // オンは非表示＝本物の大きさまで
         show("optDinoMove",false); setDigDinoMove("move");   // オンは非表示＝あるく
+        show("siteAlphaOpt",false); if(siteAlphaPct) setSiteAlpha(0);   // オンは非表示＝透過なし
         setTimeLimit(90);   // おすすめオンは90秒固定
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
@@ -7955,11 +8032,12 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optDinoMove", chosenDigTarget!=="artifact");   // 掘り出した恐竜の動き：恐竜系のときだけ表示
         show("optTimeLimit", chosenMode==="time");   // タイムアタック時のみ
         show("siteSizeOpt", siteVisible);
+        show("siteAlphaOpt", siteVisible);   // サイトモデルの透過率：サイトを表示している時だけ
         show("worldSizeOpt", !siteVisible);
     }
     if(isChallenge){   // 発掘チャレンジ：必須6項目は常にロック。5項目はおすすめオンで非表示／オフで表示・変更可
         ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar","optDogLevel","optDigPos","optArtLine"].forEach(id=>show(id,false));
-        if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDinoMove"].forEach(id=>show(id,false)); }
+        if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDinoMove","siteAlphaOpt"].forEach(id=>show(id,false)); if(siteAlphaPct) setSiteAlpha(0); }
         else {
             show("optTimeLimit",true);   // 3ターン目の制限時間
             show("optToolSwap",true);
@@ -7967,6 +8045,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
             show("optRealShort", chosenDigTarget!=="artifact");
             show("optRealCap", chosenDigTarget!=="artifact");
             show("optDinoMove", chosenDigTarget!=="artifact");   // 掘り出した恐竜の動き
+            show("siteAlphaOpt", siteVisible);   // サイトモデルの透過率
         }
         show("optMode",true);
     }
@@ -8009,7 +8088,7 @@ function updateRsInfo(){   // 恐竜の原寸比（現在のフィールド短�
 { const s=document.getElementById("rsSlider"),n=document.getElementById("rsNum"); if(s)s.oninput=()=>setRealRefShort(+s.value); if(n)n.onchange=()=>setRealRefShort(+n.value); }
 // メニュー項目の並び替え（order の順に並べる）
 (function(){
-    const order=["optReco","optDig","optArtLine","optDinoMove","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","worldSizeOpt","optRealCap","optRealShort","optDigPos"];
+    const order=["optReco","optDig","optArtLine","optDinoMove","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","siteAlphaOpt","worldSizeOpt","optRealCap","optRealShort","optDigPos"];
     const first=document.getElementById(order[0]); const parent=first&&first.parentNode; if(!parent) return;
     order.forEach(id=>{ const el=document.getElementById(id); if(el && el.parentNode===parent) parent.appendChild(el); });   // .cardgridの子は全てoptなので順に末尾へ動かせば指定順になる
 })();
@@ -8029,6 +8108,7 @@ document.querySelectorAll("#segSite button").forEach(b=>b.onclick=()=>{ withPara
 function updateWorldSizeUI(){ if(typeof loadBarRefresh==="function") loadBarRefresh();
     const o=document.getElementById("worldSizeOpt"); if(o) o.style.display = siteVisible? "none":"block";
     const so=document.getElementById("siteSizeOpt"); if(so) so.style.display = siteVisible? "block":"none";   // サイズ選択はサイト表示時のみ
+    const sa=document.getElementById("siteAlphaOpt"); if(sa) sa.style.display = (siteVisible && !recoOn)? "block":"none";   // 透過率：サイト表示時・おすすめ設定オフのときだけ
     updateHudReset(); }
 { document.querySelectorAll("#segBuddyMode button").forEach(b=>b.onclick=()=>{
     document.querySelectorAll("#segBuddyMode button").forEach(x=>x.classList.toggle("on", x===b));
@@ -8065,6 +8145,8 @@ function setSiteMode(v, apply){
     if(apply) applySiteMode();
     loadBarRefresh();
 }
+{ const s=document.getElementById("saSlider"), n=document.getElementById("saNum");   // サイトモデルの透過率（すぐ反映。読み込み直しは いらない）
+  if(s) s.oninput=()=>setSiteAlpha(+s.value); if(n) n.onchange=()=>setSiteAlpha(+n.value); }
 { const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum");
   if(s){ s.oninput=()=>setSiteMode(+s.value,false); s.onchange=()=>setSiteMode(+s.value,true); }   // ドラッグ中は表示のみ、離したら反映（メニューでは「まとめて更新」まで読み込みを保留）
   if(n) n.onchange=()=>setSiteMode(+n.value,true);
@@ -9303,12 +9385,12 @@ renderer.domElement.addEventListener("click", ()=>{
     desktopDig();
 });
 let yaw=0, pitch=0;
-const DESK_PITCH_UP=THREE.MathUtils.degToRad(80);   // 画面操作で発掘する：見上げられる角度の上限（下は45度まで）
+const DESK_PITCH_UP=THREE.MathUtils.degToRad(60);   // 画面操作で発掘する：見上げられる角度の上限（下は45度まで）
 addEventListener("mousemove",e=>{
     if(!GAME.desktop || !document.pointerLockElement) return;
     yaw   -= e.movementX*0.0022;
     pitch -= e.movementY*0.0022;
-    pitch = Math.max(-Math.PI/4, Math.min(DESK_PITCH_UP, pitch));   // 下45度・上80度
+    pitch = Math.max(-Math.PI/4, Math.min(DESK_PITCH_UP, pitch));   // 下45度・上60度
 });
 
 /* ===================================================== * タッチ操作（スマホ） * 左半分＝バーチャルスティックで移動 / 右半分ドラッグ＝見回す / 「掘る」ボタン＝発掘 * ===================================================== */
@@ -9342,7 +9424,7 @@ function tMove(e){
             joyKnob.style.transform=`translate(${dx}px,${dy}px)`;
         } else if(t.identifier===touchLook.id){
             yaw   -= (t.clientX-touchLook.lx)*0.005;
-            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/4,Math.min(DESK_PITCH_UP,pitch));   // 下45度・上80度
+            pitch -= (t.clientY-touchLook.ly)*0.005; pitch=Math.max(-Math.PI/4,Math.min(DESK_PITCH_UP,pitch));   // 下45度・上60度
             touchLook.lx=t.clientX; touchLook.ly=t.clientY;
         }
     }
@@ -14199,7 +14281,7 @@ window.addEventListener("litephoneend", ()=>{ if(!LDIG.leaving) return; LDIG.lea
 function ldigSnapshot(){
     LDIG.snap={
         v:{ recoOn, chosenMode, chosenDigTarget, chosenTool, TIME_LIMIT, cardShown, buddyRandom, dogOnly, starEnabled, toolSwapAllowed, holoFreezeTime,
-            rarityOn, buddyMode, showArtInfo, siteVisible, digPosRandom, realCapToActual, realRefShort, dogLevelUp, WORLD_X, WORLD_Z, siteMode, companionKind, dugDinoMove },
+            rarityOn, buddyMode, showArtInfo, siteVisible, digPosRandom, realCapToActual, realRefShort, dogLevelUp, WORLD_X, WORLD_Z, siteMode, companionKind, dugDinoMove, siteAlphaPct },
         seg:[...document.querySelectorAll("#menu .seg button")].map(b=>[b, b.classList.contains("on")]),
         inp:[...document.querySelectorAll("#menu input")].map(e=>[e, e.value, e.checked]),
         disp:[...document.querySelectorAll("#menu .opt, #worldSizeOpt, #siteSizeOpt")].map(e=>[e, e.style.display]) };
@@ -14225,6 +14307,7 @@ function ldigSetVars(v){
     starEnabled=v.starEnabled; toolSwapAllowed=v.toolSwapAllowed; holoFreezeTime=v.holoFreezeTime; rarityOn=v.rarityOn; buddyMode=v.buddyMode;
     showArtInfo=v.showArtInfo; digPosRandom=v.digPosRandom; realCapToActual=v.realCapToActual; dogLevelUp=v.dogLevelUp;
     if(v.dugDinoMove) dugDinoMove=v.dugDinoMove;   // 掘り出した恐竜の動き（ボタンの表示は seg の復元で戻る）
+    if(v.siteAlphaPct!=null && v.siteAlphaPct!==siteAlphaPct) setSiteAlpha(v.siteAlphaPct);   // サイトモデルの透過率
     if(chosenDigTarget!==v.chosenDigTarget || curTarget!==(v.chosenDigTarget==="dino"?"dino":"artifact")) setDigTarget(v.chosenDigTarget);
     chosenDigTarget=v.chosenDigTarget;
     if(siteVisible!==v.siteVisible) setSiteVisible(v.siteVisible);
