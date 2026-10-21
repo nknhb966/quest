@@ -628,10 +628,15 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
           <input id="saSlider" type="range" min="0" max="90" step="5" value="0" style="flex:1;">
           <input id="saNum" type="number" min="0" max="90" step="5" value="0" style="width:64px;">
         </div>
-        <div class="lbl" style="margin-top:12px">プレイヤーのまわりを透過しない半径（m）</div>   <!-- 足もとの円（水平）の中のサイトは 透過率0。外側の約20cmで だんだん透ける。0＝使わない -->
+        <div class="lbl" id="srLbl" style="margin-top:12px">プレイヤーのまわりを透過しない半径（m）</div>   <!-- 足もと（または視線の先）の円（水平）の中のサイトは 透過率0。外側の約20cmで だんだん透ける。0＝使わない -->
         <div style="display:flex; gap:8px; align-items:center;">
           <input id="srSlider" type="range" min="0" max="3" step="0.1" value="0" style="flex:1;">
           <input id="srNum" type="number" min="0" max="3" step="0.1" value="0" style="width:64px;">
+        </div>
+        <!-- 透過しない円の中心：プレイヤーの足もと／プレイヤーの視線の先（見ている所）。動く・視線を動かすと 円がついていく -->
+        <div class="seg" id="segSolidAt" style="margin-top:10px">
+          <button data-v="foot" class="on">👣 足もと</button>
+          <button data-v="gaze">👀 視線の先</button>
         </div>
       </div>
       <div class="opt wide" id="optDigPos" style="display:none">
@@ -877,7 +882,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <p class="k"><b>発掘する対象</b>：出土品／恐竜。<b>出土品の説明パネル</b>：出土品の説明パネルを出すか。<b>発掘道具の持ち替え</b>：幅広ブラシと細ピックを持ち替えるか。<b>図鑑カード表示中の時間</b>：止まる／止まらない。<b>恐竜の最大サイズ</b>（本物の大きさまで／上限なし。おすすめ設定オンでは本物の大きさまで）<b>・恐竜が実寸になるフィールド短辺</b>：恐竜を出す大きさ。<b>掘り出した恐竜の動き</b>（恐竜のとき）：あるく／とまる（おすすめ設定オンでは「あるく」）。</p>
         <p class="k"><b>モード</b>・<b>制限時間</b>（60〜180秒）。<b>獲得カードの表示</b>：カード表示／カード非表示。<b>カードのレア度</b>：レア度あり／なし。</p>
         <p class="k"><b>相棒の決め方</b>：しばいぬのみ（相棒はしばいぬだけ）／えらぶ（スタンバイで選ぶ）／ランダム（スタンバイで「カードをひく」）。<b>しばいぬのレベル</b>（しばいぬのみのとき）：固定型＝ステータスは2・2・2のまま／アップ型＝1・1・1から始まり、成績で上がる。<b>相棒の候補</b>：獲得した相棒（しばいぬ＋仲間になった相棒）／全ての相棒。</p>
-        <p class="k"><b>スターブロック</b>：スターあり／なし。<b>サイトモデル</b>（遺跡3D）：表示／非表示と大きさ・透過率（0〜90%。サイトを表示しているとき）。透過率の下の「プレイヤーのまわりを透過しない半径」（0〜3m）で、足もとの円の中だけ透過しないようにできます（外側の約20cmで だんだん透けます。0＝使わない）。<b>発掘場所</b>：ランダム／固定。<b>ワールドの広さ</b>（サイト非表示のとき）。広さや大きさを変えたときは、上に出る<b>「🔄 まとめて更新」</b>で読み込み直します。</p>
+        <p class="k"><b>スターブロック</b>：スターあり／なし。<b>サイトモデル</b>（遺跡3D）：表示／非表示と大きさ・透過率（0〜90%。サイトを表示しているとき）。透過率の下の「プレイヤーのまわりを透過しない半径」（0〜3m）で、足もとの円の中だけ透過しないようにできます（外側の約20cmで だんだん透けます。0＝使わない）。その下の切り替えで <b>👣 足もと</b>／<b>👀 視線の先</b> をえらぶと、円の中心を 見ている所にもできます（「プレイヤーの視線の先のまわりを透過しない半径」。歩いたり 視線を動かしたりすると 円がついていきます）。<b>発掘場所</b>：ランダム／固定。<b>ワールドの広さ</b>（サイト非表示のとき）。広さや大きさを変えたときは、上に出る<b>「🔄 まとめて更新」</b>で読み込み直します。</p>
         <p class="k">発掘チャレンジでは、多くの設定が自動で決まります（獲得カード表示・レア度あり・相棒はえらぶ／獲得した相棒・しばいぬは固定型・スターあり）。おすすめ設定オンでは発掘する対象と広さだけ、オフではさらに<b>3ターン目の制限時間・発掘道具の持ち替え・サイトモデル・恐竜の最大サイズ・実寸になるフィールド短辺・掘り出した恐竜の動き</b>を変えられます。</p>
       </section>
       <section>
@@ -4800,9 +4805,10 @@ function updateSiteVis(){
 }
 function setSiteVisible(v){ siteVisible=!!v; updateSiteVis(); }
 // サイトモデルの透過率（%）：0＝透過なし。半透明のサイトは ほかの半透明の物より先に描く（名札・オーラが うすくならない）
-//   プレイヤーの足もとの円（水平の半径 siteSolidR m）の中は 透過率0（外側 SITE_ALPHA_U.uSiteF.value m で だんだん透ける）。
+//   プレイヤーの足もと（または視線の先）の円（水平の半径 siteSolidR m）の中は 透過率0（外側 SITE_ALPHA_U.uSiteF.value m で だんだん透ける）。
 //   不透明度は 材質の元の値のまま、シェーダーで 円の外だけ 掛ける（SITE_ALPHA_U：全部の材質で共通の値）
-let siteAlphaPct=0, siteSolidR=0;
+//   siteSolidAt："foot"＝円の中心はプレイヤーの足もと／"gaze"＝プレイヤーの視線の先（サイトの表面で 見ている所）
+let siteAlphaPct=0, siteSolidR=0, siteSolidAt="foot";
 const SITE_ALPHA_U={ uSiteP:{ value:new THREE.Vector3() }, uSiteR:{ value:0 }, uSiteA:{ value:1 }, uSiteF:{ value:0.2 } };
 function siteAlphaShader(sh){
     sh.uniforms.uSiteP=SITE_ALPHA_U.uSiteP; sh.uniforms.uSiteR=SITE_ALPHA_U.uSiteR; sh.uniforms.uSiteA=SITE_ALPHA_U.uSiteA; sh.uniforms.uSiteF=SITE_ALPHA_U.uSiteF;
@@ -4830,7 +4836,108 @@ function applySiteAlpha(){
             mt.transparent=tr; mt.opacity=b.o; mt.depthWrite = (a<1) ? true : b.dw;
         }); });
 }
-function siteAlphaTick(){ if(siteRoot && siteAlphaPct>0 && siteSolidR>0 && typeof camera!=="undefined") camera.getWorldPosition(SITE_ALPHA_U.uSiteP.value); }   // 毎フレーム：プレイヤーの位置（足もとの円の中心）
+// ---- 視線の先：サイトの高さマップ（サイトの中の座標で 一度だけ作る。倍率・位置・向き・高さを変えても そのまま使える）----
+//   上から見た格子ごとに いちばん高い表面の高さ。視線をこの上で少しずつ進め、表面より下に入った所＝見ている所
+const SITE_GAZE_MAX=30;      // 視線の先を さがす いちばん遠い距離（m）。当たらない時（空・地平線のほう）は ここまで
+const SITE_GAZE_FOLLOW=14;   // 円が視線についていく速さ（1/秒）。小さな頭のゆれで ちらつかないよう ほんの少しだけ なめらかに
+let _siteHM=null, _siteHMFor=null, _sgReset=true, _sgT=0;
+const _sgO=new THREE.Vector3(), _sgD=new THREE.Vector3(), _sgA=new THREE.Vector3(), _sgB=new THREE.Vector3(), _sgG=new THREE.Vector3(), _sgInv=new THREE.Matrix4();
+function buildSiteHeightMap(root){
+    root.updateWorldMatrix(true,true);
+    const inv=new THREE.Matrix4().copy(root.matrixWorld).invert(), m=new THREE.Matrix4(), v=new THREE.Vector3();
+    const parts=[]; let x0=Infinity, x1=-Infinity, z0=Infinity, z1=-Infinity;
+    root.traverse(o=>{ if(!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position) return;
+        const pa=o.geometry.attributes.position, n=pa.count, P=new Float32Array(n*3);
+        m.multiplyMatrices(inv, o.matrixWorld);
+        for(let i=0;i<n;i++){ v.fromBufferAttribute(pa,i).applyMatrix4(m); P[i*3]=v.x; P[i*3+1]=v.y; P[i*3+2]=v.z;
+            if(v.x<x0)x0=v.x; if(v.x>x1)x1=v.x; if(v.z<z0)z0=v.z; if(v.z>z1)z1=v.z; }
+        parts.push({ P, idx:o.geometry.index ? o.geometry.index.array : null, n }); });
+    if(!parts.length || !(x1>x0) || !(z1>z0)) return null;
+    const N=320, cell=Math.max(x1-x0, z1-z0)/N, nx=Math.floor((x1-x0)/cell)+1, nz=Math.floor((z1-z0)/cell)+1;
+    const H=new Float32Array(nx*nz).fill(-Infinity);
+    const put=(x,y,z)=>{ let ix=Math.floor((x-x0)/cell), iz=Math.floor((z-z0)/cell);
+        if(ix<0)ix=0; else if(ix>=nx)ix=nx-1; if(iz<0)iz=0; else if(iz>=nz)iz=nz-1;
+        const k=iz*nx+ix; if(y>H[k]) H[k]=y; };
+    const c2=cell*cell;
+    for(const {P,idx,n} of parts){
+        for(let i=0;i<n*3;i+=3) put(P[i],P[i+1],P[i+2]);   // 頂点（細かい三角形は これだけで足りる）
+        const tc = idx ? Math.floor(idx.length/3) : Math.floor(n/3);
+        for(let t=0;t<tc;t++){
+            const a=(idx?idx[t*3]:t*3)*3, b=(idx?idx[t*3+1]:t*3+1)*3, c=(idx?idx[t*3+2]:t*3+2)*3;
+            const ax=P[a],az=P[a+2], bx=P[b]-ax,bz=P[b+2]-az, cx=P[c]-ax,cz=P[c+2]-az;
+            const e2=Math.max(bx*bx+bz*bz, cx*cx+cz*cz, (cx-bx)*(cx-bx)+(cz-bz)*(cz-bz)); if(e2<=c2) continue;
+            const ay=P[a+1], by=P[b+1]-ay, cy=P[c+1]-ay, s=Math.ceil(2*Math.sqrt(e2)/cell);   // 大きな三角形は 格子の半分おきに点を打つ（すき間を作らない）
+            for(let i=0;i<=s;i++){ const u=i/s; for(let j=0;j<=s-i;j++){ const w=j/s; put(ax+bx*u+cx*w, ay+by*u+cy*w, az+bz*u+cz*w); } }
+        }
+    }
+    { const F=H.slice();   // 小さなすき間（となりの2か所以上に表面がある空きマス）をうめる
+      for(let iz=0;iz<nz;iz++) for(let ix=0;ix<nx;ix++){ const k=iz*nx+ix; if(F[k]>-Infinity) continue;
+        let m=-Infinity, c=0; for(const q of [ix>0?k-1:-1, ix<nx-1?k+1:-1, iz>0?k-nx:-1, iz<nz-1?k+nx:-1]){ if(q>=0 && F[q]>-Infinity){ c++; if(F[q]>m) m=F[q]; } }
+        if(c>=2) H[k]=m; } }
+    const ys=[]; for(let k=0;k<H.length;k++) if(H[k]>-Infinity) ys.push(H[k]);
+    if(!ys.length) return null;
+    ys.sort((p,q)=>p-q);
+    return { H, nx, nz, x0, z0, x1:x0+nx*cell, z1:z0+nz*cell, cell, mid:ys[Math.floor(ys.length*0.5)], cx:(x0+x1)/2, cz:(z0+z1)/2 };
+}
+function siteHeightMap(){
+    if(!siteRoot) return null;
+    if(_siteHMFor!==siteRoot){ _siteHMFor=siteRoot; _siteHM=null;
+        try{ const t=performance.now(); _siteHM=buildSiteHeightMap(siteRoot); console.log("[サイトの透過] 視線用の高さマップ", _siteHM ? (_siteHM.nx+"×"+_siteHM.nz) : "なし", Math.round(performance.now()-t)+"ms"); }
+        catch(e){ console.warn("[サイトの透過] 視線用の高さマップを作れませんでした", e); } }
+    return _siteHM;
+}
+function hmAt(hm,x,z){ const ix=Math.floor((x-hm.x0)/hm.cell), iz=Math.floor((z-hm.z0)/hm.cell);
+    return (ix<0||iz<0||ix>=hm.nx||iz>=hm.nz) ? -Infinity : hm.H[iz*hm.nx+ix]; }
+// o：目の位置、v：視線1mぶん（どちらもサイトの中の座標）。表面に当たるまでの距離（m）。当たらなければ null
+function hmMarch(hm, o, v, maxT){
+    const vl=v.length(); if(vl<1e-9) return null;
+    let t0=0, t1=maxT;
+    for(const [p,d,lo,hi] of [[o.x,v.x,hm.x0,hm.x1],[o.z,v.z,hm.z0,hm.z1]]){   // 高さマップの範囲だけ しらべる
+        if(Math.abs(d)<1e-12){ if(p<lo||p>hi) return null; continue; }
+        let ta=(lo-p)/d, tb=(hi-p)/d; if(ta>tb){ const q=ta; ta=tb; tb=q; }
+        if(ta>t0)t0=ta; if(tb<t1)t1=tb; }
+    if(!(t0<t1)) return null;
+    const below=t=>{ const y=o.y+v.y*t, h=hmAt(hm, o.x+v.x*t, o.z+v.z*t); return y<=h; };   // 表面が無い所＝空いている
+    const step=hm.cell*0.5/vl;
+    if(below(t0)) { if(t0>0) return t0; }      // 外から見て サイトの横の面に当たる
+    let prev=t0, wasAbove=!below(t0);          // 目が表面より下（屋根の下など）の時は いったん上に出てから
+    for(let t=Math.min(t1,t0+step); ; t=Math.min(t1,t+step)){
+        const b=below(t);
+        if(b && wasAbove){ let lo=prev, hi=t; for(let k=0;k<8;k++){ const mm=(lo+hi)/2; if(below(mm)) hi=mm; else lo=mm; } return hi; }
+        if(!b) wasAbove=true;
+        prev=t; if(t>=t1) break;
+    }
+    return null;
+}
+// 視線の先の点（シーンの座標。使うのは 水平の位置 x,z だけ）
+function siteGazePoint(out){
+    camera.getWorldPosition(_sgO); camera.getWorldDirection(_sgD);
+    const hm=siteHeightMap(); let planeY;
+    if(hm){
+        siteRoot.updateWorldMatrix(true,false); _sgInv.copy(siteRoot.matrixWorld).invert();
+        _sgA.copy(_sgO).applyMatrix4(_sgInv); _sgB.copy(_sgO).add(_sgD).applyMatrix4(_sgInv).sub(_sgA);
+        const t=hmMarch(hm, _sgA, _sgB, SITE_GAZE_MAX);
+        if(t!=null) return out.copy(_sgD).multiplyScalar(t).add(_sgO);
+        planeY=_sgA.set(hm.cx, hm.mid, hm.cz).applyMatrix4(siteRoot.matrixWorld).y;   // 当たらない時：サイトの ふつうの高さの水平面
+    } else planeY=(typeof stage!=="undefined") ? stage.position.y+GROUND_Y : GROUND_Y;
+    let d=SITE_GAZE_MAX; if(_sgD.y<-1e-6) d=Math.max(0, Math.min(d, (_sgO.y-planeY)/(-_sgD.y)));
+    return out.set(_sgO.x+_sgD.x*d, planeY, _sgO.z+_sgD.z*d);
+}
+function siteAlphaTick(){   // 毎フレーム：透過しない円の中心（プレイヤーの足もと／視線の先）
+    if(!(siteRoot && siteAlphaPct>0 && siteSolidR>0 && typeof camera!=="undefined")){ _sgReset=true; return; }
+    const P=SITE_ALPHA_U.uSiteP.value;
+    if(siteSolidAt!=="gaze" || !siteRoot.visible){ camera.getWorldPosition(P); _sgReset=true; return; }
+    siteGazePoint(_sgG);
+    const now=performance.now(), dt=(now-_sgT)/1000; _sgT=now;
+    if(_sgReset || !(dt>0) || dt>0.25){ P.copy(_sgG); _sgReset=false; return; }   // 久しぶり・切り替え直後は すぐその場所へ
+    const k=1-Math.exp(-dt*SITE_GAZE_FOLLOW); P.x+=(_sgG.x-P.x)*k; P.z+=(_sgG.z-P.z)*k; P.y=_sgG.y;
+}
+function setSiteSolidAt(v){   // 透過しない円の中心："foot"＝足もと／"gaze"＝視線の先
+    siteSolidAt=(v==="gaze") ? "gaze" : "foot";
+    if(typeof segSelect==="function") segSelect("segSolidAt", siteSolidAt);
+    const l=document.getElementById("srLbl"); if(l) l.textContent = (siteSolidAt==="gaze") ? "プレイヤーの視線の先のまわりを透過しない半径（m）" : "プレイヤーのまわりを透過しない半径（m）";
+    _sgReset=true; siteAlphaTick(); if(typeof requestTitleDraw==="function") requestTitleDraw(600);
+}
 function setSiteSolidR(v){
     v=Math.max(0, Math.min(3, Math.round((+v||0)*10)/10)); siteSolidR=v;
     const sl=document.getElementById("srSlider"), n=document.getElementById("srNum"); if(sl) sl.value=v; if(n) n.value=v;
@@ -8109,7 +8216,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optRealShort",false); if(typeof setRealRefShort==="function") setRealRefShort(20);   // オンは非表示＝実寸基準20m固定
         show("optRealCap",false); realCapToActual=true; segSelect("segRealCap","on");   // オンは非表示＝本物の大きさまで
         show("optDinoMove",false); setDigDinoMove("move");   // オンは非表示＝あるく
-        show("siteAlphaOpt",false); if(siteAlphaPct) setSiteAlpha(0); if(siteSolidR) setSiteSolidR(0);   // オンは非表示＝透過なし
+        show("siteAlphaOpt",false); if(siteAlphaPct) setSiteAlpha(0); if(siteSolidR) setSiteSolidR(0); if(siteSolidAt!=="foot") setSiteSolidAt("foot");   // オンは非表示＝透過なし（円の中心も 足もとに戻す）
         setTimeLimit(90);   // おすすめオンは90秒固定
         const isArt=(target==="artifact");
         show("siteSizeOpt", isArt);
@@ -8134,7 +8241,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
     }
     if(isChallenge){   // 発掘チャレンジ：必須6項目は常にロック。5項目はおすすめオンで非表示／オフで表示・変更可
         ["optHoloFreeze","optCardShow","optRarity","optBuddyMode","optBuddyPool","optStar","optDogLevel","optDigPos","optArtLine"].forEach(id=>show(id,false));
-        if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDinoMove","siteAlphaOpt"].forEach(id=>show(id,false)); if(siteAlphaPct) setSiteAlpha(0); if(siteSolidR) setSiteSolidR(0); }
+        if(recoOn){ ["optTimeLimit","optToolSwap","optSite","optRealCap","optRealShort","optDinoMove","siteAlphaOpt"].forEach(id=>show(id,false)); if(siteAlphaPct) setSiteAlpha(0); if(siteSolidR) setSiteSolidR(0); if(siteSolidAt!=="foot") setSiteSolidAt("foot"); }
         else {
             show("optTimeLimit",true);   // 3ターン目の制限時間
             show("optToolSwap",true);
@@ -8245,7 +8352,8 @@ function setSiteMode(v, apply){
 { const s=document.getElementById("saSlider"), n=document.getElementById("saNum");   // サイトモデルの透過率（すぐ反映。読み込み直しは いらない）
   if(s) s.oninput=()=>setSiteAlpha(+s.value); if(n) n.onchange=()=>setSiteAlpha(+n.value);
   const rs=document.getElementById("srSlider"), rn=document.getElementById("srNum");   // プレイヤーのまわりを透過しない半径
-  if(rs) rs.oninput=()=>setSiteSolidR(+rs.value); if(rn) rn.onchange=()=>setSiteSolidR(+rn.value); }
+  if(rs) rs.oninput=()=>setSiteSolidR(+rs.value); if(rn) rn.onchange=()=>setSiteSolidR(+rn.value);
+  document.querySelectorAll("#segSolidAt button").forEach(b=>b.onclick=()=>setSiteSolidAt(b.dataset.v)); }   // 透過しない円の中心：足もと／視線の先
 { const s=document.getElementById("ssSlider"), n=document.getElementById("ssNum");
   if(s){ s.oninput=()=>setSiteMode(+s.value,false); s.onchange=()=>setSiteMode(+s.value,true); }   // ドラッグ中は表示のみ、離したら反映（メニューでは「まとめて更新」まで読み込みを保留）
   if(n) n.onchange=()=>setSiteMode(+n.value,true);
@@ -12334,7 +12442,7 @@ renderer.setAnimationLoop((_t, _xrFrame)=>{
     if(_warmupTTL>0){ for(const m of _warmupModels){ if(m){ m.visible=true; m.position.set(0,-100000,0); } } }
     if(_warmX) _warmXPre();   // 追加の準備：ARで あそぶ のモデル・相棒・見本を画面の外で描く
 
-    siteAlphaTick();   // サイトの透過：プレイヤーの足もとの円の位置
+    siteAlphaTick();   // サイトの透過：透過しない円の位置（プレイヤーの足もと／視線の先）
     renderer.render(scene,camera);
     if(_warmX) _warmXPost();
     if(TABAR.capReq) tabarCardXRCapAfter();   // カードを さがす（ARCore）：描き終えた後にカメラ映像を写す
@@ -14390,7 +14498,7 @@ window.addEventListener("litephoneend", ()=>{ if(!LDIG.leaving) return; LDIG.lea
 function ldigSnapshot(){
     LDIG.snap={
         v:{ recoOn, chosenMode, chosenDigTarget, chosenTool, TIME_LIMIT, cardShown, buddyRandom, dogOnly, starEnabled, toolSwapAllowed, holoFreezeTime,
-            rarityOn, buddyMode, showArtInfo, siteVisible, digPosRandom, realCapToActual, realRefShort, dogLevelUp, WORLD_X, WORLD_Z, siteMode, companionKind, dugDinoMove, siteAlphaPct, siteSolidR },
+            rarityOn, buddyMode, showArtInfo, siteVisible, digPosRandom, realCapToActual, realRefShort, dogLevelUp, WORLD_X, WORLD_Z, siteMode, companionKind, dugDinoMove, siteAlphaPct, siteSolidR, siteSolidAt },
         seg:[...document.querySelectorAll("#menu .seg button")].map(b=>[b, b.classList.contains("on")]),
         inp:[...document.querySelectorAll("#menu input")].map(e=>[e, e.value, e.checked]),
         disp:[...document.querySelectorAll("#menu .opt, #worldSizeOpt, #siteSizeOpt")].map(e=>[e, e.style.display]) };
@@ -14418,6 +14526,7 @@ function ldigSetVars(v){
     if(v.dugDinoMove) dugDinoMove=v.dugDinoMove;   // 掘り出した恐竜の動き（ボタンの表示は seg の復元で戻る）
     if(v.siteAlphaPct!=null && v.siteAlphaPct!==siteAlphaPct) setSiteAlpha(v.siteAlphaPct);   // サイトモデルの透過率
     if(v.siteSolidR!=null && v.siteSolidR!==siteSolidR) setSiteSolidR(v.siteSolidR);     // プレイヤーのまわりを透過しない半径
+    if(v.siteSolidAt && v.siteSolidAt!==siteSolidAt) setSiteSolidAt(v.siteSolidAt);      // 透過しない円の中心（足もと／視線の先）
     if(chosenDigTarget!==v.chosenDigTarget || curTarget!==(v.chosenDigTarget==="dino"?"dino":"artifact")) setDigTarget(v.chosenDigTarget);
     chosenDigTarget=v.chosenDigTarget;
     if(siteVisible!==v.siteVisible) setSiteVisible(v.siteVisible);
