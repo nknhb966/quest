@@ -7088,7 +7088,10 @@ function tickHatch(now, dt){
     }
 }
 // 長首の視線：頭（首）の回転 x（＋＝下）を、顔（目）の前方がプレイヤーの目に向く値にする
-//   回すと目の位置も動くので、「今の目の位置から見た相手の俯角」と「今の視線の俯角」の差で3回だけ詰める（体の傾きも含めて計算）
+//   回すと目の位置も動くので、「目の位置から見た相手の俯角」と「視線の俯角」の差を、ニュートン法で3回だけ詰める（体の傾きも含めて計算）
+//   差を そのまま足すだけ だと、プレイヤーが 目のすぐ前（首の付け根から目までより 近い所）にいる時に、
+//   回すほど 目が動いて 差が 大きくなり、答えが 毎フレーム 上・下に 行ったり来たりして 頭が 縦に ガクガク ふるえる。
+//   回した時の 差の変わり方（傾き）で 割って 進めると、近くでも 1つの答えに おちつく
 const _lnE=new THREE.Vector3(), _lnG=new THREE.Vector3(), _lnM=new THREE.Matrix4(), _lnB=new THREE.Box3();
 function longNeckGaze(head, camW){
     const ud=head.userData, save=head.rotation.x;
@@ -7101,14 +7104,18 @@ function longNeckGaze(head, camW){
         const h=box.max.y-box.min.y, d=box.max.z-box.min.z;
         ud._eye = box.isEmpty() ? new THREE.Vector3(0,0,0.1) : new THREE.Vector3(0, box.max.y-0.12*h, box.max.z-0.15*d);
     }
-    let th=save;
-    for(let k=0;k<3;k++){
-        head.rotation.x=th; head.updateMatrixWorld(true);
+    const err=(t)=>{   // 首を t にした時の「目→プレイヤーの俯角 − 視線の俯角」
+        head.rotation.x=t; head.updateMatrixWorld(true);
         const e=head.localToWorld(_lnE.copy(ud._eye));
         const g=_lnG.set(0,0,1).transformDirection(head.matrixWorld);                 // 視線（顔の前方）
         const gd=Math.atan2(-g.y, Math.hypot(g.x, g.z));                                // 視線の俯角（＋＝下）
         const td=Math.atan2(e.y-camW.y, Math.max(0.05, Math.hypot(camW.x-e.x, camW.z-e.z)));   // 目→プレイヤーの俯角
-        th += (td-gd);
+        return td-gd;
+    };
+    let th=save;
+    for(let k=0;k<3;k++){
+        const f=err(th), slope=(err(th+0.02)-f)/0.02;   // 差の傾き（ふつうは −1 より小さい。遠いほど −1 に近い）
+        th += Math.max(-0.5, Math.min(0.5, -f/Math.min(-0.3, slope)));   // ニュートン法（傾きが 0 に近い時も 大きく 飛ばない）
     }
     head.rotation.x=save; head.updateMatrixWorld(true);
     return th;
