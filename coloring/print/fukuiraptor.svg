@@ -3,8 +3,9 @@
 <title>No.02 フクイラプトル 3Dもようぬりえ</title>
 <metadata id="dino-coloring-meta"><![CDATA[{"app": "dino-texture-coloring", "version": 6, "no": 2, "dino": "fukuiraptor", "name": "フクイラプトル", "sheetMarkerId": 5, "page": {"w": 297, "h": 210, "unit": "mm"}, "projection": {"type": "orthographic-oblique", "viewDir_toCamera": [-0.78087, 0.0, 0.6247], "screenRight": [0.6247, -0.0, 0.78087], "screenUp": [0.0, 1.0, 0.0], "voxel": 0.016666666666666666, "mm_per_voxel": 1.00701, "origin_mm": [164.9123, 166.8751], "sheetFromModel": "X = X0 + s*(p·screenRight),  Y = Y0 − s*(p·screenUp)  (p=ボクセル単位)", "uvFromSheet": "u=X/297, v=1−Y/210"}, "markers": {"dict": "ARUCO_4X4_50", "size": 12, "corners": {"TL": {"id": 0, "x": 8, "y": 8}, "TR": {"id": 1, "x": 277, "y": 8}, "BR": {"id": 2, "x": 277, "y": 190}, "BL": {"id": 3, "x": 8, "y": 190}}}, "mapping": "coloring/data/fukuiraptor.json"}]]></metadata>
 <style>
-  #silhouette{fill:#fff} .plane{fill:none;stroke:#000;stroke-width:0.55;stroke-linejoin:round}
-  .outline{fill:none;stroke:#000;stroke-width:1.4;stroke-linejoin:round} .eye{fill:#000} .eye-hl{fill:#fff} .marker{fill:#000}
+  /* 恐竜の線は うすいグレー・細め（ぬりえを読み込んだ時に 線が模様として出にくい）。目・マーカーは黒のまま */
+  #silhouette{fill:#fff} .plane{fill:none;stroke:#b4b4b4;stroke-width:0.4;stroke-linejoin:round}
+  .outline{fill:none;stroke:#b4b4b4;stroke-width:1.0;stroke-linejoin:round} .eye{fill:#000} .eye-hl{fill:#fff} .marker{fill:#000}
   .title{font-family:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Noto Sans CJK JP","Noto Sans JP",sans-serif;font-weight:700} .sub{font-family:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Noto Sans CJK JP","Noto Sans JP",sans-serif;fill:#555}
 </style>
 <rect id="paper" width="297" height="210" fill="#fff"/>
