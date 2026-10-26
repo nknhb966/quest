@@ -317,7 +317,7 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 #nuriFrame{ position:absolute; left:50%; top:50%; width:min(88vw, 88vh*1.414); aspect-ratio:297/210; transform:translate(-50%,-50%); border:4px dashed rgba(255,230,120,.9); border-radius:14px; box-shadow:0 0 0 9999px rgba(0,0,0,.25); pointer-events:none; }
 #nuriPreview{ position:absolute; left:0; right:0; top:0; bottom:170px; display:none; background:radial-gradient(#2b2440,#0d0a18); touch-action:none; }
 #nuriPreview canvas{ width:100%; height:100%; display:block; }
-#nuriScan .nuriCard{ position:absolute; left:50%; top:14px; transform:translateX(-50%); max-width:92vw; background:rgba(10,7,26,.85); border:1px solid rgba(255,230,120,.7); border-radius:14px; padding:10px 18px; text-align:center; }
+#nuriScan .nuriCard{ position:absolute; left:50%; top:14px; transform:translateX(-50%); width:max-content; max-width:92vw; box-sizing:border-box; background:rgba(10,7,26,.85); border:1px solid rgba(255,230,120,.7); border-radius:14px; padding:10px 18px; text-align:center; }
 #nuriMsg{ margin:0; font-size:20px; font-weight:800; } #nuriSub{ margin:4px 0 0; font-size:14px; color:#dcd3ff; min-height:1em; }
 #nuriViews{ position:absolute; left:50%; bottom:110px; transform:translateX(-50%); display:none; gap:6px; flex-wrap:wrap; justify-content:center; width:96vw; }
 #nuriViews button{ padding:8px 12px; border-radius:10px; border:1px solid #6a5c94; background:#241a34; color:#e8dcff; font-weight:700; }
@@ -694,6 +694,8 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
     <div id="nuriSection">
       <div class="nuriTitle">🖍 ぬりえで じぶんの きょうりゅう</div>
       <button id="nuriScanBtn" type="button">🖍 ぬりえを よみこむ</button>
+      <!-- れんぞくで よみこむ：どの端末も カメラ画面で。読めたら 卵・3D表示・ARは出さずに、すぐ つぎの ぬりえを待つ（何まいでも）。おすすめ設定オフだけ表示 -->
+      <button id="nuriScanContBtn" type="button" class="nuriMenuBtn" style="display:none">🔁 ぬりえを れんぞくで よみこむ</button>
       <!-- ぬりえの恐竜を、メイン画面から ARで もういちど みる（ぬりえを もういちど みる） -->
       <div id="nuriAgainBox" style="display:none">
         <button id="nuriAgainAR" type="button">📱 ぬりえを もういちど みる</button>
@@ -864,7 +866,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       </section>
       <section>
         <h3>🖍 ぬりえで じぶんの きょうりゅう</h3>
-        <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。</p>
+        <p>タイトルの<b>「📄 ぬりえを いんさつ」</b>で恐竜のぬりえを印刷し、色をぬります。<b>「🖍 ぬりえを よみこむ」</b>でカメラにぬりえを映すと、その恐竜に<b>ぬった模様</b>がつきます。<b>「🔁 ぬりえを れんぞくで よみこむ」</b>（おすすめ設定オフのとき）では、卵の演出なしで 何まいでも続けて読み込めます（「よめたよ！」と出たら、つぎのぬりえに取りかえるだけ。おわる時は「おわる」）。</p>
         <p>ぬった色によって、その恐竜の<b>ステータスとスペシャル</b>も変わります（色とステータスの関係は「📊 得点・カードの仕組み」へ）。模様とステータスは、<b>相棒にしたとき・相棒えらびのカード・獲得カード</b>に入ります（図鑑のカードは元のまま）。</p>
         <p class="k">ぬらずに白く残った所は、ふだんは ぬりえどおり白く見えます。「🦖 もとの もよう」にすると、その所を ぬりえなしの時の模様で表示します（見た目だけで、ステータスやカードのスコアは変わりません）。<b>恐竜ごと</b>に決められ、その恐竜の相棒・AR・カードがいっしょに変わります。ARで じぶんで ぬった恐竜を出している時に「⬜ しろは しろ／🦖 しろは もよう」ボタンで変えられます（おすすめ設定のオン・オフに関係なく使えます。たんけんの準備では、おすすめ設定オフの時に見本の恐竜ごとにも変えられます）。</p>
         <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。メイン画面の並びは、ヘッドセットでは「VR・ARで ほんかくはっくつ → ぬりえ → モデルを みよう」、それ以外（スマホ・タブレット・PC）では「ぬりえ → モデルを みよう → VR・ARで ほんかくはっくつ」です。</p>
@@ -15980,6 +15982,7 @@ function nuriMenuRefresh(){
           b.innerHTML='<span class="ic">'+(!has? "⬆" : src==="sample"? "🎨" : "🖍")+'</span>'+(sh? sh.name : k);
           b.title = !has ? "ぬりえなし：みほんを とりこむ" : src==="sample" ? "みほんを とりこみずみ：みほんで うわがき" : "ぬりえを よみこみずみ：みほんで うわがき"; }); }
     if(sb && !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ sb.style.display="none"; if(st) st.textContent="この きかいでは カメラが つかえません"; }
+    { const cb=$("nuriScanContBtn"); if(cb) cb.style.display = (!reco && navigator.mediaDevices && navigator.mediaDevices.getUserMedia)? "" : "none"; }   // れんぞくで よみこむ：おすすめ設定オフだけ（カメラが使えない時は出さない）
     nuriAgainRefresh();
 }
 // メイン画面の「ARで もういちど みる」：ARが使える端末（Android の AR／iPhone・iPad のカメラ方式）だけ表示
@@ -16026,7 +16029,8 @@ function nuriCanScan(){
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
 // ---- 画面：スキャン ----
-const SC={ stream:null, timer:0, det:null, small:null, full:null, stable:0, last:null, lastKey:null, t0:0, busy:false, loading:null };
+const SC={ stream:null, timer:0, det:null, small:null, full:null, stable:0, last:null, lastKey:null, t0:0, busy:false, loading:null,
+    cont:false, contN:0, contLast:"", contWait:null };   // cont＝れんぞくで よみこむ（contN＝よめた かず／contWait＝読んだ紙が はずれるのを待つ { key, away }）
 function scMsg(t, sub){ const m=$("nuriMsg"), s=$("nuriSub"); if(m) m.textContent=t||""; if(s) s.textContent=sub||""; }
 function scMode(mode){ const o=$("nuriScan"); if(o) o.dataset.mode=mode; }
 function scStopCamera(){
@@ -16038,10 +16042,22 @@ function scStopCamera(){
     for(const k of ["small","full"]){ if(SC[k]){ SC[k].width=0; SC[k].height=0; SC[k]=null; } }
     SC.det=null; SC.stable=0; SC.last=null; SC.lastKey=null;
 }
-function scClose(){ scStopCamera(); nuriPreviewStop(); NURI_AR.ok=false; const o=$("nuriScan"); if(o) o.classList.remove("open"); nuriMenuRefresh(); }
+function scClose(){ scStopCamera(); nuriPreviewStop(); NURI_AR.ok=false; scContOff(); const o=$("nuriScan"); if(o) o.classList.remove("open"); nuriMenuRefresh(); }
+function scContOff(){ SC.cont=false; SC.contWait=null; const b=$("nuriBack"); if(b) b.textContent="もどる"; }   // れんぞく を やめる（ボタンの文字も元に）
+// れんぞくで よみこむ：どの端末も カメラ画面で読む（ARには入らない）。読めたら 卵・3D表示・ARは出さず、カメラを止めずに つぎの紙を待つ
+function nuriStartScanCont(){
+    if(typeof LITE!=="undefined" && LITE.active) return;   // AR中は始めない
+    if(!nuriCanScan()) return;
+    nuriPreviewStop(); scStopCamera(); NURI_AR.ok=false; nuriArButtons();
+    if(!SC.cont){ SC.contN=0; SC.contLast=""; }   // はじめから（「もういちど よむ」で開き直した時は かずを のこす）
+    SC.cont=true; SC.contWait=null;
+    { const b=$("nuriBack"); if(b) b.textContent="おわる"; }
+    nuriStartScanCam();
+}
 function nuriStartScan(){   // ARが使えるAndroid：ボタンを押した瞬間にARへ（読み取り→卵→孵化までAR内で続けて）。それ以外：カメラ画面で読み取り
     if(typeof LITE!=="undefined" && LITE.active) return;   // AR中は始めない（二重に起動しない）
     if(!nuriCanScan()){ return; }
+    scContOff();   // ふつうの読み取り（れんぞく ではない）
     if(NURI_AR.cap) nuriStartScanAR();
     else if(typeof iarWanted==="function" && iarWanted()) nuriStartScanIAR();   // iPhone：カメラ＋ジャイロ方式（読んだ用紙の上で卵→孵化→歩く）
     else nuriStartScanCam();
@@ -16117,7 +16133,8 @@ async function nuriStartScanCam(){
     scCamAttach();
     SC.det=new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 });
     SC.small=document.createElement("canvas"); SC.t0=performance.now(); SC.stable=0; SC.last=null; nuriSndReset();
-    scMsg("ぬりえを わくに あわせてね","4つの かどの くろい しかくが うつるように してね");
+    if(SC.cont) scMsg("れんぞくで よみこむよ","ぬりえを わくに あわせてね。よめたら つぎの ぬりえに とりかえてね");
+    else scMsg("ぬりえを わくに あわせてね","4つの かどの くろい しかくが うつるように してね");
     scTick();
 }
 function scSheetKey(id){ const s=NURI.reg.sheets.find(x=>x.id===id); return s? s.key : null; }
@@ -16133,7 +16150,18 @@ function scTick(){
     let res=null; try{ res=nuriMarkersToHomography(SC.det.detectImage(w,h,img.data), NURI.layout, s, NURI.reg.sheets.map(x=>x.id)); }catch(e){ res=null; }
     const el=(performance.now()-SC.t0)/1000;
     const key=res && res.sheetId!==undefined ? scSheetKey(res.sheetId) : null;
-    { const [st,f]=nuriSndState(res, key); nuriSnd(st, f); }   // 読み取り中の音
+    if(SC.cont && SC.contWait){   // れんぞく：さっき読んだ紙が うつっている間は 読まない（音も出さない）。はずれたら（0.4秒）／ちがう恐竜の紙なら つぎへ
+        const W=SC.contWait, full=!!(res && res.ok && key);
+        if(full && key===W.key){   // 同じ恐竜の紙：色を くらべて、べつの紙（すばやく取りかえた）なら つぎへ
+            let nw=false; try{ nw = !!(W.sig && scSigDiff(W.sig, scSig(img.data, w, h, res.H, s, W.sig.pts)) >= SC_SIG_NEW); }catch(_){ }
+            if(nw) SC.contWait=null; else W.away=0; }
+        else if(full || ++W.away>=2) SC.contWait=null;
+        if(SC.contWait){ SC.timer=setTimeout(scTick,200); return; }   // 「よめたよ！」のまま待つ
+        SC.stable=0; SC.last=null;
+    }
+    { const [st,f]=nuriSndState(res, key);   // 読み取り中の音
+      if(SC.cont && st==="none"){ NSND.st="none"; NSND.found=0; NSND.noneT=performance.now(); }   // れんぞく：つぎの紙を待つ間の「ブー」は鳴らさない
+      else nuriSnd(st, f); }
     if(key && !(NURI.maps[key] && NURI.maps[key].P)){                // 見つけた恐竜の対応表を、必要になった時だけ読む
         if(SC.loading!==key){ SC.loading=key; nuriLoadPix(key).then(()=>{ SC.loading=null; nuriDropPix(key); }).catch(e=>{ console.warn("[ぬりえ]",e); SC.loading=null; scMode("error"); scMsg("じゅんびが できなかったよ","もういちど ためしてね"); scStopCamera(); }); }
         const nm=sheetOf(key).name; scMsg(nm+"の ぬりえだね！","じゅんびしているよ…");
@@ -16141,7 +16169,9 @@ function scTick(){
         const moved = SC.last && SC.lastKey===key ? Math.max(...res.corners.map((p,i)=>Math.hypot(p[0]-SC.last[i][0],p[1]-SC.last[i][1]))) / Math.max(vw,vh) : 1;
         SC.stable = moved<0.015? SC.stable+1 : 1; SC.last=res.corners; SC.lastKey=key;
         scMsg("そのまま うごかないでね…","");
-        if(SC.stable>=2){ nuriSnd("done"); scCapture(res, s, key); return; }
+        if(SC.stable>=2){ nuriSnd("done");
+            let sig=null; if(SC.cont){ try{ const pts=scSigPts(NURI.maps[key]); sig=scSig(img.data, w, h, res.H, s, pts); sig.pts=pts; }catch(_){ sig=null; } }   // れんぞく：この紙の色の しるし
+            scCapture(res, s, key, sig); return; }
     }else{
         SC.stable=0; SC.last=null;
         if(lum<55) scMsg("ちょっと くらいみたい","もうすこし あかるい ばしょで とってみよう");
@@ -16149,15 +16179,17 @@ function scTick(){
         else if(res && res.otherSheet) scMsg("この ぬりえは まだ よめないよ","あたらしい きょうりゅうの ぬりえを つかってね");
         else if(res && res.found===4 && res.sheetId===undefined) scMsg("もうすこし！","ひだりしたの 2つめの しかくも うつるように してね");
         else if(res && res.found>0) scMsg("もうすこし！","4つの かどの くろい しかくが ぜんぶ うつるように してね");
+        else if(SC.cont && SC.contN>0) scMsg("つぎの ぬりえを うつしてね","よめた かず："+SC.contN+"まい（さいご："+SC.contLast+"）");   // れんぞく：読み終えて つぎの紙を待っている
         else if(el>3) scMsg("ぬりえが みつからないよ","きょうりゅう ぜんたいが うつるように してみよう");
     }
     SC.timer=setTimeout(scTick,200);
 }
-function scCapture(resSmall, s, key){
+function scCapture(resSmall, s, key, sig){   // sig＝れんぞく：読んだ紙の色の しるし（scSig）
     SC.busy=true; const v=$("nuriVideo"); const vw=v.videoWidth, vh=v.videoHeight;
     const c=document.createElement("canvas"); c.width=vw; c.height=vh; SC.full=c;
     const ctx=c.getContext("2d",{willReadFrequently:true}); ctx.drawImage(v,0,0,vw,vh);
     let photo=ctx.getImageData(0,0,vw,vh);
+    if(SC.cont){ c.width=0; c.height=0; SC.full=null; scContCapture(photo, resSmall, key, vw, vh, sig); return; }   // れんぞく：カメラは止めない
     scStopCamera();                                                     // 撮れたらすぐカメラを止める
     scMode("making"); scMsg("きょうりゅうを つくっているよ…","");
     setTimeout(()=>{
@@ -16176,6 +16208,55 @@ function scCapture(resSmall, s, key){
             SC.busy=false; scMode("done"); scMsg("","");   // 卵の間はセリフなし（生まれたら「できた！」）
             nuriAfterScan(key);   // 卵から生まれる演出（ARが使えるAndroidは、卵のままARで孵す）
         }catch(e){ console.warn("[ぬりえ]",e); SC.busy=false; scMode("error"); scMsg("うまく よめなかったよ","もういちど ためしてね"); }
+    }, 30);
+}
+// れんぞく：同じ恐竜の紙を すばやく取りかえた時も 気づけるように、紙の上の決まった点（恐竜の内側 96か所）の色をくらべる
+//   点ごとに「色み（r・g の割合）」と「明るさ（全部の点の平均で割る）」。色みが ちがう／明るさが 2倍以上ちがう 点が 25% 以上＝べつの紙
+//   （カメラの明るさの変化・手のかげ では 色みは ほとんど かわらない＝同じ紙のまま）
+const SC_SIG_N=96, SC_SIG_CHROMA=0.06, SC_SIG_LUM=0.7, SC_SIG_NEW=0.25;
+function scSigPts(D){ const P=D.P, W=D.info.width, n=P.pix.length, pts=new Float32Array(SC_SIG_N*2);
+    for(let i=0;i<SC_SIG_N;i++){ const p=P.pix[Math.floor((i+0.5)*n/SC_SIG_N)], x=p%W; pts[i*2]=x; pts[i*2+1]=(p-x)/W; }
+    return pts; }
+function scSig(data, w, h, H, k, pts){   // H：用紙 → 元の映像、k：元の映像 → この画像の倍率
+    const n=pts.length/2, out=new Float32Array(n*3); let sum=0;
+    for(let i=0;i<n;i++){ const x=pts[i*2], y=pts[i*2+1], q=H[6]*x+H[7]*y+H[8];
+        const u=Math.round((H[0]*x+H[1]*y+H[2])/q*k), v=Math.round((H[3]*x+H[4]*y+H[5])/q*k);
+        let r=0, g=0, b=0, c=0;
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=u+dx, yy=v+dy; if(xx<0||yy<0||xx>=w||yy>=h) continue; const o=(yy*w+xx)*4; r+=data[o]; g+=data[o+1]; b+=data[o+2]; c++; }
+        if(c){ r/=c; g/=c; b/=c; } const e=12, t=r+g+b+3*e;   // e＝暗い所で色みが ぶれないように
+        out[i*3]=(r+e)/t; out[i*3+1]=(g+e)/t; out[i*3+2]=(r+g+b)/3+1; sum+=out[i*3+2]; }
+    const m=sum/n || 1; for(let i=0;i<n;i++) out[i*3+2]/=m;
+    return out; }
+function scSigDiff(a, b){ const n=a.length/3; let d=0;   // ちがう点の割合（0〜1）
+    for(let i=0;i<n;i++){ if(Math.abs(a[i*3]-b[i*3])+Math.abs(a[i*3+1]-b[i*3+1]) > SC_SIG_CHROMA || Math.abs(Math.log(a[i*3+2]/b[i*3+2])) > SC_SIG_LUM) d++; }
+    return d/n; }
+// れんぞくで よみこむ：ふつうと同じく 模様を つけて保存する。卵・3D表示・ARは出さず、カメラ画面のまま つぎの紙を待つ
+function scContCapture(photo, resSmall, key, vw, vh, sig){
+    const sh=sheetOf(key), nm=sh? sh.name : key;
+    scMsg("よみこんでいるよ…", nm);
+    setTimeout(()=>{
+        if(!SC.cont || !SC.stream){ SC.busy=false; return; }   // 待っている間に とじた
+        let msg, sub;
+        try{
+            const D=NURI.maps[key];
+            let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(vw,vh,photo.data), NURI.layout, 1, [D.info.sheetMarkerId]); }catch(_){}
+            if(!res || !res.ok) res=resSmall;                            // 高解像度で見失った時は、プレビューで見つけた位置を使う
+            const out=nuriProcess(photo, res.H, D);
+            photo=null;
+            if(out.paintedFaces===0){ msg="いろが みつからなかったよ"; sub="ぬった ぬりえを うつしてね"; }
+            else {
+                nuriBlankOwnNew(key);   // 白い所は「これから」の値（うわがきも）
+                nuriSetPaint(key, { rgba:out.rgba, cs:out.colorStat });
+                nuriSave(key, out.rgba, D.info, out.colorStat);
+                nuriDebugAuto(key);
+                SC.contN++; SC.contLast=nm;
+                msg="よめたよ！ "+nm; sub="つぎの ぬりえに とりかえてね（"+SC.contN+"まいめ）";
+            }
+        }catch(e){ console.warn("[ぬりえ]",e); msg="うまく よめなかったよ"; sub="いちど はずして、もういちど うつしてね"; }
+        SC.contWait={ key, away:0, sig };   // この紙が はずれるまで（または べつの紙に かわるまで）読まない
+        SC.stable=0; SC.last=null; SC.busy=false;
+        scMsg(msg, sub);
+        if(SC.stream && !SC.timer) SC.timer=setTimeout(scTick,200);
     }, 30);
 }
 // ---- できあがりの確認（小さな3D表示。閉じたら破棄）----
@@ -16613,6 +16694,7 @@ function nuriResetAll(){
 function nuriWire(){
     const sb=$("nuriScanBtn");
     if(sb) sb.addEventListener("click",()=>{ if(!nuriCanScan()) return; nuriStartScan(); });
+    { const cb=$("nuriScanContBtn"); if(cb) cb.addEventListener("click",()=>{ if(!nuriCanScan()) return; nuriStartScanCont(); }); }   // れんぞくで よみこむ
     const ra=$("nuriResetAll"); if(ra) ra.addEventListener("click",nuriResetAll);
     document.querySelectorAll("#segReco button").forEach(b=>b.addEventListener("click",()=>setTimeout(()=>{ nuriMenuRefresh(); },0)));   // おすすめ設定の切替に合わせて表示・白い所の見え方を変える（ほかの onclick の後に動く）
     document.querySelectorAll("#segNuriBlank button").forEach(b=>b.addEventListener("click",()=>{ nuriBlankSave(b.dataset.v==="orig"); nuriMenuRefresh(); nuriBlankNotify("smp", null); }));   // ぬっていない白い所：これから よみこむ恐竜の値
@@ -16622,7 +16704,7 @@ function nuriWire(){
     { const a=$("nuriCamSw"), b=$("nuriCamDef"); if(a) a.onclick=()=>scCamSwitch(); if(b) b.onclick=()=>scCamDefault(); }   // カメラの切り替え
     if(back) back.addEventListener("click",scClose);
     if(done) done.addEventListener("click",scClose);
-    if(again) again.addEventListener("click",()=>{ nuriPreviewStop(); scStopCamera(); NURI_AR.ok=false; nuriArButtons(); nuriStartScan(); });
+    if(again) again.addEventListener("click",()=>{ nuriPreviewStop(); scStopCamera(); NURI_AR.ok=false; nuriArButtons(); if(SC.cont) nuriStartScanCont(); else nuriStartScan(); });   // れんぞく中（カメラの失敗など）は れんぞく のまま
     const nar=$("nuriAR"), nh=$("nuriHatchHere");
     if(nar) nar.addEventListener("click", ()=>nuriEnterAR(false));
     { const av=$("nuriARView"); if(av) av.addEventListener("click", nuriARView); }   // ヘッドセット：ARで みる
