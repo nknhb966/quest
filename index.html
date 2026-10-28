@@ -690,6 +690,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <div class="mvSectionTitle">🔍 モデルを みよう</div>
       <button id="mvOpenBtn">🔍 かんたんAR</button>
       <button id="mvArOpenBtn">📱 ARで あそぶ</button>
+      <div id="mvWaitNote"></div>   <!-- ぬりえが かわった後、カードを作り直している間（かんたんAR・ARで あそぶ を押せない間）の進み具合 -->
     </div>
 
     <!-- ぬりえスキャン：紙に描いた模様を自分の恐竜へ（#menu 内なのでプレイ中は表示されない） -->
@@ -882,7 +883,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <p class="k">ぬらずに白く残った所は、ふだんは ぬりえどおり白く見えます。「🦖 もとの もよう」にすると、その所を ぬりえなしの時の模様で表示します（見た目だけで、ステータスやカードのスコアは変わりません）。<b>恐竜ごと</b>（「8たいまで ためる」では ぬりえ1まいごと）に決められ、その恐竜の相棒・AR・カードがいっしょに変わります。ARで じぶんで ぬった恐竜を出している時に「⬜ しろは しろ／🦖 しろは もよう」ボタンで変えられます（おすすめ設定のオン・オフに関係なく使えます。たんけんの準備では、おすすめ設定オフの時に見本の恐竜ごとにも変えられます）。</p>
         <p class="k">おすすめ設定オフでは「🎨 みほんから とりこむ」で、見本（cardDebug=2 の見本と同じ模様）を、じぶんで ぬった恐竜として取り込めます（恐竜ごと／ぜんぶ。ぬってある恐竜は上書き）。おすすめ設定は、メイン画面の右上で切り替えます。メイン画面の並びは、ヘッドセットでは「VR・ARで ほんかくはっくつ → ぬりえ → モデルを みよう」、それ以外（スマホ・タブレット・PC）では「ぬりえ → モデルを みよう → VR・ARで ほんかくはっくつ」です。</p>
         <p class="k"><b>ぬりえの ためかた</b>（おすすめ設定オフのときに選べます。オンのときは いつも「8たいまで ためる」）：<b>「🖍 8たいまで ためる」</b>（既定）は、同じ恐竜のぬりえを読んでも上書きせず、<b>1まいずつ 別の恐竜</b>として ためます（同じ種類が いくつか ある時は、読んだ順に ①②…）。9まいめからは、いちばん古い ぬりえと入れかわります。「🎨 みほんから とりこむ」も 押すたびに1体ずつ ふえます。<b>「🦖 しゅるいごとに 1たい」</b>は これまでどおり、同じ恐竜を読むと上書きします。ぬりえは ためかたごとに別々に保存され、はじめて「8たいまで ためる」を使う時は、それまでの ぬりえを引きつぎます。「8たいまで ためる」では、ARで みる の恐竜えらび・相棒えらび・カード・「🗑 ぬりえを けす」も 1体ずつです（発掘で獲得したカードと相棒は、その種類の ぬりえから ランダムに1体）。<b>たんけん</b>の「じぶんで ぬった」では、「あるいて さがす」「そのばで ぐるっと」は ためた ぬりえが<b>ぜんぶ</b>出て（同じ種類も1体ずつ）、のこりの場所には ぬっていない種類から ランダムに、みほんの模様の恐竜が出ます（図鑑は その回の8体）。「カードを さがす」「ほって かえす」も、ためた ぬりえが ぜんぶ出ます。カードの番号（No.1〜8）を場所の番号として使い、どのカードに どの恐竜が出るかは たんけんごとに ランダムです（のこりのカードは ぬっていない種類の みほん。図鑑は カードの番号順）。</p>
-        <p class="k">「📱 ぬりえを もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「📄 ぬりえを いんさつ」の「ぜんぶの きょうりゅう」で8まいを まとめて開けます（印刷はブラウザの印刷から）。「🎨 みほんから とりこむ」の恐竜は、⬆＝ぬりえなし、🔄＝ぬりえあり（水色＝ぬりえを よみこみずみ／黄色＝みほんを とりこみずみ）です。「🗑 ぬりえを けす」で、恐竜ごと／ぜんぶ、ぬりえの情報を消して、ぬりえをしていない状態に戻せます。</p>
+        <p class="k">「📱 ぬりえを もういちど みる」でぬった恐竜をARで見られます（ぬりえをした恐竜があるときだけ表示。おすすめ設定オフでは、ARが使えない端末でも押せない状態で表示）。「📄 ぬりえを いんさつ」の「ぜんぶの きょうりゅう」で8まいを まとめて開けます（印刷はブラウザの印刷から）。「🎨 みほんから とりこむ」の恐竜は、⬆＝ぬりえなし、🔄＝ぬりえあり（水色＝ぬりえを よみこみずみ／黄色＝みほんを とりこみずみ）です。「🗑 ぬりえを けす」で、恐竜ごと／ぜんぶ、ぬりえの情報を消して、ぬりえをしていない状態に戻せます。ぬりえを読み込んだ・みほんを取り込んだ直後は、カードを作り直している間（ボタンの下に「🃏 カードを つくっているよ」と出ます）、「🔍 かんたんAR」「📱 ARで あそぶ」は押せません。</p>
         <p class="k">スマホ・タブレットのAR画面（ぬりえを読んだ後・ぬりえを もういちど みる・ARで あそぶ の恐竜）のボタンは「🗺 たんけん／📄 もういちど よむ／🖍 ぬりえを もういちど みる／🦕 ARで おおきく みる／🚶 あるく→とまる→アニメオフ／⬜ しろは しろ／📷 しゃしん／🎥 どうが／🔄 リセット／▼ しまう」の10個です（使えない時は灰色）。「🦕 ARで おおきく みる」は、恐竜が大きい時（ARで あそぶ・ARで おおきく みる）は大きさのボタン「🧒 きみの おおきさ／📏 ほんものの おおきさ」になり、押すたびに その場で切り替わります（手前の端までの距離は そのまま。2本指で変えた大きさは100%に戻ります）。ヘッドセットの「ARで あそぶ」にも、恐竜の時は同じ大きさのボタンがあります。「もういちど よむ」「ぬりえを もういちど みる」「ARで おおきく みる」は、ARを終えずにその場で切り替わります（「もういちど よむ」の読み取り中は「↩ もどる」で前の恐竜に戻れます）。「あるく→とまる→アニメオフ」は押すたびに切り替わり、「とまる」では その場から動かずに、においをかいだり こちらを見たりします。「ぬりえの おおきさ」（用紙と同じ大きさ。ぬりえを読んだ時・ぬりえを もういちど みる）の時は、2本指で大きさを変えられません（「きみの おおきさ」の ARで おおきく みる・ARで あそぶ では変えられます）。「✕ おわる」を押すと、ぬりえから入った時はスタート画面に、ARで あそぶ から入った時はモデル画面に戻ります。</p>
       </section>
       <section>
@@ -1060,6 +1061,8 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         box-shadow:0 0 26px rgba(40,180,200,.45), inset 0 1px 0 rgba(255,255,255,.15);
     }
     #mvArOpenBtn:active{ transform:scale(.99); }
+    #mvWaitNote{ margin-top:6px; font-size:12px; color:#c3b3f2; text-align:center; line-height:1.5; }   /* カードを作り直している間の進み具合 */
+    #mvWaitNote:empty{ display:none; }
     body.loading #mvArOpenBtn, body.preloading #mvArOpenBtn{ opacity:.5; pointer-events:none; filter:grayscale(.4); }
 
     #mvModal{
@@ -16934,7 +16937,7 @@ async function nuriImportSample(keys){
         : (over.length? nm(keys[0])+" の ぬりえを、みほんの もようで うわがきしますか？" : nm(keys[0])+" に、みほんの もようを とりこみますか？");
     if(!confirm(msg)) return;
     const list=$("nuriSampleList"), note=$("nuriSampleNote"), btns=list? [...list.querySelectorAll("button")] : [];
-    NURI.sampleBusy=true; btns.forEach(b=>b.disabled=true);
+    NURI.sampleBusy=true; btns.forEach(b=>b.disabled=true); nuriCardWaitSync();   // とりこんでいる間・カードを作り直している間は モデル表示を押せない
     let ok=0, err="";
     for(let i=0;i<keys.length;i++){ const k=keys[i];
         if(note) note.textContent="みほんを とりこんでいるよ…"+(keys.length>1? "（"+(i+1)+"/"+keys.length+"）" : "");
@@ -16948,7 +16951,7 @@ async function nuriImportSample(keys){
         }catch(e){ console.warn("[ぬりえ] みほんから とりこめませんでした", k, e); err=(e && e.message)||String(e); }
     }
     try{ nuriDropPix(); }catch(_){ }   // 用紙の画素リストは手放す
-    NURI.sampleBusy=false; btns.forEach(b=>b.disabled=false);
+    NURI.sampleBusy=false; btns.forEach(b=>b.disabled=false); nuriCardWaitSync();
     if(note) note.textContent = ok===keys.length ? "" : (ok ? "とりこめなかった きょうりゅうが あるよ" : "とりこめなかったよ")+"（"+err+"）";   // うまく とりこめた時は何も出さない（印の色で分かる）
     nuriMenuRefresh();
 }
@@ -16996,8 +16999,19 @@ function nuriWire(){
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",nuriWire); else nuriWire();
 // ---- 「モデル表示」の準備ゲート：プリロード・模様の復元・model-viewer 本体・書き出し処理がそろうまで押せない ----
-const MV_READY={ preload:false, paint:false, viewer:false, exporter:false };
+const MV_READY={ preload:false, paint:false, viewer:false, exporter:false, cards:true };   // cards：ぬりえが かわった後の カードの作り直しが おわっている
 function mvCheck(){ const ok=Object.values(MV_READY).every(Boolean); document.body.classList.toggle("nuri-mv-wait", !ok); return ok; }
+// みほんから とりこむ・ぬりえを よみこむ などの後、カードを作り直している間は「かんたんAR」「ARで あそぶ」を押せない（進み具合を ボタンの下に出す）
+function nuriCardWaitSync(){
+    if(CARD_ONLY_MODE) return;
+    const r=(window.__cardRegen && window.__cardRegen()) || { busy:false, done:0, total:0 };
+    const busy=!!NURI.sampleBusy || !!r.busy;
+    MV_READY.cards=!busy; mvCheck();
+    const el=$("mvWaitNote");
+    if(el) el.textContent = !busy ? "" : NURI.sampleBusy ? "🎨 みほんを とりこんでいるよ… おわると おせるよ"
+        : "🃏 カードを つくっているよ"+(r.total && r.pending ? "（"+Math.min(r.done+1, r.total)+"/"+r.total+"）" : "")+"… おわると おせるよ";
+}
+window.addEventListener("cardregen", nuriCardWaitSync);
 window.__mvReadyAll=()=>Object.values(MV_READY).every(Boolean);
 mvCheck();
 if(!CARD_ONLY_MODE) (function waitPreload(){ if(typeof PRELOAD_DONE!=="undefined" && PRELOAD_DONE){ MV_READY.preload=true; mvCheck(); return; } setTimeout(waitPreload,200); })();
@@ -20618,13 +20632,29 @@ function gcForget(kind, key){   // その ぬりえの カードを すてる（
     const a=GC.art[id]; if(a){ delete GC.art[id]; if(a.url && a.url.startsWith("blob:")) setTimeout(()=>URL.revokeObjectURL(a.url), 60000); }
     try{ ldbReq("cards","readwrite",st=>{ st.delete("art|"+id); return null; }); }catch(_){ }
 }
+// ぬりえが かわった後の カードの作り直し（みほんから とりこむ・ぬりえを よみこむ・ためかたの切り替え など）
+//   ・何体ぶんでも 撮影用の WebGL は1つ。全部おわって すこし（GC_REGEN_IDLE）たってから返す
+//     （1体ごとに作って捨てると、iPhone・iPad では WebGL・メモリが足りなくなり、モデル表示（かんたんAR・ARで あそぶ）の恐竜が出ないことがある）
+//   ・作っている間（返すまで）は、ぬりえ側が「かんたんAR」「ARで あそぶ」を押せなくする（知らせ：cardregen／いまの状態：window.__cardRegen）
+const GC_REGEN={ n:0, done:0, t:0 }, GC_REGEN_IDLE=1500;
+function gcRegenState(){ return { pending:GC_REGEN.n, done:GC_REGEN.done, total:GC_REGEN.n+GC_REGEN.done, busy:GC_REGEN.n>0 || !!GC_REGEN.t }; }
+function gcRegenNotify(){ try{ window.dispatchEvent(new CustomEvent("cardregen", { detail:gcRegenState() })); }catch(_){ } }
+window.__cardRegen=gcRegenState;
+function gcRegenEnd(){   // 1体ぶん おわった：ぜんぶ おわったら、すこし待って（つづけて頼まれた時に作り直さないように）WebGL を返す
+    GC_REGEN.n=Math.max(0, GC_REGEN.n-1); GC_REGEN.done++;
+    if(!GC_REGEN.n){ clearTimeout(GC_REGEN.t);
+        GC_REGEN.t=setTimeout(()=>{ if(GC_REGEN.n){ GC_REGEN.t=0; return; }
+            Promise.resolve(tcDisposeRenderer()).catch(()=>{}).finally(()=>{ GC_REGEN.t=0; if(!GC_REGEN.n) GC_REGEN.done=0; gcRegenNotify(); }); }, GC_REGEN_IDLE); }
+    gcRegenNotify();
+}
 function gcInvalidate(kind, key){
     const id=kind+":"+key+"@paint"; GC.ver[id]=gcVer(id)+1;
     if(kind==="dino" && tcSp(key)!==key && !gcPainted(kind, key)){ gcForget(kind, key); gcTexSync(); return; }   // けした ぬりえ（8たいまで ためる）
     if(!GC.ready || !gcPainted(kind, key)){ gcTexSync(); return; }   // プリロード中は、プリロードが新しい状態で作る／もとにもどした＝ぬり絵なしの1枚をそのまま使う
     const labs=new Set(Object.keys(GC.card).filter(ck=>ck.indexOf(id+"|")===0).map(ck=>ck.slice(id.length+1)));
     if(kind==="dino" && GC.labels.dino) labs.add(GC.labels.dino);
-    Promise.all([...labs].map(lab=>gcEnsure(kind, key, lab, true))).catch(e=>console.warn("[カード] 作り直せませんでした", id, e)).finally(()=>{ tcDisposeRenderer(); gcTexSync(); });
+    GC_REGEN.n++; gcRegenNotify();
+    Promise.all([...labs].map(lab=>gcEnsure(kind, key, lab, true))).catch(e=>console.warn("[カード] 作り直せませんでした", id, e)).finally(()=>{ gcTexSync(); gcRegenEnd(); });   // WebGL は ぜんぶ おわってから返す（gcRegenEnd）
 }
 window.TCARD={ game:{ image:gcImage, texture:gcTexture, src:gcSrc, fresh:gcFresh, ensure:gcEnsure, preload:gcPreload, invalidate:gcInvalidate } };
 if(TC_DBG){ const go=()=>{ (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(tcDebugOpen); };
