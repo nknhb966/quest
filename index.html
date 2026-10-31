@@ -303,6 +303,7 @@
 #nuriResetList button.all, #nuriPrintList button.all{ grid-column:1/-1; color:#ffd86a; border-color:rgba(255,216,106,.55); font-family:inherit; }
 #cardPrint summary{ cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; }
 #cardPrintList{ display:grid; grid-template-columns:1fr; gap:6px; margin-top:6px; }
+#cardPrintList small{ display:block; margin-top:3px; font-size:12px; font-weight:600; color:#e8d9a8; letter-spacing:0; }
 #cardPrintList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(255,216,106,.55); background:rgba(20,14,44,.6); color:#ffd86a; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
 #nuriPrintList button{ text-align:center; padding:10px 8px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:14px; cursor:pointer; }
 .nuriMenuBtn{ display:block; width:100%; box-sizing:border-box; cursor:pointer; padding:12px 12px; border-radius:11px; border:1px solid rgba(180,140,255,.4); background:rgba(20,14,44,.6); color:#c9bcff; font-weight:700; font-size:15px; letter-spacing:1px; text-align:center; font-family:inherit; }   /* 折りたたみにしないボタン（ぬりえを けす（おすすめオン）・ぬりえを いんさつ・きょうりゅうカードを いんさつ） */
@@ -738,8 +739,12 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <button type="button" id="nuriResetAllBtn" class="nuriMenuBtn" style="display:none">🗑 ぬりえを けす</button>
       <!-- ぬりえを いんさつ：ぬりえを けす の後。押すと ぜんぶの きょうりゅう（8まい）の いんさつ画面へ（おすすめ設定オフだけ） -->
       <button type="button" id="nuriPrint" class="nuriMenuBtn">📄 ぬりえを いんさつ</button>
-      <!-- きょうりゅうカードを いんさつ：たんけん「ほって かえす」で使うカード（No.1〜8・A4に4まい×2ページ）。ぬりえを いんさつ と同じく、おすすめ設定オフだけ表示 -->
-      <button type="button" id="cardPrint" class="nuriMenuBtn">🦕 きょうりゅうカードを いんさつ</button>
+      <!-- きょうりゅうカードを いんさつ：押すと くろい しかくの おおきさを 3つから えらぶ（No.1〜8）。ぬりえを いんさつ と同じく、おすすめ設定オフだけ表示 -->
+      <details id="cardPrint"><summary>🦕 きょうりゅうカードを いんさつ</summary><div id="cardPrintList">
+        <button type="button" data-s="4">◼ くろい しかく 4cm<small>ほって かえす（つくえ・ゆか）／トランプの おおきさ・A4 1まい</small></button>
+        <button type="button" data-s="9">✉ くろい しかく 9cm<small>ほって かえす（ゆか）／はがきの おおきさ・A4 2まい</small></button>
+        <button type="button" data-s="17">📄 くろい しかく 17cm<small>カードを さがす／A4 8まい</small></button>
+      </div></details>
     </div>
 
   </div>
@@ -908,7 +913,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <h3>🗺 たんけん（ARで あそぶ）</h3>
         <p>スマホ・タブレット（iPad／Android）のカメラ映像に発掘フィールドを重ねて遊びます。<b>「📱 ARで あそぶ」</b>のAR画面で、恐竜かいぬを表示して<b>「🗺 たんけん」</b>を押します（恐竜と→恐竜を、いぬと→出土品をさがします。出土品の表示中は出ません）。「たんけんの じゅんび」で<b>あそびかた</b>（3かい ちょうせん／じかんまで さがす（既定）／ぜんぶ みつける。「そのばで ぐるっと」「ほって かえす」は ぜんぶ みつける だけ、「カードを さがす」は 3かい ちょうせん なし）と<b>さがす ばしょの ひろさ</b>（よこ・おく 3〜10m、既定5×5m）を選び、恐竜を掘る時は<b>ほりだす きょうりゅうの おおきさ</b>をスライダーで選んで（ティラノサウルスの高さ 1.2m＝<b>きみの おおきさ</b>（ARで おおきく みる と同じ）〜 4.0m＝<b>ほんものの おおきさ</b>。0.1m きざみ・既定 2.0m。ほかの恐竜も あわせて変わります）、<b>「🗺 たんけんに いく」</b>→<b>「はじめる」</b>。あそぶ場所のまん中に立ってタブレットを床に向け、<b>「ここで はじめる」</b>でフィールドを置きます。</p>
         <p>たんけん中の相棒の パワー・はっけん・かしこさ は、どの相棒でも 1 です（ぬりえの色で変わるのは、たんけん以外です）。実際に<b>歩いて</b>探します。近づくほど<b>音と画面上のメーター</b>が強くなり、発掘ポイントに着いてブロックが光ったら、<b>ブロックを直接タップ</b>して掘ります。水色の線が活動範囲です。はしに近づいたり、外に出たり、走ったりすると画面で知らせます。</p>
-        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた きょうりゅうカードを手で掘り出し、AR画面のまま カードを映すと、カードの上にブロックが出ます。ブロックをタップして掘ると破片が飛び散り、卵から恐竜が生まれて、カードの むこう側（いちばん手前の端が カードの すぐ奥）に こちらを向いて出ます。準備で<b>あそぶ ばしょ</b>を選びます：<b>「🪑 つくえの うえ」</b>（長机3本・1.2m四方くらい。恐竜は ぬりえの おおきさ だけ。カードから30〜50cm はなして映す。ブロック約6cm・卵約5cm。恐竜は机の上の まわり約30cmを歩く）／<b>「🏟 ゆかの うえ」</b>（既定。ホール 8〜15m四方くらい。恐竜の大きさは スライダー（ティラノサウルスの高さ 1.2〜4.0m・既定 2.0m）。カードから1.5mくらい はなれて映す。ブロック約60cm・卵約50cm。恐竜は まわり約2.5mを歩く）。<b>カードの くろい しかくの おおきさ</b>は、つくえ は 4cm だけ、ゆか は 4cm か 9cm（はがき・既定）から選びます。この大きさで カードの位置を測るので、使うカードに合わせてください。地面は カードを置いた面です（床さがしは しません）。ブロックと卵は、カードの しかくの大きさに関係なく いつも同じ大きさです。画面は パネルを しまった状態（📷 しゃしん・🎥 どうが・▲ パネル だけ）で始まります。カードが ななめ・近すぎる・遠すぎるなどで 位置を測れない時は、案内を出して 測れるまで待ちます。iPhone・iPad は カードが映っている間、位置を合わせ直します（映っていない間に端末を動かすと、ずれることがあります）。あそびかたは「ぜんぶ みつける」だけで、8しゅるい見つけると かかった時間と一覧、はっくつずかんを出して終わります。上の「📖 ずかん」で途中の はっくつずかんを見られ、「✕ おわる」で途中でも終われます。終わると「たんけんの じゅんびに もどる／ARの モデルに もどる／メニューに もどる」を選べます。カードは くろい しかくが 4cm か 9cm の きょうりゅうカードを使います（No.1〜8＝ぬりえの No.と同じ恐竜。「8たいまで ためる」で「じぶんで ぬった」を選んだ時は、どのカードに どの恐竜が出るかは たんけんごとに かわります）。メニューの「🦕 きょうりゅうカードを いんさつ」で印刷する カード（A4・くろい しかく17cm）は「カードを さがす」用です。カードは机や床に置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦕 きょうりゅうカードを いんさつ」で印刷する A4 の カード）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上にブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒とスターブロックは出ません（「そのばで ぐるっと」も 相棒・スターブロックは出ません）。掘り出した恐竜は（「あるいて さがす」「そのばで ぐるっと」も）、「たんけんの じゅんび」の「ほりだした きょうりゅうの うごき」で「あるく」（既定。掘った場所を中心に 体長の2倍の円の中を歩き回り、ときどき プレイヤーを見る。視界に プレイヤーが入ると 止まって見て、そのあとは 歩きながら ときどき ちらっと こちらを見る）か「とまる」（その場で じっとしたり、ゆっくり向きを変えたり、においを かいだりする。視界に プレイヤーが入ると こちらを向いて見て、しばらくすると においを かいだり よそを向いたりして、また見る）を選べ、タッチすると よろこびます。見ている間は、プレイヤーが横や後ろへ回っても、体ごと ゆっくり向きを変えて見つづけます。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。恐竜は、プレイヤーや ほかの恐竜と からだが重ならないよう、少し はなれます。掘ったカードの「もう ほったよ」は、カードが一度 画面から外れて また映った時に出ます（卵から恐竜が出る間は、カードのことばは出ません）。</p>
+        <p><b>さがしかた</b>：「たんけんの じゅんび」のいちばん上で選びます。<b>「🚶 あるいて さがす」</b>は上のとおり歩いて探します。<b>「🔄 そのばで ぐるっと」</b>は、その場に立ったまま まわりを見回して探します（発掘ポイントは まわり1.3mの円の上に出ます。向きが合うほど音とメーターが強くなります。歩いても進みません）。「そのばで ぐるっと」は Android も iPhone・iPad も カメラ映像＋向きセンサーで動き（ARCoreは使いません）、準備画面で持つ高さを選びます。<b>「⛏ ほって かえす」</b>は、砂や箱に埋めた きょうりゅうカードを手で掘り出し、AR画面のまま カードを映すと、カードの上にブロックが出ます。ブロックをタップして掘ると破片が飛び散り、卵から恐竜が生まれて、カードの むこう側（いちばん手前の端が カードの すぐ奥）に こちらを向いて出ます。準備で<b>あそぶ ばしょ</b>を選びます：<b>「🪑 つくえの うえ」</b>（長机3本・1.2m四方くらい。恐竜は ぬりえの おおきさ だけ。カードから30〜50cm はなして映す。ブロック約6cm・卵約5cm。恐竜は机の上の まわり約30cmを歩く）／<b>「🏟 ゆかの うえ」</b>（既定。ホール 8〜15m四方くらい。恐竜の大きさは スライダー（ティラノサウルスの高さ 1.2〜4.0m・既定 2.0m）。カードから1.5mくらい はなれて映す。ブロック約42cm・卵約35cm。恐竜は まわり約2.5mを歩く）。<b>カードの くろい しかくの おおきさ</b>は、つくえ は 4cm だけ（選ぶ ボタンは 出ません）、ゆか は 4cm（既定）か 9cm（はがき）から選びます。この大きさで カードの位置を測るので、使うカードに合わせてください。地面は カードを置いた面です（床さがしは しません）。ブロックと卵は、カードの しかくの大きさに関係なく いつも同じ大きさです。恐竜は 生まれた時、スマホの方を向いて出てきます（同じカードを 読み直しても 同じです）。画面は パネルを しまった状態（📷 しゃしん・🎥 どうが・▲ パネル だけ）で始まります。カードが ななめ・近すぎる・遠すぎるなどで 位置を測れない時は、案内を出して 測れるまで待ちます。iPhone・iPad は カードが映っている間、位置を合わせ直します（映っていない間に端末を動かすと、ずれることがあります）。あそびかたは「ぜんぶ みつける」だけで、8しゅるい見つけると かかった時間と一覧、はっくつずかんを出して終わります。上の「📖 ずかん」で途中の はっくつずかんを見られ、「✕ おわる」で途中でも終われます。終わると「たんけんの じゅんびに もどる／ARの モデルに もどる／メニューに もどる」を選べます。カードは くろい しかくが 4cm か 9cm の きょうりゅうカードを使います（No.1〜8＝ぬりえの No.と同じ恐竜。「8たいまで ためる」で「じぶんで ぬった」を選んだ時は、どのカードに どの恐竜が出るかは たんけんごとに かわります）。カードは メニューの「🦕 きょうりゅうカードを いんさつ」（おすすめ設定オフ）を押して、くろい しかくの おおきさを選んで印刷します：「4cm」（トランプの大きさ。A4 1まいに8まい）／「9cm」（はがきの大きさ。A4に4まい×2まい）／「17cm」（A4に1まいずつ。「カードを さがす」用）。印刷の倍率は 100%（実際のサイズ）にして、くろい しかくの大きさを ものさしで確かめ、切り取り線で切って使ってください。カードの右下に くろい しかくの大きさが書いてあります。カードは机や床に置いてから映してください。<b>「🃏 カードを さがす」</b>は、部屋の床に置いた おおきい カード（「🦕 きょうりゅうカードを いんさつ」の「17cm」で印刷する A4 の カード）が発掘ポイントになります。歩いてカードを探し、映して近づくと 音とメーターが強くなり、カードの上にブロックが出たらタップして掘ります（あそびかた・得点・リザルトは「あるいて さがす」と同じ）。カメラ映像＋向きセンサーで動き（ARCoreは使いません）、場所はカードが映るたびに決め直すので、ずれがたまりません。掘っている間はカードを映したままにしてください。5か所だけ使う回は、使わないカードを映すと「いないみたい」と出ます。相棒とスターブロックは出ません（「そのばで ぐるっと」も 相棒・スターブロックは出ません）。掘り出した恐竜は（「あるいて さがす」「そのばで ぐるっと」も）、「たんけんの じゅんび」の「ほりだした きょうりゅうの うごき」で「あるく」（既定。掘った場所を中心に 体長の2倍の円の中を歩き回り、ときどき プレイヤーを見る。視界に プレイヤーが入ると 止まって見て、そのあとは 歩きながら ときどき ちらっと こちらを見る）か「とまる」（その場で じっとしたり、ゆっくり向きを変えたり、においを かいだりする。視界に プレイヤーが入ると こちらを向いて見て、しばらくすると においを かいだり よそを向いたりして、また見る）を選べ、タッチすると よろこびます。見ている間は、プレイヤーが横や後ろへ回っても、体ごと ゆっくり向きを変えて見つづけます。恐竜の視界は、前の左右90°で、体長の1.6倍か6mの遠い方までです。恐竜は、プレイヤーや ほかの恐竜と からだが重ならないよう、少し はなれます。掘ったカードの「もう ほったよ」は、カードが一度 画面から外れて また映った時に出ます（卵から恐竜が出る間は、カードのことばは出ません）。</p>
         <p><b>ARの しくみ（Android）</b>：「そのばで ぐるっと」「ほって かえす」「カードを さがす」は、ARCore が使える Android では ARCore で動きます（ARCore が使えない端末と iPhone・iPad は カメラ＋センサー。選ぶ必要は ありません）。ARCore の「そのばで ぐるっと」は足もとの わっかから1m はなれると「わっかに もどろう」と出ます。ARCore の「カードを さがす」は、一度見つけたカードの場所を ARCore が覚えるので、画面から外れても そのままです。ARCore でカードを読むにはカメラ映像の許可（camera-access）が必要で、もらえない端末では自動で カメラ＋センサーに切り替えて続けます（「ほって かえす」は iPhone と同じ方式の AR 画面になります）。</p>
         <p><b>フィールドが ずれたとき</b>：床に「まんなか」と「まえ」の印（テープなど）を付けておき、「ここで はじめる」は まんなかの印に立って まえの印の方を向いて押します。ずれたら、まんなかの印に立って まえの印の方を向き、画面下の<b>「📍 ずれを なおす」</b>→<b>「なおす」</b>。発掘ポイント・スコア・タイム・進み具合はそのままで、フィールドの位置と向きだけを合わせ直します（ゲームの途中でも使えます）。</p>
         <p class="k">Android（Chrome）は床と位置をカメラで認識します。iPhone・iPad（Safari）はカメラ映像＋向きセンサー＋歩数で移動を推定します（床からの高さは測れないため、準備画面で「ちいさい こ 0.9m／こども 1.2m／おとな 1.5m」を選びます）。スタンバイ中は「やめる」→「ここで はじめる」で、床さがしからやり直して今いる場所と向きに置き直せます。終わるときは「やめる」→「おわる」。</p>
@@ -11423,6 +11428,7 @@ function lphHatchTick(){
         if(el>=1.3*T){   // 孵化
             scene.remove(H.egg); H.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); H.egg=null;
             try{ sfxDig(); }catch(_){ }
+            lphHeadReset();   // 頭は まっすぐ（前の時の 見ていた向きを 残さない。跳ねている間も スマホの方を向く）
             if(LITE.model) LITE.model.visible=true;
             LITE.group.position.copy(LITE.targetPos);
             if(LPH.card && LPH.card.place && H.eggPos) lphCardDinoPlace(H);   // ほって かえす：カードの むこう側（いちばん手前の端＝ブロックの すぐ奥）に こちら向き
@@ -11454,6 +11460,7 @@ function lphRehatch(idx, paint){
     if(paint && LITE.model) litePaintDino(idx, LITE.model);   // 模様を確実に
     LPH.walk=null; LPH.gpModel=null; LPH.gKey=""; LPH.popY=0; LPH.joy=null; LPH.faceTurn=null;
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
+    lphHeadReset();   // 前の時の 頭の向きを 残さない
     if(LITE.model) LITE.model.visible=false;
     lph$("litePh").classList.add("lph-ncard");
     LPH.hatch={ phase:"wait", t0:performance.now(), egg:null };
@@ -11467,6 +11474,10 @@ function lphRehatch(idx, paint){
  *   ・ARで おおきく みる：いまの恐竜を、おおきいサイズ（手前の端が2m先）で卵から
  *   LITE.origin＝入った所（"nuri"＝ぬりえ／"mv"＝ARで あそぶ）：「✕ おわる」の後の画面と、「ARで おおきく みる」の恐竜の選び方（ARで あそぶ＝ぬりえ＋ぬりえなし）に使う */
 function lphCanSwitch(){ return !!(LITE.active && LITE.phone && !LPH.card && !(LPH.hatch && LPH.hatch.phase!=="done")); }
+function lphHeadReset(){   // 頭（首）の向きを まっすぐに戻す（同じモデルを使い回す時に、前の時の 見ていた向きが 残らないように）
+    const pv=(LITE.model&&LITE.model.userData&&LITE.model.userData.model)?LITE.model.userData.model:LITE.model, hd=pv&&pv.userData?pv.userData.head:null;
+    if(hd){ hd.rotation.x=0; hd.rotation.y=0; liteGazeReset(hd); }
+}
 function lphClearDino(){   // いまの恐竜（卵・動き・吹き出し）を片づける。新しく出す恐竜は「あるく」から
     if(LPH.hatch && LPH.hatch.egg){ scene.remove(LPH.hatch.egg); LPH.hatch.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
     LPH.hatch=null; LPH.walk=null; LPH.aim=null; LPH.joy=null; LPH.faceTurn=null; LPH.popY=0; LPH.gpModel=null; LPH.gKey="";
@@ -14209,7 +14220,7 @@ const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, re
     srcMv:null,            // 同：「ARで みる」（きょうりゅう）から入った時
     dinoH:2.0,             // 掘り出す恐竜の大きさ：ティラノサウルスの高さ(m)（1.2＝きみの おおきさ 〜 4.0＝ほんものの おおきさ。スライダー・既定 2.0）
     digPlace:"floor",      // ほって かえす：あそぶ ばしょ（desk＝つくえの うえ（ぬりえの おおきさ だけ）／floor＝ゆかの うえ（既定））
-    markDesk:4, markFloor:9,   // ほって かえす：カードの くろい しかくの一辺(cm)（つくえ＝4 だけ／ゆか＝4 か 9（はがき・既定））
+    markDesk:4, markFloor:4,   // ほって かえす：カードの くろい しかくの一辺(cm)（つくえ＝4 だけ／ゆか＝4（既定） か 9（はがき））
     dinoMove:"move" };     // 掘り出した恐竜の うごき（move＝あるく＝歩き回る（既定）／stay＝とまる＝その場。どちらも においを かぐ・タッチで よろこぶ）。ほって かえす 以外の たんけん     // 掘り出す恐竜の大きさ：real＝実寸大（既定）／big＝ARで おおきく みる と同じ
 function ldigDinoH(){ const h=Math.round((+LDIG.dinoH||DIG_SIZE.def)*10)/10; return Math.max(DIG_SIZE.min, Math.min(DIG_SIZE.max, h)); }   // スライダーの値（0.1m きざみ）
 function ldigPlaying(){ try{ return !!LDIG.play; }catch(_){ return false; } }   // 毎フレーム呼ばれるので、準備前（LDIG の宣言前）でも落ちないように
@@ -14260,19 +14271,20 @@ function ldigPaint(){
       const lb=lph$("lphDigDsLbl"), box=lph$("lphDigDs"), nt=lph$("lphDigDsNote");
       const sl=lph$("lphDigDsSlider"), rg=lph$("lphDigDsRange"), H=ldigDinoH();   // つくえ＝ぬりえの おおきさ（ボタン1つ）／ほか＝スライダー（ティラノサウルスの高さ）
       [lb, nt].forEach(e=>{ if(e) e.style.display=show? "" : "none"; });
-      if(box){ box.style.display=(show && desk)? "" : "none"; box.style.gridTemplateColumns="repeat(1,1fr)"; box.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.v==="paper")); }
+      if(box){ box.style.display="none"; box.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.v==="paper")); }   // つくえ：ボタンは 1つ（ぬりえの おおきさ）だけなので 出さない（説明の文で 知らせる）
       if(sl) sl.style.display=(show && !desk)? "" : "none";
       if(rg && document.activeElement!==rg) rg.value=String(H);
       if(nt) nt.innerHTML = desk ? "ぬりえの おおきさ（ティラノサウルスは たかさ 15cm）" : "ティラノサウルスの たかさ <b>"+H.toFixed(1)+"m</b>（ほかの きょうりゅうも あわせて かわるよ）"; }
     { const dig=(LDIG.style==="dig"), desk=(LDIG.digPlace==="desk");   // ほって かえす：あそぶ ばしょ・カードの くろい しかくの おおきさ
       ["lphDigPlaceLbl","lphDigPlace","lphDigPlaceNote","lphDigMarkLbl","lphDigMark"].forEach(id=>{ const e=lph$(id); if(e) e.style.display=dig? "" : "none"; });
+      { const mb=lph$("lphDigMark"); if(mb && desk) mb.style.display="none"; }   // つくえ：4cm だけなので ボタンは 出さない（説明の文で 知らせる）
       document.querySelectorAll("#lphDigPlace button").forEach(b=>b.classList.toggle("on", b.dataset.v===(desk? "desk" : "floor")));
       const mk=String(desk? 4 : (LDIG.markFloor===4 ? 4 : 9));   // つくえ＝4cm だけ／ゆか＝4cm か 9cm（はがき）
       { const mb=lph$("lphDigMark"); if(mb) mb.style.gridTemplateColumns = desk ? "repeat(1,1fr)" : "repeat(2,1fr)"; }
       document.querySelectorAll("#lphDigMark button").forEach(b=>{ b.style.display=(desk && b.dataset.v!=="4")? "none" : ""; b.classList.toggle("on", b.dataset.v===mk); });
       const pn=lph$("lphDigPlaceNote"); if(pn) pn.textContent = desk ? "つくえ（ながづくえ 3きゃく くらい）の うえに カードを おくよ。カードから 30〜50cm はなして うつしてね"
           : "ホールの ゆかに カードを おくよ。カードから 1.5m くらい はなれて うつしてね";
-      const mn=lph$("lphDigMarkNote"); if(mn){ const t=(dig && !desk && +mk<=4) ? "4cm は 1.5m からだと よみにくいよ。よめない ときは すこし ちかづいてね" : ""; mn.textContent=t; mn.style.display=t? "" : "none"; } }
+      const mn=lph$("lphDigMarkNote"); if(mn){ const t=!dig ? "" : desk ? "くろい しかくが 4cm の カードを つかうよ" : (+mk<=4) ? "4cm は 1.5m からだと よみにくいよ。よめない ときは すこし ちかづいてね" : ""; mn.textContent=t; mn.style.display=t? "" : "none"; } }
     { const show=(LDIG.style!=="dig" && LITE.target==="dino"), lb=lph$("lphDigMoveLbl"), box=lph$("lphDigMove");   // 恐竜を掘る たんけん（ほって かえす 以外）：あるく／とまる
       if(lb) lb.style.display=show? "" : "none"; if(box) box.style.display=show? "" : "none";
       document.querySelectorAll("#lphDigMove button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.dinoMove)); }
@@ -14324,7 +14336,7 @@ function liteReturnOpts(){   // ARに入り直す時（たんけんの後・カ�
 // ほって かえす：あそぶ ばしょ ごとの きまり（ブロック・卵の大きさ(m)／あるく はんい(m)／カードまでの きょり(m)／よむ 映像の長い辺(px)）
 const LPH_CARD_CFG={
     desk:{ block:0.06, egg:0.05, walkR:0.30, dist:[0.12, 1.0], hint:"30〜50cm" },    // つくえの うえ（1.2m四方くらい）：カードから 30〜50cm
-    floor:{ block:0.60, egg:0.50, walkR:2.5, dist:[0.4, 4.0], hint:"1.5m くらい" } };  // ゆかの うえ（ホール 8〜15m四方くらい）：カードから 1.5m くらい。ブロック 60cm・卵 50cm
+    floor:{ block:0.42, egg:0.35, walkR:2.5, dist:[0.4, 4.0], hint:"1.5m くらい" } };  // ゆかの うえ（ホール 8〜15m四方くらい）：カードから 1.5m くらい。ブロック 42cm・卵 35cm
 function lphCardPlace(){ const C=LPH.card; return (C && C.place) ? C.place : (LDIG.digPlace==="desk" ? "desk" : "floor"); }
 function lphCardMarkMmOf(place){ return (place==="desk" || LDIG.markFloor===4) ? 40 : 90; }   // くろい しかくの一辺(mm)：つくえ＝4cm だけ／ゆか＝4cm か 9cm（はがき）
 function lphCardMarkMm(){ const C=LPH.card; return (C && C.markMm) || lphCardMarkMmOf(LDIG.digPlace==="desk" ? "desk" : "floor"); }
@@ -14537,6 +14549,7 @@ async function lphCardFound(i, pose){   // カードが読めた（i＝恐竜の
     if(LPH.card!==C || !LITE.active) return;
     if(LPH.card!==C || !LITE.active) return;
     LITE.cardForce=m||null; try{ liteSwitchModel(sp.di); } finally { LITE.cardForce=null; }   // 恐竜を入れ替える（モデルは同期で入る）
+    lphHeadReset();   // 同じカード＝同じモデル：前の時の 頭の向きを 残さない
     LPH.walk=null; LPH.gpModel=null; LPH.gKey=""; LPH.popY=0; LPH.joy=null; LPH.faceTurn=null;
     LITE.targetScale.set(1,1,1); LITE.targetQuat.identity();
     if(LITE.model) LITE.model.visible=false;
@@ -16898,38 +16911,50 @@ window.__nuriArCard={ start:lphCardStart, frame:lphCardFrame, stop:()=>{ LPH.car
 window.__nuriLoadLib=nuriLoadLib;   // たんけん「カードを さがす」もマーカーを読む
 window.__nuriLibUrls=()=>({ local:NURI_CFG.libLocal.map(f=>new URL(NURI_CFG.dir+f, location.href).href),
     cdn:["cv.js","aruco.js","dictionaries/aruco_4x4_1000.js"].map(f=>NURI_CFG.libCdn+f) });   // カードの読み取り（別の処理）で使う部品の場所
-// きょうりゅうカードを いんさつ：はがき（A6たて）のカード8まい＝A4たてに4まい×2ページ。番号と「？」の 恐竜の かげ絵（何が出るかは かえってからの お楽しみ）
+// きょうりゅうカードを いんさつ：くろい しかく 4cm（トランプ・A4に8まい）／9cm（はがき・A4に4まい×2ページ）／17cm（A4に1まい）。番号と「？」の 恐竜の かげ絵（何が出るかは かえってからの お楽しみ）
 function cardMarkerSVG(id){   // ArUco 4x4（6×6マス：まわりは黒・中の1＝白）
     const code=new AR.Dictionary("ARUCO_4X4_1000").codeList[id]; let r='<rect x="0" y="0" width="6" height="6" fill="#000"/>';
     for(let y=0;y<4;y++) for(let x=0;x<4;x++) if(code[y*4+x]==="1") r+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="1.01" height="1.01" fill="#fff"/>';
     return '<svg class="mk" viewBox="0 0 6 6" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">'+r+'</svg>';
 }
 const CARD_BONE='<svg class="bone" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg"><path fill="#8a6a3a" d="M8 40 C14 30 26 24 40 22 C50 21 58 22 66 18 C72 15 76 8 82 5 C86 3 92 3 94 6 C96 9 92 11 88 11 C84 12 81 17 80 22 C79 28 82 32 84 38 L86 46 L80 46 L77 38 C72 37 66 37 60 37 L58 46 L52 46 L51 37 C44 37 38 37 33 36 L31 46 L25 46 L25 36 C19 37 13 39 8 40 Z"/><circle cx="90" cy="6.5" r="1.2" fill="#fff"/></svg>';   // 恐竜の かげ絵（なにが うまれるかは かえってからの お楽しみ）
-async function nuriCardPrint(big){   // big＝A4に1まい（カードを さがす 用：立ったまま遠くからでも読める大きさ）
+async function nuriCardPrint(sz){   // sz＝くろい しかくの一辺(cm)：4（トランプ・A4に8まい）／9（はがき・A4に4まい×2）／17（A4に1まい：カードを さがす 用）
+    sz=(sz===4 || sz===9) ? sz : 17;
     const w=window.open("", "_blank"); if(!w){ alert("あたらしい がめんを ひらけませんでした。ポップアップを ゆるして、もういちど おしてね"); return; }
     w.document.open(); w.document.write('<!doctype html><meta charset="utf-8"><p style="font-family:sans-serif">じゅんびしているよ…</p>'); w.document.close();
     try{ await nuriLoadLib(); }catch(e){ w.document.body.textContent="じゅんびが できませんでした。インターネットに つながっているか たしかめてください。"; return; }
-    const card=(i)=>'<div class="cd"><div class="t">🦕 きょうりゅうカード</div><div class="no">No.'+(i+1)+'</div>'+cardMarkerSVG(CARD_BASE+i)+'<div class="s">なにが うまれるかな？</div></div>';
-    const pages=[];
-    if(big){ for(let i=0;i<DINOS.length;i++) pages.push('<div class="pg big">'+card(i)+'</div>'); }
-    else for(let p=0;p<Math.ceil(DINOS.length/4);p++){ let h=''; for(let k=0;k<4;k++){ const i=p*4+k; h+= i<DINOS.length ? card(i) : '<div class="cd blank"></div>'; } pages.push('<div class="pg">'+h+'</div>'); }
+    const card=(i)=>'<div class="cd"><div class="t">🦕 きょうりゅうカード</div><div class="no">No.'+(i+1)+'</div>'+cardMarkerSVG(CARD_BASE+i)+'<div class="s">なにが うまれるかな？</div><div class="sz">くろい しかく '+sz+'cm</div></div>';
+    const pages=[], N=DINOS.length;
+    const grid=(per)=>{ for(let p=0;p<Math.ceil(N/per);p++){ let h=''; for(let k=0;k<per;k++){ const i=p*per+k; h+= i<N ? card(i) : '<div class="cd blank"></div>'; } pages.push('<div class="pg s'+sz+'">'+h+'</div>'); } };
+    if(sz===17){ for(let i=0;i<N;i++) pages.push('<div class="pg s17">'+card(i)+'</div>'); }
+    else grid(sz===4 ? 9 : 4);
+    const note='<div class="note">いんさつの ばいりつは <b>100%（じっさいの サイズ）</b>に してね。くろい しかくが <b>'+sz+'cm</b> に なっているか、ものさしで たしかめてね'+(sz===17 ? '' : '。きりとりせんで きって つかってね')+'。</div>';
     w.document.open();
-    w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>きょうりゅうカード</title>'
+    w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>きょうりゅうカード（くろい しかく '+sz+'cm）</title>'
         +'<meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){ var W=210*96/25.4; function fit(){ var cw=document.documentElement.clientWidth||innerWidth||W; var z=Math.min(1,(cw*0.96)/W); document.documentElement.style.setProperty("--z", String(z)); } addEventListener("resize",fit); addEventListener("orientationchange",fit); addEventListener("DOMContentLoaded",fit); addEventListener("load",fit); fit(); setTimeout(fit,100); setTimeout(fit,500); })();<\/script>'
         +'<style>'
         +'@page{ size:A4 portrait; margin:0; } html,body{ margin:0; padding:0; background:#fff; font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif; }'
-        +'.pg{ width:210mm; height:296mm; display:grid; grid-template-columns:105mm 105mm; grid-template-rows:148mm 148mm; break-after:page; page-break-after:always; overflow:hidden; }'
+        +'.pg{ width:210mm; height:296mm; box-sizing:border-box; break-after:page; page-break-after:always; overflow:hidden; }'
         +'.pg:last-child{ break-after:auto; page-break-after:auto; }'
-        +'.cd{ box-sizing:border-box; border:0.3mm dashed #999; display:flex; flex-direction:column; align-items:center; padding:7mm 6mm 5mm; }'
-        +'.cd.blank{ border-color:transparent; } .t{ font-size:6mm; font-weight:900; color:#5a3d12; letter-spacing:0.5mm; } .no{ font-size:9mm; font-weight:900; color:#222; margin:1mm 0 3mm; }'
-        +'.mk{ width:66mm; height:66mm; display:block; } .bone{ width:44mm; height:18mm; margin-top:5mm; } .s{ font-size:4.6mm; font-weight:800; color:#5a3d12; margin-top:7mm; }'
-        +'.pg.big{ display:block; } .pg.big .cd{ width:210mm; height:296mm; border:none; padding:16mm 12mm 10mm; } .pg.big .t{ font-size:12mm; } .pg.big .no{ font-size:22mm; margin:2mm 0 8mm; }'
-        +'.pg.big .mk{ width:170mm; height:170mm; } .pg.big .bone{ width:90mm; height:36mm; margin-top:8mm; } .pg.big .s{ font-size:9mm; margin-top:16mm; }'
-        +'@media screen{ html{ background:#888; overflow-x:hidden; } body{ background:#888; padding:1px 0; display:flex; flex-direction:column; align-items:center; } .pg{ zoom:var(--z,1); margin:8px 0; flex:0 0 auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); } }'
-        +'</style></head><body>'+pages.join("")+'</body></html>');
+        +'.cd{ position:relative; box-sizing:border-box; border:0.3mm dashed #999; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }'
+        +'.cd.blank{ border-color:transparent; } .t,.no,.s,.sz{ line-height:1.15; white-space:nowrap; } .t{ font-weight:900; color:#5a3d12; } .no{ font-weight:900; color:#222; } .s{ font-weight:800; color:#5a3d12; }'
+        +'.mk{ display:block; flex:0 0 auto; } .bone{ display:block; flex:0 0 auto; } .sz{ position:absolute; color:#999; font-weight:700; }'
+        // 4cm：トランプの おおきさ 63×88mm を 3×3（A4 の まんなか）
+        +'.pg.s4{ display:grid; grid-template-columns:repeat(3,63mm); grid-template-rows:repeat(3,88mm); justify-content:center; align-content:center; }'
+        +'.s4 .cd{ padding:3mm 3mm 4mm; } .s4 .t{ font-size:3.4mm; } .s4 .no{ font-size:6mm; margin:0.8mm 0 2mm; } .s4 .mk{ width:40mm; height:40mm; } .s4 .bone{ width:26mm; height:10.5mm; margin-top:2.5mm; } .s4 .s{ font-size:3mm; margin-top:2mm; } .s4 .sz{ font-size:2.2mm; right:2mm; bottom:1.2mm; }'
+        // 9cm：はがきの おおきさ 105×148mm を 2×2
+        +'.pg.s9{ display:grid; grid-template-columns:105mm 105mm; grid-template-rows:148mm 148mm; }'
+        +'.s9 .cd{ padding:4mm 5mm 5mm; } .s9 .t{ font-size:5.2mm; } .s9 .no{ font-size:7.5mm; margin:1mm 0 2.5mm; } .s9 .mk{ width:90mm; height:90mm; } .s9 .bone{ width:30mm; height:12mm; margin-top:3mm; } .s9 .s{ font-size:4.2mm; margin-top:2.5mm; } .s9 .sz{ font-size:3mm; right:3mm; bottom:1.8mm; }'
+        // 17cm：A4 に 1まい（いままでと おなじ）
+        +'.pg.s17{ display:block; } .s17 .cd{ width:210mm; height:296mm; border:none; justify-content:flex-start; padding:16mm 12mm 10mm; } .s17 .t{ font-size:12mm; } .s17 .no{ font-size:22mm; margin:2mm 0 8mm; }'
+        +'.s17 .mk{ width:170mm; height:170mm; } .s17 .bone{ width:90mm; height:36mm; margin-top:8mm; } .s17 .s{ font-size:9mm; margin-top:16mm; } .s17 .sz{ font-size:4.5mm; right:10mm; bottom:7mm; }'
+        +'.note{ display:none; }'
+        +'@media screen{ html{ background:#888; overflow-x:hidden; } body{ background:#888; padding:1px 0; display:flex; flex-direction:column; align-items:center; } .pg{ zoom:var(--z,1); margin:8px 0; flex:0 0 auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.4); }'
+        +' .note{ display:block; box-sizing:border-box; width:min(96vw,210mm); margin:10px 0 2px; padding:10px 14px; border-radius:8px; background:#fffbe6; color:#5a3d12; font-size:14px; font-weight:700; line-height:1.6; } }'
+        +'</style></head><body>'+note+pages.join("")+'</body></html>');
     w.document.close();
 }
-{ const b=document.getElementById("cardPrint"); if(b) b.addEventListener("click", ()=>{ nuriCardPrint(true); }); }   // きょうりゅうカードを いんさつ：おおきい カード 8まい（A4）の いんさつ画面へ（ほって かえす・カードを さがす で使う）
+document.querySelectorAll("#cardPrintList button").forEach(b=>b.addEventListener("click", ()=>{ nuriCardPrint(+b.dataset.s); }));   // きょうりゅうカードを いんさつ：くろい しかく 4cm／9cm（ほって かえす）／17cm（カードを さがす）の いんさつ画面へ
 { const b=document.getElementById("nuriPrint"); if(b) b.addEventListener("click", ()=>{ nuriPrintAll(); }); }        // ぬりえを いんさつ：ぜんぶの きょうりゅう（8まい）の いんさつ画面へ
 { const b=document.getElementById("nuriResetAllBtn"); if(b) b.addEventListener("click", ()=>{ nuriResetAll(); }); } // おすすめ設定オン：ぬりえを けす（ぜんぶ）
 
