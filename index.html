@@ -889,7 +889,7 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
       <section>
         <h3>🔍 モデルを みよう</h3>
         <p><b>「🔍 かんたんAR」</b>で3Dモデルを回して見たり、<b>「📱 ARで あそぶ」</b>で目の前に置いて見たりできます。<b>しゅつどひん・いぬ・きょうりゅう</b>は、ボタンを押した後の画面の「モデル」で選びます。きょうりゅうは、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と ぬりえなしの恐竜を えらべます。ぬりえをした恐竜は、その模様で表示されます。</p>
-        <p class="k">iPhone・iPad では、AR画面を開いたら スマホ（タブレット）を<b>ななめ まえ</b>（下に15〜55°）に向けると、その先に卵が出て孵ります（「📱 ARで あそぶ」はモデルが現れます）。「🖍 ぬりえを よみこむ」で読み取ったときも、用紙の上ではなく、ななめ まえの床に出ます。</p>
+        <p class="k">iPhone・iPad では、AR画面を開いたら スマホ（タブレット）を<b>ななめ まえ</b>（下に15〜55°）に向けると、その先に卵が出て孵ります（「📱 ARで あそぶ」はモデルが現れます）。「🖍 ぬりえを よみこむ」で読み取ったときも、用紙の上ではなく、ななめ まえの床に出ます。Android では、AR画面で ぬりえを読み取ると（「🖍 ぬりえを よみこむ」「📄 もういちど よむ」）、卵は用紙の真上に出て、恐竜は用紙の向こう側に こちらを向いて生まれます（いちばん手前の端が卵の すぐ奥・足もとは用紙の面）。用紙の奥に すこし場所を空けておいてください。恐竜は まわり約30cmを歩き、「🔄 リセット」も この場所に戻します。</p>
         <p class="k">「📱 ARで あそぶ」の恐竜は、じぶんで ぬった恐竜（🖍 ○○（ぬりえ））と、ぬりえなしの8体から選べます。いぬ・しゅつどひんの時は、使うボタンだけが出ます（いぬ＝たんけん・あるく→とまる→アニメオフ・しゃしん・どうが・リセット・しまう／しゅつどひん＝せつめい・しゃしん・どうが・リセット・しまう）。スマホ・タブレットの「きれい」は、画像を 4096（メモリが少ない端末は 2048）までに縮めて、表示している1点だけを読みます。AR画面の「🗺 たんけん」（いちばん左）では、発掘する恐竜の模様（ぬりえなし／みほん／じぶんで ぬった）を選べます（ぬりえから入った時は みほん／じぶんで ぬった）。たんけんの相棒は表示していた恐竜・いぬのまま変わらず、リザルトはポイント・タイムだけです（カード・相棒は手に入らず、記録にも残りません）。図鑑のカードとホログラムは、発掘する恐竜と同じ模様になります。たんけん中は「図鑑をリセット」「リセット」「記録」のボタンは出ません（図鑑ボタンは使えます）。</p>
       </section>
       <section>
@@ -11403,11 +11403,13 @@ function lphHatchTick(){
         if(r<1) H.egg.rotation.y+=0.12;
         H.wob+=dt; H.egg.rotation.z=Math.sin(H.wob*11)*0.16*Math.min(1,H.wob*1.5);   // 孵化前に揺れる
         if(el>=1.3*T){   // 孵化
+            if(LPH.paper && !LPH.card){ const eb=new THREE.Box3().setFromObject(H.egg).getSize(new THREE.Vector3()); LPH.paper.gap=Math.max(0.01, Math.max(eb.x, eb.z)/2); }   // 用紙モード：卵の半径（恐竜の手前の端＝卵の すぐ奥）
             scene.remove(H.egg); H.egg.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); H.egg=null;
             try{ sfxDig(); }catch(_){ }
             if(LITE.model) LITE.model.visible=true;
             LITE.group.position.copy(LITE.targetPos);
             if(LPH.card && LPH.card.place && H.eggPos) lphCardDinoPlace(H);   // ほって かえす：カードの むこう側（いちばん手前の端＝ブロックの すぐ奥）に こちら向き
+            else if(LPH.paper && !LPH.card){ LITE.targetScale.set(1,1,1); litePhonePlacePaper(); }   // ぬりえ（Android）：用紙の むこう側（いちばん手前の端＝卵の すぐ奥）に こちら向き
             else if(H.baseY!=null && H.eggPos){ const gi=lphGroundInfo(); LITE.group.position.set(H.eggPos.x-gi.ox, H.baseY-gi.bottom, H.eggPos.z-gi.oz); }   // 机の上の卵から生まれて、床へ とびおりる
             try{ sfxCry(); }catch(_){ } try{ vibrate(220,0.85); }catch(_){ }
             const nm=(LITE.curName||"").replace(/^\S+\s*/,""); lphMsg(nm?("「"+nm+"」が うまれたよ！"):"うまれたよ！", 3000);
@@ -11735,7 +11737,7 @@ function lphWalkNew(){   // 「とまる」が初期。あるく時は範囲の�
 function lphBodyLen(){ const gi=lphGroundInfo(); return Math.max(0.02, gi.r*2); }   // 体長（今の大きさ・向きでの床の上の長さ）
 function lphWalkMul(){ return (LITE.target==="dino" && _lphIsPtera(LITE.model)) ? (LPH_CFG.pteraWalkMul||1) : 1; }   // プテラノドンは2.5倍
 function lphWalkPick(W){   // 次に歩いていく場所：中心から 体長×2.0 の円の中（用紙の上でもはみ出してよい）。プテラノドンは2.5倍
-    const L=lphBodyLen(), k=lphWalkMul(), cr=(LPH.card && LPH.card.place) ? LPH_CARD_CFG[lphCardPlace()].walkR : 0;   // ほって かえす：出た場所の まわりだけ（つくえ 約30cm／ゆか 約2.5m）
+    const L=lphBodyLen(), k=lphWalkMul(), cr=(LPH.card && LPH.card.place) ? LPH_CARD_CFG[lphCardPlace()].walkR : (LPH.paper && !LPH.card) ? LPH_CARD_CFG.desk.walkR : 0;   // ほって かえす：出た場所の まわりだけ（つくえ 約30cm／ゆか 約2.5m）／ぬりえの 用紙モード（Android）：約30cm
     const R=cr || L*LPH_CFG.walkRadiusBL*k, minD=cr ? Math.min(L*0.3*k, cr*0.5) : L*0.3*k, c=W.home;
     for(let k=0;k<12;k++){
         const a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*R, x=c.x+Math.cos(a)*r, z=c.z+Math.sin(a)*r;
@@ -12028,13 +12030,9 @@ function litePhoneNearAfter(o){   // 新しい恐竜を、同じ方向・同じ�
     LITE.group.position.x=LITE.targetPos.x; LITE.group.position.z=LITE.targetPos.z;   // 切替の瞬間に置き直す（すべって見えないように）
     if(LPH.walk) LPH.walk.held=true;   // 歩く中心も置き直し
 }
-function litePhonePlacePaper(){   // 用紙モード：恐竜の中心＝用紙の中央、スマホの方を向く、足元＝用紙の面
-    const pc=LPH.paper.center; camera.getWorldPosition(_lphCamP);
-    LITE.targetQuat.setFromAxisAngle(_lphUp, Math.atan2(_lphCamP.x-pc.x, _lphCamP.z-pc.z));
-    LPH.gKey="";
-    const gi=lphGroundInfo();
-    LITE.targetPos.set(pc.x-gi.ox, lphFloorY()-gi.bottom+lphLift(), pc.z-gi.oz);
-    LITE.group.position.copy(LITE.targetPos); LITE.group.quaternion.copy(LITE.targetQuat);
+function litePhonePlacePaper(){   // 用紙モード（Android）：用紙の むこう側に こちら向き（いちばん手前の端＝用紙の中央の卵の すぐ奥・足元＝用紙の面）
+    const pc=LPH.paper.center;
+    lphDinoBehind(pc.x, pc.z, LPH.paper.gap || LPH_PAPER_GAP, true);   // 2本指の大きさは 用紙モードでは変えない（リセットは 100% に戻してから呼ぶ）
 }
 function litePhonePlaceFront(){   // スマホに正対・足元は床。恐竜・いぬ・出土品＝いちばん手前の端が 水平に2.0m先
     if(LPH.paper){ litePhonePlacePaper(); return; }
@@ -14431,12 +14429,17 @@ function lphCardEggSize(){   // つくえ 約5cm／ゆか 約25cm（ブロック
     return Math.min(0.55, med*S*0.3);
 }
 const _lphCdE=new THREE.Euler(), _lphRaD=new THREE.Vector3();
+const LPH_PAPER_GAP=0.03;   // 用紙モード：卵が まだ無い時（リセットなど）の 卵の半径の目安(m)。生まれた時は その卵の大きさで決める（LPH.paper.gap）
 function lphCardDinoPlace(H){   // 恐竜を カードの むこう側へ：スマホから見て カードの奥。いちばん手前の端が ブロックの すぐ奥・足もと＝カードの面・こちらを向く
+    lphDinoBehind(H.eggPos.x, H.eggPos.z, (H.bs||lphCardBlockSize())/2, false);
+}
+function lphDinoBehind(px, pz, gap, keepScale){   // 恐竜を 点(px,pz)の むこう側へ：スマホから見て その奥。いちばん手前の端＝点から gap 奥・足もと＝床（カード・用紙の面）・こちらを向く
     camera.getWorldPosition(_lphCamP);
-    let fx=H.eggPos.x-_lphCamP.x, fz=H.eggPos.z-_lphCamP.z; const fl=Math.hypot(fx,fz); if(fl<1e-4){ fx=0; fz=-1; } else { fx/=fl; fz/=fl; }
-    LITE.targetScale.set(1,1,1); LITE.targetQuat.setFromEuler(_lphCdE.set(0, Math.atan2(-fx,-fz), 0)); LPH.gKey="";
-    const gap=(H.bs||lphCardBlockSize())/2, D=gap-lphNearMin(fx, fz), gi=lphGroundInfo();
-    LITE.targetPos.set(H.eggPos.x+fx*D, lphFloorY()-gi.bottom+lphLift(), H.eggPos.z+fz*D);
+    let fx=px-_lphCamP.x, fz=pz-_lphCamP.z; const fl=Math.hypot(fx,fz); if(fl<1e-4){ fx=0; fz=-1; } else { fx/=fl; fz/=fl; }
+    if(!keepScale) LITE.targetScale.set(1,1,1);
+    LITE.targetQuat.setFromEuler(_lphCdE.set(0, Math.atan2(-fx,-fz), 0)); LPH.gKey="";
+    const D=gap-lphNearMin(fx, fz), gi=lphGroundInfo();
+    LITE.targetPos.set(px+fx*D, lphFloorY()-gi.bottom+lphLift(), pz+fz*D);
     LITE.group.position.copy(LITE.targetPos); LITE.group.quaternion.copy(LITE.targetQuat);
 }
 function lphCardBlockClear(H){ if(H && H.block){ scene.remove(H.block); H.block.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); H.block=null; } }
