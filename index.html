@@ -270,7 +270,8 @@
     .dszTicks{ position:absolute; left:9px; right:9px; bottom:0; height:16px; font-size:11px; color:#b9aee0; font-weight:700; pointer-events:none; }
     .dszTicks span{ position:absolute; top:0; transform:translateX(-50%); white-space:nowrap; }
     .dszTicks span:first-child{ transform:none; left:-9px !important; } .dszTicks span:last-child{ transform:none; left:auto !important; right:-9px; }
-    #dszInfo{ margin-top:8px; font-size:14px; font-weight:800; color:#7fe0cd; text-align:center; }
+    #dszInfo, #dinoIdleInfo{ margin-top:8px; font-size:14px; font-weight:800; color:#7fe0cd; text-align:center; }
+    #dinoIdleNote{ margin-top:4px; font-size:12px; color:#b9aee0; text-align:center; line-height:1.5; }   /* 生まれた恐竜が 歩き出すまで：その間に すること */
     #dszWarn{ margin-top:6px; font-size:12px; font-weight:700; color:#ffb4a8; text-align:center; line-height:1.5; } #dszWarn:empty{ display:none; }
     .pendNote:empty{ display:none; }
     .applyBtn{ padding:9px 22px; border-radius:9px; border:1px solid #ffd86a; background:linear-gradient(135deg,#7c3aed,#1d4ed8); color:#fff; font-weight:800; font-size:13px; cursor:pointer; }
@@ -543,6 +544,19 @@ if(!/[?&]cardDebug=[123](&|$)/.test(location.search)) document.body.classList.ad
         <div id="dszInfo">ティラノサウルス 2.0m</div>
         <div id="dszWarn"></div>
         <div id="dszPendNote" class="pendNote"></div>
+      </div>
+      <!-- 生まれた恐竜が 歩き出すまで（恐竜のとき。おすすめ設定オン・発掘チャレンジでも表示）：卵から かえってから この秒数は、その場で においを かぐ・プレイヤーを見る・はねる／まわる／ふりふり をしてから 歩きはじめる（10〜30秒・1秒きざみ・既定 20秒）。
+           ほんかくはっくつ（ヘッドセット・画面操作）と ぬりえの AR で使う。たんけん・ほって かえす は「たんけんの じゅんび」の値。「とまる」の時は 変わらない（ずっと その場） -->
+      <div class="opt wide" id="optDinoIdle" style="display:none">
+        <div class="lbl">生まれた恐竜が 歩き出すまで</div>
+        <div class="dszRow">
+          <button type="button" class="dszStep" data-d="-1" aria-label="短く">－</button>
+          <div class="dszTrack"><input id="dinoIdleRange" type="range" min="10" max="30" step="1" value="20">
+            <div class="dszTicks"><span style="left:0%">10秒</span><span style="left:50%">20秒</span><span style="left:100%">30秒</span></div></div>
+          <button type="button" class="dszStep" data-d="1" aria-label="長く">＋</button>
+        </div>
+        <div id="dinoIdleInfo">20秒</div>
+        <div id="dinoIdleNote"></div>
       </div>
       <div class="opt wide" id="optMode">
         <div class="lbl">モード</div>
@@ -1081,8 +1095,9 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         box-shadow:0 0 26px rgba(40,180,200,.45), inset 0 1px 0 rgba(255,255,255,.15);
     }
     #mvArOpenBtn:active{ transform:scale(.99); }
-    #lphDigDsSlider{ margin:2px 2px 0; } #lphDigDsSlider input{ width:100%; accent-color:#f7c948; }   /* たんけん：恐竜の大きさ（スライダー） */
-    #lphDigDsSlider .dsends{ display:flex; justify-content:space-between; font-size:11.5px; color:#c9bcff; line-height:1.35; } #lphDigDsSlider .dsends span:last-child{ text-align:right; }
+    #lphDigDsSlider, #lphDigIdleSlider{ margin:2px 2px 0; } #lphDigDsSlider input, #lphDigIdleSlider input{ width:100%; accent-color:#f7c948; }   /* たんけん：恐竜の大きさ（スライダー） */
+    #lphDigDsSlider .dsends, #lphDigIdleSlider .dsends{ display:flex; justify-content:space-between; font-size:11.5px; color:#c9bcff; line-height:1.35; } #lphDigDsSlider .dsends span:last-child, #lphDigIdleSlider .dsends span:last-child{ text-align:right; }
+    #lphDigIdleNote b{ color:#ffe066; font-size:15px; }   /* たんけん：うまれてから あるきだすまで（秒） */
     #lphDigDsNote b{ color:#ffe066; font-size:15px; }
     #mvWaitNote{ margin-top:6px; font-size:12px; color:#c3b3f2; text-align:center; line-height:1.5; }   /* カードを作り直している間の進み具合 */
     #mvLibNote{ margin-top:6px; font-size:12px; color:#ffcf8a; text-align:center; line-height:1.5; }   /* 3D の見本の部品（model-viewer）を読めなかった時の理由 */
@@ -1612,6 +1627,12 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
                 <button type="button" data-v="move">🚶<span>あるく</span></button>
                 <button type="button" data-v="stay">🧍<span>とまる</span></button>
             </div>
+            <div class="lbl" id="lphDigIdleLbl" style="display:none">うまれてから あるきだすまで</div>   <!-- 卵から かえってから この秒数は その場で においを かぐ・こちらを見る・はねる など（10〜30秒・既定 20秒）。恐竜の たんけん・ほって かえす -->
+            <div id="lphDigIdleSlider" style="display:none">
+                <input type="range" id="lphDigIdleRange" min="10" max="30" step="1" value="20" aria-label="うまれてから あるきだすまでの びょうすう">
+                <div class="dsends"><span>10びょう</span><span>30びょう</span></div>
+            </div>
+            <p class="note" id="lphDigIdleNote" style="display:none"></p>
             <div class="lbl" id="lphDigSrcLbl" style="display:none">はっくつする きょうりゅう</div>
             <div class="seg3" id="lphDigSrc" style="display:none"></div>
             <div class="lbl" id="lphDigBlankLbl" style="display:none">みほんの ぬっていない しろい ところ（おすと かわるよ）</div>
@@ -7693,7 +7714,7 @@ function animateDigDinos(now, dt){
                     _apS=_ud._apS=s*faceAmt;
                 } else _apS=_ud._apS||0;
             }
-            else if(_apOk && _ud._noticed && (_look || _move==="stay")) _apS=_ud._apS||0;   // 頭の近く・見おわった後（とまる）：プレイヤーが視界にいる間は 寄った所のまま（後ろに もどらない）
+            else if(_apOk && _ud._noticed && (_look || _move==="stay" || (_cb && _cb.intro))) _apS=_ud._apS||0;   // 頭の近く・見おわった後（とまる）：プレイヤーが視界にいる間は 寄った所のまま（後ろに もどらない）
             else { _ud._apS=0; _ud._apCap=null; }                                             // 視界から出た：もとの場所へ（あるく は 歩きはじめる時に その場所を 新しい定位置にする）
             if(_apS>0 && camW){   // 近すぎて はなれている間（keep-away）は、いま居る所より プレイヤー側へは 寄らない。寄る と はなれる が 毎フレーム 押し合って ブルブル ふるえないように（このあと 見ている間は ずっと）
                 const dx=camW.x-ox, dz=camW.z-oz, dd=Math.hypot(dx,dz);
@@ -7930,9 +7951,14 @@ function cdWalkBlocked(cont, u, S){   // あるく：いま 歩く向きと だ�
 function cdSegDist(ax,az,bx,bz,px,pz){ const vx=bx-ax, vz=bz-az, l2=vx*vx+vz*vz; let t=l2>1e-9 ? ((px-ax)*vx+(pz-az)*vz)/l2 : 0; t=Math.max(0, Math.min(1, t)); return Math.hypot(ax+vx*t-px, az+vz*t-pz); }   // 点(px,pz)から 線分 a→b までの距離
 function cardDinoTick(cont, m, now, dt, camW){
     const u=cont.userData; let S=u._cd;
-    if(!S){ S=u._cd={ cx:u.origX??cont.position.x, cz:u.origZ??cont.position.z, sniffUntil:0, state:"pause", until:now+1500, gx:0, gz:0 }; }
-    const out={ sniff:0, walking:false, noSpin:true, look:false, attend:true };   // attend＝プレイヤーの方を向いて見てよい（とまる：見ている間だけ）
+    if(!S){ S=u._cd={ cx:u.origX??cont.position.x, cz:u.origZ??cont.position.z, sniffUntil:0, state:"pause", until:now+1500, gx:0, gz:0,
+        intro:now+dinoIdleMs(!!TABAR.on), introJoyAt:now+_cdRnd(DINO_IDLE.joyFirstMs) }; }   // intro＝生まれてから 歩き出すまで（ほんかくはっくつ＝メニュー／たんけん＝たんけんの じゅんび の秒数）
+    const out={ sniff:0, walking:false, noSpin:true, look:false, attend:true, intro:false };   // attend＝プレイヤーの方を向いて見てよい（とまる：見ている間だけ）／intro＝歩き出す前
     if(digMoveMode()!=="move" || dinoTooBigToWalk(u)){ cardDinoStay(cont, u, S, out, now, dt, camW); return out; }   // とまる（本編：体長が フィールドの短い辺の半分より大きい恐竜も その場で）
+    if(S.intro){   // あるく：生まれてすぐは その場で すごしてから 歩き出す
+        if(now<S.intro){ cardDinoIntro(cont, u, S, out, now, dt, camW); return out; }
+        cardDinoIntroEnd(u, S, now);
+    }
     out.look=(S.state==="look");
     if(u._joy){ out.noSpin=false; return out; }   // よろこんでいる間は その場
     const fin=()=>{   // あるく：見ている間は こちらを向く／歩いている間・休んでいる間は ときどき ちらっと見るだけ（見る回数を 多くしすぎない）
@@ -8004,6 +8030,23 @@ function cardDinoStay(cont, u, S, out, now, dt, camW){
     }
     out.look=(S.state==="look"); out.attend=out.look;
 }
+// 生まれてすぐ（S.intro まで）：その場で とまる と同じ（においを かぐ・ゆっくり向きを変える・プレイヤーを見る）＋ ときどき はねる／くるっと まわる／ふりふり（鳴き声・セリフ・♥は なし）
+//   おわりの すこし前（DINO_IDLE.tailMs）からは 新しく 見たり かいだり はねたりしない（とちゅうで 歩きださない）
+function cardDinoIntro(cont, u, S, out, now, dt, camW){
+    const tail=(S.intro-now)<DINO_IDLE.tailMs, prev=S.state;
+    if(tail && prev!=="look") S.lookCool=Math.max(S.lookCool||0, S.intro);
+    cardDinoStay(cont, u, S, out, now, dt, camW);
+    if(tail && S.state!==prev && (S.state==="sniff" || S.state==="turn")){ S.state="rest"; S.until=S.intro+1000; S.sniffUntil=0; }
+    if(!u._joy && !tail && now>=S.introJoyAt && (S.state==="look" ? (u._faceAmt||0)>0.6 : (S.state==="rest" && now>=S.introJoyAt+4000))){   // プレイヤーを見ている時に（見ていない時は すこし待ってから）
+        cardDinoJoyStart(cont); S.introJoyAt=now+(u._joy ? u._joy.dur : 0)+_cdRnd(DINO_IDLE.joyGapMs);
+    }
+    out.intro=true;
+}
+function cardDinoIntroEnd(u, S, now){   // 歩き出すまでの時間が おわった → あるく（見ている途中でも 歩きはじめる。しばらくは 立ち止まって見ない）
+    S.intro=0; S.stay=false; S.sniffUntil=0; S.turning=false;
+    S.state="pause"; S.until=now+400+Math.random()*500;
+    S.lookCool=now+_cdRnd(CARD_DINO.lookGapMs); S.walkFree=now+CARD_DINO.walkFreeMs;
+}
 function cardDinoStayNext(cont, S, now){   // とまる：つぎは においを かぐ か ゆっくり向きを変える（半分ずつ）
     if(Math.random()<0.5){ S.state="sniff"; S.t0=now; S.until=now+_cdRnd(CARD_DINO.sniffMs); S.sniffUntil=S.until; }
     else { const a=THREE.MathUtils.degToRad(_cdRnd(CARD_DINO.turnDeg))*(Math.random()<0.5?-1:1);
@@ -8032,6 +8075,12 @@ function cardDinoJoyLine(key, type){   // ほって かえす・ぬりえ と同
     return /^fukui/.test(key||"") ? { hop:`うれしいざ〜 ${cry}！`, spin:`くるっと まわるざ ${cry}！`, wiggle:`なでなで だいすきやざ ${cry}！` }[type]
                                   : { hop:`うれしいぞ ${cry}！`, spin:`くるっと まわるぞ ${cry}！`, wiggle:`なでなで だいすきだぞ ${cry}！` }[type];
 }
+function cardDinoJoyStart(c){   // よろこぶ動きを はじめる（はねる／くるっと まわる／ふりふり。続けて同じにしない）。タッチ・生まれてすぐの かわいい動き
+    const u=c.userData, sz=new THREE.Box3().setFromObject(c).getSize(new THREE.Vector3());
+    const types=["hop","spin","wiggle"].filter(t=>t!==u._lastJoy), type=types[Math.floor(Math.random()*types.length)]; u._lastJoy=type;
+    u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*LPH_CFG.joySlow, type, base:c.rotation.y, yaw0:c.rotation.y, h:Math.max(0.01, sz.y*0.15) };   // ほって かえす と同じ長さ・高さ
+    return type;
+}
 function cardDinoTap(ndcX, ndcY, maxD){   // 掘り出した恐竜を タッチ → よろこぶ（すべての たんけん・画面操作で発掘する）。maxD より遠い恐竜は えらばない（相棒が手前）
     if(!(tankenDino() || (!TABAR.on && GAME.desktop && !renderer.xr.isPresenting))) return false;   // ヘッドセットのVR/ARは さわらない
     const list=dinoDigModels.filter(c=>c && c.visible && c.userData && c.userData.settled); if(!list.length) return false;
@@ -8040,9 +8089,7 @@ function cardDinoTap(ndcX, ndcY, maxD){   // 掘り出した恐竜を タッチ 
     for(const c of list){ const h=_aimRay.intersectObject(c, true); if(h.length && h[0].distance<bd){ bd=h[0].distance; best=c; } }
     if(best && maxD!=null && bd>=maxD) return false;
     if(!best || best.userData._joy) return !!best;
-    const u=best.userData, sz=new THREE.Box3().setFromObject(best).getSize(new THREE.Vector3());
-    const types=["hop","spin","wiggle"].filter(t=>t!==u._lastJoy), type=types[Math.floor(Math.random()*types.length)]; u._lastJoy=type;
-    u._joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*LPH_CFG.joySlow, type, base:best.rotation.y, yaw0:best.rotation.y, h:Math.max(0.01, sz.y*0.15) };   // ほって かえす と同じ長さ・高さ
+    const u=best.userData, type=cardDinoJoyStart(best);
     if(u._cd){ u._cd.state="look"; u._cd.lookCool=performance.now()+3600000; u._cd.until=performance.now()+Math.max(2600, u._joy.dur+800); u._cd.gx=u.origX??best.position.x; u._cd.gz=u.origZ??best.position.z; }   // 止まって こちらを見る
     try{ sfxCry(); }catch(_){ } try{ vibrate(60,0.5); }catch(_){ }
     const px=TABAR.on ? (TABAR.tapPx||{ x:innerWidth/2, y:innerHeight/2 }) : { x:(ndcX+1)/2*innerWidth, y:(1-ndcY)/2*innerHeight };   // 画面操作で発掘する：タップ（クリック）した所
@@ -8463,6 +8510,20 @@ let starEnabled=false;   // スターブロック（初期値。起動時のお�
 let cardShown=true;      // 獲得カード表示（既定：表示）
 let digPosRandom=true;    // サイト表示×恐竜系の発掘場所（true=ランダム/false=固定）。既定ランダム
 let dugDinoMove="move";   // 掘り出した恐竜の動き（ヘッドセットのVR/AR・画面操作で発掘する）：move＝あるく（既定・おすすめ）／stay＝とまる。おすすめオフ＋恐竜のときだけメニューで変更可
+const DINO_IDLE={ min:10, max:30, def:20,   // 生まれた恐竜が 歩き出すまで(秒)：スライダーの はんい（1秒きざみ）
+    joyFirstMs:[2000,4000], joyGapMs:[5000,8000],   // その間の「かわいい動き」（はねる・まわる・ふりふり）：はじめて するまで／つぎに するまで(ms)
+    tailMs:2500,              // おわる この(ms)前からは 新しく においを かいだり はねたりしない（とちゅうで 歩きださない）
+    lookAR:0.5 };             // ぬりえの AR・ほって かえす：つぎに プレイヤーを見る 割合（のこりは においを かぐ）
+let dugDinoIdle=DINO_IDLE.def;   // 生まれた恐竜が 歩き出すまで(秒)：ほんかくはっくつ（ヘッドセット・画面操作）と ぬりえの AR。たんけん・ほって かえす は LDIG.dinoIdle（たんけんの じゅんび）
+function dinoIdleClamp(v){ const n=Math.round(+v); return Math.max(DINO_IDLE.min, Math.min(DINO_IDLE.max, Number.isFinite(n) ? n : DINO_IDLE.def)); }
+function setDugDinoIdle(v){ dugDinoIdle=dinoIdleClamp(v); paintDinoIdle(); }
+function paintDinoIdle(){   // メニューの「生まれた恐竜が 歩き出すまで」：スライダーの位置・秒数・その間に すること
+    const r=document.getElementById("dinoIdleRange"), i=document.getElementById("dinoIdleInfo"), n=document.getElementById("dinoIdleNote");
+    if(r && +r.value!==dugDinoIdle) r.value=String(dugDinoIdle);
+    if(i) i.textContent=dugDinoIdle+"秒";
+    if(n) n.textContent=(dugDinoMove==="stay") ? "「とまる」の時は、ずっと その場で すごします" : "においを かいだり、こちらを見たり、はねたりしてから 歩きます";
+}
+function dinoIdleMs(tanken){ try{ return dinoIdleClamp(tanken ? LDIG.dinoIdle : dugDinoIdle)*1000; }catch(_){ return DINO_IDLE.def*1000; } }   // tanken＝たんけん・ほって かえす（たんけんの じゅんび の値）
 // サイト表示時：エリア内に互いに離れた8点をランダム生成（サイト非表示時の発掘点と同様の距離確保）
 function regenerateSiteRandomSpots(){
     const pts=[]; const R=fieldRange();
@@ -8482,7 +8543,7 @@ function regenerateSiteRandomSpots(){
 function segSelect(segId, v){   // 指定セグの値を選択状態にし、対応する内部変数も更新
     document.querySelectorAll("#"+segId+" button").forEach(x=>x.classList.toggle("on", x.dataset.v===v));
 }
-function setDigDinoMove(v){ dugDinoMove=(v==="stay") ? "stay" : "move"; segSelect("segDinoMove", dugDinoMove); }   // 掘り出した恐竜の動き（あるく／とまる）
+function setDigDinoMove(v){ dugDinoMove=(v==="stay") ? "stay" : "move"; segSelect("segDinoMove", dugDinoMove); paintDinoIdle(); }   // 掘り出した恐竜の動き（あるく／とまる）
 function applyAutoForTarget(target){   // 発掘対象/モード切替時の推奨プリセット。おすすめon/offとも同じ値をセット（オン=各トグルを隠して固定／オフ=全表示で編集可）。チャレンジはapplyChallengePresetが担当
     if(chosenMode==="challenge") return;
     setTimeLimit(90);                                                    // 制限時間：90秒（TAのみ有効）
@@ -8542,6 +8603,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optToolSwap",false); toolSwapAllowed=false; segSelect("segToolSwap","off");   // オンは非表示＝必ず持ち替えない
         show("optHoloFreeze",false); holoFreezeTime=false; segSelect("segHoloFreeze","off");   // オンは非表示＝止まらない（おすすめ）
         show("optDinoSize", target!=="artifact");   // 恐竜の大きさ：おすすめ設定オンでも 表示（恐竜のとき）
+        show("optDinoIdle", target!=="artifact");   // 生まれた恐竜が 歩き出すまで：おすすめ設定オンでも 表示（恐竜のとき）
         show("optDinoMove",false); setDigDinoMove("move");   // オンは非表示＝あるく
         show("siteAlphaOpt",false); if(siteAlphaPct) setSiteAlpha(0); if(siteSolidR) setSiteSolidR(0); if(siteSolidAt!=="foot") setSiteSolidAt("foot");   // オンは非表示＝透過なし（円の中心も 足もとに戻す）
         setTimeLimit(90);   // おすすめオンは90秒固定
@@ -8559,6 +8621,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         show("optToolSwap", true);   // おすすめオフのときだけ表示・切替可
         show("optHoloFreeze", true);
         show("optDinoSize", chosenDigTarget!=="artifact");   // 恐竜の大きさ：恐竜系のときだけ表示
+        show("optDinoIdle", chosenDigTarget!=="artifact");   // 生まれた恐竜が 歩き出すまで：恐竜系のときだけ表示
         show("optDinoMove", chosenDigTarget!=="artifact");   // 掘り出した恐竜の動き：恐竜系のときだけ表示
         show("optTimeLimit", chosenMode==="time");   // タイムアタック時のみ
         show("siteSizeOpt", siteVisible);
@@ -8577,6 +8640,7 @@ function updateRecoVisibility(){   // オン=最小項目のみ表示／オフ=�
         }
         show("optMode",true);
         show("optDinoSize", chosenDigTarget!=="artifact");   // 恐竜の大きさ：発掘チャレンジでも（おすすめ設定オン・オフとも）えらべる
+        show("optDinoIdle", chosenDigTarget!=="artifact");   // 生まれた恐竜が 歩き出すまで：発掘チャレンジでも えらべる
     }
     show("optReco",true);   // おすすめトグルは常に表示（どのモードでも消えない）
 }
@@ -8623,9 +8687,13 @@ function updateRsInfo(){   // 恐竜の大きさの表示（スライダーの�
   document.querySelectorAll("#optDinoSize .dszStep").forEach(b=>b.onclick=()=>{   // －／＋：となりの値へ
       const i=DINO_SIZE_STOPS.indexOf(dinoSizeStop(dinoTrexH)), j=Math.max(0, Math.min(DINO_SIZE_STOPS.length-1, i+(+b.dataset.d)));
       setDinoTrexH(DINO_SIZE_STOPS[j].h, true); scheduleWorldReload(); }); }
+{ const r=document.getElementById("dinoIdleRange");   // 生まれた恐竜が 歩き出すまで（秒）：スライダー・－／＋（ワールドの読み直しは いらない）
+  if(r){ r.oninput=()=>setDugDinoIdle(r.value); r.onchange=()=>setDugDinoIdle(r.value); }
+  document.querySelectorAll("#optDinoIdle .dszStep").forEach(b=>b.onclick=()=>setDugDinoIdle(dugDinoIdle+(+b.dataset.d)));
+  paintDinoIdle(); }
 // メニュー項目の並び替え（order の順に並べる）
 (function(){
-    const order=["optReco","optDig","optArtLine","optDinoMove","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","siteAlphaOpt","worldSizeOpt","optDinoSize","optDigPos"];
+    const order=["optReco","optDig","optArtLine","optDinoMove","optMode","optTimeLimit","optHoloFreeze","optCardShow","optRarity","optBuddyMode","optDogLevel","optBuddy","optBuddyPool","optStar","optToolSwap","optSite","siteSizeOpt","siteAlphaOpt","worldSizeOpt","optDinoSize","optDinoIdle","optDigPos"];
     const first=document.getElementById(order[0]); const parent=first&&first.parentNode; if(!parent) return;
     order.forEach(id=>{ const el=document.getElementById(id); if(el && el.parentNode===parent) parent.appendChild(el); });   // .cardgridの子は全てoptなので順に末尾へ動かせば指定順になる
 })();
@@ -10852,7 +10920,7 @@ function liteArTick(){
         if(pv&&pv.userData){
             if(window.MV_ANIM!==false){
                 const w=performance.now()*0.006;   // 共通周期（足・尻尾・首で同じ）
-                const still=!!(LPH.walk && LPH.walk.off);   // 「とまる」：足ぶみはしない（しっぽ・首・羽は動く）
+                const still=!!(LPH.walk && (LPH.walk.off || lphWalkIntroOn(LPH.walk)));   // 「とまる」・生まれてすぐ（歩き出す前）：足ぶみはしない（しっぽ・首・羽は動く）
                 if(!pv.userData.wings) (pv.userData.legs||[]).forEach(lg=>{ if(lg) lg.rotation.x = still ? lg.rotation.x*0.85 : Math.sin(w + (lg.userData.phase||0))*0.32; });   // 各脚の内蔵位相＝発掘相棒と同じ協調歩行（プテラノドンは脚を動かさない）
                 if(pv.userData.tail) pv.userData.tail.rotation.y=Math.sin(w)*0.4;   // 尻尾（同周期）
                 if(pv.userData.head) pv.userData.head.rotation.z=Math.sin(w)*0.06;  // 軽い首の揺れ（同周期）
@@ -11685,7 +11753,7 @@ function lphHatchTick(){
     if(H.phase==="dino"){   // 跳ねて登場（上昇→頂点→着地）
         const r=Math.min((now-H.t2)/1000/(1.0*T),1), peak=H.height*0.35;
         LPH.popY = r<0.5 ? lerp(0,peak,r*2) : lerp(peak,0,(r-0.5)*2);
-        if(r>=1){ LPH.popY=0; H.phase="done"; LPH.walk=lphWalkNew(); litePhoneRefresh();
+        if(r>=1){ LPH.popY=0; H.phase="done"; LPH.walk=lphWalkNew(); lphWalkIntro(LPH.walk); litePhoneRefresh();   // 生まれてすぐは その場で すごしてから 歩き出す
             const C=LPH.card; if(C && C.t1 && !C.ended){ C.ended=true; setTimeout(()=>{ if(LPH.card===C) lphCardEnd(); }, 3500); } }   // ほって かえす：8しゅるい ぜんぶ みつけたら まとめへ   // 操作方法は自動で出さない（「？ そうさ」で見る）
     }
 }
@@ -12003,6 +12071,18 @@ function iarComposite(maxLong){   // 写真・動画：画面に見えている�
 function lphWalkNew(){   // 「とまる」が初期。あるく時は範囲の中を歩き回り、ときどきプレイヤーを見たり床を嗅いだりする
     return { off:false, state:"pause", until:performance.now()+800, target:new THREE.Vector3(), home:LITE.targetPos.clone(), last:performance.now(), held:true, hx:0, hy:0, yaw:lphYawOf(LITE.targetQuat) };   // 初期は「あるく」
 }
+function lphWalkIntro(W){   // 卵から生まれた：歩き出すまで（ぬりえの AR＝メニュー／ほって かえす＝たんけんの じゅんび の秒数）その場で においを かぐ・プレイヤーを見る・はねる など
+    if(!W || LITE.target!=="dino") return;
+    const now=performance.now(); W.introUntil=now+dinoIdleMs(!!LPH.card); W.introJoyAt=now+_cdRnd(DINO_IDLE.joyFirstMs);
+}
+function lphWalkIntroOn(W){ return !!(W && !W.off && W.introUntil && performance.now()<W.introUntil); }   // 歩き出す前（足ぶみも しない）
+function lphJoyQuiet(W){   // 生まれてすぐの かわいい動き（はねる／くるっと まわる／ふりふり）：鳴き声・セリフ・♥・ふるえ は なし。いまの向きから（くるっと ふりかえらない）
+    if(LPH.joy || LPH.faceTurn || !LITE.model || window.MV_ANIM===false) return false;
+    const sz=new THREE.Box3().setFromObject(LITE.model).getSize(new THREE.Vector3());
+    const types=["hop","spin","wiggle"].filter(t=>t!==LPH.lastJoy), type=types[Math.floor(Math.random()*types.length)]; LPH.lastJoy=type;
+    LPH.joy={ t0:performance.now(), dur:(type==="spin"?1100:1300)*LPH_CFG.joySlow, type, yaw0:W.yaw, h:Math.max(0.01, sz.y*0.15), quiet:true };
+    return true;
+}
 function lphBodyLen(){ const gi=lphGroundInfo(); return Math.max(0.02, gi.r*2); }   // 体長（今の大きさ・向きでの床の上の長さ）
 function lphWalkMul(){ return (LITE.target==="dino" && _lphIsPtera(LITE.model)) ? (LPH_CFG.pteraWalkMul||1) : 1; }   // プテラノドンは2.5倍
 function lphWalkFixedR(){ return (LPH.card && LPH.card.place) ? LPH_CARD_CFG[lphCardPlace()].walkR : (LPH.paper && !LPH.card) ? LPH_CARD_CFG.desk.walkR : 0; }   // 決まった はんい：ほって かえす（つくえ 約30cm／ゆか 約2.5m）／ぬりえの 用紙モード（Android）：約30cm。ほかは 0
@@ -12065,7 +12145,12 @@ function lphWalkTick(){
     }
     else {
         if(W.held){ W.held=false; W.home.copy(LITE.targetPos); W.yaw=lphYawOf(LITE.targetQuat); W.state="look"; W.lookFaced=false; W.lookT0=now; W.until=now+60000; if(head) liteGazeReset(head); }   // その場所・その向きから：変えた後は まず プレイヤーを見る
-        if(!W.off){
+        if(W.introUntil && (W.off || now>=W.introUntil)){   // 歩き出すまでの時間が おわった（「とまる」に した時も おしまい）→ あるく：見ている途中でも 歩きはじめる。次の行き先に着くまでは 立ち止まって見ない
+            W.introUntil=0;
+            if(!W.off){ W.state="pause"; W.until=now+400+Math.random()*500; W.lookCool=now+NOTICE_LOOK.cooldownMs; W.walkFirst=true; W.lookEnd=now; }
+        }
+        const intro=!!W.introUntil, still=W.off || intro, tail=intro && (W.introUntil-now)<DINO_IDLE.tailMs;   // intro＝生まれてすぐ（その場で すごす）。tail＝おわりの すこし前（新しく 見たり かいだり しない）
+        if(!still){
             lphWalkNotice(W, now);   // 視界に プレイヤーが入ったら 止まって見る（たんけんの「あるく」と共通）
             const spd=lphBodyLen()*LPH_CFG.walkSpeedBL*lphWalkMul(), tr=LPH_CFG.turnDeg;   // 速さも体長に比例（プテラノドンは2.5倍）
             if(W.state==="pause" && now>=W.until){ lphWalkPick(W); W.state="turn"; }
@@ -12082,26 +12167,28 @@ function lphWalkTick(){
                     } else { LITE.targetPos.x+=dx/d*step; LITE.targetPos.z+=dz/d*step; }
                 }
             }
-        } else {   // とまる：その場から動かずに、においをかぐ・プレイヤーを見る をくり返す
+        } else {   // とまる・生まれてすぐ：その場から動かずに、においをかぐ・プレイヤーを見る をくり返す
             if(W.state==="turn" || W.state==="walk"){ W.state="pause"; W.until=now+600; }
             if(W.state==="pause" && now>=W.until){
-                if(Math.random()<LOOK_FREQ.stopLook){ W.state="look"; W.lookFaced=false; W.lookT0=now; W.until=now+60000; }
-                else { W.state="sniff"; W.until=now+2000+Math.random()*1000; }
+                if(tail) W.until=W.introUntil+1000;   // おわりの すこし前は じっとして、そのまま 歩きだす
+                else if(Math.random()<(intro ? DINO_IDLE.lookAR : LOOK_FREQ.stopLook)){ W.state="look"; W.lookFaced=false; W.lookT0=now; W.until=now+60000; }
+                else { W.state="sniff"; W.until=now+2000+Math.random()*1000; if(intro) W.until=Math.min(W.until, W.introUntil-300); }
             }
         }
         if(W.state==="look"){
             // 体をプレイヤーの方へ向けながら、頭の左右・上下で目（顔）をプレイヤーに合わせる
             //   （大きさ・回転・移動・リセットの後も、実際の頭の位置と向きから毎回計算する）
             //   ヘッドセットの「とまる」でモデルを傾けている時は、体は回さず頭だけ向ける（傾きを消さない）
-            const turnBody = (!W.off || LITE.phone || lphUpright()) && !(head && head.userData._lgNear);   // 頭の すぐ近くでは 体を回さない（ふるえ防止）
+            const turnBody = (!W.off || LITE.phone || lphUpright()) && !(head && head.userData._lgNear);   // （生まれてすぐ も 体ごと向く）   // 頭の すぐ近くでは 体を回さない（ふるえ防止）
             const left = turnBody ? lphTurn(W, lphFaceCamYaw(), LPH_CFG.turnDegLook, dt) : 0;
             if(!W.lookFaced && (left<THREE.MathUtils.degToRad(10) || now-(W.lookT0||now)>3000)){ W.lookFaced=true; W.until=now+2200+Math.random()*1200; }
             if(head){ const g=liteGaze(head, pv); wantX=g.x; wantY=g.y; }
-            if(W.lookFaced && now>=W.until){ W.state="pause"; W.until=now+(W.off ? _cdRnd(LOOK_FREQ.stopRestMs) : 200); W.lookCool=now+NOTICE_LOOK.cooldownMs; W.walkFirst=!W.off; W.lookEnd=now; }   // 見終わった：しばらくは 止まって見ない。あるく は 次の行き先に着くまで 止まって見ない（見る→動く→すぐ見る を くり返さない）
+            if(W.lookFaced && now>=W.until){ W.state="pause"; W.until=now+(still ? _cdRnd(LOOK_FREQ.stopRestMs) : 200); W.lookCool=now+NOTICE_LOOK.cooldownMs; W.walkFirst=!W.off; W.lookEnd=now;
+                if(intro && !tail && now>=W.introJoyAt && lphJoyQuiet(W)) W.introJoyAt=now+LPH.joy.dur+_cdRnd(DINO_IDLE.joyGapMs); }   // 生まれてすぐ：見おわったら ときどき かわいい動き（プレイヤーの方を向いている）   // 見終わった：しばらくは 止まって見ない。あるく は 次の行き先に着くまで 止まって見ない（見る→動く→すぐ見る を くり返さない）
         } else if(W.state==="sniff"){
             wantX=THREE.MathUtils.degToRad(38)+Math.sin(now*0.0096)*0.075;   // 鼻先を下げて嗅ぐ（ゲームの相棒と同じ。「とまる」だけ）
-            if(now>=W.until){ W.state="pause"; W.until=now+(W.off ? _cdRnd(LOOK_FREQ.stopRestMs) : 200); }
-        } else if(!W.off && W.noticed && head){   // あるく：視界に プレイヤーが いる間は、歩きながらも 顔を プレイヤーに向ける（たんけんと同じ）
+            if(now>=W.until){ W.state="pause"; W.until=now+(still ? _cdRnd(LOOK_FREQ.stopRestMs) : 200); }
+        } else if(!still && W.noticed && head){   // あるく：視界に プレイヤーが いる間は、歩きながらも 顔を プレイヤーに向ける（たんけんと同じ）
             const g=liteGaze(head, pv); wantX=g.x; wantY=g.y;
         }
     }
@@ -14467,6 +14554,7 @@ const LDIG={ mode:"time", wx:5, wz:5, min:3, max:10, on:false, leaving:false, re
     dinoH:2.0,             // 掘り出す恐竜の大きさ：ティラノサウルスの高さ(m)（1.2＝きみの おおきさ 〜 4.0＝ほんものの おおきさ。スライダー・既定 2.0）
     digPlace:"floor",      // ほって かえす：あそぶ ばしょ（desk＝つくえの うえ（ぬりえの おおきさ だけ）／floor＝ゆかの うえ（既定））
     markDesk:4, markFloor:4,   // ほって かえす：カードの くろい しかくの一辺(cm)（つくえ＝4 だけ／ゆか＝4（既定） か 9（はがき））
+    dinoIdle:20,           // うまれてから あるきだすまで(秒)：10〜30（スライダー・既定 20）。卵から かえってから その場で においを かぐ・こちらを見る・はねる など。たんけん（恐竜）・ほって かえす
     dinoMove:"move" };     // 掘り出した恐竜の うごき（move＝あるく＝歩き回る（既定）／stay＝とまる＝その場。どちらも においを かぐ・タッチで よろこぶ）。ほって かえす 以外の たんけん     // 掘り出す恐竜の大きさ：real＝実寸大（既定）／big＝ARで おおきく みる と同じ
 function ldigDinoH(){ const h=Math.round((+LDIG.dinoH||DIG_SIZE.def)*10)/10; return Math.max(DIG_SIZE.min, Math.min(DIG_SIZE.max, h)); }   // スライダーの値（0.1m きざみ）
 function ldigPlaying(){ try{ return !!LDIG.play; }catch(_){ return false; } }   // 毎フレーム呼ばれるので、準備前（LDIG の宣言前）でも落ちないように
@@ -14534,6 +14622,11 @@ function ldigPaint(){
     { const show=(LDIG.style!=="dig" && LITE.target==="dino"), lb=lph$("lphDigMoveLbl"), box=lph$("lphDigMove");   // 恐竜を掘る たんけん（ほって かえす 以外）：あるく／とまる
       if(lb) lb.style.display=show? "" : "none"; if(box) box.style.display=show? "" : "none";
       document.querySelectorAll("#lphDigMove button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.dinoMove)); }
+    { const dig=(LDIG.style==="dig"), show=(LITE.target==="dino" || dig), S=dinoIdleClamp(LDIG.dinoIdle);   // うまれてから あるきだすまで（恐竜を掘る たんけん。ほって かえす は いぬの時も恐竜）
+      ["lphDigIdleLbl","lphDigIdleSlider","lphDigIdleNote"].forEach(id=>{ const e=lph$(id); if(e) e.style.display=show? "" : "none"; });
+      const rg=lph$("lphDigIdleRange"); if(rg && document.activeElement!==rg) rg.value=String(S);
+      const nt=lph$("lphDigIdleNote"); if(nt) nt.innerHTML = (!dig && LDIG.dinoMove==="stay") ? "「とまる」の ときは、ずっと その ばで すごすよ"
+          : "<b>"+S+"びょう</b> においを かいだり、こっちを みたり、はねたりしてから あるきだすよ"; }
     { const show=ldigArChoice(), lb=lph$("lphDigArLbl"), box=lph$("lphDigAr");   // ARの しくみ（Android の 案1・案2・案4 だけ）
       if(lb) lb.style.display=show? "" : "none"; if(box) box.style.display=show? "" : "none";
       document.querySelectorAll("#lphDigAr button").forEach(b=>b.classList.toggle("on", b.dataset.v===LDIG.arMethod)); }
@@ -14928,6 +15021,9 @@ function tabarCamOnly(sup){   // 案1・案2 を カメラ＋センサーで動�
     d.addEventListener("click", e=>e.stopPropagation());
     d.querySelectorAll("#lphDigMode button").forEach(b=>b.addEventListener("click",()=>{ if(ldigModes().length<2) return; LDIG.mode=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));
     d.querySelectorAll("#lphDigMove button").forEach(b=>b.addEventListener("click",()=>{ LDIG.dinoMove=b.dataset.v; ldigPaint(); try{ lphSnd(); }catch(_){ } }));   // 恐竜の うごき
+    { const rg=document.getElementById("lphDigIdleRange"); if(rg){   // うまれてから あるきだすまで（秒）
+        const set=()=>{ LDIG.dinoIdle=dinoIdleClamp(rg.value); ldigPaint(); };
+        rg.addEventListener("input", set); rg.addEventListener("change", ()=>{ set(); try{ lphSnd(); }catch(_){ } }); } }
     { const rg=document.getElementById("lphDigDsRange"); if(rg){   // 掘り出す恐竜の大きさ：ティラノサウルスの高さ（スライダー。つくえの うえ は ぬりえの おおきさ だけ）
         const set=()=>{ LDIG.dinoH=Math.round((parseFloat(rg.value)||DIG_SIZE.def)*10)/10; ldigPaint(); };
         rg.addEventListener("input", set); rg.addEventListener("change", ()=>{ set(); try{ lphSnd(); }catch(_){ } }); } }
