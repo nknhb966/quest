@@ -1228,7 +1228,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         padding:12px 22px; border-radius:12px; background:#f7c948; color:#3a2600; font-weight:800; letter-spacing:1px;
         box-shadow:0 4px 0 #b8871c, 0 8px 22px rgba(0,0,0,.35); pointer-events:none; white-space:nowrap; }
     #tabarDig.show{ display:block; animation:tabarBob 1.1s ease-in-out infinite; }
-    #tabarCardMsg{ position:fixed; top:calc(env(safe-area-inset-top) + 150px); left:50%; transform:translateX(-50%); z-index:9996; display:none; max-width:90vw; text-align:center;
+    #tabarCardMsg{ position:fixed; top:calc(env(safe-area-inset-top) + 150px); left:50%; transform:translateX(-50%); z-index:9996; display:none; width:max-content; max-width:90vw; text-align:center;   /* width:max-content＝左はしが まんなかでも 画面の半分で 折り返さない */
         padding:8px 16px; border-radius:12px; background:rgba(10,7,26,.86); border:1px solid rgba(255,216,106,.6); color:#ffe6a6; font-weight:800; font-size:15px; letter-spacing:.5px; pointer-events:none; }
     body.tabar #tabarCardMsg.show{ display:block; }
     @keyframes tabarBob{ 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-4px); } }
@@ -1266,6 +1266,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     .tabar-go:disabled{ opacity:.4; box-shadow:none; transform:none; }
     .tabar-back{ padding:13px 0; border:1px solid rgba(180,140,255,.35); border-radius:11px; background:rgba(18,12,40,.6); color:#c9bcff;
         font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; touch-action:manipulation; }
+    .tabar-back.tabar-end{ padding:10px 0; font-size:14px; color:#a89bd6; background:rgba(18,12,40,.45); border-color:rgba(180,140,255,.28); }   /* 「どうする？」の おわる：小さく 暗く */
 
     /* 床さがし（AR開始直後） */
     #tabarScan{ position:fixed; inset:0; z-index:9998; display:none; flex-direction:column; justify-content:space-between; align-items:center;
@@ -1325,16 +1326,17 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #tkResRows:empty{ display:none; }
     #tkResRows div{ display:flex; justify-content:space-between; font-size:15px; font-weight:700; color:rgba(226,216,255,.9); }
     #tkResRows div.sum{ border-top:2px solid rgba(216,180,106,.5); padding-top:4px; color:#ffe066; font-size:17px; }
-    #tkResList{ grid-template-columns:repeat(4,1fr); }
     #tkResList, #lphCardSumList{ grid-auto-rows:max-content; }   /* 結果・きろくの カード：段の高さを カードに あわせる（せまい画面で 上下の カードが 重ならない） */
-    @media (min-width:700px) and (min-aspect-ratio:4/3){ #tkResList{ grid-template-columns:repeat(8,1fr); gap:8px; } #tkResList .dexcard{ padding:5px; border-radius:10px; } #tkResList .dexcard .no{ font-size:10px; letter-spacing:1px; } }
-    #tkResList .dexcard{ cursor:default; }
+    /* たんけんの 結果パネルの カード：ずかん と同じ ならび（はば 640px まで 2れつ・380px まで 1れつ・それより 広いと 4れつ）。おすと 大きく見る（ずかん と同じ） */
     #tkResList .dexcard.locked .art img, #lphCardSumList .dexcard.locked .art img{ display:none !important; }   /* カードは はじめに 作っておき、みつけたかどうかで 出し分ける（みつけていない＝？。img の style より つよく） */
     #tkResList .dexcard:not(.locked) .art .q, #lphCardSumList .dexcard:not(.locked) .art .q{ display:none; }
-    #tkRes .row{ display:flex; gap:8px; flex:0 0 auto; } #tkRes .row button{ flex:1; }
-    #tkResBack, #tkResQuit{ padding:12px 0; border:1px solid rgba(180,140,255,.45); border-radius:11px; background:rgba(18,12,40,.85); color:#e2d8ff; font-family:inherit; font-weight:800; font-size:16px; cursor:pointer; touch-action:manipulation; flex:0 0 auto; }
-    #tkResAgain{ padding:12px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; font-size:17px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; cursor:pointer; touch-action:manipulation; }
-    #tkResQuit{ padding:9px 0; font-size:14px; font-weight:700; color:#c9bcff; background:rgba(18,12,40,.6); }
+    /* 結果・きろくの ボタン：どの画面も たてに 上から 🔁 もういちど → ▶ つづける（おわった後は 👀 もどって みる）→ おわる。黄色（.main）は つぎに よく押すもの、おわる（.end）は 小さく 暗く */
+    .qbtns{ display:flex; flex-direction:column; gap:8px; flex:0 0 auto; }
+    .qbtns button{ padding:12px 0; border:1px solid rgba(180,140,255,.45); border-radius:11px; background:rgba(18,12,40,.85); color:#e2d8ff; font-family:inherit; font-weight:800; font-size:16px; letter-spacing:.5px;
+        box-shadow:none; cursor:pointer; touch-action:manipulation; }
+    .qbtns button.main{ border:none; font-size:17px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; }
+    .qbtns button.main:active{ transform:translateY(2px); box-shadow:0 2px 0 #b8871c; }
+    .qbtns button.end{ padding:9px 0; font-size:14px; font-weight:700; color:#a89bd6; background:rgba(18,12,40,.55); border-color:rgba(180,140,255,.3); }
 </style>
 <video id="tabarVideo" playsinline muted autoplay></video>
 <div id="tabarTouch"></div>
@@ -1349,8 +1351,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     <div id="tkResRows"></div>
     <div class="dexbar"><i id="tkResFill"></i></div><div class="dexbar-lbl" id="tkResCount"></div>
     <div id="tkResList" class="dexgrid"></div>
-    <div class="row"><button type="button" id="tkResBack">👀 もどって みる</button><button type="button" id="tkResAgain">🔁 もういちど</button></div>
-    <button type="button" id="tkResQuit">おわる</button>
+    <div class="qbtns"><button type="button" id="tkResAgain" class="main">🔁 もういちど</button><button type="button" id="tkResBack">👀 もどって みる</button><button type="button" id="tkResQuit" class="end">おわる</button></div>
 </div></div>
 <div id="tabarCardMsg"></div>   <!-- たんけん「カードを さがす」：いま映っているカードのこと -->
 <div id="tabarWarn" role="alert"></div>
@@ -1561,14 +1562,11 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #lphCardSum h3{ margin:0; text-align:center; color:#ffd86a; letter-spacing:2px; font-size:18px; }
     #lphCardSumN{ margin:0; text-align:center; font-weight:800; color:#8ff0ff; }
     #lphCardSum{ padding:12px; background:rgba(3,2,10,.92); }   /* はっくつずかん と同じ並び */
-    #lphCardSum .dexbox{ max-height:92vh; } #lphCardSum .row{ display:flex; gap:8px; flex:0 0 auto; } #lphCardSum .row button{ flex:1; }
-    #lphCardSumBack{ padding:13px 0; border:1px solid rgba(180,140,255,.5); border-radius:11px; background:rgba(18,12,40,.85); color:#e2d8ff; font-family:inherit; font-weight:800; font-size:16px; }
+    #lphCardSum .dexbox{ max-height:92vh; } 
     #lphDexView{ position:absolute; inset:0; z-index:40; display:none; align-items:center; justify-content:center; background:rgba(10,6,20,.72); backdrop-filter:blur(3px); padding:20px; pointer-events:auto; }   /* ふだんの図鑑の カード表示（#dexView）と同じ */
     #lphDexView.on{ display:flex; }
     #lphDexView img{ height:70vh; max-height:70vh; max-width:88vw; aspect-ratio:1/1.5; object-fit:contain; border-radius:14px; box-shadow:0 14px 50px rgba(0,0,0,.6); background:#2a2416; animation:dexpop .18s ease; }
     #lphDexView .dexview-close{ top:calc(env(safe-area-inset-top) + 14px); }
-    #lphCardSumAgain{ padding:13px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; font-size:16px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; }   /* もういちど＝主ボタン */
-    #lphCardSumOk{ flex:0 0 auto; padding:10px 0; border:1px solid rgba(180,140,255,.4); border-radius:11px; background:rgba(18,12,40,.6); color:#c9bcff; font-family:inherit; font-weight:700; font-size:14px; }   /* おわる（まえの OK） */
     #lphHelp{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(8,5,18,.6); }
     #lphHelp.on{ display:flex; }
     #lphHelp .card{ width:min(440px,94vw); max-height:84vh; overflow-y:auto; touch-action:pan-y; padding:16px 16px 14px; border-radius:14px;
@@ -1581,8 +1579,8 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #lphDig, #lphHelp, #lphDex, #lphCardSum{ background:rgba(3,2,10,.86); }
     #lphDig .card, #lphHelp .card, #lphDex .dexbox, #lphCardSum .dexbox, #ldigCard .box{ background:linear-gradient(150deg,#160f0a,#0c1024); border:1px solid rgba(210,180,120,.35); border-radius:16px; color:#efe6ff; }
     #lphDig h3, #lphHelp h3, #ldigCard h3{ color:var(--gold); letter-spacing:3px; font-size:clamp(17px,2.4vw,21px); }
-    #lphDigGo, #lphHelpOk, #lphCardSumAgain, #ldigBackPrep{ padding:14px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; font-size:17px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; cursor:pointer; }
-    #lphDigBack, #lphCardSumBack, #ldigBackAR, #ldigToMenu, #ldigRetry{ padding:11px 0; border:1px solid rgba(180,140,255,.4); border-radius:11px; background:rgba(18,12,40,.7); color:#d9cbf5; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; box-shadow:none; }
+    #lphDigGo, #lphHelpOk, #ldigBackPrep{ padding:14px 0; border:none; border-radius:11px; font-family:inherit; font-weight:800; font-size:17px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; cursor:pointer; }
+    #lphDigBack, #ldigBackAR, #ldigToMenu, #ldigRetry{ padding:11px 0; border:1px solid rgba(180,140,255,.4); border-radius:11px; background:rgba(18,12,40,.7); color:#d9cbf5; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; box-shadow:none; }
     #lphHelpOk{ width:100%; padding:13px 0; border:none; border-radius:11px; font-weight:800; font-size:16px; color:#3a2600; background:#f7c948; box-shadow:0 4px 0 #b8871c; }
     /* AR終了後：撮影した写真・動画の保存 */
     /* iPhone：カメラ映像（背景）。この上に three.js のキャンバス、さらに上に操作パネル */
@@ -1723,7 +1721,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     <div id="lphDex" role="dialog" aria-label="はっくつずかん"><div class="dexbox"><button class="dexclose" id="lphDexClose" type="button">×</button><h2>📖 はっくつずかん</h2><div class="dexbar"><i id="lphDexFill"></i></div><div class="dexbar-lbl" id="lphDexCount"></div><div class="dexgrid" id="lphDexGrid"></div></div></div>   <!-- たんけん「ほって かえす」：この回に みつけた きょうりゅう -->
     <div id="lphDexView" role="dialog" aria-label="カード"><img id="lphDexViewImg" alt=""><button type="button" class="dexview-close" id="lphDexViewClose" aria-label="とじる">×</button></div>   <!-- はっくつずかん：えらんだ カード -->
     <div id="lphFx" class="qfx" aria-hidden="true"><div class="burst"><i style="--a:0deg;--d:230px;--c:#ffe066"></i><i style="--a:30deg;--d:170px;--c:#8ff0ff"></i><i style="--a:60deg;--d:250px;--c:#ff9fd0"></i><i style="--a:90deg;--d:190px;--c:#ffe066"></i><i style="--a:120deg;--d:240px;--c:#b6ff8f"></i><i style="--a:150deg;--d:170px;--c:#8ff0ff"></i><i style="--a:180deg;--d:230px;--c:#ffe066"></i><i style="--a:210deg;--d:190px;--c:#ff9fd0"></i><i style="--a:240deg;--d:250px;--c:#b6ff8f"></i><i style="--a:270deg;--d:180px;--c:#ffe066"></i><i style="--a:300deg;--d:240px;--c:#8ff0ff"></i><i style="--a:330deg;--d:190px;--c:#ff9fd0"></i></div><div class="t"></div><div class="s"></div></div>   <!-- ほって かえす：コンプリートの演出（暗くしない） -->
-    <div id="lphCardSum"><div class="dexbox" role="dialog" aria-label="みつけた きょうりゅう"><h2 id="lphCardSumTitle">🦕 みつけた きょうりゅう</h2><p id="lphCardSumN"></p><div class="dexbar"><i id="lphCardSumFill"></i></div><div class="dexbar-lbl" id="lphCardSumCount"></div><div id="lphCardSumList" class="dexgrid"></div><div class="row"><button type="button" id="lphCardSumBack">▶ つづける</button><button type="button" id="lphCardSumAgain">🔁 もういちど</button></div><button type="button" id="lphCardSumOk">おわる</button></div></div>   <!-- たんけん「ほって かえす」のまとめ -->
+    <div id="lphCardSum"><div class="dexbox" role="dialog" aria-label="みつけた きょうりゅう"><h2 id="lphCardSumTitle">🦕 みつけた きょうりゅう</h2><p id="lphCardSumN"></p><div class="dexbar"><i id="lphCardSumFill"></i></div><div class="dexbar-lbl" id="lphCardSumCount"></div><div id="lphCardSumList" class="dexgrid"></div><div class="qbtns"><button type="button" id="lphCardSumAgain">🔁 もういちど</button><button type="button" id="lphCardSumBack" class="main">▶ つづける</button><button type="button" id="lphCardSumOk" class="end">おわる</button></div></div></div>   <!-- たんけん「ほって かえす」のまとめ -->
     <div id="lphHelp">
         <div class="card" role="dialog" aria-label="そうさの しかた">
             <h3>📱 そうさの しかた</h3>
@@ -10022,7 +10020,12 @@ function tkResPrep(){   // カウントダウンの時：結果パネルの カ�
 function tkResFill(){   // みつけた カードを 出す（みつけていないのは ？）
     const g=document.getElementById("tkResList"); if(!g) return 0;
     if(g.children.length!==8) tkResPrep();
-    let n=0; [...g.children].forEach((c,i)=>{ const f=!!(dexData[i] && dexData[i].found); if(f) n++; c.classList.toggle("locked", !f); const st=c.querySelector(".stamp"); if(st) st.textContent=f? "" : "みつけていない"; });
+    const tg=(curTarget==="dino")? "dino" : "artifact", G=gameCards();
+    let n=0; [...g.children].forEach((c,i)=>{ const f=!!(dexData[i] && dexData[i].found); if(f) n++; c.classList.toggle("locked", !f); const st=c.querySelector(".stamp"); if(st) st.textContent=f? "" : "未発掘";   // ずかん と同じ ことば
+        if(!f) return;
+        const img=c.querySelector("img"); if(!img) return;   // カードが まだ できていなかった／作りなおされた 時だけ 入れなおす（同じなら そのまま＝読みこみ なおさない）
+        let u=null; try{ const r=cardRef(tg, i, false); u=(r && G) ? G.src(r.kind, r.key, cardLabel(), false) : null; }catch(_){ }
+        if(!img.getAttribute("src") || (u && img.src!==u) || (img.complete && !img.naturalWidth)) try{ setCardImg(img, tg, i); }catch(_){ } });
     return n;
 }
 function tkResOpen(){   // ③ 結果パネル（暗くする）
@@ -10061,8 +10064,9 @@ function tkNextTurn(){ tkReset(); chApplyTurn(GAME.ch.turn+1); enterStandby(); }
     on("dTkGather", tkGather);
     on("tkResBack", tkResClose);
     on("tkResAgain", ()=>{ if(TK && TK.kind==="ch" && !TK.d.final) tkNextTurn(); else tkAgain(); });
-    on("tkResQuit", ()=>{ if(TABAR.on) tabarConfirmExit(); else { tkReset(); endGame(true); } });   // おわる：「やめる」と同じ（おわりにする？）
+    on("tkResQuit", ()=>{ if(TABAR.on) tabarConfirmExit(); else { tkReset(); endGame(true); } });   // おわる：「やめる」と同じ（どうする？）
     { const r=$("tkRes"); if(r) ["click","pointerdown","pointerup","touchstart","touchend"].forEach(ev=>r.addEventListener(ev, e=>e.stopPropagation())); }   // うしろの画面（掘る・なでる）に とどかない
+    { const g=$("tkResList"); if(g) g.addEventListener("click", ev=>{ const c=ev.target.closest(".dexcard"); if(c && c.dataset.idx!=null) openDexView(+c.dataset.idx); }); }   // カードを おすと 大きく見る（ずかん と同じ。みつけていない カードは ？）
 })();
 // レア度→そのレア度のカードindexをランダムに1つ
 function pickCardIdxByRarity(rar){
@@ -14352,11 +14356,14 @@ function tabarPlace(){
     GAME._heightReady=true;
 }
 let _tabarAskResolve=null;
-function tabarAsk(title, msg, yes, no, alt){   // 画面内の確認ダイアログ（yes=true／no=false／alt="alt"。alt は指定時のみ表示）
+function tabarAsk(title, msg, yes, no, alt, menu){   // 画面内の確認ダイアログ（yes=true／no=false／alt="alt"。alt は指定時のみ表示）
+    //   menu＝「どうする？」の並び：上から alt（もういちど／ここで はじめる）→ no（つづける・黄色）→ yes（おわる・小さく）。ふだんは yes（黄色）→ no → alt
     return new Promise(res=>{
         if(_tabarAskResolve) _tabarAskResolve(false);
         _tabarAskResolve=res;
         tabarUI.confirmTitle.textContent=title; tabarUI.confirmMsg.textContent=msg||"";
+        { const box=tabarUI.yes.parentNode; (menu ? [tabarUI.alt, tabarUI.no, tabarUI.yes] : [tabarUI.yes, tabarUI.no, tabarUI.alt]).forEach(b=>box.appendChild(b));
+          tabarUI.yes.className = menu ? "tabar-back tabar-end" : "tabar-go"; tabarUI.no.className = menu ? "tabar-go" : "tabar-back"; tabarUI.alt.className="tabar-back"; }
         tabarUI.yes.textContent=yes; tabarUI.no.textContent=no;
         tabarUI.alt.textContent=alt||""; tabarUI.alt.style.display = alt ? "" : "none";
         tabarUI.confirm.classList.add("open");
@@ -14367,7 +14374,7 @@ function tabarConfirmExit(){
     // スタンバイ中だけ「ここではじめる」（置き直し）も選べる。誤操作を防ぐため、常設ボタンにせず「やめる」の中に置く
     const standby=(TABAR.phase==="play" && GAME.active && gamePhase()==="standby");
     const again=!standby && TABAR.phase==="play" && GAME.active;   // とちゅう・おわった後：🔁 もういちど（同じ設定・同じ ばしょで スタンバイから）
-    tabarAsk(standby ? "どうする？" : "おわりにする？", "", "おわる", "つづける", standby ? "📍 ここで はじめる" : (again ? "🔁 もういちど" : null)).then(r=>{
+    tabarAsk("どうする？", "", "おわる", "▶ つづける", standby ? "📍 ここで はじめる" : (again ? "🔁 もういちど" : null), true).then(r=>{   // 上から もういちど（ここで はじめる）→ つづける（黄色）→ おわる
         if(r===true) tabarExit();
         else if(r==="alt"){ if(standby) tabarBeginRescan(); else if(TABAR.phase==="play" && GAME.active) tkAgain(); }
     });
@@ -15247,7 +15254,8 @@ function lphCardEnd(){   // 「おわる」→ まとめ
         : C.found.length ? (C.spot ? (DINOS.length+"たいの うち "+C.found.length+"たい みつけたよ！（じかん "+_tm+"）") : (DINOS.length+"しゅるいの うち "+C.found.length+"しゅるい みつけたよ！（じかん "+_tm+"）")) : "まだ みつけて いないよ";
     lphCardSumFill(C);   // No.1〜8：はっくつずかんの カード（はじめに 作っておいたもの）
     { const t=lph$("lphCardSumTitle"); if(t) t.textContent = C.comp ? "🏆 コンプリート！" : "🦕 みつけた きょうりゅう"; }
-    { const b=lph$("lphCardSumBack"); if(b) b.textContent = C.comp ? "👀 もどって みる" : "▶ つづける"; }
+    { const b=lph$("lphCardSumBack"), a=lph$("lphCardSumAgain"); if(b) b.textContent = C.comp ? "👀 もどって みる" : "▶ つづける";   // 黄色：とちゅう＝つづける／コンプリート後＝もういちど
+      if(b) b.classList.toggle("main", !C.comp); if(a) a.classList.toggle("main", !!C.comp); }
     lph$("lphCardSumCount").textContent=C.found.length+" / "+DINOS.length+" はっくつ"; lph$("lphCardSumFill").style.width=(C.found.length/DINOS.length*100)+"%";
     lph$("lphCardSum").classList.add("on");
 }
@@ -15277,7 +15285,12 @@ function lphCardSumPrep(C){   // きろくの カード8まいを 先に作っ�
 function lphCardSumFill(C){   // みつけた カードを 出す（みつけていないのは ？）
     const g=lph$("lphCardSumList"); if(!g) return;
     if(g._c!==C || g.children.length!==DINOS.length) lphCardSumPrep(C);
-    [...g.children].forEach((card,i)=>{ const got=C.found.includes(i); card.classList.toggle("locked", !got); const st=card.querySelector(".stamp"); if(st) st.textContent=got? "" : "みつけていない"; });
+    const G=gameCards();
+    [...g.children].forEach((card,i)=>{ const got=C.found.includes(i); card.classList.toggle("locked", !got); const st=card.querySelector(".stamp"); if(st) st.textContent=got? "" : "みつけていない";
+        if(!got) return;
+        const img=card.querySelector("img"); if(!img) return;   // カードが 作りなおされていたら 入れなおす（同じなら そのまま）
+        let u=null; try{ const r=cardRef("dino", i, false); u=(r && G) ? G.src(r.kind, r.key, cardLabel(), false) : null; }catch(_){ }
+        if(!img.getAttribute("src") || (u && img.src!==u) || (img.complete && !img.naturalWidth)) try{ setCardImg(img, "dino", i); }catch(_){ } });
 }
 function lphCardDigAll(){   // ⛏ すべて はっくつ：8しゅるい ぜんぶ みつけた ことにして、恐竜を 卵から 出してから コンプリート（生まれた時：lphHatchTick の done）
     //   カードを まっている時：まだ みつけていない恐竜から ランダムに 1たい（前に 卵。ブロックは とばす）／ブロック：すぐ ほれて 卵／卵・生まれる途中：そのまま／恐竜が いる：すぐ コンプリート
