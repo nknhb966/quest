@@ -1329,7 +1329,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     #tkResList, #lphCardSumList{ grid-auto-rows:max-content; }   /* 結果・きろくの カード：段の高さを カードに あわせる（せまい画面で 上下の カードが 重ならない） */
     @media (min-width:700px) and (min-aspect-ratio:4/3){ #tkResList{ grid-template-columns:repeat(8,1fr); gap:8px; } #tkResList .dexcard{ padding:5px; border-radius:10px; } #tkResList .dexcard .no{ font-size:10px; letter-spacing:1px; } }
     #tkResList .dexcard{ cursor:default; }
-    #tkResList .dexcard.locked .art img, #lphCardSumList .dexcard.locked .art img{ display:none; }   /* カードは はじめに 作っておき、みつけたかどうかで 出し分ける */
+    #tkResList .dexcard.locked .art img, #lphCardSumList .dexcard.locked .art img{ display:none !important; }   /* カードは はじめに 作っておき、みつけたかどうかで 出し分ける（みつけていない＝？。img の style より つよく） */
     #tkResList .dexcard:not(.locked) .art .q, #lphCardSumList .dexcard:not(.locked) .art .q{ display:none; }
     #tkRes .row{ display:flex; gap:8px; flex:0 0 auto; } #tkRes .row button{ flex:1; }
     #tkResBack, #tkResQuit{ padding:12px 0; border:1px solid rgba(180,140,255,.45); border-radius:11px; background:rgba(18,12,40,.85); color:#e2d8ff; font-family:inherit; font-weight:800; font-size:16px; cursor:pointer; touch-action:manipulation; flex:0 0 auto; }
@@ -4640,7 +4640,11 @@ const ART_IMGS   = YEAR_CONFIG.artImgCodes.map(n=>YEAR_CONFIG.assetBase+n+YEAR_C
 // 出土品のカード＝画像ファイル（card_artifact/cardNN.png）
 const CARD_DIR_ART  = YEAR_CONFIG.cardDirArt;    // 出土品用カード画像フォルダ
 const CARD_LABEL = { dino:"恐竜発掘カード", artifact:"遺跡発掘カード" };   // 作るカードの左上の名称（そのときの発掘対象で決める）
-function cardLabel(){ return CARD_LABEL[(typeof curTarget!=="undefined" && curTarget==="dino")? "dino" : "artifact"]; }
+function cardLabel(){
+    let dino=(typeof curTarget!=="undefined" && curTarget==="dino");
+    try{ if(LPH.card) dino=true; }catch(_){ }   // ほって かえす：いつも 恐竜を ほる（メイン画面の 発掘対象に よらず「恐竜発掘カード」）
+    return CARD_LABEL[dino? "dino" : "artifact"];
+}
 function cardArtifactPath(idx){ return CARD_DIR_ART + "card" + String((idx|0)+1).padStart(2,"0") + ".png"; }   // idx:0始まり → cardXX.png
 function cardRef(target, idx, paint){     // target:"dino"/"dog"/"artifact"・idx:0始まり → 作るカード {kind,key}（出土品は null＝画像ファイル）
     if(target==="dino"){ const d=(typeof DINOS!=="undefined")? spotDino(idx) : null; if(!d) return null;
