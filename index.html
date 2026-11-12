@@ -19846,10 +19846,10 @@ const N=()=>window.NURI_EVENT;
 function evDbOpen(){
     if(EV.db) return EV.db;
     EV.db=new Promise((res,rej)=>{
-        if(!window.indexedDB) return rej(new Error("このブラウザはカードを保存できません（IndexedDB なし）"));
+        if(!window.indexedDB) return rej(new Error("このブラウザは保存不可（IndexedDB なし）"));
         const r=indexedDB.open(EV_DB.name, EV_DB.ver);
         r.onupgradeneeded=()=>{ const db=r.result; EV_DB.stores.forEach(s=>{ if(!db.objectStoreNames.contains(s)) db.createObjectStore(s,{ keyPath:"id" }); }); };
-        r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); r.onblocked=()=>rej(new Error("ほかのタブを閉じてから開き直してください"));
+        r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); r.onblocked=()=>rej(new Error("ほかのタブを閉じて開き直して"));
     });
     EV.db.catch(()=>{ EV.db=null; });
     return EV.db;
@@ -19860,7 +19860,7 @@ async function evTx(names, mode, fn){
     return new Promise((res,rej)=>{
         const L=[].concat(names), tx=db.transaction(L, mode), r=fn(...L.map(n=>tx.objectStore(n)));
         let out; if(r && "onsuccess" in r) r.onsuccess=()=>{ out=r.result; };
-        tx.oncomplete=()=>res(out); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error("保存できませんでした"));
+        tx.oncomplete=()=>res(out); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error("保存できません"));
     });
 }
 function evNextSeq(){
@@ -19871,7 +19871,7 @@ function evNextSeq(){
 }
 function evPeekSeq(){ let n=0; try{ n=parseInt(localStorage.getItem(EV_SEQ_KEY)||"0",10)||0; }catch(_){ } for(const id of EV.recs.keys()) if(id>n) n=id; return n+1; }
 async function evDataUrlBuf(u){ return await (await fetch(u)).arrayBuffer(); }
-async function evArtUrl(id){ const a=await evTx("art","readonly",s=>s.get(id)); if(!a || !a.buf) throw new Error("画像がありません。「作り直す」を押してください"); return URL.createObjectURL(new Blob([a.buf],{ type:a.type||"image/jpeg" })); }
+async function evArtUrl(id){ const a=await evTx("art","readonly",s=>s.get(id)); if(!a || !a.buf) throw new Error("画像なし。「全部作り直す」を押す"); return URL.createObjectURL(new Blob([a.buf],{ type:a.type||"image/jpeg" })); }
 // 一覧のカード画像（保存してある画像をそのまま出す。作り直すまで描き直さない）
 function evCardUrl(rec){
     if(!rec.card) return null;
@@ -19908,7 +19908,7 @@ function evBc(){
     EV.bc=new BroadcastChannel(EV_BC_NAME);
     EV.bc.onmessage=(ev)=>{ const m=ev.data||{};
         if(m.type==="rankAlive"){ EV.rankSeen=Date.now();
-            if(EV.ui && EV.ui.root.classList.contains("tce-preview")){ evPreview(false); evStatus("ランキング画面が開いているので、2画面プレビューを止めました"); } }
+            if(EV.ui && EV.ui.root.classList.contains("tce-preview")){ evPreview(false); evStatus("ランキング表示中のため2画面を停止"); } }
         else if(m.type==="rankBye") EV.rankSeen=0;
         else if(m.type==="sfx") evSfxRelay(m);   // ランキング画面で、まだ音が出せない時の卵・恐竜の効果音
         else if(m.type==="rankPlace" && m.text) evStatus(m.text); };   // ランキング画面がサブ画面へ移った結果
@@ -19930,24 +19930,24 @@ function evOpen(){
     // 上の帯
     const bar=el("div","tce-bar"); bar.appendChild(el("h1",null,"カード作成"));
     const count=el("span","tce-count"); count.setAttribute("aria-live","polite"); bar.appendChild(count);
-    const only=el("button",null,"未保存だけ表示"); only.type="button"; only.setAttribute("aria-pressed","false");
+    const only=el("button",null,"未保存のみ"); only.type="button"; only.setAttribute("aria-pressed","false");
     only.addEventListener("click",()=>{ const on=only.getAttribute("aria-pressed")!=="true"; only.setAttribute("aria-pressed",String(on)); grid.toggleAttribute("data-only-unsaved", on); });
     const mute=el("button",null,""); mute.type="button";
     const putMute=()=>{ mute.textContent=EV.mute? "音：なし" : "音：あり"; mute.setAttribute("aria-pressed",String(!EV.mute)); };
     mute.title="読み取りの音と、ランキング画面（2画面プレビューも）の卵・恐竜の効果音を、出す／出さない";
     mute.addEventListener("click",()=>{ EV.mute=!EV.mute; try{ localStorage.setItem(EV_MUTE_KEY, EV.mute?"1":"0"); }catch(_){ } putMute(); }); putMute();
     const blank=el("button",null,""); blank.type="button";   // ぬっていない白い所：これから作るカードの値（既定＝ぬりえどおり）。今あるカードは、カードごとのボタンか一括変更で
-    const putBlank=()=>{ const on=!!(N() && N().blankOrig()); blank.textContent=on? "これから：模様" : "これから：白地"; blank.setAttribute("aria-pressed",String(on));
+    const putBlank=()=>{ const on=!!(N() && N().blankOrig()); blank.textContent=on? "新規：模様" : "新規：白地"; blank.setAttribute("aria-pressed",String(on));
         blank.title="ぬっていない白い所を、白地（ぬりえどおりの白）にするか、模様（ぬりえなしの時の模様）にするか。これから作るカードに使います（今あるカードは、カードごとの「白い所」ボタンか、一括変更で変わります）"; };
     blank.addEventListener("click",()=>{ if(!N()) return; const on=!N().blankOrig(); N().setBlankOrig(on); putBlank();
-        evStatus("これから作るカードの白い所を「"+(on? "模様" : "白地")+"」にしました（今あるカードは変わりません）"); }); putBlank();
-    const blankAll=[false,true].map(on=>{ const b=el("button",null,"一括："+(on? "模様" : "白地")); b.type="button";   // 白い所の一括変更（今あるカードすべて＋これから）
+        evStatus("新規："+(on? "模様" : "白地")+"（今のカードはそのまま）"); }); putBlank();
+    const blankAll=[false,true].map(on=>{ const b=el("button",null,"全部："+(on? "模様" : "白地")); b.type="button";   // 白い所の一括変更（今あるカードすべて＋これから）
         b.title="今あるすべてのカード（見本も）の白い所を「"+(on? "模様" : "白地")+"」にして作り直し、これから作るカードも同じにします"; b.addEventListener("click",()=>evBlankAll(on)); return b; });
-    const redoAll=el("button",null,"すべて作り直す"); redoAll.type="button"; redoAll.addEventListener("click",evRedoAllToggle);
+    const redoAll=el("button",null,"全部作り直す"); redoAll.type="button"; redoAll.addEventListener("click",evRedoAllToggle);
     const delAll=el("button","tce-danger","一括削除"); delAll.type="button"; delAll.addEventListener("click",evDeleteAll);
-    const seqReset=el("button",null,"番号を1に戻す"); seqReset.type="button"; seqReset.addEventListener("click",evSeqReset);
-    const rank=el("button",null,"ランキング画面を開く"); rank.type="button"; rank.addEventListener("click",evOpenRank);
-    const pv=el("button",null,"2画面プレビュー"); pv.type="button"; pv.setAttribute("aria-pressed","false"); pv.addEventListener("click",()=>evPreview(pv.getAttribute("aria-pressed")!=="true"));
+    const seqReset=el("button",null,"番号リセット"); seqReset.type="button"; seqReset.addEventListener("click",evSeqReset);
+    const rank=el("button",null,"ランキングを開く"); rank.type="button"; rank.addEventListener("click",evOpenRank);
+    const pv=el("button",null,"2画面"); pv.type="button"; pv.setAttribute("aria-pressed","false"); pv.addEventListener("click",()=>evPreview(pv.getAttribute("aria-pressed")!=="true"));
     const bulkC=el("button",null,""), bulkM=el("button",null,""); bulkC.type=bulkM.type="button";
     bulkC.addEventListener("click",()=>evBulkDownload(false)); bulkM.addEventListener("click",()=>evBulkDownload(true));
     const zipC=el("button",null,""), zipM=el("button",null,""); zipC.type=zipM.type="button";   // ZIP で まとめて（一括と同じ：まだダウンロードしていないカードだけ。iPhone・iPad でも使える）
@@ -19956,17 +19956,17 @@ function evOpen(){
     Object.keys(EV_SETS).forEach(n=>evSetPut(n, EV_SETS[n].def));   // 開くたびに既定値へ（開いているランキング画面も）
     const sliders=[evSlider("size"), evSlider("stage")].concat(EV_QR? [evSlider("qr")] : []);   // サイズ比・恐竜出現（秒）・QR表示（秒）
     const smpBtn=evSmpBtn();   // 見本・恐竜カードを ランキングに 映す／映さない（既定 映さない）
-    const qrSet=el("button",null,"受け取りQRの設定（開発中）"); qrSet.type="button"; qrSet.addEventListener("click",evQrSetup);
+    const qrSet=el("button",null,"QR設定🚧"); qrSet.type="button"; qrSet.addEventListener("click",evQrSetup);
     const readBtn=el("button",null,""); readBtn.type="button"; readBtn.addEventListener("click",evReadToggle);   // 読み取りのモード（決定してから／決定なし）
-    readBtn.title="決定してから：名前を入れて「決定」を押したら、次の1枚を読みます（空欄のまま決定すると「"+TC_NAME.def+"」）\n決定なし：用紙をかざしたら、すぐ読みます\n（ページを開くたびに「決定してから」に戻ります）";
+    readBtn.title="決定してから：名前を入れて「決定」を押したら、次の1枚を読みます（空欄のまま決定すると「"+TC_NAME.def+"」）\n決定なし：用紙をかざしたら、すぐ読みます\n（ページを開くたびに「決定あり」に戻ります）";
     const tools=el("div","tce-tools"); [readBtn,rank,pv,smpBtn,only,blank].concat(blankAll,sliders,[bulkC,bulkM,zipC,zipM,mute,redoAll,delAll,seqReset]).concat(EV_QR? [qrSet] : []).forEach(b=>tools.appendChild(b)); bar.appendChild(tools);
     root.appendChild(bar);
     // 左：名前とカメラ
     const main=el("div","tce-main"), side=el("div","tce-side");
-    const field=el("div","tce-field"), lab=el("label",null,"名前（左上に入ります）"); lab.htmlFor="tceName";
+    const field=el("div","tce-field"), lab=el("label",null,"名前"); lab.title="カードの左上に入ります"; lab.htmlFor="tceName";
     const input=el("input","tce-input"); input.id="tceName"; input.type="text"; input.autocomplete="off"; input.spellcheck=false; input.enterKeyHint="done";
     input.placeholder=TC_NAME.def;
-    const hint=el("div","tce-hint"), hintL=el("span",null,"空欄のときは「"+TC_NAME.def+"」"), hintN=el("span","tce-n","");
+    const hint=el("div","tce-hint"), hintL=el("span",null,"空欄＝「"+TC_NAME.def+"」"), hintN=el("span","tce-n","");
     hint.appendChild(hintL); hint.appendChild(hintN);
     const decide=el("button",null,"決定"); decide.type="button"; decide.addEventListener("click",evDecide);   // 読み取り：決定してから の時だけ出す（決定したら「とりけし」）
     const namerow=el("div","tce-namerow"); namerow.appendChild(input); namerow.appendChild(decide);
@@ -19974,25 +19974,25 @@ function evOpen(){
     evNameField(input, hintN);
     input.addEventListener("keydown",ev=>{ if(ev.key==="Enter" && !ev.isComposing){ ev.preventDefault(); if(EV.read==="confirm" && !EV.conf) evDecide(); else input.blur(); } });   // Enter：決定（決定なし の時は入力を終える）
     const cam=el("div","tce-cam"), video=el("video"); video.playsInline=true; video.muted=true; video.autoplay=true; video.setAttribute("playsinline",""); video.setAttribute("muted","");
-    const camMsg=el("div","tce-cam-msg"), camOff=el("div","tce-cam-off"), start=el("button","tce-primary","カメラを開始"); start.type="button";
+    const camMsg=el("div","tce-cam-msg"), camOff=el("div","tce-cam-off"), start=el("button","tce-primary","カメラ開始"); start.type="button";
     start.addEventListener("click",()=>evCamStart()); camOff.appendChild(start);
     cam.appendChild(video); cam.appendChild(camOff); cam.appendChild(camMsg);
-    const row=el("div","tce-row"), stop=el("button",null,"カメラを止める"), sw=el("button",null,"カメラ切替"), def=el("button",null,"既定のカメラ");
-    stop.type=sw.type=def.type="button"; stop.addEventListener("click",()=>evCamStop(true)); sw.addEventListener("click",evCamSwitch); def.addEventListener("click",evCamDefault);
+    const row=el("div","tce-row"), stop=el("button",null,"停止"), sw=el("button",null,"切替"), def=el("button",null,"既定");
+    stop.type=sw.type=def.type="button"; stop.title="カメラを止める"; sw.title="カメラを切り替える"; def.title="既定のカメラに戻す"; stop.addEventListener("click",()=>evCamStop(true)); sw.addEventListener("click",evCamSwitch); def.addEventListener("click",evCamDefault);
     stop.hidden=sw.hidden=def.hidden=true; row.hidden=true; row.appendChild(stop); row.appendChild(sw); row.appendChild(def);
     const next=el("p","tce-next",""), status=el("p","tce-status",""); status.setAttribute("aria-live","polite"); status.setAttribute("role","status");
-    const replay=el("button","tce-replay","読み込み再現"); replay.type="button"; replay.title="いちばん新しいカードで、読み込んだ直後の演出をもう一度（カードは増えません）"; replay.addEventListener("click",()=>evReplay());
+    const replay=el("button","tce-replay","再現（最新）"); replay.type="button"; replay.title="いちばん新しいカードで、読み込んだ直後の演出をもう一度（カードは増えません）"; replay.addEventListener("click",()=>evReplay());
     const ctrl=el("div","tce-ctrl"); ctrl.appendChild(replay); ctrl.appendChild(row); ctrl.appendChild(next); ctrl.appendChild(status);
     side.appendChild(field); side.appendChild(cam); side.appendChild(ctrl);
     // 右：カード一覧（新しい順）
-    const list=el("div","tce-list"), grid=el("div","tce-grid"), empty=el("p","tce-empty","まだカードがありません。\n名前を入れてから、ぬりえをカメラにかざしてください。");
+    const list=el("div","tce-list"), grid=el("div","tce-grid"), empty=el("p","tce-empty","カードなし。\n名前→ぬりえをかざす");
     list.appendChild(empty); list.appendChild(grid);
     main.appendChild(side); main.appendChild(list);
     const body=el("div","tce-body"), pvPane=el("div","tce-pv"); body.appendChild(main); body.appendChild(pvPane); root.appendChild(body);
     document.body.appendChild(root);
     EV.ui={ root, pvBtn:pv, pvPane, count, only, putBlank, bulkC, bulkM, zipC, zipM, redoAll, delAll, seqReset, input, hint, hintL, hintN, decide, readBtn, cam, video, camMsg, camOff, start, stop, sw, def, row, next, status, grid, empty, list };
     EV.read="confirm"; EV.conf=null; evReadUI();   // 開くたびに「決定してから」
-    evCamMsg("「カメラを開始」を押してください","", "");
+    evCamMsg("「カメラ開始」を押す","", "");
     evBc();   // ランキング画面が開いているかを受け取る
     // 画面の向きが変わった時は、一覧の並びを計算し直す（iPhone の Safari 対策）
     const relayout=()=>setTimeout(()=>{ grid.style.display="none"; void grid.offsetHeight; grid.style.display=""; }, 250);
@@ -20003,32 +20003,32 @@ function evOpen(){
 // 読み取りのモード：決定してから（名前の「決定」を待つ）／決定なし
 function evNeedConfirm(){ return EV.read==="confirm" && !EV.conf; }   // 決定してから で、まだ決定していない＝用紙を読まない
 function evWaitMsg(seen){   // 決定を待っている間のカメラの案内（seen＝用紙が見えている）
-    evCamMsg("名前を入れて「決定」を押してください", seen ? "決定すると、このぬりえを読みます" : "空欄のまま決定すると「"+TC_NAME.def+"」になります", seen ? "wait" : ""); }
+    evCamMsg("名前を入れて「決定」", seen ? "決定でこのぬりえを読む" : "空欄で決定＝「"+TC_NAME.def+"」", seen ? "wait" : ""); }
 function evReadUI(){   // ボタン・名前の欄・案内を、いまのモードと決定に合わせる
     const U=EV.ui; if(!U) return;
     const cf=EV.read==="confirm", on=cf && !!EV.conf;
-    U.readBtn.textContent=cf ? "読み取り：決定してから" : "読み取り：決定なし"; U.readBtn.setAttribute("aria-pressed", String(cf));
+    U.readBtn.textContent=cf ? "読取：決定あり" : "読取：決定なし"; U.readBtn.setAttribute("aria-pressed", String(cf));
     U.decide.hidden=!cf; U.decide.textContent=on ? "とりけし" : "決定"; U.decide.classList.toggle("tce-primary", cf && !on);
     U.decide.title=on ? "決定をやめて、名前を直せるようにします" : "この名前で、次の1枚を読みます（空欄のときは「"+TC_NAME.def+"」）";
     U.input.readOnly=on; U.input.toggleAttribute("data-locked", on); U.hint.toggleAttribute("data-locked", on);
-    U.hintL.textContent=on ? "✔ 決定しました。ぬりえをかざしてください" : cf ? "名前を入れて「決定」（空欄のときは「"+TC_NAME.def+"」）" : "空欄のときは「"+TC_NAME.def+"」";
-    U.empty.textContent="まだカードがありません。\n"+(cf ? "名前を入れて「決定」を押してから、ぬりえをカメラにかざしてください。" : "名前を入れてから、ぬりえをカメラにかざしてください。");
+    U.hintL.textContent=on ? "✔ 決定済。ぬりえをかざす" : cf ? "名前→決定（空欄＝"+TC_NAME.def+"）" : "空欄＝「"+TC_NAME.def+"」";
+    U.empty.textContent="カードなし。\n"+(cf ? "名前→決定→ぬりえをかざす" : "名前→ぬりえをかざす");
 }
 function evReadCamMsg(){   // 決定・とりけし・モードを変えた時、カメラの案内をすぐ変える（読み取り中・用紙を外すのを待っている間は そのまま）
     const C=EV.cam; if(!C.stream || C.busy || !C.armed) return;
     if(evNeedConfirm()) evWaitMsg(false);
-    else evCamMsg("ぬりえをかざしてください", EV.conf ? "「"+tcPlayerText(EV.conf.name)+"」で読みます" : "4つの角の黒い四角が写るようにしてください","");
+    else evCamMsg("ぬりえをかざしてください", EV.conf ? "「"+tcPlayerText(EV.conf.name)+"」で読む" : "4すみの黒い四角を写す","");
 }
 function evReadToggle(){   // 上の帯のボタン：決定してから ⇔ 決定なし（決定していた名前は とりけす。名前の欄の字は そのまま）
     EV.read=(EV.read==="confirm") ? "auto" : "confirm"; EV.conf=null; evReadUI(); evReadCamMsg();
-    evStatus(EV.read==="confirm" ? "読み取り：名前を入れて「決定」を押してから読みます" : "読み取り：決定なしで、用紙をかざしたらすぐ読みます");
+    evStatus(EV.read==="confirm" ? "読取：決定あり（名前→決定→読む）" : "読取：決定なし（かざすとすぐ読む）");
 }
 function evDecide(){   // 「決定」：いまの名前で次の1枚を読む／「とりけし」：決定をやめて、名前を直せるようにする
     const U=EV.ui; if(!U || EV.read!=="confirm") return;
-    if(EV.conf){ EV.conf=null; evReadUI(); evReadCamMsg(); U.input.focus(); evStatus("決定をとりけしました。名前を直して、もう一度「決定」を押してください"); return; }
+    if(EV.conf){ EV.conf=null; evReadUI(); evReadCamMsg(); U.input.focus(); evStatus("決定とりけし。名前を直して再度「決定」"); return; }
     const v=tcNameClip(tcNameClean(U.input.value)); if(U.input.value!==v){ U.input.value=v; U.input.dispatchEvent(new Event("input")); }
     EV.conf={ name:v }; U.input.blur(); evReadUI(); evReadCamMsg();
-    evStatus("「"+tcPlayerText(v)+"」で決定しました。ぬりえをかざしてください");
+    evStatus("決定："+tcPlayerText(v));
 }
 // 名前の入力欄：最大文字数（半角＝0.5）を超えたら切る。変換中は待つ
 function evNameField(input, counter){
@@ -20041,26 +20041,26 @@ function evNameField(input, counter){
 }
 function evCount(){
     const U=EV.ui; if(!U) return; let n=0, un=0, vis=0; for(const r of EV.recs.values()){ vis++; if(!evIsReal(r)) continue; n++; if(!evSaved(r)) un++; }   // 見本・恐竜カードは数えない
-    U.count.innerHTML=""; U.count.appendChild(document.createTextNode("全 ")); U.count.appendChild(el("b",null,String(n))); U.count.appendChild(document.createTextNode(" 枚　"));
-    U.count.appendChild(el("span","tce-unsaved","未保存 "+un+" 枚"));
+    U.count.innerHTML=""; U.count.appendChild(el("b",null,String(n))); U.count.appendChild(document.createTextNode("枚（"));   // 12枚（未保存3）
+    U.count.appendChild(el("span","tce-unsaved","未保存"+un)); U.count.appendChild(document.createTextNode("）"));
     U.empty.hidden=vis>0; U.delAll.disabled=EV.recs.size===0; U.redoAll.disabled=EV.recs.size===0 && !EV.bulk;
-    U.next.textContent="次のカード：#"+String(evPeekSeq()).padStart(3,"0");
+    U.next.textContent="次：#"+String(evPeekSeq()).padStart(3,"0");
     // 一括ダウンロード：まだダウンロードしていない枚数（見本は入れない）。実行中のボタンは「止める」
     const nb=(k)=>[...EV.recs.values()].filter(r=>evIsReal(r) && r.d && !(r.dl && r.dl[k])).length, B=EV.dlBulk;
-    [[U.bulkC,false,"card","通常"],[U.bulkM,true,"margin","余白あり"]].forEach(([b,m,k,t])=>{ if(!b) return;
-        if(B && !B.zip && B.margin===m){ b.textContent="一括ダウンロードを止める"; b.disabled=false; }
-        else { const c=nb(k); b.textContent="一括ダウンロード（"+t+"）"+c+"枚"; b.disabled=!!B || c===0; } });
-    [[U.zipC,false,"card","通常"],[U.zipM,true,"margin","余白あり"]].forEach(([b,m,k,t])=>{ if(!b) return;   // ZIP：作っている間は「止める」／iPhone・iPad で できあがって 保存を待っている間は「保存する」
+    [[U.bulkC,false,"card","通常"],[U.bulkM,true,"margin","余白"]].forEach(([b,m,k,t])=>{ if(!b) return;
+        if(B && !B.zip && B.margin===m){ b.textContent="DL停止"; b.disabled=false; }
+        else { const c=nb(k); b.textContent="一括DL "+t+" "+c; b.disabled=!!B || c===0; } });
+    [[U.zipC,false,"card","通常"],[U.zipM,true,"margin","余白"]].forEach(([b,m,k,t])=>{ if(!b) return;   // ZIP：作っている間は「止める」／iPhone・iPad で できあがって 保存を待っている間は「保存する」
         const R=EV.zipReady && EV.zipReady.margin===m ? EV.zipReady : null;
-        if(B && B.zip && B.margin===m){ b.textContent="ZIPを作るのを止める"; b.disabled=false; }
-        else if(R){ b.textContent="📦 ZIPを保存する（"+t+"）"+R.ids.length+"枚"; b.disabled=!!B; }
-        else { const c=nb(k); b.textContent="ZIPでダウンロード（"+t+"）"+c+"枚"; b.disabled=!!B || c===0; } });
+        if(B && B.zip && B.margin===m){ b.textContent="ZIP停止"; b.disabled=false; }
+        else if(R){ b.textContent="📦 ZIP保存 "+t+" "+R.ids.length; b.disabled=!!B; }
+        else { const c=nb(k); b.textContent="ZIP "+t+" "+c; b.disabled=!!B || c===0; } });
     // 番号を1に戻せるのはカードが0枚のときだけ（残っているカードと番号・ファイル名が重ならないように）
     U.seqReset.disabled=n>0 || evPeekSeq()===1;   // 見本は番号を使わないので、見本があっても戻せる
-    U.seqReset.title= n>0? "カードを一括削除すると押せます" : "";
+    U.seqReset.title= n>0? "カードを一括削除すると押せます" : "通し番号を1に戻します";
 }
 async function evLoad(){
-    evStatus("カードを読み込んでいます…");
+    evStatus("カード読込中…");
     try{
         try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(_){ }   // ブラウザが勝手に消さないように
         const all=await evTx("cards","readonly",s=>s.getAll());
@@ -20077,14 +20077,14 @@ async function evLoad(){
             if(old) evMakeSamples({ demos:false });   // 前の版の見本 → 今の見本1〜8に入れ替える（足りない見本も作る）
             if(!(all||[]).some(evIsReal) && !(all||[]).some(r=>r.demo)) evMakeDemos();   // 参加者のカードがなく、ランキング用のカードがまだない（前の版から）
         }
-        evStatus((all||[]).length? (all.length+" 枚のカードを読み込みました") : "");
+        evStatus((all||[]).length? (all.length+"枚 読込済") : "");
         evStorageNote();
         if(EV_QR) (all||[]).forEach(r=>evQrNeed(r.id));   // 受け取りQR（開発中）：送れていないカードを送る
-    }catch(e){ console.warn("[イベントカード]", e); evStatus("カードを読み込めませんでした："+(e && e.message || e)); }
+    }catch(e){ console.warn("[イベントカード]", e); evStatus("カードを読み込めません："+(e && e.message || e)); }
 }
 async function evStorageNote(){
     try{ if(!navigator.storage || !navigator.storage.estimate) return; const q=await navigator.storage.estimate(); if(!q || !q.quota) return;
-        const mb=(v)=>Math.round(v/1048576); if(q.usage/q.quota>0.8) evStatus("保存場所の残りが少なくなっています（"+mb(q.usage)+"MB / "+mb(q.quota)+"MB）。保存済みのカードを削除してください"); }catch(_){ }
+        const mb=(v)=>Math.round(v/1048576); if(q.usage/q.quota>0.8) evStatus("保存場所が残りわずか（"+mb(q.usage)+"/"+mb(q.quota)+"MB）。保存済みを削除して"); }catch(_){ }
 }
 
 /* ---- カード1枚の表示 ---- */
@@ -20103,36 +20103,36 @@ function evFig(rec){
         wrap.appendChild(im); fig.appendChild(wrap);
     } else {
         const ph=el("div","tce-ph"); ph.appendChild(el("span",null,evLabel(rec)+"　"+tcPlayerText(rec.name)));
-        ph.appendChild(el("small",null, rec.err? "画像を作れませんでした" : "カードを作っています…")); fig.appendChild(ph);
+        ph.appendChild(el("small",null, rec.err? "作成失敗" : "作成中…")); fig.appendChild(ph);
     }
     const meta=el("div","tce-meta"); meta.appendChild(el("b",null,evLabel(rec)));
     meta.appendChild(el("span",null,evDinoShort(rec)+"　"+evTime(rec.createdAt))); fig.appendChild(meta);
     const chips=el("div","tce-chips");
     if(rec.sample) chips.appendChild(el("span","tce-chip smp","見本"));
-    else if(rec.demo) chips.appendChild(el("span","tce-chip smp","恐竜カード"));
+    else if(rec.demo) chips.appendChild(el("span","tce-chip smp","恐竜"));
     else if(!evSaved(rec)) chips.appendChild(el("span","tce-chip no","未保存"));
     const dl=rec.dl||{}, mk=(at,t)=>{ if(!at) return; const c=el("span","tce-chip",t); c.title="ダウンロード "+evTime(at); chips.appendChild(c); };   // ダウンロード済みのサイン（時刻はマウスを乗せると出る）
-    mk(dl.card,"✓ 通常"); mk(dl.margin,"✓ 余白あり");
+    mk(dl.card,"✓通常"); mk(dl.margin,"✓余白");
     if(EV_QR && evIsReal(rec) && rec.d){ const st=evQrState(rec); fig.dataset.qr=st;   // 受け取りQR（開発中）の状態
-        const c=el("span","tce-chip"+(st==="ok"? "" : st==="sample"? " smp" : " no"), st==="ok"? "QR ✓" : st==="expired"? "QR 期限切れ" : st==="sample"? "QR 見本" : st==="err"? "QR 送れず" : "QR 準備中");
+        const c=el("span","tce-chip"+(st==="ok"? "" : st==="sample"? " smp" : " no"), st==="ok"? "QR✓" : st==="expired"? "QR期限切れ" : st==="sample"? "QR見本" : st==="err"? "QR送れず" : "QR準備中");
         if(st==="ok" || st==="expired") c.title="受け取り期限："+evQrUntilText(rec);
         chips.appendChild(c); }
     fig.appendChild(chips);
     if(rec.err) fig.appendChild(el("p","tce-err",rec.err));
     const act=el("div","tce-act"), B=(t,fn,cls)=>{ const b=el("button",cls||null,Array.isArray(t)? null : t);
         if(Array.isArray(t)){ b.appendChild(el("span","l",t[0])); b.appendChild(el("span","s",t[1])); b.setAttribute("aria-label",t[0]); }   /* [ふつうの名前, 短い名前] */ b.type="button"; b.addEventListener("click",ev=>{ ev.stopPropagation(); fn(b); }); act.appendChild(b); return b; };
-    const d1=B("ダウンロード",()=>evDownload(rec.id,false),"tce-dl"), d2=B("余白あり\nダウンロード",()=>evDownload(rec.id,true),"tce-dl");
-    d2.style.whiteSpace="pre-line"; d1.style.whiteSpace="pre-line"; d1.textContent="通常\nダウンロード";
-    if(dl.card){ d1.textContent="✓ 通常\nダウンロード済"; d1.classList.add("done"); }   // 済みでも押せば、もう一度ダウンロードできる
-    if(dl.margin){ d2.textContent="✓ 余白あり\nダウンロード済"; d2.classList.add("done"); }
+    const d1=B("通常DL",()=>evDownload(rec.id,false),"tce-dl"), d2=B("余白DL",()=>evDownload(rec.id,true),"tce-dl");
+    d1.title="通常のカードをダウンロード"; d2.title="余白あり（89mm）のカードをダウンロード";
+    if(dl.card){ d1.textContent="✓通常DL"; d1.classList.add("done"); }   // 済みでも押せば、もう一度ダウンロードできる
+    if(dl.margin){ d2.textContent="✓余白DL"; d2.classList.add("done"); }
     if(!rec.d){ d1.disabled=d2.disabled=true; }
-    const rp=B(["読込再現","再現"],()=>evReplay(rec.id)); rp.title="読み込み再現：読み込んだ直後の演出を、このカードでもう一度（カードは増えません）"; if(!rec.d) rp.disabled=true;
-    B(["名前変更","改名"],()=>evRename(rec.id));
+    const rp=B("再現",()=>evReplay(rec.id)); rp.title="読み込み再現：読み込んだ直後の演出を、このカードでもう一度（カードは増えません）"; if(!rec.d) rp.disabled=true;
+    B("名前",()=>evRename(rec.id)).title="名前を変更";
     B(["作り直す","再作"],()=>evEnqueue(rec.id,true)).style.display="none";   // 1枚ずつの作り直しは使わない（隠すだけ。全部は上の「すべて作り直す」）
     if(!rec.demo){ const bo=evBlank(rec), bb=B(bo? ["白：模様","模様"] : ["白：白地","白地"],()=>evBlankToggle(rec.id));   // このカード（とランキングの歩く恐竜）の白い所
         bb.setAttribute("aria-pressed",String(bo)); bb.title="ぬっていない白い所を、白地（ぬりえどおりの白）にするか、模様（ぬりえなしの時の模様）にするか（このカードだけ。押すとカードを作り直します）"; }
     B("削除",()=>evDelete(rec.id),"tce-danger");
-    if(EV_QR && evIsReal(rec) && rec.d && evQrState(rec)==="expired"){ const rb=B("🔄 QR再発行（ここから1週間）",()=>evQrRenew(rec.id),"tce-renew"); rb.title="受け取れる期間が過ぎたカードの受け取りQRを、同じQRのまま、いまから1週間 使えるようにします"; }   // 期限切れのカードだけ
+    if(EV_QR && evIsReal(rec) && rec.d && evQrState(rec)==="expired"){ const rb=B("🔄 QR再発行",()=>evQrRenew(rec.id),"tce-renew"); rb.title="受け取れる期間が過ぎたカードの受け取りQRを、同じQRのまま、いまから1週間 使えるようにします"; }   // 期限切れのカードだけ
     fig.appendChild(act);
     EV.figs.set(rec.id, fig);
     return fig;
@@ -20147,20 +20147,20 @@ async function evBlankToggle(id){
     rec.blank=!evBlank(rec);
     try{ await evTx("cards","readwrite",s=>{ if(EV.recs.get(id)===rec) s.put(rec); }); }catch(e){ console.warn("[イベントカード] 白い所", e); }
     evUpdateFig(id); evEnqueue(id, true);
-    evStatus(evLabel(rec)+" の白い所を「"+(rec.blank? "模様" : "白地")+"」にして、作り直しています…");
+    evStatus(evLabel(rec)+" 白："+(rec.blank? "模様" : "白地")+"で作り直し中…");
 }
 // 白い所の一括変更：すべてのカード（見本も）をその値にして、これから作るカードの値にもする（値が変わったカードだけ作り直す）
 async function evBlankAll(on){
     const ids=[...EV.recs.values()].filter(r=>!r.demo && evBlank(r)!==on).map(r=>r.id).sort((a,b)=>b-a);
     if(ids.length && !confirm("カード "+ids.length+" 枚の白い所を「"+(on? "模様" : "白地")+"」にして作り直します。\nこれから作るカードも「"+(on? "模様" : "白地")+"」になります。")) return;
     N().setBlankOrig(on); if(EV.ui && EV.ui.putBlank) EV.ui.putBlank();
-    if(!ids.length){ evStatus("白い所を「"+(on? "模様" : "白地")+"」にしました（これから作るカードも）"); return; }
+    if(!ids.length){ evStatus("全部："+(on? "模様" : "白地")+"（新規も）"); return; }
     const recs=ids.map(id=>EV.recs.get(id)); recs.forEach(r=>{ r.blank=on; });
     try{ await evTx("cards","readwrite",s=>{ recs.forEach(r=>{ if(EV.recs.get(r.id)===r) s.put(r); }); }); }catch(e){ console.warn("[イベントカード] 白い所", e); }
     ids.forEach(id=>evUpdateFig(id));
     const B=EV.bulk || (EV.bulk={ total:0, done:0, ids:new Set() });
     ids.forEach(id=>{ if(!B.ids.has(id)){ B.ids.add(id); B.total++; } if(!EV.queue.includes(id)) EV.queue.push(id); evSetBusy(id,true); });
-    if(EV.ui) EV.ui.redoAll.textContent="作り直しを止める";
+    if(EV.ui) EV.ui.redoAll.textContent="作り直し停止";
     evWork();
 }
 function evSetBusy(id, on){ const f=EV.figs.get(id); if(f) f.toggleAttribute("data-busy", !!on); }
@@ -20172,17 +20172,17 @@ function evSetBusy(id, on){ const f=EV.figs.get(id); if(f) f.toggleAttribute("da
  *   カメラの読み取り（画像の取り出し・マーカー探し）の間、ランキングの動きが止まってカクカクする。つながりを切ると別のプロセスで動く。
  *   連絡は BroadcastChannel だけなので、つながりが無くても困らない */
 function evOpenRank(){
-    if(evRankOpen()){ evStatus("ランキング画面はもう開いています（開き直す時は、いったん閉じてから押してください）"); return; }
+    if(evRankOpen()){ evStatus("ランキングは開いています（開き直す時は閉じてから）"); return; }
     const url=location.pathname+"?cardDebug=3"+(EV_QR? "&qr=1" : "")+"&t="+Date.now();   // 毎回新しく読む（古いページが残っていると、前の版の表示のままになるため）
     window.open(url, "_blank", "popup=yes,width=1280,height=720,noopener");   // 押した直後に開く（あとからだと、ポップアップとして止められることがある）。noopener なので戻り値は使えない
-    evStatus("ランキング画面を開いています…");
+    evStatus("ランキングを開き中…");
     clearTimeout(EV.rankAskT);
-    EV.rankAskT=setTimeout(()=>{ if(!evRankOpen()) evStatus("ランキング画面が開いていないようです。ポップアップを許可してから、もう一度押してください"); }, 10000);   // 開いたかどうかは、ランキング画面からの rankAlive で分かる
+    EV.rankAskT=setTimeout(()=>{ if(!evRankOpen()) evStatus("ランキングが開きません。ポップアップを許可して再度押す"); }, 10000);   // 開いたかどうかは、ランキング画面からの rankAlive で分かる
 }
 // 2画面プレビュー：1つの画面の中に、サブ画面（ランキング）を 1920×1080 のまま縮めて表示する
 function evPreview(on){
     const U=EV.ui; if(!U) return;
-    if(on && evRankOpen()){ on=false; evStatus("ランキング画面が別ウィンドウで開いているため、2画面プレビューは使えません（閉じると使えます）"); }
+    if(on && evRankOpen()){ on=false; evStatus("ランキング表示中は2画面を使えません"); }
     U.pvBtn.setAttribute("aria-pressed", String(on)); U.root.classList.toggle("tce-preview", on);
     if(on){
         if(!U.pvPane.firstChild){
@@ -20232,27 +20232,27 @@ function evRendererIdle(){ clearTimeout(EV.glT); EV.glT=setTimeout(()=>{ if(!EV.
 async function evWork(){
     if(EV.working) return; EV.working=true; clearTimeout(EV.glT);
     try{
-        if(!N().paintReady()){ evStatus("ぬりえの準備を待っています…"); await tcWaitPaint(); }   // 本体の模様の復元と重ならないように
+        if(!N().paintReady()){ evStatus("ぬりえ準備待ち…"); await tcWaitPaint(); }   // 本体の模様の復元と重ならないように
         while(EV.queue.length || EV.cq.length){
             if(EV.cq.length){   // 一覧用の画像（軽い）を先に
                 const id=EV.cq.shift(); if(!EV.recs.has(id)) continue;
                 if(EV.queue.includes(id)){ continue; }   // あとで3Dから作り直すので、その時に一緒に作る
-                EV.current=id; evStatus(evLabel(EV.recs.get(id))+" のカードを作っています…");
+                EV.current=id; evStatus(evLabel(EV.recs.get(id))+" 作成中…");
                 await new Promise(r=>setTimeout(r,0));
                 try{ await evCompose(id); }catch(e){ console.warn("[イベントカード] カード画像を作れませんでした", id, e); }
                 EV.current=null; evSetBusy(id,false); evUpdateFig(id); continue; }
             const id=EV.queue.shift(); if(!EV.recs.has(id)) continue;
             EV.current=id;
-            if(EV.bulk && EV.bulk.ids.has(id)){ EV.bulk.done++; evStatus("作り直しています "+EV.bulk.done+" / "+EV.bulk.total+"（新しく読んだカードが先）"); }
-            else evStatus(evLabel(EV.recs.get(id))+" の画像を作っています…");
+            if(EV.bulk && EV.bulk.ids.has(id)){ EV.bulk.done++; evStatus("作り直し "+EV.bulk.done+"/"+EV.bulk.total+"（新しい順）"); }
+            else evStatus(evLabel(EV.recs.get(id))+" 画像作成中…");
             await new Promise(r=>setTimeout(r,30));   // 1枚ごとに画面へ手番を返す
             try{ await evRender(id); }
             catch(e){ console.warn("[イベントカード] 画像を作れませんでした", id, e); const r=EV.recs.get(id);
-                if(r){ r.err=(e && e.message)? e.message : "画像を作れませんでした"; try{ await evTx("cards","readwrite",s=>{ if(EV.recs.has(id)) s.put(r); }); }catch(_){ } } }
+                if(r){ r.err=(e && e.message)? e.message : "画像作成失敗"; try{ await evTx("cards","readwrite",s=>{ if(EV.recs.has(id)) s.put(r); }); }catch(_){ } } }
             EV.current=null; evSetBusy(id,false); evUpdateFig(id);
         }
-        evStatus((EV.bulk && EV.bulk.ids.size)? "作り直しました（"+EV.bulk.done+" 枚）" : "");
-    } finally { EV.current=null; EV.bulk=null; evRendererIdle(); EV.working=false; if(EV.ui){ EV.ui.redoAll.textContent="すべて作り直す"; evCount(); } }
+        evStatus((EV.bulk && EV.bulk.ids.size)? "作り直し済（"+EV.bulk.done+"枚）" : "");
+    } finally { EV.current=null; EV.bulk=null; evRendererIdle(); EV.working=false; if(EV.ui){ EV.ui.redoAll.textContent="全部作り直す"; evCount(); } }
 }
 async function evCompose(id){
     const rec=EV.recs.get(id); if(!rec || !rec.d) return;
@@ -20270,7 +20270,7 @@ async function evRender(id){
     if(rec.demo){   // ぬりえなしのカード（ランキング用）：ゲームの模様は読み込んでいないので、元の色・ぬりえなしの値で撮る
         d=tcData("dino", rec.key); url=await tcRenderArt("dino", rec.key, null);
     } else {
-        const p=await evTx("paint","readonly",s=>s.get(id)); if(!p || !p.rgba) throw new Error("模様のデータがないため作れません");
+        const p=await evTx("paint","readonly",s=>s.get(id)); if(!p || !p.rgba) throw new Error("模様データなし");
         const rgba=await N().unzip(p.rgba, p.z);
         await N().withPaint(p.key, { rgba, cs:p.cs }, p.keysSha1, async()=>{ d=tcData("dino", p.key); url=await tcRenderArt("dino", p.key, null); }, evBlank(rec));   // ステータス・スコア・エフェクトは、この用紙の模様で決まる（白い所はカードごとの値）
     }
@@ -20288,7 +20288,7 @@ async function evRender(id){
 function evRedoAllToggle(){
     if(EV.bulk && EV.bulk.ids.size){   // 止める（いま作っている1枚は最後まで。新しく読んだカードは止めない）
         const B=EV.bulk; for(let i=EV.queue.length-1;i>=0;i--){ const id=EV.queue[i], r=EV.recs.get(id); if(B.ids.has(id) && r && r.d){ EV.queue.splice(i,1); evSetBusy(id,false); } }
-        B.ids.clear(); evStatus("作り直しを止めました"); EV.ui.redoAll.textContent="すべて作り直す"; return; }
+        B.ids.clear(); evStatus("作り直し停止"); EV.ui.redoAll.textContent="全部作り直す"; return; }
     const ids=[...EV.recs.keys()].filter(id=>!evSampleOld(EV.recs.get(id))).sort((a,b)=>b-a);   // 前の版の見本は、塗り直してから作る（下の evMakeSamples）
     const fix=EV_SAMPLES.filter((S,i)=>{ const r=EV.recs.get(-(i+1)); return !r || evSampleOld(r); }).length;   // 見本1〜8のうち、ない見本・前の版の見本
     if(!ids.length && !fix) return;
@@ -20296,7 +20296,7 @@ function evRedoAllToggle(){
     if(!confirm("カード "+nv+" 枚"+(nd? "（とランキング用のぬりえなしカード "+nd+" 枚）" : "")+"の画像とスコアを作り直します。"
         +(fix? "\n見本1〜"+EV_SAMPLES.length+"のうち "+fix+" 枚は、今の見本に合わせて塗り直します（ない見本は新しく作ります）。" : "")
         +"\n（時間がかかります。途中で止められます）")) return;
-    if(ids.length){ EV.bulk={ total:ids.length, done:0, ids:new Set(ids) }; EV.ui.redoAll.textContent="作り直しを止める";
+    if(ids.length){ EV.bulk={ total:ids.length, done:0, ids:new Set(ids) }; EV.ui.redoAll.textContent="作り直し停止";
         ids.forEach(id=>{ if(!EV.queue.includes(id)) EV.queue.push(id); evSetBusy(id,true); });
         evWork(); }
     if(fix) evMakeSamples({ demos:false });   // 見本を1〜8にそろえる（塗ったあと、順に画像を作る）
@@ -20304,9 +20304,9 @@ function evRedoAllToggle(){
 
 /* ---- ダウンロード ---- */
 async function evDownload(id, margin){
-    const rec=EV.recs.get(id); if(!rec || !rec.d){ evStatus("画像ができてから押してください"); return; }
+    const rec=EV.recs.get(id); if(!rec || !rec.d){ evStatus("画像の完成後に押す"); return; }
     const fig=EV.figs.get(id), btns=fig? [...fig.querySelectorAll(".tce-act button")] : [];
-    btns.forEach(b=>b.disabled=true); evStatus("カードを用意しています…");
+    btns.forEach(b=>b.disabled=true); evStatus("カード用意中…");
     try{
         const ck=id+":"+(margin?"m":"c")+":"+rec.rendered+":"+rec.name;   // iPhone・iPad：準備に時間がかかると共有できない → もう一度押したらすぐ保存できるように最後の1枚を覚えておく
         let blob=(EV.lastFile && EV.lastFile.key===ck)? EV.lastFile.blob : null;
@@ -20314,14 +20314,14 @@ async function evDownload(id, margin){
         let how;
         try{ how=await tcSaveBlob(blob, evFileName(rec, margin)); }
         catch(e){
-            if(e && e.name==="AbortError"){ evStatus("保存をやめました"); return; }
-            if(e && e.name==="NotAllowedError"){ evStatus("準備ができました。もう一度ボタンを押すと保存できます"); return; }
+            if(e && e.name==="AbortError"){ evStatus("保存中止"); return; }
+            if(e && e.name==="NotAllowedError"){ evStatus("準備完了。もう一度押すと保存"); return; }
             throw e; }
         if(!EV.recs.has(id)) return;
         rec.dl=Object.assign({ card:0, margin:0 }, rec.dl); rec.dl[margin?"margin":"card"]=Date.now();
         await evTx("cards","readwrite",s=>{ if(EV.recs.has(id)) s.put(rec); });
-        evStatus(evLabel(rec)+(how==="share"? "：共有シートで「画像を保存」を選ぶと写真に入ります" : "：ダウンロードしました"));
-    }catch(e){ console.warn("[イベントカード] 出力できませんでした", e); evStatus("うまくいきませんでした："+(e && e.message || e)); }
+        evStatus(evLabel(rec)+" "+(margin? "余白" : "通常")+(how==="share"? "：共有シートで「画像を保存」" : "：DL済"));
+    }catch(e){ console.warn("[イベントカード] 出力できませんでした", e); evStatus("失敗："+(e && e.message || e)); }
     finally{ evUpdateFig(id); }
 }
 
@@ -20347,10 +20347,10 @@ async function evQrRun(){
                 const res=await fetch(conf.url,{ method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },   // text/plain：事前の問い合わせなしで GAS に送れる形
                     body:JSON.stringify({ key:conf.key, k, type:EV_QR_IMG, label:evLabel(rec), data:await evB64(jpg), renew }) });
                 const j=await res.json().catch(()=>null);
-                if(!j || !j.ok) throw new Error((j && j.error) || ("送れませんでした（"+res.status+"）"));
+                if(!j || !j.ok) throw new Error((j && j.error) || ("送信失敗（"+res.status+"）"));
                 if(!EV.recs.has(id)) continue;
                 rec.qr={ k, at:Date.now(), v, until:(j.until>0 ? j.until : Date.now()+EV_QR_KEEP_MS) };   // until＝受け取れる期限（GAS が決める）
-                if(renew) evStatus(evLabel(rec)+"：受け取りQRを再発行しました（"+evQrUntilText(rec)+" まで受け取れます）");
+                if(renew) evStatus(evLabel(rec)+"：QR再発行済（"+evQrUntilText(rec)+" まで）");
             }catch(e){
                 console.warn("[受け取りQR] 送れませんでした", e); if(!EV.recs.has(id)) continue;
                 rec.qr=Object.assign({}, rec.qr, { k, err:String(e && e.message || e) });   // 合言葉は覚えておく（送り直しても QR は同じ）
@@ -20368,18 +20368,18 @@ function evQrRenew(id){
     rec.qr=Object.assign({}, rec.qr, { renew:true }); delete rec.qr.err;
     evTx("cards","readwrite",s=>{ if(EV.recs.has(id)) s.put(rec); }).catch(e=>console.warn("[受け取りQR] 再発行", e));
     evUpdateFig(id); evNotify("card", id);
-    evStatus(evLabel(rec)+"：受け取りQRを再発行しています…");
+    evStatus(evLabel(rec)+"：QR再発行中…");
     evQrNeed(id);
 }
 function evQrSetup(){
     const c=evQrConf()||{ url:"", key:"" };
     const url=prompt("Google Apps Script の「ウェブアプリ」の URL（https://script.google.com/macros/s/…/exec）\n空にして OK を押すと設定を消します（見本の QR になります）", c.url);
     if(url===null) return;
-    if(!url.trim()){ try{ localStorage.removeItem(EV_QR_CONF_KEY); }catch(_){ } evStatus("受け取りQRの設定を消しました（見本の QR を出します）"); evQrRefresh(); return; }
-    if(!EV_QR_URL_RE.test(url.trim())){ evStatus("URL の形が違います（https://script.google.com/… で始まり、/exec で終わる URL）"); return; }
+    if(!url.trim()){ try{ localStorage.removeItem(EV_QR_CONF_KEY); }catch(_){ } evStatus("QR設定を消去（見本のQRを表示）"); evQrRefresh(); return; }
+    if(!EV_QR_URL_RE.test(url.trim())){ evStatus("URLの形が違います（https://script.google.com/…/exec）"); return; }
     const key=prompt("合言葉（Apps Script の KEY と同じもの）", c.key||""); if(key===null || !key.trim()) return;
-    try{ localStorage.setItem(EV_QR_CONF_KEY, JSON.stringify({ url:url.trim(), key:key.trim() })); }catch(_){ evStatus("設定を保存できませんでした"); return; }
-    evStatus("受け取りQRの設定を保存しました。まだ送っていないカードを送ります"); evQrRefresh();
+    try{ localStorage.setItem(EV_QR_CONF_KEY, JSON.stringify({ url:url.trim(), key:key.trim() })); }catch(_){ evStatus("設定を保存できません"); return; }
+    evStatus("QR設定を保存。未送信のカードを送ります"); evQrRefresh();
 }
 function evQrRefresh(){ [...EV.recs.keys()].forEach(id=>{ evQrNeed(id); evUpdateFig(id); }); evNotify("qrConf"); }
 
@@ -20390,28 +20390,28 @@ function evReplay(id){
     const rec=(typeof id==="number")? EV.recs.get(id)
         : ([...EV.recs.values()].filter(r=>evIsReal(r) && r.d).sort((a,b)=>(b.createdAt-a.createdAt)||(b.id-a.id))[0]
         || (smp? [...EV.recs.values()].filter(r=>r.sample && r.d).sort((a,b)=>a.sample-b.sample)[0] : null));
-    if(rec && !evIsReal(rec) && !smp){ evStatus("見本・恐竜カードは、ランキング画面に映さない設定です（「見本・恐竜カード：ランキングに映す」にすると再現できます）"); return; }
-    if(!rec || !rec.d){ evStatus(rec? "このカードはまだできていません" : smp? "再現できるカードがありません（見本ができるまでお待ちください）" : "再現できるカードがありません（見本・恐竜カードは、ランキング画面に映さない設定です）"); return; }
+    if(rec && !evIsReal(rec) && !smp){ evStatus("見本系カードは映さない設定です（「見本系カード：映す」で再現可）"); return; }
+    if(!rec || !rec.d){ evStatus(rec? "まだできていません" : smp? "再現できるカードなし（見本の完成待ち）" : "再現できるカードなし（見本系カードは映さない設定）"); return; }
     evNotify("replay", rec.id);
     const shown=evRankOpen() || (EV.ui && EV.ui.root.classList.contains("tce-preview"));
-    evStatus("読み込み再現："+evLabel(rec)+"「"+tcPlayerText(rec.name)+"」"+(shown? "" : "（ランキング画面が開いていません）"));
+    evStatus("再現："+evLabel(rec)+" "+tcPlayerText(rec.name)+(shown? "" : "（ランキング未表示）"));
 }
 
 /* ---- 一括ダウンロード（通常・余白あり、それぞれ。まだダウンロードしていないカードだけを、番号の順に1枚ずつ続けて保存）---- */
 async function evBulkDownload(margin){
     if(EV.dlBulk){ if(!EV.dlBulk.zip && EV.dlBulk.margin===margin) EV.dlBulk.stop=true; return; }   // 実行中にもう一度押す → 今の1枚が終わったら止める
-    const k=margin?"margin":"card", t=margin?"余白あり":"通常";
+    const k=margin?"margin":"card", t=margin?"余白":"通常", tl=margin?"余白あり":"通常";   // tl＝確認の文（ダイアログは そのまま）
     const ids=[...EV.recs.values()].filter(r=>evIsReal(r) && r.d && !(r.dl && r.dl[k])).sort((a,b)=>a.id-b.id).map(r=>r.id);
-    if(!ids.length){ evStatus(t+"：まだダウンロードしていないカードはありません"); return; }
-    if(tcIsIOS()){ evStatus("一括ダウンロードはパソコンで使ってください（iPhone・iPad は1枚ずつ保存してください）"); return; }
-    if(!confirm(t+"のカード "+ids.length+" 枚を、続けてダウンロードします。\nブラウザに「複数のファイルのダウンロード」の確認が出たら「許可」を押してください。")) return;
+    if(!ids.length){ evStatus("一括DL "+t+"：未DLのカードなし"); return; }
+    if(tcIsIOS()){ evStatus("一括DLはパソコンで（iPhone・iPadは1枚ずつかZIPで）"); return; }
+    if(!confirm(tl+"のカード "+ids.length+" 枚を、続けてダウンロードします。\nブラウザに「複数のファイルのダウンロード」の確認が出たら「許可」を押してください。")) return;
     const job=EV.dlBulk={ margin, stop:false }; evCount();
     let n=0;
     try{
         for(const id of ids){
             if(job.stop) break;
             const rec=EV.recs.get(id); if(!rec || !rec.d || (rec.dl && rec.dl[k])) continue;   // 途中で消された・1枚ずつ保存された
-            evStatus(t+"：一括ダウンロード "+(n+1)+" / "+ids.length+" 枚目（ボタンをもう一度押すと止まります）");
+            evStatus("一括DL "+t+" "+(n+1)+"/"+ids.length+"（再押しで停止）");
             const url=await evArtUrl(id); let blob; try{ blob=await tcCardBlob(evCardData(rec), url, margin); } finally { URL.revokeObjectURL(url); }
             if(!EV.recs.has(id)) continue;
             await tcSaveBlob(blob, evFileName(rec, margin));
@@ -20420,8 +20420,8 @@ async function evBulkDownload(margin){
             evUpdateFig(id); n++;
             await new Promise(r=>setTimeout(r,400));   // 続けて保存するときは少し間をあける（間がないと、ブラウザが取りこぼすことがある）
         }
-        evStatus(t+"："+n+" 枚ダウンロードしました"+(job.stop? "（途中で止めました）" : ""));
-    }catch(e){ console.warn("[イベントカード] 一括ダウンロード", e); evStatus(t+"："+n+" 枚目のあとで止まりました："+(e && e.message || e)); }
+        evStatus("一括DL "+t+"："+n+"枚 DL済"+(job.stop? "（途中で停止）" : ""));
+    }catch(e){ console.warn("[イベントカード] 一括ダウンロード", e); evStatus("一括DL "+t+"："+n+"枚目のあと停止："+(e && e.message || e)); }
     finally{ EV.dlBulk=null; evCount(); }
 }
 
@@ -20429,31 +20429,31 @@ async function evBulkDownload(margin){
    一括ダウンロードと同じカード（見本は入れない）。保存したら「ダウンロード済み」にする。iPhone・iPad でも使える（共有シートから「ファイルに保存」など）
    iPhone・iPad：ZIP を作るのに時間がかかると、そのまま共有シートを出せない（押してから時間がたつと ブラウザが止める）→ ボタンが「📦 ZIPを保存する」に かわるので、もう一度押す */
 async function evZipDownload(margin){
-    const k=margin?"margin":"card", t=margin?"余白あり":"通常";
+    const k=margin?"margin":"card", t=margin?"余白":"通常";
     if(EV.dlBulk){ if(EV.dlBulk.zip && EV.dlBulk.margin===margin) EV.dlBulk.stop=true; return; }   // 作っている間に もう一度押す → 今の1枚が終わったら止める（ZIP は作らない）
     if(EV.zipReady && EV.zipReady.margin===margin){ await evZipSave(EV.zipReady); return; }   // iPhone・iPad：できあがった ZIP を保存する
     const ids=[...EV.recs.values()].filter(r=>evIsReal(r) && r.d && !(r.dl && r.dl[k])).sort((a,b)=>a.id-b.id).map(r=>r.id);
-    if(!ids.length){ evStatus(t+"：まだダウンロードしていないカードはありません"); return; }
+    if(!ids.length){ evStatus("ZIP "+t+"：未DLのカードなし"); return; }
     const job=EV.dlBulk={ margin, zip:true, stop:false }; evCount();
     const files=[], done=[];
     try{
         for(const id of ids){
             if(job.stop) break;
             const rec=EV.recs.get(id); if(!rec || !rec.d || (rec.dl && rec.dl[k])) continue;   // 途中で消された・1枚ずつ保存された
-            evStatus(t+"：ZIPを作っています "+(done.length+1)+" / "+ids.length+" 枚目（ボタンをもう一度押すと止まります）");
+            evStatus("ZIP "+t+" 作成中 "+(done.length+1)+"/"+ids.length+"（再押しで停止）");
             const url=await evArtUrl(id); let blob; try{ blob=await tcCardBlob(evCardData(rec), url, margin); } finally { URL.revokeObjectURL(url); }
             if(!EV.recs.has(id)) continue;
             files.push({ name:evFileName(rec, margin), data:new Uint8Array(await blob.arrayBuffer()) }); done.push(id);
             await new Promise(r=>setTimeout(r,0));   // 画面を止めない
         }
-        if(job.stop){ evStatus(t+"：ZIPを作るのを止めました（ZIPは作っていません）"); return; }
-        if(!done.length){ evStatus(t+"：まだダウンロードしていないカードはありません"); return; }
+        if(job.stop){ evStatus("ZIP "+t+"：停止（未作成）"); return; }
+        if(!done.length){ evStatus("ZIP "+t+"：未DLのカードなし"); return; }
         const d=new Date(), p2=(n)=>String(n).padStart(2,"0");
         const name="cards_"+d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+"-"+p2(d.getHours())+p2(d.getMinutes())+(margin? "_89mm" : "")+"_"+done.length+"枚.zip";
         const R={ margin, k, t, ids:done, name, blob:tcZipBlob(files, d) };
         EV.dlBulk=null;
         await evZipSave(R, true);
-    }catch(e){ console.warn("[イベントカード] ZIP", e); evStatus(t+"：ZIPを作れませんでした："+(e && e.message || e)); }
+    }catch(e){ console.warn("[イベントカード] ZIP", e); evStatus("ZIP "+t+"：作成失敗："+(e && e.message || e)); }
     finally{ if(EV.dlBulk===job) EV.dlBulk=null; evCount(); }
 }
 async function evZipSave(R, first){   // R＝{ margin, k, t, ids, name, blob }／first＝作った直後（iPhone・iPad で 共有シートを出せなかったら「保存する」ボタンに）
@@ -20462,8 +20462,8 @@ async function evZipSave(R, first){   // R＝{ margin, k, t, ids, name, blob }�
         try{ await navigator.share({ files:[file] }); }
         catch(e){
             EV.zipReady=R; evCount();
-            if(e && e.name==="AbortError") evStatus(R.t+"：保存をやめました（「📦 ZIPを保存する」を押すと、もう一度 保存できます）");
-            else evStatus(R.t+"：ZIPができました（"+R.ids.length+"枚）。「📦 ZIPを保存する」を押して保存してください");
+            if(e && e.name==="AbortError") evStatus("ZIP "+R.t+"：保存中止（「📦 ZIP保存」で再保存）");
+            else evStatus("ZIP "+R.t+"：完成（"+R.ids.length+"枚）。「📦 ZIP保存」を押して保存");
             return false;
         }
     } else {
@@ -20476,7 +20476,7 @@ async function evZipSave(R, first){   // R＝{ margin, k, t, ids, name, blob }�
     recs.forEach(rec=>{ rec.dl=Object.assign({ card:0, margin:0 }, rec.dl); rec.dl[R.k]=now; });
     try{ await evTx("cards","readwrite",s=>{ recs.forEach(rec=>{ if(EV.recs.has(rec.id)) s.put(rec); }); }); }catch(e){ console.warn("[イベントカード] ZIP：ダウンロード済みの記録", e); }
     recs.forEach(rec=>{ if(EV.recs.has(rec.id)) evUpdateFig(rec.id); });
-    evStatus(R.t+"："+recs.length+" 枚を ZIP（"+R.name+"）で ダウンロードしました");
+    evStatus("ZIP "+R.t+"："+recs.length+"枚 DL済");
     evCount();
     return true;
 }
@@ -20518,8 +20518,8 @@ function evRename(id){
     const save=async()=>{ const v=tcNameClip(tcNameClean(input.value)); close();
         if(v===(rec.name||"")) return;
         rec.name=v; if(evSaved(rec)) rec.dl={ card:0, margin:0 };   // 名前が変わった＝前に保存した画像とは別物
-        try{ await evTx("cards","readwrite",s=>{ if(EV.recs.has(id)) s.put(rec); }); evStatus(evLabel(rec)+" の名前を変更しました"); }
-        catch(e){ evStatus("名前を保存できませんでした"); }
+        try{ await evTx("cards","readwrite",s=>{ if(EV.recs.has(id)) s.put(rec); }); evStatus(evLabel(rec)+"：名前変更済"); }
+        catch(e){ evStatus("名前を保存できません"); }
         evUpdateFig(id); evComposeEnqueue(id, true); };   // 一覧のカード画像だけ作り直す
     ok.addEventListener("click",save); cancel.addEventListener("click",close);
     dlg.addEventListener("click",ev=>{ if(ev.target===dlg) close(); });
@@ -20536,10 +20536,10 @@ async function evZoom(id){
     const esc=(ev)=>{ if(ev.key==="Escape") close(); };
     z.addEventListener("click",close); addEventListener("keydown",esc);
     if(EV_QR && evIsReal(rec)){ const qb=tcQrBox(rec,"tce-qr"); z.appendChild(qb);   // 受け取りQR（開発中）：見逃した参加者にもう一度見せる
-        if(qb.dataset.state==="expired"){ const b=el("button",null,"🔄 QR再発行（ここから1週間）"); b.type="button";   // 期限切れ：その場で再発行（できたら QR を出す）
-            b.addEventListener("click", ev=>{ ev.stopPropagation(); evQrRenew(id); b.disabled=true; b.textContent="再発行しています…";
+        if(qb.dataset.state==="expired"){ const b=el("button",null,"🔄 QR再発行"); b.type="button"; b.title="同じQRのまま、いまから1週間 使えるようにします";   // 期限切れ：その場で再発行（できたら QR を出す）
+            b.addEventListener("click", ev=>{ ev.stopPropagation(); evQrRenew(id); b.disabled=true; b.textContent="再発行中…";
                 const t0=Date.now(), wait=()=>{ if(!z.isConnected) return; const r=EV.recs.get(id); if(r && evQrState(r)==="ok"){ const nb=tcQrBox(r,"tce-qr"); qb.replaceWith(nb); return; }
-                    if(r && evQrState(r)==="err"){ b.textContent="送れませんでした（あとで送り直します）"; return; } if(Date.now()-t0<60000) setTimeout(wait, 500); }; setTimeout(wait, 500); });
+                    if(r && evQrState(r)==="err"){ b.textContent="送れません（あとで再送）"; return; } if(Date.now()-t0<60000) setTimeout(wait, 500); }; setTimeout(wait, 500); });
             qb.appendChild(b); } }
     EV.ui.root.appendChild(z); requestAnimationFrame(()=>tcFit(z));
 }
@@ -20552,7 +20552,7 @@ async function evDelete(id, quiet){   // quiet：確認しない（今はない�
     try{ await evTx(EV_DB.stores,"readwrite",(...S)=>{ S.forEach(s=>s.delete(id)); }); }catch(e){ console.warn(e); }
     evNotify("delete", id);
     const f=EV.figs.get(id); if(f){ f.remove(); EV.figs.delete(id); }
-    evDropUrl(id); evCount(); evStatus(evLabel(rec)+" を削除しました");
+    evDropUrl(id); evCount(); evStatus(evLabel(rec)+" 削除済");
 }
 async function evDeleteAll(){
     if(!EV.recs.size) return;   // （ランキング用のカードも一緒に消して、見本と一緒に作り直す）
@@ -20563,8 +20563,8 @@ async function evDeleteAll(){
     // 受け取りQR（開発中）：GAS（ドライブ）の方は消さない（期限まで受け取れる）
     EV.gen++; EV.queue.length=0; EV.cq.length=0; EV.recs.clear(); EV.zipReady=null;   // 保存を待っている ZIP（iPhone・iPad）も すてる
     EV.figs.clear(); [...EV.urls.keys()].forEach(evDropUrl); EV.ui.grid.innerHTML=""; EV.lastFile=null; evCount();
-    try{ await evTx(EV_DB.stores,"readwrite",(...S)=>{ S.forEach(s=>s.clear()); }); evStatus("すべて削除しました"); evNotify("clear"); }
-    catch(e){ console.warn(e); evStatus("削除できませんでした。開き直して確認してください"); return; }
+    try{ await evTx(EV_DB.stores,"readwrite",(...S)=>{ S.forEach(s=>s.clear()); }); evStatus("全削除済"); evNotify("clear"); }
+    catch(e){ console.warn(e); evStatus("削除できません。開き直して確認"); return; }
     evMakeSamples();
 }
 
@@ -20664,10 +20664,10 @@ function evMakeSamples(opt){
         for(let i=0;i<EV_SAMPLES.length;i++){
             const n=i+1, id=-n, S=EV_SAMPLES[i], cur=EV.recs.get(id);
             if(gen!==EV.gen) return; if(cur && !evSampleOld(cur)) continue;
-            evStatus("見本"+n+" を用意しています…");
+            evStatus("見本"+n+" 用意中…");
             try{
                 const out=await N().samplePaint(S.key, evCrayon(S));
-                if(!out.paintedFaces) throw new Error("色が入りませんでした");
+                if(!out.paintedFaces) throw new Error("色が入りません");
                 const zz=await N().zip(out.rgba);
                 if(gen!==EV.gen) return;
                 const now=EV.recs.get(id);   // 塗っている間に削除された前の版の見本は作らない
@@ -20683,7 +20683,7 @@ function evMakeSamples(opt){
                 if(EV.figs.has(id)) evUpdateFig(id); else evInsertFig(rec);
                 evCount();
                 evEnqueue(id, false);   // 参加者のカードより後に作る
-            }catch(e){ console.warn("[イベントカード] 見本を作れませんでした", S.key, e); evStatus("見本"+n+" を作れませんでした："+(e && e.message || e)); }
+            }catch(e){ console.warn("[イベントカード] 見本を作れませんでした", S.key, e); evStatus("見本"+n+" 作成失敗："+(e && e.message || e)); }
         }
         if(demos && gen===EV.gen) await evMakeDemosNow(gen);
     }).catch(()=>{});
@@ -20712,10 +20712,10 @@ function evInsertFig(rec){   // 番号の大きい順（新しい順）。見本
 
 /* ---- 通し番号を1に戻す（別のイベントを始める時）。カードが0枚の時だけ ---- */
 function evSeqReset(){
-    if([...EV.recs.values()].some(evIsReal)){ evStatus("カードが残っているため戻せません。先に「一括削除」をしてください"); return; }
+    if([...EV.recs.values()].some(evIsReal)){ evStatus("カードが残っています。先に「一括削除」"); return; }
     if(!confirm("通し番号を1に戻します。\n次に作るカードは #001 になります。よろしいですか？")) return;
     try{ localStorage.setItem(EV_SEQ_KEY, "0"); }catch(_){ }
-    EV.lastFile=null; evCount(); evStatus("通し番号を1に戻しました（次のカード：#001）");
+    EV.lastFile=null; evCount(); evStatus("番号リセット済（次：#001）");
 }
 
 /* ---- カメラ（読み取りは通常のカメラ方式。ARは使わない）---- */
@@ -20724,20 +20724,20 @@ function evNote(t, sub, st){ EV.cam.note={ t, sub, st }; evCamMsg(t, sub, st); }
 function evSnd(st, f){ if(EV.mute){ if(st!=="done") N().snd("none"); return; } N().snd(st, f); }
 async function evCamStart(devId){
     const C=EV.cam, U=EV.ui; if(C.stream || C.opening) return;
-    if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ evCamMsg("このブラウザではカメラが使えません","https のページで開いているか確認してください","err"); return; }
-    C.opening=true; U.start.disabled=true; evCamMsg("準備しています…","","");
+    if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ evCamMsg("カメラが使えません","https で開いているか確認","err"); return; }
+    C.opening=true; U.start.disabled=true; evCamMsg("準備中…","","");
     try{
         try{ await N().prepare(); }
-        catch(e){ console.warn("[イベントカード]", e); evCamMsg("準備できませんでした","インターネットの接続を確認して、もう一度押してください","err"); return; }
+        catch(e){ console.warn("[イベントカード]", e); evCamMsg("準備できません","ネット接続を確認して再度押す","err"); return; }
         try{ C.stream=await camOpen({ w:1920, h:1080, fps:EV_CAM_FPS }, devId||""); }   // 既定の順（外付け→背面→前面）／切り替えで選んだカメラ。解像度はそのまま・コマ数は15まで
-        catch(e){ console.warn("[イベントカード]", e); C.stream=null; evCamMsg("カメラが使えませんでした","ブラウザのカメラの許可を確認してください","err"); return; }
+        catch(e){ console.warn("[イベントカード]", e); C.stream=null; evCamMsg("カメラが使えません","カメラの許可を確認","err"); return; }
         U.video.srcObject=C.stream; try{ await U.video.play(); }catch(_){ }
         C.det=N().detector(); C.small=document.createElement("canvas"); C.t0=performance.now(); C.seen=C.t0; C.stable=0; C.last=null; C.lastKey=null; C.armed=true; C.gone=0; N().sndReset();
         U.camOff.hidden=true; U.stop.hidden=false; U.row.hidden=false;
         const n=await camCount(); U.sw.hidden=U.def.hidden=n<2;
         C.ctl={ stream:C.stream, busy:()=>C.busy, reopen:async(id)=>{ evCamStop(false); await evCamStart(id); evCamNote(); } };
         camAttach(C.ctl);
-        evCamMsg("ぬりえをかざしてください","4つの角の黒い四角が写るようにしてください","");
+        evCamMsg("ぬりえをかざしてください","4すみの黒い四角を写す","");
         evTick();
     } finally { C.opening=false; U.start.disabled=false; }
 }
@@ -20750,7 +20750,7 @@ function evCamStop(byUser){
     if(U){ try{ U.video.pause(); }catch(_){ } U.video.srcObject=null; U.camOff.hidden=false; U.stop.hidden=true; U.sw.hidden=true; U.def.hidden=true; U.row.hidden=true; }
     if(C.small){ C.small.width=C.small.height=0; C.small=null; }
     C.det=null; C.stable=0; C.last=null;
-    if(byUser) evCamMsg("カメラを止めました","","");
+    if(byUser) evCamMsg("カメラ停止","","");
 }
 // カメラ切替：既定の順で次のカメラへ（選んだカメラはページを開いている間だけ覚える）
 async function evCamSwitch(){
@@ -20780,14 +20780,14 @@ function evTick(){
     const r=N().scan(C.det, w, h, img.data, s), res=r.res, key=r.key, now=performance.now();
     if(key || (res && (res.found||0)>0)) C.seen=now;
     if(now-C.seen>EV_AUTO_STOP_MS){   // 長い間ぬりえが来ない → カメラを止める（電池・発熱対策）。ボタンですぐ再開できる
-        evCamStop(false); evCamMsg("カメラを止めました","5分間ぬりえが見えなかったため。「カメラを開始」で再開します","");
-        evStatus("カメラを自動で止めました"); return; }
+        evCamStop(false); evCamMsg("カメラ停止（5分ぬりえなし）","「カメラ開始」で再開","");
+        evStatus("カメラ自動停止"); return; }
     // 読み取ったあと：用紙がカメラから外れるまで次を読まない（同じ用紙で2枚できないように）
     if(!C.armed){
         const seen=!!(key || (res && (res.found||0)>0));
-        if(seen){ C.gone=0; const n=C.note; if(n) evCamMsg(n.t, n.sub, n.st); else evCamMsg("用紙をカメラから外してください","外すと次のぬりえを読めます","wait"); }
+        if(seen){ C.gone=0; const n=C.note; if(n) evCamMsg(n.t, n.sub, n.st); else evCamMsg("用紙を外してください","外すと次を読む","wait"); }
         else if(++C.gone>=EV_GONE_TICKS){ C.armed=true; C.note=null; C.stable=0; C.last=null; N().sndReset();
-            if(evNeedConfirm()) evWaitMsg(false); else evCamMsg("次のぬりえをかざしてください", EV.read==="confirm" ? "決定した名前で読みます" : "名前を入れてから用紙をかざします",""); }
+            if(evNeedConfirm()) evWaitMsg(false); else evCamMsg("次のぬりえをかざしてください", EV.read==="confirm" ? "決定した名前で読む" : "名前を入れてからかざす",""); }
         again(); return;
     }
     if(evNeedConfirm()){   // 読み取り：決定してから で、まだ決定していない → 用紙が見えていても読まない（ぬりえの準備だけ先にしておく）
@@ -20798,20 +20798,20 @@ function evTick(){
     }
     { const [st,f]=N().sndState(res, key); evSnd(st, f); }
     if(key && !r.ready){
-        if(C.loading!==key){ C.loading=key; N().loadPix(key).then(()=>{ C.loading=null; }).catch(e=>{ console.warn("[イベントカード]", e); C.loading=null; evCamMsg("準備できませんでした","もう一度かざしてください","err"); }); }
-        evCamMsg(N().sheetName(key)+"のぬりえです","準備しています…","ok");
+        if(C.loading!==key){ C.loading=key; N().loadPix(key).then(()=>{ C.loading=null; }).catch(e=>{ console.warn("[イベントカード]", e); C.loading=null; evCamMsg("準備できません","もう一度かざす","err"); }); }
+        evCamMsg(N().sheetName(key)+"のぬりえ","準備中…","ok");
     } else if(res && res.ok && key){
         const moved=(C.last && C.lastKey===key)? Math.max(...res.corners.map((p,i)=>Math.hypot(p[0]-C.last[i][0], p[1]-C.last[i][1])))/Math.max(vw,vh) : 1;
         C.stable=moved<0.015? C.stable+1 : 1; C.last=res.corners; C.lastKey=key;
-        evCamMsg("そのまま動かさないでください",N().sheetName(key),"ok");
+        evCamMsg("そのまま動かさない",N().sheetName(key),"ok");
         if(C.stable>=2){ evSnd("done"); evCapture(res, key); again(); return; }
     } else {
         C.stable=0; C.last=null;
-        if(r.retired) evCamMsg("前の版のぬりえです","新しく印刷したぬりえを使ってください","err");
-        else if(res && res.otherSheet) evCamMsg("このぬりえはまだ読めません","別のぬりえを使ってください","err");
-        else if(res && res.found===4 && res.sheetId===undefined) evCamMsg("もう少しです","左下の2つめの四角も写るようにしてください","");
-        else if(res && res.found>0) evCamMsg("もう少しです","4つの角の黒い四角がすべて写るようにしてください","");
-        else evCamMsg("ぬりえをかざしてください","4つの角の黒い四角が写るようにしてください","");
+        if(r.retired) evCamMsg("前の版のぬりえ","新しく印刷したものを使う","err");
+        else if(res && res.otherSheet) evCamMsg("このぬりえはまだ読めません","別のぬりえを使う","err");
+        else if(res && res.found===4 && res.sheetId===undefined) evCamMsg("もう少し","左下の2つめの四角も写す","");
+        else if(res && res.found>0) evCamMsg("もう少し","4すみの四角をすべて写す","");
+        else evCamMsg("ぬりえをかざしてください","4すみの黒い四角を写す","");
     }
     again();
 }
@@ -20823,15 +20823,15 @@ function evCapture(resSmall, key){
     const c=document.createElement("canvas"); c.width=vw; c.height=vh;
     const ctx=c.getContext("2d",{ willReadFrequently:true }); ctx.drawImage(v,0,0,vw,vh);
     let photo=ctx.getImageData(0,0,vw,vh); c.width=c.height=0;
-    evCamMsg("読み取っています…",N().sheetName(key),"ok");
+    evCamMsg("読み取り中…",N().sheetName(key),"ok");
     setTimeout(async()=>{
         try{
             const out=N().process(photo, key, resSmall);   // resSmall は元の大きさの座標（高解像度で見失った時に使う） photo=null;
-            if(!out.paintedFaces){ evNote("色が見つかりませんでした","用紙をいったん外して、塗ったぬりえをかざしてください","err"); return; }
+            if(!out.paintedFaces){ evNote("色が見つかりません","いったん外して、塗ったぬりえをかざす","err"); return; }
             const rec=await evCreate(key, out, name, !!cf);
             if(cf && EV.conf===cf){ EV.conf=null; EV.ui.input.value=""; EV.ui.input.dispatchEvent(new Event("input")); evReadUI(); }   // 次の人へ：名前を消して、決定を待つ（読めなかった時は決定したまま）
-            evNote(evLabel(rec)+"「"+tcPlayerText(rec.name)+"」を作りました","用紙をカメラから外してください","done");
-        }catch(e){ console.warn("[イベントカード] 読み取れませんでした", e); evNote("うまく読めませんでした","用紙をいったん外して、もう一度かざしてください","err"); }
+            evNote(evLabel(rec)+"「"+tcPlayerText(rec.name)+"」作成","用紙を外してください","done");
+        }catch(e){ console.warn("[イベントカード] 読み取れませんでした", e); evNote("読めませんでした","いったん外して、もう一度かざす","err"); }
         finally{ C.busy=false; }
     }, 30);
 }
@@ -20870,9 +20870,9 @@ const EV_BC_NAME="nurieEventCards";
 const EV_SETS={
     size: { key:"nurieWalkSizePow", def:0.5, min:0,  max:1,   step:0.05, label:"サイズ比",       fmt:v=>v.toFixed(2),
             title:"縁を歩く恐竜のサイズ比\n0＝種類によらず同じ高さ／0.5＝実寸の比の平方根／1＝実寸の比（ティラノサウルスの大きさは変わりません）" },
-    stage:{ key:"nurieStageSec",    def:30,  min:10, max:30,  step:5,    label:"恐竜出現（秒）", fmt:v=>String(v),
+    stage:{ key:"nurieStageSec",    def:30,  min:10, max:30,  step:5,    label:"出現秒", fmt:v=>String(v),
             title:"新しいカードの恐竜を、まん中に大きく出しておく秒数（次のカードが来たら、その前でも縁へ移ります）" },
-    qr:   { key:"nurieQrSec",       def:60,  min:30, max:120, step:10,   label:"QR表示（秒）",  fmt:v=>String(v),
+    qr:   { key:"nurieQrSec",       def:60,  min:30, max:120, step:10,   label:"QR秒",  fmt:v=>String(v),
             title:"受け取りQRを1枚ずつ出しておく秒数（表示中のQRは、出した時の秒数のまま）" },
     smp:  { key:"nurieRankSmp",     def:0,   min:0,  max:1,   step:1,    label:"見本・恐竜カード", fmt:v=>v? "映す" : "映さない", toggle:true,   // スライダーではなく ボタン（evSmpBtn）
             title:"見本8枚と恐竜カード8枚を、ランキング画面に映すか（映さない＝参加者のカードだけ。縁を歩く恐竜も参加者のカードだけ）" },
@@ -20881,10 +20881,10 @@ function rkSmp(){ return evSet("smp")>=1; }   // 見本・恐竜カードを ラ
 // ツールバーのボタン：見本・恐竜カードを ランキングに 映す ⇔ 映さない
 function evSmpBtn(){
     const b=el("button",null,""); b.type="button";
-    const put=()=>{ const on=rkSmp(); b.textContent="見本・恐竜カード："+(on? "ランキングに映す" : "ランキングに映さない"); b.setAttribute("aria-pressed", String(on)); };
+    const put=()=>{ const on=rkSmp(); b.textContent="見本系カード："+(on? "映す" : "映さない"); b.setAttribute("aria-pressed", String(on)); };
     b.title=EV_SETS.smp.title+"\n（既定 映さない・開き直すと既定に戻ります）";
     b.addEventListener("click",()=>{ const on=!rkSmp(); evSetPut("smp", on? 1 : 0); put();
-        evStatus(on? "見本と恐竜カードを、ランキング画面に映します（参加者のカードと合わせて16枚になるまで）" : "見本と恐竜カードを、ランキング画面に映しません（参加者のカードだけ）"); });
+        evStatus(on? "見本系カード：映す（合計16枚まで）" : "見本系カード：映さない"); });
     put(); return b;
 }
 const EV_SET_CACHE={};
@@ -21156,10 +21156,10 @@ async function rkPlace(){
     try{
         if(!window.getScreenDetails) return;   // Chrome・Edge 以外：手でサブ画面へ移す
         const sd=await window.getScreenDetails(), other=sd.screens.find(x=>x!==sd.currentScreen);
-        if(!other){ say("画面が1つだけです。ディスプレイの設定を「拡張」にしてください"); return; }
+        if(!other){ say("画面が1つです。ディスプレイを「拡張」に"); return; }
         moveTo(other.availLeft, other.availTop); resizeTo(other.availWidth, other.availHeight);
-        say("ランキング画面をサブ画面に出しました。サブ画面をクリックすると全画面になります");
-    }catch(e){ console.warn("[ランキング] 画面の配置", e); say("ランキング画面を自動でサブ画面に移せませんでした。ウィンドウを手でサブ画面へ移してください"); }
+        say("ランキングをサブ画面に表示（クリックで全画面）");
+    }catch(e){ console.warn("[ランキング] 画面の配置", e); say("自動で移せません。手でサブ画面へ移動"); }
 }
 function rkEase(t){ return t<.5? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
 function rkLoop(){
