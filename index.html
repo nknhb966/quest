@@ -18435,7 +18435,7 @@ function tcBuild(d, img){
     const im=el("img","tc-img"); im.alt=d.name; im.decoding="async";
     if(img) im.src=img; else im.setAttribute("data-empty","");
     art.appendChild(im);
-    if(!img) art.appendChild(el("div","tc-wait","画像を作っています…"));
+    if(!img) art.appendChild(el("div","tc-wait","画像作成中…"));
     art.appendChild(el("div","tc-frame"));
     ["tl","tr","bl","br"].forEach(p=>art.appendChild(el("i","tc-corner "+p)));
     const bd=el("div","tc-badge"); bd.innerHTML=tcBadgeSVG(d.kind); art.appendChild(bd);
@@ -19475,13 +19475,13 @@ function tcDebugOpen(){
     if(TCD) return;
     if(!document.getElementById("tcDebugStyle")){ const st=document.createElement("style"); st.id="tcDebugStyle"; st.textContent=TC_DBG_CSS; document.head.appendChild(st); }
     const root=el("div"); root.id="tcDebug"; root.setAttribute("role","dialog"); root.setAttribute("aria-label","カード確認（デバッグ）");
-    const bar=el("div","tcd-bar"); bar.appendChild(el("h1",null,"カード確認（デバッグ）"));
-    const tabs={ dino:el("button",null,"恐竜"), dog:el("button",null,"犬"), fx:el("button",null,"エフェクト見本") };
+    const bar=el("div","tcd-bar"); bar.appendChild(el("h1",null,"カード確認"));
+    const tabs={ dino:el("button",null,"恐竜"), dog:el("button",null,"犬"), fx:el("button",null,"エフェクト") };
     Object.entries(tabs).forEach(([k,b])=>{ b.type="button"; b.setAttribute("role","tab"); b.addEventListener("click",()=>tcDebugTab(k)); bar.appendChild(b); });
-    const redo=el("button",null,"画像を作り直す"); redo.type="button"; redo.addEventListener("click",()=>tcDebugRenderAll()); bar.appendChild(redo);
+    const redo=el("button",null,"作り直す"); redo.type="button"; redo.title="すべてのカードの画像を作り直します（ぬりえをした後に押す）"; redo.addEventListener("click",()=>tcDebugRenderAll()); bar.appendChild(redo);
     const status=el("span","tcd-status",""); status.setAttribute("aria-live","polite"); bar.appendChild(status);
     root.appendChild(bar);
-    root.appendChild(el("p","tcd-note","カードの下の小さい文字は確認用です（カードには表示しません）。ぬりえ済みの恐竜は、その模様のまま撮影しています。ぬりえをした後は「画像を作り直す」を押してください。"));
+    root.appendChild(el("p","tcd-note","下の小さい文字は確認用（カードには出ません）。ぬりえ済みはその模様で撮影。ぬったあとは「作り直す」。"));
     const panes={ dino:el("div","tcd-grid"), dog:el("div","tcd-grid"), fx:el("div","tcd-grid") };
     Object.values(panes).forEach(p=>root.appendChild(p));
     document.body.appendChild(root);
@@ -19490,7 +19490,7 @@ function tcDebugOpen(){
     tcDebugTab("dino");
     addEventListener("resize",()=>{ if(TCD && TCD.root.style.display!=="none") tcFit(TCD.root); });
     window.addEventListener("nuriblank", e=>{ const d=e.detail||{}; if(TCD && d.kind==="own" && d.key && !TCD.busy) tcDebugRerender("dino", d.key); });   // 白い所を変えた（この画面・ほかのタブのゲーム）→ その恐竜のカードを作り直す
-    (async()=>{ status.textContent="ぬりえの読み込みを待っています…"; await tcWaitPaint(); tcDebugFill(); tcDebugRenderAll(); })();
+    (async()=>{ status.textContent="ぬりえ読込待ち…"; await tcWaitPaint(); tcDebugFill(); tcDebugRenderAll(); })();
 }
 function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新のゲームデータで作り直す
     const T=TCD; T.cards=[];
@@ -19499,15 +19499,15 @@ function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新
             const fig=el("figure"), card=tcBuild(d, T.imgs[id]); fig.appendChild(card);
             fig.appendChild(tcActions(kind, item.key, id));
             if(kind==="dino" && d.painted && window.NURI_GAME){   // ぬってある恐竜：白い所（ゲームのその恐竜と共通。相棒・ARの恐竜も かわる）
-                const G=window.NURI_GAME, o=G.blankOwn(item.key), b=el("button","tcd-blank"+(o? " on" : ""), "白い所："+(o? "元の模様" : "ぬりえどおり")); b.type="button"; b.setAttribute("aria-pressed", String(o));
+                const G=window.NURI_GAME, o=G.blankOwn(item.key), b=el("button","tcd-blank"+(o? " on" : ""), "白："+(o? "模様" : "白地")); b.type="button"; b.setAttribute("aria-pressed", String(o));
                 b.title="ぬっていない白い所を、ぬりえどおり（白）にするか、ぬりえなしの時の模様にするか（この恐竜だけ。ゲームの相棒・ARの恐竜も同じになります）";
                 b.addEventListener("click", ev=>{ ev.stopPropagation(); G.setBlankOwn(item.key, !G.blankOwn(item.key)); });   // 作り直しは下の nuriblank で
                 fig.lastChild.appendChild(b); }
             const S=d.score, P=S.paint;
-            fig.appendChild(el("figcaption",null,"No."+d.no+"　"+d.key+(kind==="dino"? "　ぬりえ："+(d.painted?"あり":"なし") : "")
-                +"　内部値 power "+d.power+"・discovery "+d.discovery+"・smarts "+d.smarts
-                +"\nスコア "+S.total+" ＝ ステータス "+S.statusTotal+"（"+S.status.pds+"＋"+S.status.n+"＋"+S.status.type+"）＋ 塗り方 "+S.paintTotal
-                +(P? "（power根拠 "+P.power+"・discovery根拠 "+P.discovery+"・smarts根拠 "+P.smarts+"・黄 "+P.yellow+"・型 "+P.type+"・広がり "+P.spread+"・塗った面積 "+P.cover+"）" : "（ぬり絵なし）")
+            fig.appendChild(el("figcaption",null,"No."+d.no+" "+d.key+(kind==="dino"? " ぬりえ"+(d.painted?"あり":"なし") : "")   // P＝power・D＝discovery・S＝smarts
+                +"　内部値 P"+d.power+"・D"+d.discovery+"・S"+d.smarts
+                +"\nスコア "+S.total+"＝ステ "+S.statusTotal+"（"+S.status.pds+"＋"+S.status.n+"＋"+S.status.type+"）＋塗り "+S.paintTotal
+                +(P? "（P"+P.power+"・D"+P.discovery+"・S"+P.smarts+"・黄"+P.yellow+"・型"+P.type+"・広がり"+P.spread+"・面積"+P.cover+"）" : "（ぬりえなし）")
                 +"\nエフェクト："+TC_EFFECT.label[tcEffectFor(kind, item.key, S.total)]));
             tcZoomable(card, ()=>tcDebugZoom(kind, item.key, id));
             pane.appendChild(fig); T.cards.push({ id, kind, key:item.key, card }); }); };
@@ -19517,17 +19517,17 @@ function tcDebugFill(){   // 文字（名称・★・スペシャル）は最新
     const F=T.panes.fx; F.innerHTML="";
     tcFxSamples().forEach(([kind,key,fx])=>{ const id="fx:"+kind+":"+key+":"+fx, fig=el("figure"), card=tcBuild(tcData(kind,key), T.imgs[id]);
         fig.appendChild(card); fig.appendChild(tcActions(kind, key, id, "_fx_"+fx));   // エフェクト見本もダウンロードできる（ファイル名の最後にエフェクトの名前：_fx_thunder など）
-        fig.appendChild(el("figcaption",null,"見本："+TC_EFFECT.label[fx]+"（"+tcFxRange(fx)+"）\n※スコアの数字はこのカードの実際の値"));
+        fig.appendChild(el("figcaption",null,"見本："+TC_EFFECT.label[fx]+"（"+tcFxRange(fx)+"）\n※数字は実際の値"));
         tcZoomable(card, ()=>tcDebugZoom(kind, key, id));
         F.appendChild(fig); T.cards.push({ id, kind, key, card, fx }); });
     requestAnimationFrame(()=>tcFit(T.root));
 }
 function tcActions(kind, key, id, sfx){   // ダウンロード・余白ありダウンロードのボタン（sfx＝ファイル名に足す文字。エフェクト見本＝"_fx_flame" など）
     const T=TCD, box=el("div","tcd-act");
-    const run=async(fn)=>{ const url=T.imgs[id]; if(!url){ T.status.textContent="画像ができてから押してください"; return; }
-        const all=box.querySelectorAll("button"); all.forEach(b=>b.disabled=true); T.status.textContent="カードを用意しています…";
+    const run=async(fn)=>{ const url=T.imgs[id]; if(!url){ T.status.textContent="画像の完成後に押す"; return; }
+        const all=box.querySelectorAll("button"); all.forEach(b=>b.disabled=true); T.status.textContent="カード用意中…";
         try{ T.status.textContent=(await fn(tcData(kind,key), url))||""; }
-        catch(e){ console.warn("[カード] 出力できませんでした", e); T.status.textContent="うまくいきませんでした"; }
+        catch(e){ console.warn("[カード] 出力できませんでした", e); T.status.textContent="失敗"; }
         finally{ all.forEach(b=>b.disabled=false); } };
     // 保存：作った画像は最後の1枚だけ覚えておく（iPhone で「もう一度押す」ときにすぐ保存できるように）
     const save=async(d, url, margin)=>{
@@ -19535,14 +19535,14 @@ function tcActions(kind, key, id, sfx){   // ダウンロード・余白あり�
         let blob=(T.lastFile && T.lastFile.key===ck)? T.lastFile.blob : null;
         if(!blob){ blob=await tcCardBlob(d, url, margin); T.lastFile={ key:ck, blob }; }
         try{ const how=await tcSaveBlob(blob, tcFileName(d, (sfx||"")+(margin? "_89mm" : "")));
-            return how==="share"? "「画像を保存」を選ぶと写真に入ります" : "ダウンロードしました"; }
+            return (margin? "余白" : "通常")+(how==="share"? "：共有シートで「画像を保存」" : "：DL済"); }
         catch(e){
             if(e && e.name==="AbortError") return "";   // 共有シートを閉じた
-            if(e && e.name==="NotAllowedError") return "準備ができました。もう一度ボタンを押すと保存できます";   // 準備に時間がかかった時（iPhone）
+            if(e && e.name==="NotAllowedError") return "準備完了。もう一度押すと保存";   // 準備に時間がかかった時（iPhone）
             throw e; } };
-    [["ダウンロード",(d,u)=>save(d,u,false)],
-     ["余白ありダウンロード",(d,u)=>save(d,u,true)]].forEach(([lab,fn])=>{
-        const b=el("button",null,lab); b.type="button"; b.addEventListener("click",(ev)=>{ ev.stopPropagation(); run(fn); }); box.appendChild(b); });
+    [["通常DL",(d,u)=>save(d,u,false),"通常のカードをダウンロード"],
+     ["余白DL",(d,u)=>save(d,u,true),"余白あり（89mm）のカードをダウンロード"]].forEach(([lab,fn,tt])=>{
+        const b=el("button",null,lab); b.type="button"; b.title=tt; b.addEventListener("click",(ev)=>{ ev.stopPropagation(); run(fn); }); box.appendChild(b); });
     return box;
 }
 function tcFxSamples(){ const L=[], all=k=>["thunder"].concat(TC_EFFECT.blaze[k], ["light","magic","scene"]);
@@ -19564,9 +19564,9 @@ function tcZoomable(card, zoom){   // 押すと1枚大きく表示
 async function tcDebugRerender(kind, key){
     const T=TCD; if(!T) return; const id=kind+":"+key;
     tcDebugFill();   // ボタンの表示・スコアの文字を合わせる
-    T.status.textContent="画像を作り直しています…";
+    T.status.textContent="作り直し中…";
     try{ const url=await tcRenderArt(kind, key, null); T.imgs[id]=url; T.cards.filter(c=>c.id===id).forEach(c=>tcSetImage(c.card,url)); T.status.textContent=""; }
-    catch(e){ console.warn("[カード] 作り直せませんでした", e); T.status.textContent="作り直せませんでした"; }
+    catch(e){ console.warn("[カード] 作り直せませんでした", e); T.status.textContent="作り直し失敗"; }
 }
 function tcDebugZoom(kind, key, id){   // id＝画像の名前（恐竜・犬＝"dino:trex" など／エフェクト見本＝"fx:dino:trex:flame" など）
     const T=TCD, z=el("div","tcd-zoom"), c=tcBuild(tcData(kind,key), T.imgs[id]);
@@ -19580,14 +19580,14 @@ async function tcDebugRenderAll(){
                     ...tcFxSamples().map(([k,key,fx])=>[k,key,fx,"fx:"+k+":"+key+":"+fx])];
         let n=0;
         for(const [kind,key,fx,id] of jobs){
-            T.status.textContent="画像を作っています "+(++n)+"/"+jobs.length;
+            T.status.textContent="画像作成中 "+(++n)+"/"+jobs.length;
             await new Promise(r=>setTimeout(r,30));   // 1枚ごとに画面へ手番を返す
             try{ const url=await tcRenderArt(kind,key,fx); T.imgs[id]=url;
                 T.cards.filter(c=>c.id===id).forEach(c=>tcSetImage(c.card,url)); }
             catch(e){ console.warn("[カード] 画像を作れませんでした", kind, key, e);
-                T.cards.filter(c=>c.id===id).forEach(c=>{ const w=c.card.querySelector(".tc-wait"); if(w) w.textContent="画像を作れませんでした"; }); }
+                T.cards.filter(c=>c.id===id).forEach(c=>{ const w=c.card.querySelector(".tc-wait"); if(w) w.textContent="作成失敗"; }); }
         }
-        T.status.textContent="できました（"+jobs.length+"枚）";
+        T.status.textContent="完成（"+jobs.length+"枚）";
     } finally { tcDisposeRenderer(); T.busy=false; }
 }
 
@@ -19754,7 +19754,7 @@ const EV_CSS=`
 /* カードの枠：縦横比 61:88 を padding で作る（iPhone の Safari で、画面の向きを変えると aspect-ratio の高さが 0 になることがあるため） */
 #tcEvent .tce-cardwrap{ position:relative; height:0; padding-top:144.262%; cursor:zoom-in; background:#2d2618; box-shadow:0 8px 20px rgba(0,0,0,.5); }
 #tcEvent .tce-cardimg{ position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:cover; }
-#tcEvent figure[data-busy] .tce-cardwrap::after, #tcEvent .tce-ph{ content:"画像を作っています…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
+#tcEvent figure[data-busy] .tce-cardwrap::after, #tcEvent .tce-ph{ content:"画像作成中…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
     background:rgba(23,18,11,.72); color:#ffd86a; font-weight:800; font-size:14px; }
 #tcEvent .tce-ph{ position:relative; height:0; padding:144.262% 0 0; border:1px dashed #8a6d2c; border-radius:8px; box-sizing:border-box; }
 #tcEvent .tce-ph > *{ position:absolute; left:8px; right:8px; text-align:center; }
