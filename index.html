@@ -19869,13 +19869,15 @@ function evOpen(){
     const pv=el("button",null,"2画面プレビュー"); pv.type="button"; pv.setAttribute("aria-pressed","false"); pv.addEventListener("click",()=>evPreview(pv.getAttribute("aria-pressed")!=="true"));
     const bulkC=el("button",null,""), bulkM=el("button",null,""); bulkC.type=bulkM.type="button";
     bulkC.addEventListener("click",()=>evBulkDownload(false)); bulkM.addEventListener("click",()=>evBulkDownload(true));
+    const zipC=el("button",null,""), zipM=el("button",null,""); zipC.type=zipM.type="button";   // ZIP で まとめて（一括と同じ：まだダウンロードしていないカードだけ。iPhone・iPad でも使える）
+    zipC.addEventListener("click",()=>evZipDownload(false)); zipM.addEventListener("click",()=>evZipDownload(true));
     // 縁を歩く恐竜の大きさの比（0＝同じ高さ〜1＝実寸の比）
     Object.keys(EV_SETS).forEach(n=>evSetPut(n, EV_SETS[n].def));   // 開くたびに既定値へ（開いているランキング画面も）
     const sliders=[evSlider("size"), evSlider("stage")].concat(EV_QR? [evSlider("qr")] : []);   // サイズ比・恐竜出現（秒）・QR表示（秒）
     const qrSet=el("button",null,"受け取りQRの設定（開発中）"); qrSet.type="button"; qrSet.addEventListener("click",evQrSetup);
     const readBtn=el("button",null,""); readBtn.type="button"; readBtn.addEventListener("click",evReadToggle);   // 読み取りのモード（決定してから／決定なし）
     readBtn.title="決定してから：名前を入れて「決定」を押したら、次の1枚を読みます（空欄のまま決定すると「"+TC_NAME.def+"」）\n決定なし：用紙をかざしたら、すぐ読みます\n（ページを開くたびに「決定してから」に戻ります）";
-    const tools=el("div","tce-tools"); [readBtn,rank,pv,only,blank].concat(blankAll,sliders,[bulkC,bulkM,mute,redoAll,delAll,seqReset]).concat(EV_QR? [qrSet] : []).forEach(b=>tools.appendChild(b)); bar.appendChild(tools);
+    const tools=el("div","tce-tools"); [readBtn,rank,pv,only,blank].concat(blankAll,sliders,[bulkC,bulkM,zipC,zipM,mute,redoAll,delAll,seqReset]).concat(EV_QR? [qrSet] : []).forEach(b=>tools.appendChild(b)); bar.appendChild(tools);
     root.appendChild(bar);
     // 左：名前とカメラ
     const main=el("div","tce-main"), side=el("div","tce-side");
@@ -19906,7 +19908,7 @@ function evOpen(){
     main.appendChild(side); main.appendChild(list);
     const body=el("div","tce-body"), pvPane=el("div","tce-pv"); body.appendChild(main); body.appendChild(pvPane); root.appendChild(body);
     document.body.appendChild(root);
-    EV.ui={ root, pvBtn:pv, pvPane, count, only, putBlank, bulkC, bulkM, redoAll, delAll, seqReset, input, hint, hintL, hintN, decide, readBtn, cam, video, camMsg, camOff, start, stop, sw, def, row, next, status, grid, empty, list };
+    EV.ui={ root, pvBtn:pv, pvPane, count, only, putBlank, bulkC, bulkM, zipC, zipM, redoAll, delAll, seqReset, input, hint, hintL, hintN, decide, readBtn, cam, video, camMsg, camOff, start, stop, sw, def, row, next, status, grid, empty, list };
     EV.read="confirm"; EV.conf=null; evReadUI();   // 開くたびに「決定してから」
     evCamMsg("「カメラを開始」を押してください","", "");
     evBc();   // ランキング画面が開いているかを受け取る
@@ -19964,8 +19966,13 @@ function evCount(){
     // 一括ダウンロード：まだダウンロードしていない枚数（見本は入れない）。実行中のボタンは「止める」
     const nb=(k)=>[...EV.recs.values()].filter(r=>evIsReal(r) && r.d && !(r.dl && r.dl[k])).length, B=EV.dlBulk;
     [[U.bulkC,false,"card","通常"],[U.bulkM,true,"margin","余白あり"]].forEach(([b,m,k,t])=>{ if(!b) return;
-        if(B && B.margin===m){ b.textContent="一括ダウンロードを止める"; b.disabled=false; }
+        if(B && !B.zip && B.margin===m){ b.textContent="一括ダウンロードを止める"; b.disabled=false; }
         else { const c=nb(k); b.textContent="一括ダウンロード（"+t+"）"+c+"枚"; b.disabled=!!B || c===0; } });
+    [[U.zipC,false,"card","通常"],[U.zipM,true,"margin","余白あり"]].forEach(([b,m,k,t])=>{ if(!b) return;   // ZIP：作っている間は「止める」／iPhone・iPad で できあがって 保存を待っている間は「保存する」
+        const R=EV.zipReady && EV.zipReady.margin===m ? EV.zipReady : null;
+        if(B && B.zip && B.margin===m){ b.textContent="ZIPを作るのを止める"; b.disabled=false; }
+        else if(R){ b.textContent="📦 ZIPを保存する（"+t+"）"+R.ids.length+"枚"; b.disabled=!!B; }
+        else { const c=nb(k); b.textContent="ZIPでダウンロード（"+t+"）"+c+"枚"; b.disabled=!!B || c===0; } });
     // 番号を1に戻せるのはカードが0枚のときだけ（残っているカードと番号・ファイル名が重ならないように）
     U.seqReset.disabled=n>0 || evPeekSeq()===1;   // 見本は番号を使わないので、見本があっても戻せる
     U.seqReset.title= n>0? "カードを一括削除すると押せます" : "";
@@ -20308,7 +20315,7 @@ function evReplay(id){
 
 /* ---- 一括ダウンロード（通常・余白あり、それぞれ。まだダウンロードしていないカードだけを、番号の順に1枚ずつ続けて保存）---- */
 async function evBulkDownload(margin){
-    if(EV.dlBulk){ if(EV.dlBulk.margin===margin) EV.dlBulk.stop=true; return; }   // 実行中にもう一度押す → 今の1枚が終わったら止める
+    if(EV.dlBulk){ if(!EV.dlBulk.zip && EV.dlBulk.margin===margin) EV.dlBulk.stop=true; return; }   // 実行中にもう一度押す → 今の1枚が終わったら止める
     const k=margin?"margin":"card", t=margin?"余白あり":"通常";
     const ids=[...EV.recs.values()].filter(r=>evIsReal(r) && r.d && !(r.dl && r.dl[k])).sort((a,b)=>a.id-b.id).map(r=>r.id);
     if(!ids.length){ evStatus(t+"：まだダウンロードしていないカードはありません"); return; }
@@ -20332,6 +20339,82 @@ async function evBulkDownload(margin){
         evStatus(t+"："+n+" 枚ダウンロードしました"+(job.stop? "（途中で止めました）" : ""));
     }catch(e){ console.warn("[イベントカード] 一括ダウンロード", e); evStatus(t+"："+n+" 枚目のあとで止まりました："+(e && e.message || e)); }
     finally{ EV.dlBulk=null; evCount(); }
+}
+
+/* ---- ZIP で まとめて ダウンロード（通常・余白あり、それぞれ。まだダウンロードしていないカードだけを、1つの ZIP に入れて保存）----
+   一括ダウンロードと同じカード（見本は入れない）。保存したら「ダウンロード済み」にする。iPhone・iPad でも使える（共有シートから「ファイルに保存」など）
+   iPhone・iPad：ZIP を作るのに時間がかかると、そのまま共有シートを出せない（押してから時間がたつと ブラウザが止める）→ ボタンが「📦 ZIPを保存する」に かわるので、もう一度押す */
+async function evZipDownload(margin){
+    const k=margin?"margin":"card", t=margin?"余白あり":"通常";
+    if(EV.dlBulk){ if(EV.dlBulk.zip && EV.dlBulk.margin===margin) EV.dlBulk.stop=true; return; }   // 作っている間に もう一度押す → 今の1枚が終わったら止める（ZIP は作らない）
+    if(EV.zipReady && EV.zipReady.margin===margin){ await evZipSave(EV.zipReady); return; }   // iPhone・iPad：できあがった ZIP を保存する
+    const ids=[...EV.recs.values()].filter(r=>evIsReal(r) && r.d && !(r.dl && r.dl[k])).sort((a,b)=>a.id-b.id).map(r=>r.id);
+    if(!ids.length){ evStatus(t+"：まだダウンロードしていないカードはありません"); return; }
+    const job=EV.dlBulk={ margin, zip:true, stop:false }; evCount();
+    const files=[], done=[];
+    try{
+        for(const id of ids){
+            if(job.stop) break;
+            const rec=EV.recs.get(id); if(!rec || !rec.d || (rec.dl && rec.dl[k])) continue;   // 途中で消された・1枚ずつ保存された
+            evStatus(t+"：ZIPを作っています "+(done.length+1)+" / "+ids.length+" 枚目（ボタンをもう一度押すと止まります）");
+            const url=await evArtUrl(id); let blob; try{ blob=await tcCardBlob(evCardData(rec), url, margin); } finally { URL.revokeObjectURL(url); }
+            if(!EV.recs.has(id)) continue;
+            files.push({ name:evFileName(rec, margin), data:new Uint8Array(await blob.arrayBuffer()) }); done.push(id);
+            await new Promise(r=>setTimeout(r,0));   // 画面を止めない
+        }
+        if(job.stop){ evStatus(t+"：ZIPを作るのを止めました（ZIPは作っていません）"); return; }
+        if(!done.length){ evStatus(t+"：まだダウンロードしていないカードはありません"); return; }
+        const d=new Date(), p2=(n)=>String(n).padStart(2,"0");
+        const name="cards_"+d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+"-"+p2(d.getHours())+p2(d.getMinutes())+(margin? "_89mm" : "")+"_"+done.length+"枚.zip";
+        const R={ margin, k, t, ids:done, name, blob:tcZipBlob(files, d) };
+        EV.dlBulk=null;
+        await evZipSave(R, true);
+    }catch(e){ console.warn("[イベントカード] ZIP", e); evStatus(t+"：ZIPを作れませんでした："+(e && e.message || e)); }
+    finally{ if(EV.dlBulk===job) EV.dlBulk=null; evCount(); }
+}
+async function evZipSave(R, first){   // R＝{ margin, k, t, ids, name, blob }／first＝作った直後（iPhone・iPad で 共有シートを出せなかったら「保存する」ボタンに）
+    const file=new File([R.blob], R.name, { type:"application/zip" });
+    if(tcIsIOS() && navigator.share && navigator.canShare && navigator.canShare({ files:[file] })){
+        try{ await navigator.share({ files:[file] }); }
+        catch(e){
+            EV.zipReady=R; evCount();
+            if(e && e.name==="AbortError") evStatus(R.t+"：保存をやめました（「📦 ZIPを保存する」を押すと、もう一度 保存できます）");
+            else evStatus(R.t+"：ZIPができました（"+R.ids.length+"枚）。「📦 ZIPを保存する」を押して保存してください");
+            return false;
+        }
+    } else {
+        const a=document.createElement("a"); a.href=URL.createObjectURL(R.blob); a.download=R.name;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 60000);
+    }
+    if(EV.zipReady===R) EV.zipReady=null;
+    // ダウンロード済みにする（1枚ずつ・一括と同じ）
+    const now=Date.now(), recs=R.ids.map(id=>EV.recs.get(id)).filter(Boolean);
+    recs.forEach(rec=>{ rec.dl=Object.assign({ card:0, margin:0 }, rec.dl); rec.dl[R.k]=now; });
+    try{ await evTx("cards","readwrite",s=>{ recs.forEach(rec=>{ if(EV.recs.has(rec.id)) s.put(rec); }); }); }catch(e){ console.warn("[イベントカード] ZIP：ダウンロード済みの記録", e); }
+    recs.forEach(rec=>{ if(EV.recs.has(rec.id)) evUpdateFig(rec.id); });
+    evStatus(R.t+"："+recs.length+" 枚を ZIP（"+R.name+"）で ダウンロードしました");
+    evCount();
+    return true;
+}
+// ZIP を作る（圧縮なし：PNG は もう圧縮されているので そのまま入れる。ファイル名は UTF-8）
+function tcZipBlob(files, date){
+    const enc=new TextEncoder(), d=date||new Date(), parts=[], cen=[];
+    const dosT=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1))&0xFFFF, dosD=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate())&0xFFFF;
+    let off=0;
+    for(const f of files){
+        const nm=enc.encode(f.name), data=f.data, crc=tcCrc(data);
+        const lh=new Uint8Array(30+nm.length), v=new DataView(lh.buffer);
+        v.setUint32(0,0x04034b50,true); v.setUint16(4,20,true); v.setUint16(6,0x0800,true); v.setUint16(8,0,true); v.setUint16(10,dosT,true); v.setUint16(12,dosD,true);
+        v.setUint32(14,crc,true); v.setUint32(18,data.length,true); v.setUint32(22,data.length,true); v.setUint16(26,nm.length,true); v.setUint16(28,0,true); lh.set(nm,30);
+        const ch=new Uint8Array(46+nm.length), c=new DataView(ch.buffer);
+        c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0x0800,true); c.setUint16(10,0,true); c.setUint16(12,dosT,true); c.setUint16(14,dosD,true);
+        c.setUint32(16,crc,true); c.setUint32(20,data.length,true); c.setUint32(24,data.length,true); c.setUint16(28,nm.length,true); c.setUint16(30,0,true); c.setUint16(32,0,true);
+        c.setUint16(34,0,true); c.setUint16(36,0,true); c.setUint32(38,0,true); c.setUint32(42,off,true); ch.set(nm,46);
+        parts.push(lh, data); cen.push(ch); off+=lh.length+data.length;
+    }
+    const cenSize=cen.reduce((a,b)=>a+b.length,0), e=new Uint8Array(22), ev=new DataView(e.buffer);
+    ev.setUint32(0,0x06054b50,true); ev.setUint16(8,files.length,true); ev.setUint16(10,files.length,true); ev.setUint32(12,cenSize,true); ev.setUint32(16,off,true);
+    return new Blob(parts.concat(cen,[e]), { type:"application/zip" });
 }
 
 /* ---- 名前の変更 ---- */
@@ -20394,7 +20477,7 @@ async function evDeleteAll(){
         +"\n元に戻せません。よろしいですか？\n（削除のあと、見本"+EV_SAMPLES.length+"枚と恐竜カード"+((typeof DINOS!=="undefined")? DINOS.length : 8)+"枚を新しく作ります）"
         +(EV_QR && real.some(r=>r.qr && r.qr.at) ? "\n（受け取りQRを出したカードは、期限まで受け取れます）" : ""))) return;
     // 受け取りQR（開発中）：GAS（ドライブ）の方は消さない（期限まで受け取れる）
-    EV.gen++; EV.queue.length=0; EV.cq.length=0; EV.recs.clear();
+    EV.gen++; EV.queue.length=0; EV.cq.length=0; EV.recs.clear(); EV.zipReady=null;   // 保存を待っている ZIP（iPhone・iPad）も すてる
     EV.figs.clear(); [...EV.urls.keys()].forEach(evDropUrl); EV.ui.grid.innerHTML=""; EV.lastFile=null; evCount();
     try{ await evTx(EV_DB.stores,"readwrite",(...S)=>{ S.forEach(s=>s.clear()); }); evStatus("すべて削除しました"); evNotify("clear"); }
     catch(e){ console.warn(e); evStatus("削除できませんでした。開き直して確認してください"); return; }
