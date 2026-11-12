@@ -347,6 +347,36 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 }
 #nuriDone{ background:linear-gradient(#2f7a3a,#1d5226)!important; border-color:#7fe08f!important; color:#fff!important; }
 #nuriDone,#nuriAgain{ display:none; }
+/* ぬりえを よみこむ（カメラ画面・AR画面）：ぬりえの ためかた（押すと かわる）と、たまっている ぬりえの カード（あたらしい じゅん）
+   たて：AR＝上の帯の下／カメラ＝下の ボタンの上 に 1れつ。よこ：左はしに 2れつ（用紙を うつす わくを なるべく ふさがない） */
+.nstock{ position:absolute; display:none; flex-direction:column; align-items:flex-start; gap:6px; pointer-events:auto; z-index:2; box-sizing:border-box; }
+.nstock .ns-mode{ max-width:100%; padding:6px 12px; border-radius:999px; border:1px solid rgba(255,230,120,.8); background:rgba(10,7,26,.9); color:#ffe6a6;
+    font:inherit; font-weight:800; font-size:13px; line-height:1.35; white-space:nowrap; cursor:pointer; }
+.nstock .ns-mode .sw{ margin-left:6px; color:#8ff0ff; }
+.nstock .ns-mode:disabled{ cursor:default; border-color:rgba(200,190,230,.45); color:#efe6ff; }
+.nstock .ns-cards{ display:flex; gap:5px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; max-width:100%; padding:2px; box-sizing:border-box; }
+.nstock .ns-card{ position:relative; flex:0 0 auto; width:46px; aspect-ratio:61/88; border-radius:5px; overflow:hidden; background:rgba(42,36,22,.92); border:1px solid rgba(210,180,120,.55); }
+.nstock .ns-card img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.nstock .ns-card .ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; font-size:9px; line-height:1.2; color:#e8dcff; padding:2px; word-break:break-all; }
+.nstock .ns-card .del{ position:absolute; left:0; right:0; bottom:0; background:rgba(170,30,30,.92); color:#fff; font-size:8px; font-weight:800; text-align:center; line-height:1.35; padding:1px 0; word-break:keep-all; }   /* せまい時は「つぎ／きえる」の 2行 */
+.nstock .ns-card.new{ animation:nsNew 1.8s ease-out; }
+@keyframes nsNew{ 0%{ transform:scale(1.3); box-shadow:0 0 0 3px #ffe6a6; } 100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,230,166,0); } }
+.nstock .ns-empty{ font-size:12px; color:#d8ccff; background:rgba(10,7,26,.75); padding:4px 10px; border-radius:8px; white-space:nowrap; }
+.nstock .ns-mode .ct{ margin-left:2px; }
+#nuriStock{ left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom) + 92px); width:min(94vw,560px); align-items:center; }
+#nuriStock .ns-card{ width:min(46px, calc((94vw - 44px) / 8)); }   /* 8まいが 1れつに おさまる 大きさ */
+#lphNStock .ns-card{ width:min(46px, calc((100vw - 64px) / 8)); }
+@media (max-width:600px){ #nuriStock{ bottom:calc(var(--nuriActH, 120px) + env(safe-area-inset-bottom) + 22px); } }
+#lphNStock{ top:calc(env(safe-area-inset-top) + 100px); left:10px; right:10px; }
+@media (orientation:landscape){
+  #nuriStock, #lphNStock{ left:10px; right:auto; width:122px; align-items:stretch; }
+  #nuriStock{ top:50%; bottom:auto; transform:translateY(-50%); max-height:calc(100vh - 40px); }
+  #lphNStock{ top:calc(env(safe-area-inset-top) + 100px); max-height:calc(100vh - env(safe-area-inset-top) - 230px); }
+  .nstock .ns-mode{ white-space:normal; word-break:keep-all; text-align:left; font-size:12px; padding:6px 10px; border-radius:12px; }   /* ことばの 切れめ（空白）で 折りかえす */
+  .nstock .ns-mode .nm{ display:block; }
+  .nstock .ns-cards{ display:grid; grid-template-columns:repeat(2,1fr); overflow-x:hidden; overflow-y:auto; min-height:0; }
+  #nuriStock .ns-card, #lphNStock .ns-card{ width:auto; }
+}
 #nuriScan:not([data-mode="camera"]) #nuriCamSw, #nuriScan:not([data-mode="camera"]) #nuriCamDef, #nuriCamSw[hidden], #nuriCamDef[hidden]{ display:none !important; }   /* カメラの切り替えは読み取り中だけ */
 #nuriAR, #nuriARBig{ background:linear-gradient(135deg,#7c3aed,#1d4ed8)!important; border-color:#8ff0ff!important; color:#fff!important; }
 #nuriScan:not([data-mode="done"]) #nuriAR, #nuriScan:not([data-mode="done"]) #nuriARBig, #nuriScan:not([data-mode="done"]) #nuriHatchHere{ display:none!important; }
@@ -1622,6 +1652,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
     <div id="lphFloor">🔍 ゆかを さがしているよ… スマホを すこし したに むけて、ゆっくり うごかしてね</div>
     <div id="lphScanFrame"></div>
     <div id="lphNCard"><small id="lphNCont" hidden></small><b id="lphNCardT"></b><span id="lphNCardS"></span></div>   <!-- lphNCont＝れんぞくで よみこむ時だけ -->
+    <div id="lphNStock" class="nstock"></div>   <!-- ぬりえの ためかた（押すと かわる）＋ たまっている ぬりえの カード（ぬりえの 読み取り中だけ） -->
     <div id="lphCardBar"><button type="button" id="lphCardCount">📖 ずかん 0/8</button><button type="button" id="lphCardNext">🦕 つぎの カードを よむ</button><button type="button" id="lphCardRes">📋 きろくを みる</button><button type="button" id="lphCardAll">⛏ すべて はっくつ</button><button type="button" id="lphCardEnd">おわる</button></div>   <!-- たんけん「ほって かえす」 -->
     <div id="lphFlash"></div>
     <div id="lphCap">
@@ -1764,6 +1795,7 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
   <div id="nuriFrame"></div>
   <div id="nuriPreview"></div>
   <div class="nuriCard"><p id="nuriCont" hidden></p><p id="nuriMsg"></p><p id="nuriSub"></p></div>   <!-- nuriCont＝れんぞくで よみこむ時だけ -->
+  <div id="nuriStock" class="nstock"></div>   <!-- ぬりえの ためかた（押すと かわる）＋ たまっている ぬりえの カード（読み取り中だけ） -->
   <div id="nuriViews">
     <button type="button" data-yaw="-1.5708" data-pitch="0.1">みぎ</button>
     <button type="button" data-yaw="0" data-pitch="0.1">まえ</button>
@@ -16871,7 +16903,7 @@ function nuriPkNum(pk){   // 同じ種類の ぬりえが いくつか ある時
 function nuriPkLabel(pk){ const s=sheetOf(pk); return (s? s.name : nsp(pk))+nuriPkNum(pk); }   // 名前（例：ティラノサウルス②）
 function nuriPksOf(sp){ return nuriPaintedKeys().filter(k=>nsp(k)===sp); }   // その種類の ぬりえ（読み込んだ順）
 function nuriRandomPk(sp){ const a=nuriPksOf(sp); return a.length ? a[(Math.random()*a.length)|0] : null; }   // その種類の ぬりえから ランダムに1体（ない時は null）
-function nuriSlotsChanged(){ try{ if(window.__nuriPaintsChanged) window.__nuriPaintsChanged(); }catch(e){ console.warn("[ぬりえ] 相棒・一覧の更新", e); } }   // ぬりえが ふえた・へった（相棒・一覧を合わせる）
+function nuriSlotsChanged(){ try{ if(window.__nuriPaintsChanged) window.__nuriPaintsChanged(); }catch(e){ console.warn("[ぬりえ] 相棒・一覧の更新", e); } try{ nuriStockPaint(); }catch(_){ } }   // ぬりえが ふえた・へった（相棒・一覧を合わせる）
 
 const NURI_PRE={};   // 用紙の表（pix）：ファイル名 → 届いたままのバイト列（Promise）。入る前の準備で読み、読み取りの時はネットを使わない
 async function nuriFetchRaw(name){ const r=await fetch(NURI_CFG.dir+name,{cache:"no-cache"}); if(!r.ok) throw new Error(name+" "+r.status); return r.arrayBuffer(); }
@@ -17237,6 +17269,76 @@ function nuriContTag(){   // メッセージの枠の しるし（カメラ画�
     const t= NURI_CONT.on ? "🔁 れんぞく よみこみ"+(NURI_CONT.n? "（"+NURI_CONT.n+"まい よめたよ）" : "") : "";
     for(const id of ["nuriCont","lphNCont"]){ const e=document.getElementById(id); if(e){ e.textContent=t; e.hidden=!t; } }
 }
+/* ---- ぬりえを よみこむ（ふつう・れんぞく）の画面：ぬりえの ためかた ＋ たまっている ぬりえの カード ----
+ *   ためかたの ボタン：おすと かわる（おすすめ設定オフの時だけ。オン・読み取り中・きりかえ中・AR の「もういちど よむ」の間は 表示だけ）
+ *   カード：あたらしい じゅん（8たいまで ためる＝よみこんだ じゅん／しゅるいごとに 1たい＝よみこんだ 日時）。8たい たまっている時は いちばん ふるい 1たいに「つぎ きえる」
+ *   カメラ画面（読み取り中）と AR画面（ぬりえの 読み取り中）に出す。0.3秒ごとに ようすを みて 合わせる（かわった時だけ 作りなおす） */
+const NS={ busy:false, sig:"", mode:null, prev:null, t:new WeakMap() };
+function nuriStockWhere(){
+    const o=$("nuriScan"); if(o && o.classList.contains("open") && o.dataset.mode==="camera") return "cam";
+    const r=document.getElementById("litePh");
+    if(r && r.classList.contains("lph-scan") && typeof LPH!=="undefined" && LPH.scan && !LPH.card) return "ar";
+    return "";
+}
+function nuriStockLock(where){   // 押せない わけ（""＝押せる）
+    if((typeof recoOn==="undefined") || recoOn) return "reco";
+    if(NS.busy) return "busy";
+    if(where==="cam" && SC.busy) return "busy";
+    if(where==="ar"){ if(LPH.reread) return "reread"; if(LPH.scan && LPH.scan.busy) return "busy"; }
+    return "";
+}
+function nuriStockList(){   // あたらしい じゅん
+    const L=nuriPaintedKeys().filter(k=>NURI.paint[k]);
+    if(NURI.mode==="slots") return L.sort((a,b)=>nsid(b)-nsid(a));   // 通し番号＝よみこんだ じゅん（きえるのは いちばん ちいさい 番号から）
+    const fresh=(NS.mode===NURI.mode);   // おなじ ためかたで 2かいめから：あたらしく 出てきた ぬりえ＝いま よんだ（保存は あとからなので 日時は いま）
+    for(const k of L){ const p=NURI.paint[k]; if(!NS.t.has(p)) NS.t.set(p, fresh? Date.now() : (nuriPaintDate(k)||0)); }
+    return L.sort((a,b)=>NS.t.get(NURI.paint[b])-NS.t.get(NURI.paint[a]));
+}
+function nuriStockImg(img, pk){   // ずかんと おなじ カード（その ぬりえ）
+    const GC=(typeof gameCards==="function")? gameCards() : null; if(!GC) return;
+    const lab=CARD_LABEL.dino, put=()=>{ const u=GC.src("dino", pk, lab, true); if(u && img.isConnected) img.src=u; };
+    if(GC.fresh("dino", pk, lab, true)) put(); else GC.ensure("dino", pk, lab, true).then(put, ()=>{});
+}
+function nuriStockPaint(){
+    const els=[$("nuriStock"), $("lphNStock")].filter(Boolean); if(!els.length) return;
+    const where=nuriStockWhere();
+    els.forEach(e=>{ const on=(where==="cam" && e.id==="nuriStock") || (where==="ar" && e.id==="lphNStock"); e.style.display=on? "flex" : "none"; });
+    if(!where) return;
+    for(const e of els) if(!e.firstChild){   // 中身は はじめに 1かいだけ 作る
+        const b=document.createElement("button"); b.type="button"; b.className="ns-mode";
+        const stop=(ev)=>ev.stopPropagation(); e.addEventListener("pointerdown", stop); e.addEventListener("touchstart", stop, { passive:true });   // 恐竜の ジェスチャに しない
+        b.addEventListener("click", ev=>{ ev.stopPropagation(); nuriStockSwitch(); });
+        const c=document.createElement("div"); c.className="ns-cards"; e.appendChild(b); e.appendChild(c); }
+    const slots=(NURI.mode==="slots"), lock=nuriStockLock(where);
+    if(NS.busy){ els.forEach(e=>{ const b=e.firstChild; if(b.dataset.k!=="busy"){ b.dataset.k="busy"; b.textContent="⏳ きりかえちゅう…"; b.disabled=true; } }); return; }
+    const list=nuriStockList();
+    const nm=slots? "🖍 8たいまで ためる" : "🦖 しゅるいごとに 1たい", ct=slots? "（"+list.length+"/"+NURI_SLOT_MAX+"）" : "（"+list.length+"しゅるい）", txt=nm+ct;
+    els.forEach(e=>{ const b=e.firstChild, k=txt+"|"+lock; if(b.dataset.k===k) return; b.dataset.k=k; b.textContent="";
+        for(const [c,t] of [["nm",nm],["ct",ct]]){ const sp=document.createElement("span"); sp.className=c; sp.textContent=t; b.appendChild(sp); }   // よこむき：名前と 数で 行を わける
+        if(!lock){ const sw=document.createElement("span"); sw.className="sw"; sw.textContent="⇄"; b.appendChild(sw); }
+        b.disabled=!!lock;
+        b.title= lock==="reco"? "おすすめ設定オンの ときは いつも 8たいまで ためる" : lock==="reread"? "いまの きょうりゅうを みている あいだは かえられないよ" : lock? "" : (slots? "おすと「しゅるいごとに 1たい」に かわるよ" : "おすと「8たいまで ためる」に かわるよ"); });
+    const sig=NURI.mode+"|"+list.join(","), objs=new Map(list.map(k=>[k, NURI.paint[k]]));   // objs：同じ キーでも よみなおすと 模様の 入れものが かわる（しゅるいごとに 1たい の うわがき）
+    const changed=(sig!==NS.sig) || !NS.prev || list.some(k=>NS.prev.get(k)!==objs.get(k));
+    if(!changed) return;
+    const prev=(NS.mode===NURI.mode)? NS.prev : null; NS.sig=sig; NS.prev=objs; NS.mode=NURI.mode;
+    els.forEach(e=>{ const box=e.lastChild; box.innerHTML="";
+        if(!list.length){ const em=document.createElement("div"); em.className="ns-empty"; em.textContent="まだ ぬりえは ないよ"; box.appendChild(em); return; }
+        list.forEach((pk,i)=>{ const c=document.createElement("div"), nm=nuriPkLabel(pk); c.className="ns-card"+((prev && prev.get(pk)!==objs.get(pk))? " new" : ""); c.title=nm;
+            const ph=document.createElement("span"); ph.className="ph"; ph.textContent=nm; c.appendChild(ph);
+            const img=document.createElement("img"); img.alt=nm; img.style.visibility="hidden"; img.onload=()=>{ img.style.visibility=""; ph.style.display="none"; }; c.appendChild(img);
+            if(slots && list.length>=NURI_SLOT_MAX && i===list.length-1){ const d=document.createElement("span"); d.className="del"; d.textContent="つぎ きえる"; c.appendChild(d); }   // 9たいめを よむと きえる
+            box.appendChild(c); nuriStockImg(img, pk); }); });
+}
+function nuriStockSwitch(){   // ためかたを かえる（メイン画面の「ぬりえの ためかた」と おなじ）
+    const where=nuriStockWhere(); if(!where || nuriStockLock(where)) return;
+    const v=(NURI.mode==="slots")? "species" : "slots";
+    try{ localStorage.setItem(NURI_MODE_KEY, v); }catch(_){ }
+    try{ if(typeof lphSnd==="function") lphSnd(); }catch(_){ }
+    NS.busy=true; nuriMenuRefresh(); nuriStockPaint();
+    Promise.resolve(nuriModeSync()).catch(()=>{}).finally(()=>{ NS.busy=false; nuriStockPaint(); });
+}
+setInterval(()=>{ try{ nuriStockPaint(); }catch(e){ console.warn("[ぬりえ] ためかたの表示", e); } }, 300);
 function scMsg(t, sub){ const m=$("nuriMsg"), s=$("nuriSub"); if(m) m.textContent=t||""; if(s) s.textContent=sub||""; }
 function scMode(mode){ const o=$("nuriScan"); if(o) o.dataset.mode=mode; }
 function scStopCamera(){
