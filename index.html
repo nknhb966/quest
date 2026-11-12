@@ -12682,7 +12682,9 @@ function lphFloorUpdate(frame){
         }
     }
     if(best===null) return;
-    if(!LPH.floorFound){ LPH.floorFound=true; LPH.floorY=best; lph$("lphFloor").classList.remove("on"); lphMsg("ゆかを みつけたよ！ ゆかに おくね"); try{ chord([523,659,784],0.05,"triangle",0.35); }catch(_){ } }
+    if(!LPH.floorFound){ LPH.floorFound=true; LPH.floorY=best; lph$("lphFloor").classList.remove("on");
+        const quiet=!!(window.__nuriContOn && window.__nuriContOn());   // れんぞくで よみこむ：床は つかわない（卵を 出さない）ので 知らせない（音も「よめたよ！」と おなじで まぎらわしい）
+        if(!quiet){ lphMsg("ゆかを みつけたよ！ ゆかに おくね"); try{ chord([523,659,784],0.05,"triangle",0.35); }catch(_){ } } }
     else if(LPH.floorGuess){ LPH.floorY=best; LPH.floorGuess=false; }   // 仮の床（机の下）→ 本当の床が見えた
     else if(best<LPH.floorY) LPH.floorY=best;   // より低い面が見えたら床を下げる（机などより床を優先）
 }
@@ -17856,6 +17858,7 @@ function lphContDone(key, D, out, sig){
     S.busy=false;
 }
 window.__nuriArScan={ start:lphScanStart, frame:lphScanFrame, stop:()=>{ LPH.scan=null; } };
+window.__nuriContOn=()=>NURI_CONT.on;   // AR の ほうから「れんぞくで よみこむ」中かを しらべる
 // ---- たんけん「ほって かえす」：きょうりゅうカード（マーカー1つ。番号＝CARD_BASE＋恐竜の番号）を読む。位置は使わない（卵は「ARで おおきく みる」と同じ所）----
 const CARD_BASE=20;   // No.1〜8 → マーカー 20〜27（ぬりえの 0〜11 と重ならない）
 async function lphCardStart(){
