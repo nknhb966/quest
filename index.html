@@ -16618,23 +16618,47 @@ function nuriHomography(src, dst){
 }
 
 // ---- マーカー（js-aruco2 の検出結果）→ 射影変換 ----
-function nuriMarkersToHomography(markers, layout, scale, sheetIds){
-    const best={};
-    for(const m of markers||[]){ const c=m.corners; let a=0; for(let i=0;i<4;i++){ const p=c[i],q=c[(i+1)%4]; a+=p.x*q.y-q.x*p.y; } a=Math.abs(a)/2;
-        if(!best[m.id] || best[m.id].area<a) best[m.id]={area:a, corners:c}; }        // 同じIDは外側（大きい方）を採用
-    const K=layout.pxPerMm, S=layout.markers.size_mm, cornersMM=layout.markers.corners;
-    const src=[], dst=[], missing=[];
-    for(const id of Object.keys(cornersMM)){ const b=best[id]; if(!b){ missing.push(+id); continue; }
-        const [x,y]=cornersMM[id]; const sq=[[x,y],[x+S,y],[x+S,y+S],[x,y+S]];
-        for(let i=0;i<4;i++){ src.push([sq[i][0]*K, sq[i][1]*K]); dst.push([b.corners[i].x/scale, b.corners[i].y/scale]); } }
-    const ids=Object.keys(best).map(Number);
-    const sheetId=ids.find(i=>sheetIds.includes(i));
-    const otherSheet=sheetId===undefined && ids.some(i=>i>=10 && i<64);
-    const found=4-missing.length;
-    if(missing.length) return { ok:false, found, missing, sheetId, otherSheet, ids };
-    const H=nuriHomography(src,dst);
-    return { ok:!!H && sheetId!==undefined, H, found, missing, sheetId, otherSheet, ids, corners:dst };
+// 四すみの マーカーは どの用紙も 同じ番号（0〜3）。となりの用紙が カメラに うつっていても まざらないように、
+//   同じ番号が いくつか ある時は 4つの くみあわせを ためして、1まいの 用紙として 形の つじつまが あうもの（4つの マーカーの 角 16点が 1つの 射影変換に のる）だけ つかう。
+//   1まいの 用紙が いくつも ある時は center（わくの まんなか：画像の 座標）に いちばん ちかい 用紙。種類（左下の 2つめの 四角）も その用紙の その位置に あるものだけ。
+//   center を わたさない時は うつった マーカー ぜんぶの まんなか
+const NURI_SHEET_MARK_MM=[26,190];   // 種類の マーカー（左下の 2つめの 四角）の 左上（mm）：全シート共通（12mm角）
+const NURI_MIX_RMS=0.3;              // つじつまの ずれ（マーカー 1辺に たいする 割合）が これより 大きい くみあわせは、べつべつの 用紙が まざっている
+function nuriMarkersToHomography(markers, layout, scale, sheetIds, center){
+    const K=layout.pxPerMm, S=layout.markers.size_mm, cornersMM=layout.markers.corners, cids=Object.keys(cornersMM);
+    const ms=(markers||[]).map(m=>{ const c=m.corners.map(p=>[p.x/scale, p.y/scale]); let a=0; for(let i=0;i<4;i++){ const p=c[i], q=c[(i+1)%4]; a+=p[0]*q[1]-q[0]*p[1]; } a=Math.abs(a)/2;
+        return { id:m.id, c, area:a, side:Math.sqrt(a), cx:(c[0][0]+c[1][0]+c[2][0]+c[3][0])/4, cy:(c[0][1]+c[1][1]+c[2][1]+c[3][1])/4 }; });
+    const by={}; for(const m of ms) (by[m.id]=by[m.id]||[]).push(m);
+    const ids=Object.keys(by).map(Number);
+    const missing=cids.filter(id=>!by[id]).map(Number), found=cids.length-missing.length;
+    const ctr= center || (ms.length? { x:ms.reduce((t,m)=>t+m.cx,0)/ms.length, y:ms.reduce((t,m)=>t+m.cy,0)/ms.length } : { x:0, y:0 });
+    const nearest=(list, x, y, lim)=>{ let b=null, bd=(lim==null? Infinity : lim); for(const m of list){ const d=Math.hypot(m.cx-x, m.cy-y); if(d<bd){ bd=d; b=m; } } return b; };
+    const partial=(n)=>{   // 1まいの 用紙として そろわない：まんなかに ちかい 種類の マーカーで「〇〇の ぬりえだね」だけ
+        const sm=nearest(ms.filter(m=>sheetIds.includes(m.id)), ctr.x, ctr.y), sheetId=sm? sm.id : undefined;
+        return { ok:false, found:n, missing:(n<cids.length && !missing.length)? [Number(cids[0])] : missing, sheetId, otherSheet:sheetId===undefined && ids.some(i=>i>=10 && i<64), ids }; };
+    if(missing.length) return partial(found);
+    const src=[]; for(const id of cids){ const [x,y]=cornersMM[id]; for(const p of [[x,y],[x+S,y],[x+S,y+S],[x,y+S]]) src.push([p[0]*K, p[1]*K]); }
+    const lists=cids.map(id=>by[id].slice().sort((a,b)=>b.area-a.area).slice(0,4));   // 同じ番号が 多すぎる時は 大きく うつった方から 4つまで
+    const pj=(H,p)=>{ const w=H[6]*p[0]+H[7]*p[1]+H[8]; return [(H[0]*p[0]+H[1]*p[1]+H[2])/w, (H[3]*p[0]+H[4]*p[1]+H[5])/w]; };
+    const pick=new Array(cids.length); let best=null;
+    const tryOne=()=>{
+        const dst=[]; let side=0, cx=0, cy=0; for(const m of pick){ for(const p of m.c) dst.push(p); side+=m.side; cx+=m.cx; cy+=m.cy; } side/=pick.length; cx/=pick.length; cy/=pick.length;
+        const H=nuriHomography(src, dst); if(!H) return;
+        let e2=0; for(let i=0;i<src.length;i++){ const q=pj(H, src[i]); e2+=(q[0]-dst[i][0])**2+(q[1]-dst[i][1])**2; }
+        if(!(Math.sqrt(e2/src.length) <= NURI_MIX_RMS*(side||1))) return;   // べつべつの 用紙の マーカーが まざっている
+        const d=Math.hypot(cx-ctr.x, cy-ctr.y);
+        if(!best || d<best.d) best={ d, H, dst, side };
+    };
+    const walk=(k)=>{ if(k===lists.length){ tryOne(); return; } for(const m of lists[k]){ pick[k]=m; walk(k+1); } };
+    walk(0);
+    if(!best) return partial(cids.length-1);   // 4すみは うつっているが 1まいの 用紙として そろわない（となりの 用紙の すみ だけ 見えている など）→「4すみを ぜんぶ」
+    const q=pj(best.H, [(NURI_SHEET_MARK_MM[0]+S/2)*K, (NURI_SHEET_MARK_MM[1]+S/2)*K]);   // この用紙の 種類の マーカーの 位置
+    const sm=nearest(ms.filter(m=>!(String(m.id) in cornersMM)), q[0], q[1], best.side*0.8);
+    const sheetId=(sm && sheetIds.includes(sm.id))? sm.id : undefined;
+    const own=cids.map(Number).concat(sm? [sm.id] : []);   // この用紙の マーカーだけ（前の版の しらべにも つかう）
+    return { ok:!!best.H && sheetId!==undefined, H:best.H, found:cids.length, missing:[], sheetId, otherSheet:sheetId===undefined && !!sm && sm.id>=10 && sm.id<64, ids:own, corners:best.dst };
 }
+const nuriResCenter=(r)=>{ if(!r || !r.corners || !r.corners.length) return null; let x=0, y=0; for(const p of r.corners){ x+=p[0]; y+=p[1]; } return { x:x/r.corners.length, y:y/r.corners.length }; };   // 高解像度で さがしなおす時：プレビューで えらんだ 用紙の まんなか
 
 // ---- 色：① scan_v2.vivid（OpenCV 8bit Lab）と同じ手順 ----
 const NURI_M=[0.4124564,0.3575761,0.1804375,0.2126729,0.7151522,0.0721750,0.0193339,0.1191920,0.9503041];
@@ -17453,7 +17477,7 @@ function scTick(){
     const ctx=c.getContext("2d",{willReadFrequently:true}); ctx.drawImage(v,0,0,w,h);
     const img=ctx.getImageData(0,0,w,h);
     let lum=0; for(let i=0;i<img.data.length;i+=64) lum+=img.data[i]*0.3+img.data[i+1]*0.59+img.data[i+2]*0.11; lum/=img.data.length/64;
-    let res=null; try{ res=nuriMarkersToHomography(SC.det.detectImage(w,h,img.data), NURI.layout, s, NURI.reg.sheets.map(x=>x.id)); }catch(e){ res=null; }
+    let res=null; try{ res=nuriMarkersToHomography(SC.det.detectImage(w,h,img.data), NURI.layout, s, NURI.reg.sheets.map(x=>x.id), { x:vw/2, y:vh/2 }); }catch(e){ res=null; }   // わくの まんなか＝画面の まんなか
     const el=(performance.now()-SC.t0)/1000;
     const key=res && res.sheetId!==undefined ? scSheetKey(res.sheetId) : null;
     if(NURI_CONT.on && SC.contWait){   // れんぞく：さっき読んだ紙が うつっている間は 読まない（音も出さない）。はずれたら（0.4秒）／ちがう恐竜の紙なら つぎへ
@@ -17501,7 +17525,7 @@ function scCapture(resSmall, s, key, sig){   // sig＝れんぞく：読んだ�
     setTimeout(()=>{
         try{
             const D=NURI.maps[key];
-            let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(vw,vh,photo.data), NURI.layout, 1, [D.info.sheetMarkerId]); }catch(_){}
+            let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(vw,vh,photo.data), NURI.layout, 1, [D.info.sheetMarkerId], nuriResCenter(resSmall)); }catch(_){}
             if(!res || !res.ok) res=resSmall;                            // 高解像度で見失った時は、プレビューで見つけた位置を使う
             const out=nuriProcess(photo, res.H, D);
             photo=null;
@@ -17543,7 +17567,7 @@ function scContCapture(photo, resSmall, key, vw, vh, sig){
         let msg, sub;
         try{
             const D=NURI.maps[key];
-            let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(vw,vh,photo.data), NURI.layout, 1, [D.info.sheetMarkerId]); }catch(_){}
+            let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(vw,vh,photo.data), NURI.layout, 1, [D.info.sheetMarkerId], nuriResCenter(resSmall)); }catch(_){}
             if(!res || !res.ok) res=resSmall;                            // 高解像度で見失った時は、プレビューで見つけた位置を使う
             const out=nuriProcess(photo, res.H, D);
             photo=null;
@@ -17669,7 +17693,7 @@ function lphScanFrame(frame){
     if(!S.gotCam){ S.gotCam=true; lphNCard("ぬりえを わくに あわせてね","4つの かどの くろい しかくが うつるように してね"); }
     const img=g.img, w=g.W, h=g.H, vw=g.fullW, vh=g.fullH;
     let lum=0; for(let i=0;i<img.data.length;i+=64) lum+=img.data[i]*0.3+img.data[i+1]*0.59+img.data[i+2]*0.11; lum/=img.data.length/64;
-    let res=null; try{ res=nuriMarkersToHomography(S.det.detectImage(w,h,img.data), NURI.layout, g.s, NURI.reg.sheets.map(x=>x.id)); }catch(e){ res=null; }
+    let res=null; try{ res=nuriMarkersToHomography(S.det.detectImage(w,h,img.data), NURI.layout, g.s, NURI.reg.sheets.map(x=>x.id), { x:vw/2, y:vh/2 }); }catch(e){ res=null; }   // わくの まんなか＝画面の まんなか
     const el=(now-S.t0)/1000;
     const key=res && res.sheetId!==undefined ? scSheetKey(res.sheetId) : null;
     if(NURI_CONT.on && S.wait){   // れんぞく：さっき読んだ紙が うつっている間は 読まない（音も出さない）。はずれたら（2回）／ちがう紙なら つぎへ
@@ -17711,7 +17735,7 @@ function lphScanCapture(frame, resSmall, key, sig){   // sig＝れんぞく：�
         if(!LPH.scan || !LITE.active) return;
         try{
             const D=NURI.maps[key], vw=full.W, vh=full.H; let photo=full.img;
-            let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(vw,vh,photo.data), NURI.layout, 1, [D.info.sheetMarkerId]); }catch(_){ }
+            let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(vw,vh,photo.data), NURI.layout, 1, [D.info.sheetMarkerId], nuriResCenter(resSmall)); }catch(_){ }
             if(!res || !res.ok) res=resSmall;   // 大きい画像で見失った時は、読み取り中に見つけた位置を使う
             const out=nuriProcess(photo, res.H, D); photo=null;
             if(NURI_CONT.on){ lphContDone(key, D, out, sig); return; }   // れんぞく：卵は出さない（用紙の位置も いらない）
@@ -18224,7 +18248,7 @@ window.NURI_EVENT={
     async prepare(){ await Promise.all([nuriLoadLib(), nuriLoadRegistry()]); await nuriLoadFaces(NURI.reg.sheets[0].key); },
     detector(){ return new AR.Detector({ dictionaryName:"ARUCO_4X4_1000", maxHammingDistance:0 }); },
     scan(det, w, h, data, s){
-        let res=null; try{ res=nuriMarkersToHomography(det.detectImage(w,h,data), NURI.layout, s, NURI.reg.sheets.map(x=>x.id)); }catch(_){ res=null; }
+        let res=null; try{ res=nuriMarkersToHomography(det.detectImage(w,h,data), NURI.layout, s, NURI.reg.sheets.map(x=>x.id), { x:w/s/2, y:h/s/2 }); }catch(_){ res=null; }
         const key=(res && res.sheetId!==undefined)? scSheetKey(res.sheetId) : null;
         const retired=!!(res && res.ids && NURI.reg.retired && res.ids.some(i=>NURI.reg.retired[String(i)]));
         return { res, key, ready:!!(key && NURI.maps[key] && NURI.maps[key].P), retired };
@@ -18233,7 +18257,7 @@ window.NURI_EVENT={
     sheetName(key){ const s=sheetOf(key); return s? s.name : key; },
     process(photo, key, resSmall){   // scCapture と同じ読み取り（高解像度でマーカーを探し直す → 色を読む）
         const D=NURI.maps[key]; if(!D || !D.P) throw new Error("表がまだ読めていません "+key);
-        let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(photo.width,photo.height,photo.data), NURI.layout, 1, [D.info.sheetMarkerId]); }catch(_){ }
+        let res=null; try{ res=nuriMarkersToHomography(new AR.Detector({dictionaryName:"ARUCO_4X4_1000",maxHammingDistance:0}).detectImage(photo.width,photo.height,photo.data), NURI.layout, 1, [D.info.sheetMarkerId], nuriResCenter(resSmall)); }catch(_){ }
         if(!res || !res.ok) res=resSmall;
         const out=nuriProcess(photo, res.H, D);
         return { rgba:out.rgba, cs:out.colorStat, keysSha1:D.info.keysSha1, paintedFaces:out.paintedFaces };
