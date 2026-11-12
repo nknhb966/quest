@@ -12250,7 +12250,9 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     // 2) カメラ
     let stream=null;
     try{ stream=await camOpen({ w:1920, h:1080, def:true }); }   // いつも既定のカメラ（外付け→背面→前面の順）
-    catch(e){ console.warn("[iPhone AR] camera", e); return "camera"; }
+    catch(e){ console.warn("[iPhone AR] camera", e); return (e && (e.name==="NotAllowedError" || e.name==="SecurityError")) ? "camera-deny" : "camera"; }   // camera-deny＝許可されていない／camera＝ひらけなかった（ほかで つかっている 等）
+    let _entered=false;
+    try{   // ここから先で うまく いかなかった時は、カメラを止めて 入る前に もどす（iarAbort）
     const v=document.getElementById("iarVideo"); v.srcObject=stream; v.style.opacity="0"; v.style.display="block"; try{ await v.play(); }catch(_){ }   // 最初は見せない（最初の数コマが横向きで、拡大されて見えるため）
     litePhoneShow(true);
     LITE.origin=liteOrigin(opts);   // 入った所（ぬりえ／ARで あそぶ）＝「✕ おわる」の後に戻る画面
@@ -12272,7 +12274,7 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     else { const arts=mvArtifactRows(), sites=mvSiteRows(), N=arts.length; const info=(idx<N)?arts[idx]:sites[idx-N]; if(info){ nm=info.name||""; ds=info.description||""; } }
     LITE.curName=nm; LITE.curDesc=ds; LITE.opEnabled=true; LITE.isDino=(target==="dino"||target==="dog");
     LITE.target=target; LITE.quality=quality; LITE.intrinsic=intrinsicScale||1; LITE.curIdx=idx;
-    liteEnterScene(model, intrinsicScale);
+    liteEnterScene(model, intrinsicScale); _entered=true;
     litePhoneBuild();
     // 4) 描画をビデオの上へ（終了時に元へ戻す）
     const cv=renderer.domElement, cc=new THREE.Color();
@@ -12287,7 +12289,32 @@ async function enterLiteIAR(target, idx, quality, intrinsicScale, opts){
     litePhoneStarted();
     LPH.floorFound=true; LPH.floorY=0; lph$("lphFloor").classList.remove("on");   // 床＝持つ高さの下（ぬりえは読めた後に用紙の面）
     lph$("lphFloor").textContent="🔍 ゆかを さがしているよ… スマホを すこし したに むけて、ゆっくり うごかしてね";
+    }catch(e){ console.warn("[iPhone AR] はじめられませんでした", e); iarAbort(stream, _entered); return "error"; }
     return true;
+}
+function iarAbort(stream, entered){   // 入る途中で うまく いかなかった：カメラを止めて 入る前に もどす（litephoneend は出さない＝呼んだ画面が つづきを きめる）
+    window.removeEventListener("deviceorientation", iarOnOrient);
+    LITE.active=false;
+    const I=LITE.iar;
+    if(entered){ try{ liteExitScene(); }catch(e){ console.warn("[iPhone AR] もどす", e); } }
+    else { try{ litePhoneShow(false); }catch(_){ } }
+    LITE.phone=false; LITE.nuri=null;
+    try{ stream.getTracks().forEach(t=>t.stop()); }catch(_){ }
+    const v=document.getElementById("iarVideo"); if(v){ try{ v.pause(); }catch(_){ } v.srcObject=null; v.style.display="none"; v.style.opacity="0"; }
+    if(I && I.save){ const S=I.save, cv=renderer.domElement;
+        try{ if("css" in S){ cv.setAttribute("style", S.css); renderer.setClearColor(S.clear, S.alpha); scene.background=S.bg; scene.fog=S.fog; } }catch(_){ }
+        try{ player.position.copy(S.pPos); player.quaternion.copy(S.pQ); player.scale.copy(S.pS); player.updateMatrixWorld(true);
+             camera.position.copy(S.cPos); camera.quaternion.copy(S.cQ); camera.aspect=innerWidth/Math.max(1,innerHeight); camera.updateProjectionMatrix(); }catch(_){ } }
+    LITE.iar=null;
+}
+// AR（スマホ・タブレット）を はじめられなかった時の文（r＝enterLiteIAR／enterLiteAR の結果）
+function liteArFailMsg(r){
+    if(r==="orient") return "うごきの センサーが つかえませんでした。Safari を いちど おわらせて（がめんの したから うえに スワイプして とじる）から ひらきなおし、「モーションと画面の向き」を きかれたら「許可」を おしてね。";
+    if(r==="camera-deny") return "カメラが つかえませんでした。「カメラ」を きかれたら「許可」を おしてね。きかれない ときは、せっていアプリの Safari の「カメラ」を「確認」か「許可」に してね。";
+    if(r==="camera") return "カメラを ひらけませんでした。ほかの アプリや タブで カメラを つかって いたら とじて、もういちど ためしてね。";
+    if(r==="error") return "ARを はじめられませんでした。もういちど ためしてね。";
+    if(window.isSecureContext===false) return "ARを はじめられませんでした。カメラの ARは https:// で ひらいた ページで だけ つかえます。URLを たしかめてね。";   // http で ひらいている（カメラが つかえない）
+    return "ARを はじめられませんでした。ARが つかえる きかいで ためしてね。";
 }
 function iarEnd(){
     const I=LITE.iar; if(!I) return;
@@ -16168,7 +16195,7 @@ addEventListener("resize",()=>{
         });
     }
 
-    function setNote(t){ if(noteEl){ noteEl.textContent=t||""; noteEl.style.display=t?"block":"none"; } }
+    function setNote(t){ if(noteEl){ noteEl.textContent=t||""; noteEl.style.display=t?"block":"none"; delete noteEl.dataset.arFail; } }   // arFail＝「ARを はじめられなかった」文を出している（ほかの文に かわったら消える）
 
     // ===== 出土品「きれい」＝フルGLBの巨大テクスチャ(8192²)を安全サイズへ縮小して表示（元ファイルは無改変） =====
     function parseGLB(buf){
@@ -16343,13 +16370,14 @@ addEventListener("resize",()=>{
         if(window.__mvLiteMode && typeof enterLiteAR==="function"){   // Lite：カスタムWebXR ARへ（現在の画質・サイズを反映）
             const tgt=curDigTarget(), i=curIdx();
             const intrinsic = (tgt==="dino") ? 1 : (tgt==="dog" ? ((typeof DOGS!=="undefined"&&DOGS[i]?DOGS[i].realH:38)/100) : 1);   // 恐竜=Lite側で固定の100%（liteDinoK）／犬=realH(cm)→m／出土品=原寸
-            const useIar=!navigator.xr && typeof iarWanted==="function" && iarWanted();   // iPhone（WebXRなし）：タップ直後に許可を求めるので、ここでは待たない
+            const useIar=!(typeof IS_HEADSET!=="undefined" && IS_HEADSET) && typeof iarWanted==="function" && iarWanted();   // iPhone・iPad（ヘッドセット以外）は いつも カメラ＋ジャイロ方式（ぬりえと同じ。Safari の WebXR を オンにしていて navigator.xr が ある時も こちら）。タップ直後に許可を求めるので、ここでは待たない
             const lo = (tgt==="dino") ? { mvPick:true, plain:curPlain(), pk:curPk() } : { origin:"mv" };   // 恐竜：ぬりえ／ぬりえなし を選べる（どの ぬりえ か）
             const heavy = (tgt==="artifact" && artQuality!=="small");   // 出土品の「ふつう」「きれい」：ARの間は、この画面のモデルを外してメモリを空ける（戻ったら読み直す）
             if(heavy){ showModel._tok=(showModel._tok||0)+1; viewer.removeAttribute("src"); if(lastBlobUrl){ URL.revokeObjectURL(lastBlobUrl); lastBlobUrl=null; } }
-            const ok = useIar ? (await enterLiteIAR(tgt, i, artQuality, intrinsic, lo))===true : await enterLiteAR(tgt, i, artQuality, intrinsic, lo);   // iPhone：カメラ＋ジャイロ方式
-            if(ok){ modal.style.display="none"; window.__mvPreviewPause=false; }   // 入室成功でモーダルを閉じる
-            else { const ng=()=>setNote("ARを はじめられませんでした。ARが つかえる きかいで ためしてね。"); if(heavy) showModel(curIdx()).then(ng, ng); else ng(); }
+            let r=false; try{ r = useIar ? await enterLiteIAR(tgt, i, artQuality, intrinsic, lo) : await enterLiteAR(tgt, i, artQuality, intrinsic, lo); }catch(e){ console.warn("[ARで みる]", e); r="error"; }   // iPhone：カメラ＋ジャイロ方式
+            const ok=(r===true);
+            if(ok){ modal.style.display="none"; window.__mvPreviewPause=false; if(noteEl && noteEl.dataset.arFail) setNote(""); }   // 入室成功でモーダルを閉じる（前に出した「はじめられませんでした」は消す）
+            else { const msg=liteArFailMsg(r), ng=()=>{ setNote(msg); if(noteEl) noteEl.dataset.arFail="1"; }; if(heavy) showModel(curIdx()).then(ng, ng); else ng(); }   // できなかった わけを出す（センサー／カメラの許可 など）
             return;
         }
         try{ viewer.activateAR(); }catch(_){ }   // 通常（Go）：model-viewer ネイティブAR
