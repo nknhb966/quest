@@ -362,6 +362,20 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 .nstock .ns-card.new{ animation:nsNew 1.8s ease-out; }
 @keyframes nsNew{ 0%{ transform:scale(1.3); box-shadow:0 0 0 3px #ffe6a6; } 100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,230,166,0); } }
 .nstock .ns-empty{ font-size:12px; color:#d8ccff; background:rgba(10,7,26,.75); padding:4px 10px; border-radius:8px; white-space:nowrap; }
+.nstock .ns-card{ cursor:pointer; }   /* おすと「この ぬりえを けす？」 */
+.nstock .ns-card.lock{ opacity:.4; cursor:default; }   /* AR の「もういちど よむ」で いま でている きょうりゅう：けせない */
+/* ぬりえを けす？（読み込み画面の なか。AR中は ブラウザの 確認が 出せないので 画面の なかに 出す） */
+.ns-ask{ position:absolute; inset:0; z-index:20; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); pointer-events:auto; }
+.ns-ask.on{ display:flex; }
+.ns-ask .box{ width:min(86vw,340px); max-height:94vh; box-sizing:border-box; padding:16px; border-radius:16px; background:rgba(16,12,36,.97); border:1px solid rgba(255,230,120,.75);
+    text-align:center; color:#efe6ff; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.ns-ask .big{ width:min(40vw,150px,26vh); aspect-ratio:61/88; border-radius:8px; overflow:hidden; background:rgba(42,36,22,.92); position:relative; }
+.ns-ask .big img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.ns-ask b{ font-size:16px; color:#ffe6a6; line-height:1.4; word-break:keep-all; }   /* ことばの 切れめ（空白）で 折りかえす */
+.ns-ask small{ font-size:13px; color:#d8ccff; line-height:1.5; }
+.ns-ask .row{ display:flex; gap:10px; width:100%; margin-top:4px; }
+.ns-ask .row button{ flex:1; padding:12px 8px; border-radius:12px; font:inherit; font-weight:800; font-size:16px; border:1px solid #6a5c94; background:#241a34; color:#e8dcff; cursor:pointer; }
+.ns-ask .row .del{ background:linear-gradient(#b33a3a,#7a1f1f); border-color:#ffb3a1; color:#fff; }
 .nstock .ns-mode .ct{ margin-left:2px; }
 #nuriStock{ left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom) + 92px); width:min(94vw,560px); align-items:center; }
 #nuriStock .ns-card{ width:min(46px, calc((94vw - 44px) / 8)); }   /* 8まいが 1れつに おさまる 大きさ */
@@ -17311,6 +17325,42 @@ function nuriStockLock(where){   // 押せない わけ（""＝押せる）
     if(where==="ar"){ if(LPH.reread) return "reread"; if(LPH.scan && LPH.scan.busy) return "busy"; }
     return "";
 }
+function nuriStockDelLock(where){   // ぬりえを けせない わけ（おすすめ設定オンでも けせる）／pk＝AR の「もういちど よむ」で いま でている きょうりゅうの ぬりえ（それだけ けせない）
+    if(NS.busy) return { why:"busy" };
+    if(where==="cam" && SC.busy) return { why:"busy" };
+    if(where==="ar"){
+        if(LPH.scan && LPH.scan.busy) return { why:"busy" };
+        if(LPH.reread && LPH.reread.save){ const S=LPH.reread.save;   // いま でている きょうりゅうの ぬりえ（litePk と おなじ きめかた）
+            if(S.target==="dino" && typeof litePksOf==="function"){ const a=litePksOf(S.idx), pk=(S.curPk && a.includes(S.curPk))? S.curPk : (a.length? a[a.length-1] : null); if(pk) return { pk }; } } }
+    return null;
+}
+function nuriStockAskClose(){ document.querySelectorAll(".ns-ask.on").forEach(a=>{ a.classList.remove("on"); a.dataset.pk=""; }); }
+function nuriStockAsk(pk, src){   // カードを おした：「この ぬりえを けす？」
+    const where=nuriStockWhere(); if(!where || !NURI.paint[pk]) return;
+    const L=nuriStockDelLock(where); if(L && (L.why || L.pk===pk)) return;
+    const root= where==="cam"? $("nuriScan") : document.getElementById("litePh"); if(!root) return;
+    let A=root.querySelector(".ns-ask");
+    if(!A){ A=document.createElement("div"); A.className="ns-ask";
+        A.innerHTML='<div class="box"><div class="big"><img alt=""></div><b></b><small></small><div class="row"><button type="button" class="del">🗑 けす</button><button type="button" class="no">やめる</button></div></div>';
+        const stop=(ev)=>ev.stopPropagation(); A.addEventListener("pointerdown", stop); A.addEventListener("touchstart", stop, { passive:true });   // 恐竜の ジェスチャに しない
+        A.addEventListener("click", ev=>{ ev.stopPropagation(); if(ev.target===A) nuriStockAskClose(); });   // そとを おす＝やめる
+        A.querySelector(".no").addEventListener("click", ev=>{ ev.stopPropagation(); nuriStockAskClose(); });
+        A.querySelector(".del").addEventListener("click", ev=>{ ev.stopPropagation(); nuriStockDel(A.dataset.pk); });
+        root.appendChild(A); }
+    const nm=nuriPkLabel(pk), sh=sheetOf(nsp(pk)), img=A.querySelector(".big img");
+    A.querySelector("b").textContent="「"+nm+"」の ぬりえを けす？";
+    A.querySelector("small").textContent= nsid(pk)? "この ぬりえの きょうりゅうが いなくなるよ" : "ぬった もようが きえて、もとの "+(sh? sh.name : nm)+"に もどるよ";
+    img.removeAttribute("src"); if(src) img.src=src;
+    A.dataset.pk=pk; A.classList.add("on");
+}
+function nuriStockDel(pk){   // けす（メイン画面の「ぬりえを けす」と おなじ）
+    const where=nuriStockWhere(); nuriStockAskClose();
+    if(!pk || !where || !NURI.paint[pk]) return;
+    const L=nuriStockDelLock(where); if(L && (L.why || L.pk===pk)) return;   // おしている あいだに 読み取りが はじまった など
+    nuriClearSaved(pk); nuriSetPaint(pk, null); if(NURI.mode==="slots") nuriSlotsChanged(); nuriSampleNoteClear(); nuriMenuRefresh();
+    try{ if(typeof lphSnd==="function") lphSnd(); }catch(_){ }
+    nuriStockPaint();
+}
 function nuriStockList(){   // あたらしい じゅん
     const L=nuriPaintedKeys().filter(k=>NURI.paint[k]);
     if(NURI.mode==="slots") return L.sort((a,b)=>nsid(b)-nsid(a));   // 通し番号＝よみこんだ じゅん（きえるのは いちばん ちいさい 番号から）
@@ -17327,6 +17377,8 @@ function nuriStockPaint(){
     const els=[$("nuriStock"), $("lphNStock")].filter(Boolean); if(!els.length) return;
     const where=nuriStockWhere();
     els.forEach(e=>{ const on=(where==="cam" && e.id==="nuriStock") || (where==="ar" && e.id==="lphNStock"); e.style.display=on? "flex" : "none"; });
+    { const A=document.querySelector(".ns-ask.on"); if(A){ const L=nuriStockDelLock(where), host=A.parentNode;   // 「けす？」を 出している あいだに 画面が かわった・読み取りが はじまった：とじる
+        if(!where || (where==="cam") !== (host && host.id==="nuriScan") || (L && (L.why || L.pk===A.dataset.pk)) || !NURI.paint[A.dataset.pk]) nuriStockAskClose(); } }
     if(!where) return;
     for(const e of els) if(!e.firstChild){   // 中身は はじめに 1かいだけ 作る
         const b=document.createElement("button"); b.type="button"; b.className="ns-mode";
@@ -17344,14 +17396,16 @@ function nuriStockPaint(){
         b.title= lock==="reco"? "おすすめ設定オンの ときは いつも 8たいまで ためる" : lock==="reread"? "いまの きょうりゅうを みている あいだは かえられないよ" : lock? "" : (slots? "おすと「しゅるいごとに 1たい」に かわるよ" : "おすと「8たいまで ためる」に かわるよ"); });
     const sig=NURI.mode+"|"+list.join(","), objs=new Map(list.map(k=>[k, NURI.paint[k]]));   // objs：同じ キーでも よみなおすと 模様の 入れものが かわる（しゅるいごとに 1たい の うわがき）
     const changed=(sig!==NS.sig) || !NS.prev || list.some(k=>NS.prev.get(k)!==objs.get(k));
-    if(!changed) return;
+    const lockPk=(()=>{ const L=nuriStockDelLock(where); return (L && L.pk) || ""; })();
+    if(!changed){ els.forEach(e=>e.lastChild.querySelectorAll(".ns-card").forEach(c=>c.classList.toggle("lock", c.dataset.pk===lockPk))); return; }
     const prev=(NS.mode===NURI.mode)? NS.prev : null; NS.sig=sig; NS.prev=objs; NS.mode=NURI.mode;
     els.forEach(e=>{ const box=e.lastChild; box.innerHTML="";
         if(!list.length){ const em=document.createElement("div"); em.className="ns-empty"; em.textContent="まだ ぬりえは ないよ"; box.appendChild(em); return; }
-        list.forEach((pk,i)=>{ const c=document.createElement("div"), nm=nuriPkLabel(pk); c.className="ns-card"+((prev && prev.get(pk)!==objs.get(pk))? " new" : ""); c.title=nm;
+        list.forEach((pk,i)=>{ const c=document.createElement("div"), nm=nuriPkLabel(pk); c.className="ns-card"+((prev && prev.get(pk)!==objs.get(pk))? " new" : "")+(pk===lockPk? " lock" : ""); c.title=nm+"（おすと けせるよ）"; c.dataset.pk=pk;
             const ph=document.createElement("span"); ph.className="ph"; ph.textContent=nm; c.appendChild(ph);
             const img=document.createElement("img"); img.alt=nm; img.style.visibility="hidden"; img.onload=()=>{ img.style.visibility=""; ph.style.display="none"; }; c.appendChild(img);
             if(slots && list.length>=NURI_SLOT_MAX && i===list.length-1){ const d=document.createElement("span"); d.className="del"; d.textContent="つぎ きえる"; c.appendChild(d); }   // 9たいめを よむと きえる
+            c.addEventListener("click", ev=>{ ev.stopPropagation(); nuriStockAsk(pk, img.getAttribute("src") && img.style.visibility===""? img.src : ""); });
             box.appendChild(c); nuriStockImg(img, pk); }); });
 }
 function nuriStockSwitch(){   // ためかたを かえる（メイン画面の「ぬりえの ためかた」と おなじ）
