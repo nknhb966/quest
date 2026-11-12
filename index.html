@@ -389,9 +389,9 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 @media (max-width:600px){ #nuriStock{ bottom:calc(var(--nuriActH, 120px) + env(safe-area-inset-bottom) + 22px); } }
 #lphNStock{ top:calc(env(safe-area-inset-top) + 100px); left:10px; right:10px; }
 @media (orientation:landscape){
-  #nuriStock, #lphNStock{ left:10px; right:auto; width:122px; align-items:stretch; }
+  #nuriStock, #lphNStock{ left:calc(env(safe-area-inset-left) + 10px); right:auto; width:122px; align-items:stretch; }   /* iPhone よこ：カメラの きりかきを よける */
   #nuriStock{ top:50%; bottom:auto; transform:translateY(-50%); max-height:60vh; }   /* わくの 四すみの 黒い四角に かからない 高さ */
-  #lphNStock{ top:calc(env(safe-area-inset-top) + 100px + var(--fh, 60vh)*0.16); max-height:calc(var(--fh, 60vh)*0.66); }
+  #lphNStock{ top:50%; transform:translateY(-50%); max-height:calc(var(--fh, 60vh) * 0.62); }   /* わくの 四すみの 黒い四角に かからない 高さ（わくと おなじく 上下 まんなか） */
   .nstock .ns-mode{ white-space:normal; word-break:keep-all; text-align:left; font-size:12px; padding:6px 10px; border-radius:12px; }   /* ことばの 切れめ（空白）で 折りかえす */
   .nstock .ns-mode .nm{ display:block; }
   .nstock .ns-cards{ display:grid; grid-template-columns:repeat(2,1fr); overflow-x:hidden; overflow-y:auto; min-height:0; }
@@ -1493,9 +1493,13 @@ html.card-event body > *:not(#tcDebug):not(#tcEvent):not(#tcRank):not(script):no
         border:4px dashed rgba(255,230,120,.9); border-radius:14px; pointer-events:none; transition:border-color .15s, box-shadow .15s; }   /* たて：上の カードの れつより 下 */
     #lphScanFrame[data-st="ok"]{ border:4px solid rgba(90,235,130,.95); box-shadow:0 0 18px 3px rgba(90,235,130,.7); }   /* よめそう */
     #lphScanFrame[data-st="wait"]{ border:4px solid rgba(120,215,255,.95); box-shadow:0 0 14px 2px rgba(120,215,255,.55); }   /* れんぞく：とりかえを まっている */
-    @media (orientation:landscape){   /* よこ：上の おび（✕ おわる）より 下を いっぱいに つかう */
-      #litePh{ --fh:calc(100vh - env(safe-area-inset-top) - 108px); }
-      #lphScanFrame{ width:min(94vw, var(--fh)*1.414); top:calc(env(safe-area-inset-top) + 100px + var(--fh)/2); } }
+    @media (orientation:landscape){   /* よこ：わくは 上下 まんなか（「✕ おわる」の 高さに かかっても よい）。はばは 左右に「✕ おわる」の ぶんを あけた 大きさまで（ボタンの 下に 四すみが 入らない） */
+      #litePh{ --fh:min(94vh, calc(94vw / 1.414), calc((100vw - 2 * (env(safe-area-inset-right) + 120px)) / 1.414)); }
+      #lphScanFrame{ width:calc(var(--fh) * 1.414); top:50%; } }
+    @media (orientation:landscape) and (max-height:500px){   /* スマホ よこ：あんないの 文は わくの 右（「✕ おわる」の 下）に たてながで（下に 出すと わくの 下の 四すみに かかる） */
+      #litePh.lph-scan #lphNCard{ left:auto; right:calc(env(safe-area-inset-right) + 10px); top:calc(env(safe-area-inset-top) + 100px); bottom:auto; transform:none;
+          width:max(140px, calc((100vw - var(--fh) * 1.414) / 2 - 20px - env(safe-area-inset-right))); max-width:260px; box-sizing:border-box; padding:10px 12px; }
+      #litePh.lph-scan #lphNCard b{ font-size:15px; letter-spacing:0; } #litePh.lph-scan #lphNCard span{ font-size:12px; } }
     #lphNCard{ position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom) + 28px); transform:translateX(-50%); width:min(92vw,520px); display:none;
         flex-direction:column; gap:4px; padding:12px 16px; border-radius:14px; background:rgba(12,10,26,.88); border:1px solid rgba(210,180,120,.55);
         text-align:center; pointer-events:none; }
