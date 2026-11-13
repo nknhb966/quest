@@ -364,7 +364,8 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 .nstock .ns-mode .sw{ margin-left:6px; color:#8ff0ff; }
 .nstock .ns-mode:disabled{ cursor:default; border-color:rgba(200,190,230,.45); color:#efe6ff; }
 .nstock .ns-cards{ display:flex; gap:5px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; max-width:100%; padding:2px; box-sizing:border-box; }
-.nstock .ns-card{ position:relative; flex:0 0 auto; width:46px; aspect-ratio:61/88; border-radius:5px; overflow:hidden; background:rgba(42,36,22,.92); border:1px solid rgba(210,180,120,.55); }
+.nstock .ns-card{ position:relative; flex:0 0 auto; width:46px; border-radius:5px; overflow:hidden; background:rgba(42,36,22,.92); border:1px solid rgba(210,180,120,.55); box-sizing:border-box; }
+.nstock .ns-card::before{ content:""; display:block; padding-top:144.26%; }   /* カードの 高さ（61:88）。aspect-ratio だと iPhone の Safari で せまい れつの 中で つぶれて かさなる */
 .nstock .ns-card img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 .nstock .ns-card .ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; font-size:9px; line-height:1.2; color:#e8dcff; padding:2px; word-break:break-all; }
 .nstock .ns-card .del{ position:absolute; left:0; right:0; bottom:0; background:rgba(170,30,30,.92); color:#fff; font-size:8px; font-weight:800; text-align:center; line-height:1.35; padding:1px 0; word-break:keep-all; }   /* せまい時は「つぎ／きえる」の 2行 */
@@ -394,11 +395,17 @@ body.nuri-mv-wait #mvOpenBtn, body.nuri-mv-wait #mvArOpenBtn{ opacity:.5; pointe
 @media (orientation:landscape){
   #nuriStock, #lphNStock{ left:calc(env(safe-area-inset-left) + 10px); right:auto; width:122px; align-items:stretch; }   /* iPhone よこ：カメラの きりかきを よける */
   #nuriStock{ top:50%; bottom:auto; transform:translateY(-50%); max-height:60vh; max-height:60dvh; }   /* わくの 四すみの 黒い四角に かからない 高さ */
-  #lphNStock{ top:50%; transform:translateY(-50%); max-height:calc(var(--fh, 60vh) * 0.62); }   /* わくの 四すみの 黒い四角に かからない 高さ（わくと おなじく 上下 まんなか） */
+  #lphNStock{ top:50%; transform:translateY(-50%); max-height:calc(var(--fh, 60vh) * 0.78); }   /* わくの 四すみの 黒い四角（上下 それぞれ わくの 1わり くらい）に かからない 高さ（わくと おなじく 上下 まんなか） */
   .nstock .ns-mode{ white-space:normal; word-break:keep-all; text-align:left; font-size:12px; padding:6px 10px; border-radius:12px; }   /* ことばの 切れめ（空白）で 折りかえす */
   .nstock .ns-mode .nm{ display:block; }
-  .nstock .ns-cards{ display:grid; grid-template-columns:repeat(2,1fr); overflow-x:hidden; overflow-y:auto; min-height:0; }
+  .nstock .ns-cards{ display:grid; grid-template-columns:repeat(2,1fr); grid-auto-rows:max-content; align-content:start; overflow-x:hidden; overflow-y:auto; min-height:0; }
   #nuriStock .ns-card, #lphNStock .ns-card{ width:auto; }
+}
+@media (orientation:landscape) and (max-height:500px){   /* スマホ よこ：わくの 左の あいた ところを 上から 下まで つかって 8まい 見せる（はばに あわせて 2〜4れつ） */
+  #lphNStock{ top:calc(env(safe-area-inset-top) + 8px); bottom:8px; transform:none; max-height:none;
+      width:max(84px, min(200px, calc((100vw - var(--fh, 60vh) * 1.414) / 2 - env(safe-area-inset-left) - 20px))); }
+  #lphNStock .ns-cards{ grid-template-columns:repeat(auto-fill, minmax(36px, 1fr)); gap:4px; }
+  #lphNStock .ns-mode{ font-size:11px; padding:4px 8px; border-radius:10px; }
 }
 #nuriScan:not([data-mode="camera"]) #nuriCamSw, #nuriScan:not([data-mode="camera"]) #nuriCamDef, #nuriCamSw[hidden], #nuriCamDef[hidden]{ display:none !important; }   /* カメラの切り替えは読み取り中だけ */
 #nuriAR, #nuriARBig{ background:linear-gradient(135deg,#7c3aed,#1d4ed8)!important; border-color:#8ff0ff!important; color:#fff!important; }
